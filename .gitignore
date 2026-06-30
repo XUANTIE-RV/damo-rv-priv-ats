@@ -1,0 +1,9 @@
+*.o
+*.asm
+*.sym
+*.elf
+.aone_copilot
+*.log
+*.rvvi
+*.trace
+ideas

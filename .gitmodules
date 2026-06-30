@@ -1,0 +1,9 @@
+[submodule "SPEC/nexus-trace"]
+	path = SPEC/nexus-trace
+	url = https://github.com/riscv-non-isa/riscv-nexus-trace.git
+[submodule "SPEC/riscv-aia"]
+	path = SPEC/riscv-aia
+	url = https://github.com/riscv/riscv-aia.git
+[submodule "SPEC/riscv-ras-eri"]
+	path = SPEC/riscv-ras-eri
+	url = https://github.com/riscv-non-isa/riscv-ras-eri.git

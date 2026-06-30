@@ -1,0 +1,325 @@
+# =====================================================================
+# Common build rules for RISC-V Privilege Test Framework
+# =====================================================================
+#
+# Include this from each extension's Makefile:
+#   include ../common/Makefile.common
+#
+# Extensions must define ONE of:
+#   Single-target mode (legacy):
+#     TARGET    - output binary name (e.g., pmp_test.elf)
+#     EXT_OBJS  - extension-specific object files
+#
+#   Multi-target mode:
+#     TARGETS   - list of output binaries (e.g., pmp_cvpt.elf pmp_basic.elf)
+#     <base>_OBJS - per-target object files (e.g., pmp_cvpt_OBJS = ...)
+#       where <base> is the filename without .elf, with - and . replaced by _
+#
+# =====================================================================
+
+# Default configuration
+XLEN     ?= 64
+CONFIG ?= qemu-rv64-max
+LOG_LEVEL ?= 3
+
+COMMON_DIR = ../common
+
+# Configuration directory
+CONFIG_DIR = $(COMMON_DIR)/config/$(CONFIG)
+
+# Include configuration-specific build rules
+include $(CONFIG_DIR)/platform.mk
+
+# Configuration headers (included via -include in CFLAGS/ASFLAGS)
+CONFIG_HEADER       = $(CONFIG_DIR)/platform.h
+CONFIG_MODEL_HEADER = $(CONFIG_DIR)/rvmodel_macros.h
+
+# ABI selection
+ifeq ($(XLEN),32)
+    ABI   = ilp32
+    MARCH = rv32imac_zicsr_zifencei
+else
+    ABI   = lp64
+    MARCH = rv64imac_zicsr_zifencei
+endif
+
+# Toolchain
+CC      = $(CROSS_COMPILER)gcc
+AS      = $(CROSS_COMPILER)as
+LD      = $(CROSS_COMPILER)ld
+OBJCOPY = $(CROSS_COMPILER)objcopy
+OBJDUMP = $(CROSS_COMPILER)objdump
+
+# Common object files (built from common/ sources)
+COMMON_OBJS = \
+    $(COMMON_DIR)/entry.o \
+    $(COMMON_DIR)/platform_init.o \
+    $(COMMON_DIR)/trap_asm.o \
+    $(COMMON_DIR)/trap.o \
+    $(COMMON_DIR)/privilege.o \
+    $(COMMON_DIR)/csr_accessors.o \
+    $(COMMON_DIR)/uart.o \
+    $(COMMON_DIR)/test_framework.o
+
+# VM support (conditional, set ENABLE_VM=1 in extension Makefile)
+ifdef ENABLE_VM
+VM_DIR = $(COMMON_DIR)/vm
+VM_OBJS = $(VM_DIR)/page_table.o $(VM_DIR)/satp.o
+COMMON_OBJS += $(VM_OBJS)
+endif
+
+# PMP support (conditional, set ENABLE_PMP=1 in extension Makefile)
+ifdef ENABLE_PMP
+PMP_DIR_COMMON = $(COMMON_DIR)/pmp
+PMP_OBJS = $(PMP_DIR_COMMON)/pmp_cfg.o $(PMP_DIR_COMMON)/pmp_init.o
+COMMON_OBJS += $(PMP_OBJS)
+endif
+
+# Hypervisor (H ext) support (conditional, set ENABLE_HYP=1 in extension Makefile)
+ifdef ENABLE_HYP
+HYP_DIR  = $(COMMON_DIR)/hyp
+HYP_OBJS = \
+    $(HYP_DIR)/hyp_csr.o \
+    $(HYP_DIR)/hyp_priv.o \
+    $(HYP_DIR)/hyp_trap.o \
+    $(HYP_DIR)/hyp_trap_asm.o \
+    $(HYP_DIR)/hyp_fence.o \
+    $(HYP_DIR)/hyp_ldst.o \
+    $(HYP_DIR)/hyp_reset.o \
+    $(HYP_DIR)/gstage_pt.o \
+    $(HYP_DIR)/two_stage.o \
+    $(HYP_DIR)/test_vs_helpers.o \
+    $(HYP_DIR)/hyp_vs_trap.o \
+    $(HYP_DIR)/hyp_platform.o
+ifdef ENABLE_TWO_STAGE
+HYP_OBJS += $(HYP_DIR)/two_stage_helpers.o
+endif
+COMMON_OBJS += $(HYP_OBJS)
+# Append H extension to ISA string
+ifeq ($(XLEN),32)
+MARCH := rv32imach_zicsr_zifencei
+else
+MARCH := rv64imach_zicsr_zifencei
+endif
+SPIKE_ISA_EXT := $(SPIKE_ISA_EXT)
+endif
+
+# PM (Pointer Masking) support (conditional, set ENABLE_PM=1 in extension Makefile)
+ifdef ENABLE_PM
+PM_DIR = $(COMMON_DIR)/pm
+PM_OBJS = $(PM_DIR)/pm_cfg.o
+COMMON_OBJS += $(PM_OBJS)
+endif
+
+# Compiler flags
+CFLAGS  = -Wall -O0 -g -fno-omit-frame-pointer -ggdb
+CFLAGS += -march=$(MARCH) -mabi=$(ABI) -mcmodel=medany
+CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
+CFLAGS += -I$(COMMON_DIR) -I.
+CFLAGS += -include $(CONFIG_HEADER)
+CFLAGS += -D LOG_LEVEL=$(LOG_LEVEL)
+CFLAGS += -D MEM_BASE=$(MEM_BASE)
+CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
+
+# Disable PIE
+ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
+CFLAGS += -fno-pie -no-pie
+endif
+
+# Conditional CFLAGS for PMP support
+ifdef ENABLE_PMP
+CFLAGS += -I$(PMP_DIR_COMMON)
+endif
+
+# Conditional CFLAGS for Hypervisor support
+ifdef ENABLE_HYP
+CFLAGS  += -DENABLE_HYP -I$(HYP_DIR)
+endif
+
+# Conditional CFLAGS for PM support
+ifdef ENABLE_PM
+CFLAGS += -DENABLE_PM -I$(PM_DIR)/..
+endif
+
+# Extra CFLAGS from command line (e.g., make qemu EXTRA_CFLAGS='-DTEST_FILTER="VS-10"')
+CFLAGS += $(EXTRA_CFLAGS)
+
+# Assembler flags
+ASFLAGS  = -march=$(MARCH) -mabi=$(ABI)
+ASFLAGS += -I$(COMMON_DIR) -I.
+ASFLAGS += -include $(CONFIG_HEADER)
+ASFLAGS += -include $(CONFIG_MODEL_HEADER)
+ASFLAGS += -D MEM_BASE=$(MEM_BASE)
+
+# Conditional ASFLAGS for Hypervisor support
+ifdef ENABLE_HYP
+ASFLAGS += -DENABLE_HYP -I$(HYP_DIR)
+endif
+
+# Linker flags
+LDFLAGS  = -z max-page-size=4096 -nostartfiles -nostdlib -nodefaultlibs
+LDFLAGS += -Wl,--defsym=__riscv_xlen=$(XLEN)
+LDFLAGS += -Wl,--defsym=MEM_BASE=$(MEM_BASE)
+LDFLAGS += -L$(CONFIG_DIR)
+LDFLAGS += -march=$(MARCH) -mabi=$(ABI)
+
+# =====================================================================
+# Compile rules (shared by both single and multi-target modes)
+# =====================================================================
+
+# C source -> object (common)
+$(COMMON_DIR)/%.o: $(COMMON_DIR)/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Assembly source -> object (common)
+$(COMMON_DIR)/%.o: $(COMMON_DIR)/%.S
+	$(CC) $(ASFLAGS) -c $< -o $@
+
+# C source -> object (extension)
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Assembly source -> object (extension)
+%.o: %.S
+	$(CC) $(ASFLAGS) -c $< -o $@
+
+# =====================================================================
+# Build targets
+# =====================================================================
+
+# Helper: convert filename to Make variable name (replace - and . with _)
+_varname = $(subst -,_,$(subst .,_,$(1)))
+
+ifdef TARGETS
+# =================================================================
+# Multi-target mode
+# =================================================================
+# Usage in extension Makefile:
+#   TARGETS = pmp_cvpt.elf pmp_basic.elf pmp_lock.elf
+#   pmp_cvpt_OBJS  = pmp_reset.o main_cvpt.o tests/register_cvpt.o
+#   pmp_basic_OBJS = pmp_reset.o main_basic.o tests/register_basic.o
+#   pmp_lock_OBJS  = pmp_reset.o main_lock.o tests/register_lock.o
+#
+# Each target links its own _OBJS + COMMON_OBJS against kernel.ld.
+# All products remain in the same directory.
+# =================================================================
+
+.PHONY: all clean
+
+all: $(TARGETS)
+
+# Generate a link rule for each target
+define MULTI_TARGET_RULE
+$(1): $$($(call _varname,$(basename $(1)))_OBJS) $$(COMMON_OBJS) kernel.ld
+	$$(CC) $$(LDFLAGS) -T kernel.ld -o $(1) $$($(call _varname,$(basename $(1)))_OBJS) $$(COMMON_OBJS)
+	$$(OBJDUMP) -S $(1) > $(basename $(1)).asm
+	$$(OBJDUMP) -t $(1) | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$$$/ d' > $(basename $(1)).sym
+endef
+
+$(foreach target,$(TARGETS),$(eval $(call MULTI_TARGET_RULE,$(target))))
+
+# Collect all extension objs across all targets (for clean)
+_ALL_EXT_OBJS = $(sort $(foreach t,$(TARGETS),$($(call _varname,$(basename $(t)))_OBJS)))
+
+clean:
+	rm -f $(_ALL_EXT_OBJS)
+	rm -f $(TARGETS)
+	rm -f $(foreach t,$(TARGETS),$(basename $(t)).asm $(basename $(t)).sym)
+	rm -f $(foreach t,$(TARGETS),$(basename $(t)).trace $(basename $(t)).rvvi)
+	find $(COMMON_DIR) -name "*.o" -type f -delete
+
+else
+# =================================================================
+# Single-target mode (legacy, fully backward compatible)
+# =================================================================
+
+ALL_OBJS = $(COMMON_OBJS) $(EXT_OBJS)
+
+.PHONY: all clean
+
+all: $(TARGET)
+
+# Strip .elf suffix for auxiliary file names (e.g., pmp_test.elf -> pmp_test.asm)
+TARGET_BASE = $(basename $(TARGET))
+
+$(TARGET): $(ALL_OBJS) kernel.ld
+	$(CC) $(LDFLAGS) -T kernel.ld -o $(TARGET) $(ALL_OBJS)
+	$(OBJDUMP) -S $(TARGET) > $(TARGET_BASE).asm
+	$(OBJDUMP) -t $(TARGET) | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(TARGET_BASE).sym
+
+clean:
+	rm -f $(ALL_OBJS)
+	rm -f $(TARGET) $(TARGET_BASE).asm $(TARGET_BASE).sym
+	rm -f $(TARGET_BASE).trace $(TARGET_BASE).rvvi
+	find $(COMMON_DIR) -name "*.o" -type f -delete
+
+endif # ifdef TARGETS
+
+# =====================================================================
+# Simulator targets
+# =====================================================================
+
+# --- QEMU ---
+.PHONY: qemu
+
+qemu:
+	$(MAKE) CONFIG=qemu-rv64-max
+	$(QEMU) $(QEMU_OPTS)
+
+# --- Sail ---
+SAIL ?= sail_riscv_sim
+
+.PHONY: sail
+
+ifdef TARGETS
+sail:
+	$(MAKE) CONFIG=sail-rv64-max
+	@for elf in $(TARGETS); do \
+		echo "========== Sail: $$elf =========="; \
+		$(SAIL) $$elf || exit 1; \
+	done
+else
+sail:
+	$(MAKE) CONFIG=sail-rv64-max
+	$(SAIL) $(TARGET)
+endif
+
+# --- Trace ---
+.PHONY: trace
+
+ifdef TARGETS
+trace:
+	$(MAKE) CONFIG=sail-rv64-max
+	@for elf in $(TARGETS); do \
+		base=$$(basename $$elf .elf); \
+		echo "========== Trace: $$elf =========="; \
+		$(SAIL) --trace --trace-output $$base.trace $$elf || exit 1; \
+		$(COMMON_DIR)/scripts/sail_to_rvvi.py $$base.trace; \
+	done
+else
+trace:
+	$(MAKE) CONFIG=sail-rv64-max
+	$(SAIL) --trace --trace-output $(basename $(TARGET)).trace $(TARGET)
+	$(COMMON_DIR)/scripts/sail_to_rvvi.py $(basename $(TARGET)).trace
+endif
+
+# --- Spike ---
+SPIKE ?= spike
+
+SPIKE_ISA_EXT ?=
+SPIKE_ISA     ?= $(MARCH)$(SPIKE_ISA_EXT)
+
+.PHONY: spike
+
+ifdef TARGETS
+spike:
+	$(MAKE) CONFIG=spike-rv64-max
+	@for elf in $(TARGETS); do \
+		echo "========== Spike: $$elf =========="; \
+		$(SPIKE) --isa=$(SPIKE_ISA) $$elf || exit 1; \
+	done
+else
+spike:
+	$(MAKE) CONFIG=spike-rv64-max
+	$(SPIKE) --isa=$(SPIKE_ISA) $(TARGET)
+endif
