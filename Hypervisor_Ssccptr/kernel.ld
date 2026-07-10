@@ -1,7 +1,7 @@
 /* Hypervisor × Ssccptr cross test linker script */
 
 /* Include the base link.ld first */
-INCLUDE "../common/config/qemu-rv64-max/link.ld"
+INCLUDE "link.ld"
 
 /* Extension-specific sections (placed after link.ld's sections) */
 SECTIONS

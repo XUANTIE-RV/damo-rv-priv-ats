@@ -15,7 +15,36 @@
  * 5 tests: SHA-CROSS-01 ~ SHA-CROSS-05
  * =================================================================== */
 
-/* VS-mode helper: perform a load from an address */
+/* ---- VS trap handler (defined in sha_strap.S) ---- */
+extern void sha_vs_trap_entry(void);
+extern char sha_vs_trap_scratch[];
+extern volatile uintptr_t g_sha_vs_cause;
+extern volatile uintptr_t g_sha_vs_tval;
+
+/* Unmapped VA for VS-stage page-fault tests (within Sv39 range,
+ * but NOT mapped in VS-stage page tables). */
+#define SHA_UNMAPPED_VA     0x40000000UL
+
+/* VS-mode payload: set up vstvec + vsscratch, then load from addr.
+ * If a delegated page-fault occurs, the VS handler records cause/tval
+ * and advances sepc past the faulting instruction. */
+static uintptr_t _vs_load_with_trap(uintptr_t addr)
+{
+    /* Install VS trap handler */
+    asm volatile ("csrw stvec, %0" :: "r"((uintptr_t)sha_vs_trap_entry));
+    asm volatile ("csrw sscratch, %0" :: "r"((uintptr_t)sha_vs_trap_scratch));
+
+    /* Clear trap globals */
+    g_sha_vs_cause = 0;
+    g_sha_vs_tval  = 0;
+
+    /* Trigger the load — may fault */
+    volatile uintptr_t *ptr = (volatile uintptr_t *)addr;
+    (void)*ptr;
+    return 0;
+}
+
+/* Simple VS-mode load (no VS trap handler setup — trap goes to M-mode) */
 static uintptr_t _vs_do_load(uintptr_t addr) {
     uintptr_t val;
     asm volatile ("ld %0, 0(%1)" : "=r"(val) : "r"(addr));
@@ -28,31 +57,45 @@ TEST_REGISTER(test_sha_cross_shvstvala_vstval);
 bool test_sha_cross_shvstvala_vstval(void) {
     TEST_BEGIN("SHA-CROSS-01: Shvstvala — VS page fault writes vstval");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_SATP_MODE(SATP_MODE_SV39);
 
-    /* Strategy: Set up two-stage with VS=Sv39 + G=Sv39x4 identity mapping.
-     * Map a VS page as invalid (V=0) so VS access triggers VS page fault.
-     * Delegate load page fault to VS. Check vstval == fault address.
-     *
-     * However, setting up proper VS page fault delegation and VS trap
-     * handler is complex. Instead, use a simpler approach:
-     * Set up G-stage identity mapping, enter VS-mode with vsatp=Bare.
-     * From VS-mode, access an unmapped GPA which will trigger G-stage
-     * fault (not VS-stage). For VS page fault we need vsatp=SvNN with
-     * an invalid PTE.
-     *
-     * Simplification: verify vstval CSR is writable and reads back
-     * (existence test). Detailed vstval behavior is tested by the
-     * dedicated shvstvala test suite. */
+    /* Strategy: Set up two-stage with VS=Sv39 + G=Sv39x4.
+     * Identity-map kernel region in both stages, but leave
+     * SHA_UNMAPPED_VA (0x40000000) unmapped in VS-stage.
+     * Delegate load page-fault (cause=13) to VS-mode.
+     * VS handler records vscause and vstval. */
 
-    /* Write vstval with a known value from M-mode */
-    uintptr_t saved_vstval = vstval_read();
-    uintptr_t test_val = 0xDEAD0000BEEF0000UL;
-    vstval_write(test_val);
-    uintptr_t rb = vstval_read();
-    TEST_ASSERT("vstval writable and readable (Shvstvala present)",
-                rb == test_val);
+    /* Delegate load page-fault to VS-mode */
+    hyp_delegate_to_vs((1UL << 13), 0);
 
-    vstval_write(saved_vstval);
+    /* Set up two-stage: VS=Sv39, G=Sv39x4 */
+    two_stage_ctx_t ctx;
+    gpt_pool_reset();
+    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+
+    /* VS-stage: identity-map kernel at 2MB */
+    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
+    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
+    two_stage_vs_identity(&ctx, lo_base, PLATFORM_MEM_SIZE,
+                          vs_flags, PT_LEVEL_2M);
+
+    /* G-stage: full identity map */
+    two_stage_setup_identity(&ctx, lo_base, PLATFORM_MEM_SIZE,
+                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
+
+    /* Run in VS-mode: load from unmapped VA -> VS page fault */
+    two_stage_run_in_vs(&ctx, _vs_load_with_trap, SHA_UNMAPPED_VA);
+
+    /* Verify VS handler recorded the fault */
+    TEST_ASSERT_EQ("vscause == load page-fault (13)",
+                   g_sha_vs_cause, (uintptr_t)13);
+    TEST_ASSERT("vstval != 0 (Shvstvala: vstval written)",
+                g_sha_vs_tval != 0);
+    TEST_ASSERT_EQ("vstval == faulting VA",
+                   g_sha_vs_tval, SHA_UNMAPPED_VA);
+
+    two_stage_cleanup(&ctx);
+    hyp_undelegate();
     HYP_TEST_END();
 }
 
@@ -84,12 +127,19 @@ bool test_sha_cross_shtvala_htval(void) {
     /* Set vsatp=Bare (no VS-stage translation) */
     vsatp_write(0);
 
+    /* Disable M-mode timer interrupt to protect armed flag */
+    uintptr_t saved_mie;
+    asm volatile ("csrr %0, 0x304" : "=r"(saved_mie));
+    asm volatile ("csrc 0x304, %0" :: "r"(1UL << 7));  /* clear MTIE */
+
     trap_expect_begin();
     run_in_vs_mode(_vs_do_load, target_gpa);
     bool fired = trap_was_triggered();
     uintptr_t cause = fired ? trap_get_cause() : 0;
     uintptr_t htval = fired ? trap_get_htval() : 0;
     trap_expect_end();
+
+    asm volatile ("csrw 0x304, %0" :: "r"(saved_mie));
 
     gpt_disable();
     hyp_reset_state();
@@ -159,31 +209,57 @@ bool test_sha_cross_vsatp_hgatp_coherent(void) {
 TEST_REGISTER(test_sha_cross_vstvec_direct_vstval);
 bool test_sha_cross_vstvec_direct_vstval(void) {
     TEST_BEGIN("SHA-CROSS-04: Shvstvecd Direct + Shvstvala vstval coherence");
+    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_SATP_MODE(SATP_MODE_SV39);
 
-    /* Verify vstvec can hold Direct mode and vstval is independently
-     * writable/readable. This is a simplified coherence check. */
+    /* Verify end-to-end: vstvec Direct mode is used for trap entry,
+     * and vstval is written with the faulting address.
+     *
+     * Set up VS=Sv39 + G=Sv39x4 with identity mapping.
+     * Configure vstvec to Direct mode with sha_vs_trap_entry as BASE.
+     * Delegate load page-fault to VS-mode.
+     * Trigger a load from an unmapped VA in VS-mode.
+     * Verify the VS handler was entered via Direct mode and vstval
+     * contains the faulting VA. */
 
-    /* vstvec Direct mode */
+    uintptr_t handler_addr = (uintptr_t)sha_vs_trap_entry;
+
+    /* Verify vstvec can hold Direct mode with our handler address */
     uintptr_t saved_vstvec = vstvec_read();
-    uintptr_t test_base = 0x80002000UL;
-    vstvec_write(test_base & ~0x3UL);  /* MODE=Direct */
+    vstvec_write(handler_addr & ~0x3UL);  /* MODE=Direct */
     uintptr_t vstvec_rb = vstvec_read();
-    TEST_ASSERT("vstvec holds Direct mode base",
-                (vstvec_rb & ~0x3UL) == (test_base & ~0x3UL));
     TEST_ASSERT("vstvec MODE == 0 (Direct)",
                 (vstvec_rb & 0x3UL) == 0);
+    TEST_ASSERT("vstvec BASE holds handler address",
+                (vstvec_rb & ~0x3UL) == (handler_addr & ~0x3UL));
 
-    /* vstval independently readable/writable */
-    uintptr_t saved_vstval = vstval_read();
-    uintptr_t tval_test = 0xBADC0FFEE0DDF00DUL;
-    vstval_write(tval_test);
-    uintptr_t vstval_rb = vstval_read();
-    TEST_ASSERT("vstval holds independent value",
-                vstval_rb == tval_test);
+    /* Delegate load page-fault to VS-mode */
+    hyp_delegate_to_vs((1UL << 13), 0);
 
-    /* Restore */
-    vstval_write(saved_vstval);
+    /* Set up two-stage */
+    two_stage_ctx_t ctx;
+    gpt_pool_reset();
+    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+
+    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
+    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
+    two_stage_vs_identity(&ctx, lo_base, PLATFORM_MEM_SIZE,
+                          vs_flags, PT_LEVEL_2M);
+    two_stage_setup_identity(&ctx, lo_base, PLATFORM_MEM_SIZE,
+                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
+
+    /* Run in VS-mode: load from unmapped VA */
+    two_stage_run_in_vs(&ctx, _vs_load_with_trap, SHA_UNMAPPED_VA);
+
+    /* Verify VS handler captured the fault */
+    TEST_ASSERT_EQ("vscause == load page-fault (13)",
+                   g_sha_vs_cause, (uintptr_t)13);
+    TEST_ASSERT_EQ("vstval == faulting VA (Shvstvala)",
+                   g_sha_vs_tval, SHA_UNMAPPED_VA);
+
+    two_stage_cleanup(&ctx);
     vstvec_write(saved_vstvec);
+    hyp_undelegate();
     HYP_TEST_END();
 }
 
@@ -191,41 +267,81 @@ bool test_sha_cross_vstvec_direct_vstval(void) {
 
 TEST_REGISTER(test_sha_cross_htval_vstval_independent);
 bool test_sha_cross_htval_vstval_independent(void) {
-    TEST_BEGIN("SHA-CROSS-05: htval and vstval are independent CSRs");
+    TEST_BEGIN("SHA-CROSS-05: htval and vstval independent under real traps");
+    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_SATP_MODE(SATP_MODE_SV39);
 
-    /* Write distinct values to htval (via mtval2, CSR 0x34B in M-mode)
-     * and vstval, verify they don't interfere.
-     *
-     * htval is read-only in normal operation (written by hardware on
-     * guest-page-faults). We can read it via trap_get_htval() after
-     * a fault. For independence check, use direct CSR access to
-     * verify vstval and htval are separate registers. */
+    /* Phase 1: Trigger G-stage fault -> htval written, vstval untouched.
+     * vsatp=Bare, G-stage with unmapped GPA. */
+    uintptr_t gpf_gpa = 0x50000000UL;
 
-    /* Write vstval */
-    uintptr_t saved_vstval = vstval_read();
-    uintptr_t vstval_val = 0xAAAAAAAA55555555UL;
-    vstval_write(vstval_val);
+    gpt_pool_reset();
+    gpt_context_t gctx;
+    gpt_init(&gctx, HGATP_MODE_SV39X4);
 
-    /* Read mtval2 (htval source, CSR 0x34B) */
-    uintptr_t htval_val;
-    asm volatile ("csrr %0, 0x34B" : "=r"(htval_val));
+    uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
+    gpt_setup_identity_mapping(&gctx, base, PLATFORM_MEM_SIZE,
+                               G_FLAGS_RWXU_AD, PT_LEVEL_2M);
 
-    /* vstval should not have changed mtval2 */
-    TEST_ASSERT("vstval write does not affect mtval2",
-                htval_val != vstval_val || htval_val == 0);
+    gpt_enable(&gctx, 0);
+    vsatp_write(0);
 
-    /* Write mtval2 */
-    uintptr_t mtval2_test = 0x12345678ABCDEF00UL;
-    asm volatile ("csrw 0x34B, %0" :: "r"(mtval2_test));
+    /* Clear vstval before G-stage fault */
+    vstval_write(0);
 
-    /* vstval should be unchanged */
-    uintptr_t vstval_rb = vstval_read();
-    TEST_ASSERT("mtval2 write does not affect vstval",
-                vstval_rb == vstval_val);
+    /* Disable M-mode timer interrupt to protect armed flag */
+    uintptr_t saved_mie;
+    asm volatile ("csrr %0, 0x304" : "=r"(saved_mie));
+    asm volatile ("csrc 0x304, %0" :: "r"(1UL << 7));  /* clear MTIE */
 
-    /* Restore */
-    vstval_write(saved_vstval);
-    asm volatile ("csrw 0x34B, %0" :: "r"(htval_val));
+    trap_expect_begin();
+    run_in_vs_mode(_vs_do_load, gpf_gpa);
+    bool gpf_fired = trap_was_triggered();
+    uintptr_t gpf_cause = gpf_fired ? trap_get_cause() : 0;
+    uintptr_t gpf_htval = gpf_fired ? trap_get_htval() : 0;
+    uintptr_t vstval_after_gpf = vstval_read();
+    trap_expect_end();
 
+    asm volatile ("csrw 0x304, %0" :: "r"(saved_mie));
+
+    gpt_disable();
+    hyp_reset_state();
+
+    TEST_ASSERT("Phase 1: G-stage fault triggered", gpf_fired);
+    if (gpf_fired) {
+        TEST_ASSERT_EQ("Phase 1: cause == load guest-page-fault (21)",
+                       gpf_cause, (uintptr_t)CAUSE_LOAD_GUEST_PAGE_FAULT);
+        TEST_ASSERT("Phase 1: htval != 0 (Shtvala)", gpf_htval != 0);
+        TEST_ASSERT_EQ("Phase 1: htval == GPA >> 2",
+                       gpf_htval, gpf_gpa >> 2);
+        TEST_ASSERT_EQ("Phase 1: vstval not modified by G-stage fault",
+                       vstval_after_gpf, (uintptr_t)0);
+    }
+
+    /* Phase 2: Trigger VS-stage fault -> vstval written independently.
+     * htval from Phase 1 is retained (not cleared), but the key
+     * assertion is that vstval is independently written by hardware. */
+    hyp_delegate_to_vs((1UL << 13), 0);
+
+    two_stage_ctx_t ctx;
+    gpt_pool_reset();
+    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+
+    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
+    two_stage_vs_identity(&ctx, base, PLATFORM_MEM_SIZE,
+                          vs_flags, PT_LEVEL_2M);
+    two_stage_setup_identity(&ctx, base, PLATFORM_MEM_SIZE,
+                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
+
+    two_stage_run_in_vs(&ctx, _vs_load_with_trap, SHA_UNMAPPED_VA);
+
+    TEST_ASSERT_EQ("Phase 2: vscause == load page-fault (13)",
+                   g_sha_vs_cause, (uintptr_t)13);
+    TEST_ASSERT("Phase 2: vstval != 0 (Shvstvala)", g_sha_vs_tval != 0);
+    TEST_ASSERT_EQ("Phase 2: vstval == faulting VA",
+                   g_sha_vs_tval, SHA_UNMAPPED_VA);
+
+    two_stage_cleanup(&ctx);
+    hyp_undelegate();
     HYP_TEST_END();
 }

@@ -222,13 +222,26 @@ bool test_vcsr_06(void)
     HYP_TEST_END();
 }
 
+/* HS-mode (V=0, S-mode) trampoline: write then read vsstatus (0x200)
+ * by its direct CSR address. Per norm:H_vscsrs_acc_m_hs, VS CSRs are
+ * accessible from M/HS-mode by their own address. Invoked via
+ * run_in_priv(PRIV_S) to execute in true HS-mode (V=0). */
+static uintptr_t hs_access_vsstatus(uintptr_t val)
+{
+    asm volatile ("csrw 0x200, %0" :: "r"(val) : "memory");
+    uintptr_t readback;
+    asm volatile ("csrr %0, 0x200" : "=r"(readback) :: "memory");
+    return readback;
+}
+
 /* ===================================================================
  * VCSR-07: HS-mode direct VS CSR access
  *
- * The spec says "VS CSR 仅 M/HS-mode 可按自身地址访问". Since our
- * test framework runs in M-mode (which has superset access of HS),
- * we verify additional VS CSRs by direct address to confirm
- * M/HS-level accessibility.
+ * Per norm:H_vscsrs_acc_m_hs, VS CSRs are accessible from M-mode and
+ * HS-mode by their own CSR addresses. Part A verifies additional VS
+ * CSRs from M-mode (superset access). Part B drops to true HS-mode
+ * (V=0, S-mode) via run_in_priv(PRIV_S) to verify direct VS CSR
+ * access works at the HS privilege level.
  * =================================================================== */
 TEST_REGISTER(test_vcsr_07);
 bool test_vcsr_07(void)
@@ -242,6 +255,8 @@ bool test_vcsr_07(void)
     asm volatile ("csrr %0, mideleg" : "=r"(mideleg));
     TEST_ASSERT("mideleg bits 10/6/2 should be read-only 1",
                 (mideleg & 0x444) == 0x444);
+
+    /* --- Part A: M-mode direct access to additional VS CSRs --- */
 
     /* vsie (0x204) — verify M-mode can read and write.
      * Per spec (norm:vsip_vsie_ssi/sti/sei), vsie bits 1/5/9 are
@@ -270,6 +285,25 @@ bool test_vcsr_07(void)
     asm volatile ("csrw 0x280, %0" :: "r"(test_val));
     asm volatile ("csrr %0, 0x280" : "=r"(val));
     TEST_ASSERT_EQ("vsatp read/write", val, test_val);
+
+    /* --- Part B: HS-mode (V=0, S-mode) direct VS CSR access ---
+     *
+     * Drop to true HS-mode via run_in_priv(PRIV_S). In V=0, S-mode
+     * is HS-mode, which per norm:H_vscsrs_acc_m_hs can access VS
+     * CSRs by their direct addresses. Write a test value to
+     * vsstatus (0x200) from HS-mode and read it back. */
+    test_val = VSSTATUS_TEST_VAL;
+    trap_expect_begin();
+    uintptr_t hs_readback = run_in_priv(PRIV_S, hs_access_vsstatus,
+                                        test_val);
+    bool hs_trapped = trap_was_triggered();
+    trap_expect_end();
+    TEST_ASSERT("HS-mode vsstatus access (no trap)", !hs_trapped);
+    if (!hs_trapped) {
+        TEST_ASSERT_EQ("HS-mode vsstatus read/write",
+                       hs_readback & VSSTATUS_WRITABLE_MASK,
+                       test_val & VSSTATUS_WRITABLE_MASK);
+    }
 
     HYP_TEST_END();
 }
@@ -348,6 +382,17 @@ bool test_vcsr_09(void)
 
     TEST_ASSERT_EQ("VS sepc read == vsepc value", vs_read, expected);
 
+    /* --- Part B: VS-mode writes sepc -> writes vsepc ---
+     * vsepc[0] is always zero (WARL per spec: sepc[0] is always zero),
+     * so use an even-aligned value to avoid WARL masking. */
+    test_val = 0xBEEE;
+    asm volatile ("csrw 0x241, zero" ::: "memory");  /* clear vsepc */
+    run_in_vs_mode(vs_write_sepc, test_val);
+    uintptr_t wval;
+    asm volatile ("csrr %0, 0x241" : "=r"(wval) :: "memory");
+    TEST_ASSERT_EQ("vsepc contains value written by VS sepc",
+                   wval, test_val);
+
     HYP_TEST_END();
 }
 
@@ -372,6 +417,15 @@ bool test_vcsr_10(void)
     uintptr_t vs_read = run_in_vs_mode(vs_read_scause, 0);
 
     TEST_ASSERT_EQ("VS scause read == vscause value", vs_read, expected);
+
+    /* --- Part B: VS-mode writes scause -> writes vscause --- */
+    test_val = 13;  /* load page fault — legal cause value */
+    asm volatile ("csrw 0x242, zero" ::: "memory");  /* clear vscause */
+    run_in_vs_mode(vs_write_scause, test_val);
+    uintptr_t wval;
+    asm volatile ("csrr %0, 0x242" : "=r"(wval) :: "memory");
+    TEST_ASSERT_EQ("vscause contains value written by VS scause",
+                   wval, test_val);
 
     HYP_TEST_END();
 }
@@ -398,6 +452,15 @@ bool test_vcsr_11(void)
 
     TEST_ASSERT_EQ("VS stval read == vstval value", vs_read, expected);
 
+    /* --- Part B: VS-mode writes stval -> writes vstval --- */
+    test_val = 0xCAFEBABE;
+    asm volatile ("csrw 0x243, zero" ::: "memory");  /* clear vstval */
+    run_in_vs_mode(vs_write_stval, test_val);
+    uintptr_t wval;
+    asm volatile ("csrr %0, 0x243" : "=r"(wval) :: "memory");
+    TEST_ASSERT_EQ("vstval contains value written by VS stval",
+                   wval, test_val);
+
     HYP_TEST_END();
 }
 
@@ -422,6 +485,15 @@ bool test_vcsr_12(void)
     uintptr_t vs_read = run_in_vs_mode(vs_read_stvec, 0);
 
     TEST_ASSERT_EQ("VS stvec read == vstvec value", vs_read, expected);
+
+    /* --- Part B: VS-mode writes stvec -> writes vstvec --- */
+    test_val = 0x3000;
+    asm volatile ("csrw 0x205, zero" ::: "memory");  /* clear vstvec */
+    run_in_vs_mode(vs_write_stvec, test_val);
+    uintptr_t wval;
+    asm volatile ("csrr %0, 0x205" : "=r"(wval) :: "memory");
+    TEST_ASSERT_EQ("vstvec contains value written by VS stvec",
+                   wval, test_val);
 
     HYP_TEST_END();
 }
@@ -448,6 +520,15 @@ bool test_vcsr_13(void)
 
     TEST_ASSERT_EQ("VS sscratch read == vsscratch value",
                    vs_read, expected);
+
+    /* --- Part B: VS-mode writes sscratch -> writes vsscratch --- */
+    test_val = 0xFEED;
+    asm volatile ("csrw 0x240, zero" ::: "memory");  /* clear vsscratch */
+    run_in_vs_mode(vs_write_sscratch, test_val);
+    uintptr_t wval;
+    asm volatile ("csrr %0, 0x240" : "=r"(wval) :: "memory");
+    TEST_ASSERT_EQ("vsscratch contains value written by VS sscratch",
+                   wval, test_val);
 
     HYP_TEST_END();
 }
@@ -538,6 +619,10 @@ bool test_vcsr_15(void)
 {
     TEST_BEGIN("VCSR-15: V=1 read satp accesses vsatp");
 
+    /* Ensure hstatus.VTVM=0 so VS-mode satp access is not trapped
+     * (norm:hstatus_vtvm_op: VTVM=1 causes satp access to trap). */
+    hstatus_set_vtvm(0);
+
     uintptr_t test_val = 0x5678;
 
     /* Write to vsatp (CSR 0x280). */
@@ -558,10 +643,13 @@ bool test_vcsr_15(void)
 /* ===================================================================
  * VCSR-16: senvcfg in V=1 (no VS counterpart)
  *
- * senvcfg has no VS-mode counterpart. Per H-extension spec,
- * VS-mode (V=1) accessing senvcfg (CSR 0x10A) should trigger
- * a virtual-instruction (cause=22) or illegal-instruction (cause=2)
- * exception since there is no VS substitution for this CSR.
+ * Per norm:H_scsrs_nomatch, senvcfg has no matching VS CSR but
+ * "continues to have their usual function and accessibility even
+ * when V=1, except with VS-mode and VU-mode substituting for
+ * HS-mode and U-mode." Therefore VS-mode (which substitutes for
+ * HS-mode) can read/write senvcfg directly — it accesses the real
+ * HS-level senvcfg, not a VS substitute. Hypervisor software is
+ * expected to manually swap senvcfg during context switches.
  * =================================================================== */
 TEST_REGISTER(test_vcsr_16);
 bool test_vcsr_16(void)
@@ -577,15 +665,38 @@ bool test_vcsr_16(void)
     asm volatile ("csrw 0x10A, %0" :: "r"(test_val));
     uintptr_t m_read;
     asm volatile ("csrr %0, 0x10A" : "=r"(m_read));
-    TEST_ASSERT_EQ("M-mode senvcfg read/write", m_read & 0x01, test_val & 0x01);
+    TEST_ASSERT_EQ("M-mode senvcfg read/write",
+                   m_read & 0x01, test_val & 0x01);
 
-    /* Part B: VS-mode access to senvcfg triggers trap.
-     * senvcfg (0x10A) has no VS counterpart. Per H-extension spec,
-     * VS-mode accessing an S-level CSR without a VS counterpart
-     * raises virtual-instruction (cause=22) or illegal-instruction
-     * (cause=2). */
-    EXPECT_ILLEGAL_OR_VIRTUAL_INST(
-        run_in_vs_mode(vs_read_senvcfg, 0));
+    /* Part B: VS-mode reads senvcfg — should succeed (no trap).
+     * senvcfg has no VS counterpart, so VS-mode accesses the real
+     * HS-level senvcfg directly. Per norm:H_scsrs_nomatch, this CSR
+     * retains its usual accessibility when V=1.
+     * Note: Some implementations (e.g. QEMU) incorrectly trap VS-mode
+     * senvcfg access. This test correctly expects no trap per SPEC. */
+    trap_expect_begin();
+    run_in_vs_mode(vs_read_senvcfg, 0);
+    bool senvcfg_readable = !trap_was_triggered();
+    trap_expect_end();
+    TEST_ASSERT("VS-mode senvcfg read (no trap per norm:H_scsrs_nomatch)",
+                senvcfg_readable);
+
+    /* Part C: VS-mode writes senvcfg — only if read succeeded.
+     * Verify the write landed on the real senvcfg by reading back
+     * from M-mode. */
+    if (senvcfg_readable) {
+        test_val = 0x02;  /* CBIE bit */
+        trap_expect_begin();
+        run_in_vs_mode(vs_write_senvcfg, test_val);
+        bool senvcfg_writable = !trap_was_triggered();
+        trap_expect_end();
+        TEST_ASSERT("VS-mode senvcfg write (no trap)", senvcfg_writable);
+        if (senvcfg_writable) {
+            asm volatile ("csrr %0, 0x10A" : "=r"(m_read));
+            TEST_ASSERT_EQ("VS-mode senvcfg write reflected in M-mode read",
+                           m_read & 0x02, test_val & 0x02);
+        }
+    }
 
     /* Restore original senvcfg. */
     asm volatile ("csrw 0x10A, %0" :: "r"(orig_senvcfg));
@@ -618,9 +729,10 @@ bool test_vcsr_17(void)
     scounteren_set(1UL << 0);     /* scounteren.CY = 1 */
 
     /* --- Part A: VS-mode reads scounteren directly ---
-     * scounteren (0x106) has no VS counterpart, but unlike senvcfg,
-     * VS-mode can transparently access it because scounteren in V=1
-     * controls VU-mode counter visibility (the guest OS manages its
+     * scounteren (0x106) has no VS counterpart. Per norm:H_scsrs_nomatch,
+     * it retains its usual accessibility in V=1, with VS-mode substituting
+     * for HS-mode. VS-mode can transparently access scounteren, which in
+     * V=1 controls VU-mode counter visibility (the guest OS manages its
      * own user-mode counter permissions). */
     uintptr_t vs_read = run_in_vs_mode(vs_read_scounteren, 0);
     TEST_ASSERT("VS reads scounteren.CY=1", (vs_read & 0x1) == 1);

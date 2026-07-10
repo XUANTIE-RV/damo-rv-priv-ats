@@ -20,10 +20,10 @@
  *   TS-VS-04  vsatp=Sv48, 4K identity succeeds
  *   TS-VS-05  vsatp=Sv57, 4K identity succeeds
  *   TS-VS-06  VS-stage U=0 (S-level) read succeeds
- *   TS-VS-07  VS-stage U=1 (V=1 nominal-S) + SUM=0  -> load-page-fault
- *   TS-VS-08  VS-stage PTE V=0                       -> load-page-fault
- *   TS-VS-09  VS-stage PTE R=0,W=1 (reserved combo)  -> load-page-fault
- *   TS-VS-10  VS-stage PTE X=1,R=0,W=0 + load        -> load-page-fault
+ *   TS-VS-07  VS-stage U=1 + SUM=0                 -> load-page-fault
+ *   TS-VS-08  VS-stage U=1 + SUM=1                 -> success
+ *   TS-VS-09  VS-stage MXR=1 + X-only              -> success (readable)
+ *   TS-VS-10  VS-stage R-only + store              -> store-page-fault
  *
  * This file is intended to be #include'd by a per-suite
  * tests/test_register.c that has previously defined SUITE_VSATP_MODE
@@ -39,6 +39,35 @@
 
 /* All Group 1 cases run with G-stage disabled. */
 #define G1_GMODE   HGATP_MODE_BARE
+
+/* U=1 flags for VS-stage (SUM tests). */
+#define G1_VS_RWXU_AD  (PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D)
+/* X-only S-level (U=0) for MXR test: U must be 0 so the S-level
+ * access is not rejected by the U-bit check before MXR can apply. */
+#define G1_VS_X_AD     (PTE_V|PTE_X|PTE_A|PTE_D)
+
+/* SUM and MXR bit positions in sstatus / vsstatus. */
+#ifndef G1_SSTATUS_SUM
+#define G1_SSTATUS_SUM   (1UL << 18)
+#endif
+#ifndef G1_SSTATUS_MXR
+#define G1_SSTATUS_MXR   (1UL << 19)
+#endif
+
+/* File-scope SUM choice for VS-mode helper. */
+static volatile int g1_sum_value;
+
+/* VS-mode helper: set vsstatus.SUM then load. */
+static uintptr_t g1_vs_load_with_sum(uintptr_t va) {
+    uintptr_t sm = G1_SSTATUS_SUM;
+    if (g1_sum_value)
+        asm volatile ("csrs sstatus, %0" :: "r"(sm) : "memory");
+    else
+        asm volatile ("csrc sstatus, %0" :: "r"(sm) : "memory");
+    volatile uint64_t *p = (volatile uint64_t *)va;
+    (void)*p;
+    return 0;
+}
 
 /* ===================================================================
  * TS-VS-01: vsatp=Sv39, 4K identity, simple R/W cycle
@@ -184,67 +213,102 @@ bool test_ts_vs_06_ubit_s_level_ok(void)
     HYP_TEST_END();
 }
 
+/* VS-mode helper: simple load (for MXR test where store is not allowed).
+ * MXR is pre-set by the M-mode caller before entering VS-mode. */
+static uintptr_t g1_vs_simple_load(uintptr_t va) {
+    volatile uint64_t *p = (volatile uint64_t *)va;
+    return (uintptr_t)(*p);
+}
+
 /* ===================================================================
- * TS-VS-07: VS-stage PTE V=0 -> load page-fault (cause 13)
+ * TS-VS-07: VS-stage U=1 + SUM=0 -> load page-fault (cause 13)
+ *
+ * Spec: VS-mode (S-level) cannot access a U=1 PTE when
+ * vsstatus.SUM=0. With hgatp=Bare, this is a regular page-fault,
+ * not a guest-page-fault.
  * =================================================================== */
-TEST_REGISTER(test_ts_vs_07_pte_invalid);
-bool test_ts_vs_07_pte_invalid(void)
+TEST_REGISTER(test_ts_vs_07_u1_sum0_fault);
+bool test_ts_vs_07_u1_sum0_fault(void)
 {
-    TEST_BEGIN("TS-VS-07: VS-stage PTE V=0 -> load-page-fault");
+    TEST_BEGIN("TS-VS-07: VS U=1 + SUM=0 -> load-page-fault");
     REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    /* Override the VS-stage leaf for the fault page with V=0. */
+    /* VS-stage PTE U=1, hgatp=Bare. */
     ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, G1_GMODE,
-                             va, /*flags=*/0);
+                             va, G1_VS_RWXU_AD);
 
-    bool ok = ts2_run_check_fault(&ctx, test_vs_load_expect_fault, va,
+    g1_sum_value = 0;
+    bool ok = ts2_run_check_fault(&ctx, g1_vs_load_with_sum, va,
                                   CAUSE_LOAD_PAGE_FAULT);
-    TEST_ASSERT("load-page-fault on V=0", ok);
+    TEST_ASSERT("load-page-fault on U=1 + SUM=0", ok);
     HYP_TEST_END();
 }
 
 /* ===================================================================
- * TS-VS-08: VS-stage PTE R=0,W=1 (reserved) -> page-fault
+ * TS-VS-08: VS-stage U=1 + SUM=1 -> success
+ *
+ * Spec: vsstatus.SUM=1 permits VS-mode (S-level) to access U=1 PTEs.
  * =================================================================== */
-TEST_REGISTER(test_ts_vs_08_pte_reserved_rw);
-bool test_ts_vs_08_pte_reserved_rw(void)
+TEST_REGISTER(test_ts_vs_08_u1_sum1_ok);
+bool test_ts_vs_08_u1_sum1_ok(void)
 {
-    TEST_BEGIN("TS-VS-08: VS-stage PTE R=0 W=1 reserved -> fault");
+    TEST_BEGIN("TS-VS-08: VS U=1 + SUM=1 -> success");
     REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    uintptr_t bad_flags = PTE_V | PTE_W | PTE_A | PTE_D;  /* R=0, W=1 */
     ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, G1_GMODE,
-                             va, bad_flags);
+                             va, G1_VS_RWXU_AD);
 
-    bool ok = ts2_run_check_fault(&ctx, test_vs_load_expect_fault, va,
-                                  CAUSE_LOAD_PAGE_FAULT);
-    TEST_ASSERT("load-page-fault on R=0,W=1", ok);
+    g1_sum_value = 1;
+    trap_expect_begin();
+    (void)two_stage_run_in_vs(&ctx, g1_vs_load_with_sum, va);
+    bool fired = trap_was_triggered();
+    trap_expect_end();
+    ts2_finish(&ctx);
+    TEST_ASSERT("no fault (SUM=1 permits VS->U access)", !fired);
     HYP_TEST_END();
 }
 
 /* ===================================================================
- * TS-VS-09: VS-stage PTE X-only + load -> load page-fault
+ * TS-VS-09: VS-stage MXR=1 + X-only -> success (readable)
+ *
+ * Spec (norm:vsstatus_mxr_vm): vsstatus.MXR makes execute-only
+ * pages readable by explicit loads. With hgatp=Bare, there is no
+ * G-stage to override; only VS-stage MXR applies.
  * =================================================================== */
-TEST_REGISTER(test_ts_vs_09_pte_xonly_load);
-bool test_ts_vs_09_pte_xonly_load(void)
+TEST_REGISTER(test_ts_vs_09_mxr_xonly_ok);
+bool test_ts_vs_09_mxr_xonly_ok(void)
 {
-    TEST_BEGIN("TS-VS-09: VS-stage X-only + load -> page-fault");
+    TEST_BEGIN("TS-VS-09: VS MXR=1 + X-only -> readable");
     REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    /* X-only (no R,W). U=0 so VS-mode S-level is the access mode. */
-    uintptr_t bad_flags = PTE_V | PTE_X | PTE_A | PTE_D;
-    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, G1_GMODE,
-                             va, bad_flags);
+    /* VS-stage X-only (R=0, W=0, X=1), U=0 (S-level access).
+     * Use dual_victim to set both VS-stage and G-stage explicitly,
+     * matching the proven Group 8 MXR test pattern (G8_VS_X). */
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, G1_GMODE,
+                                va, G1_VS_X_AD, G_FLAGS_RWXU_AD);
 
-    bool ok = ts2_run_check_fault(&ctx, test_vs_load_expect_fault, va,
-                                  CAUSE_LOAD_PAGE_FAULT);
-    TEST_ASSERT("load-page-fault on X-only", ok);
+    /* Enable vsstatus.MXR=1, clear sstatus.MXR=0.
+     * Per norm:vsstatus_mxr_vm, vsstatus.MXR overrides VS-stage
+     * execute-only. This exactly mirrors the TS-MXR-02 pattern
+     * which is known to pass. */
+    asm volatile ("csrc sstatus, %0" :: "r"((uintptr_t)G1_SSTATUS_MXR));
+    asm volatile ("csrs 0x200, %0" :: "r"((uintptr_t)G1_SSTATUS_MXR));
+
+    trap_expect_begin();
+    (void)two_stage_run_in_vs(&ctx, g1_vs_simple_load, va);
+    bool fired = trap_was_triggered();
+    trap_expect_end();
+
+    asm volatile ("csrc sstatus, %0" :: "r"((uintptr_t)G1_SSTATUS_MXR));
+    asm volatile ("csrc 0x200, %0" :: "r"((uintptr_t)G1_SSTATUS_MXR));
+    ts2_finish(&ctx);
+    TEST_ASSERT("vsstatus.MXR=1 makes VS X-only readable", !fired);
     HYP_TEST_END();
 }
 

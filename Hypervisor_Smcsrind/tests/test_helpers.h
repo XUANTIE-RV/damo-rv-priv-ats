@@ -20,6 +20,7 @@
 #include "hyp/hyp_priv.h"
 #include "hyp/hyp_reset.h"
 #include "hyp/hyp_test.h"
+#include "hyp/hyp_csr.h"
 #endif
 
 /* ===================================================================
@@ -186,6 +187,45 @@ static inline void mstateen0_clear(uintptr_t bits)
 /* mstateen0 CSRIND bit (bit 60) */
 #define MSTATEEN0_CSRIND    (1ULL << 60)
 
+/* mstateen0 SE0 bit (bit 63) - controls HS-mode access to hstateen */
+#define MSTATEEN0_SE0       (1ULL << 63)
+
+/* ===================================================================
+ * State-enable CSR helpers (hstateen0 - CSR 0x60C)
+ * =================================================================== */
+
+static inline uintptr_t hstateen0_read(void)
+{
+    uintptr_t v;
+    asm volatile("csrr %0, 0x60C" : "=r"(v) :: "memory");
+    return v;
+}
+
+static inline void hstateen0_write(uintptr_t v)
+{
+    asm volatile("csrw 0x60C, %0" :: "r"(v) : "memory");
+}
+
+static inline void hstateen0_set(uintptr_t bits)
+{
+    asm volatile("csrs 0x60C, %0" :: "r"(bits) : "memory");
+}
+
+static inline void hstateen0_clear(uintptr_t bits)
+{
+    asm volatile("csrc 0x60C, %0" :: "r"(bits) : "memory");
+}
+
+/* Check if a specific bit in hstateen0 is writable */
+static inline bool hstateen0_bit_writable(uintptr_t bit)
+{
+    uintptr_t saved = hstateen0_read();
+    hstateen0_set(bit);
+    uintptr_t rb = hstateen0_read();
+    hstateen0_write(saved);
+    return (rb & bit) != 0;
+}
+
 /* ===================================================================
  * Platform detection
  * =================================================================== */
@@ -215,6 +255,38 @@ static inline bool platform_has_smstateen(void)
     bool trapped = trap_was_triggered();
     trap_expect_end();
     return !trapped;
+}
+
+/* ===================================================================
+ * VS-mode callback functions for run_in_vs_mode()
+ *
+ * In VS-mode (V=1), siselect (0x150) and sireg (0x151) are
+ * actually vsiselect and vsireg due to H-ext CSR remapping.
+ * =================================================================== */
+
+/* VS-mode: read siselect (CSR 0x150, really vsiselect) */
+static uintptr_t _vs_read_siselect(uintptr_t arg)
+{
+    (void)arg;
+    uintptr_t val;
+    asm volatile("csrr %0, 0x150" : "=r"(val));
+    return val;
+}
+
+/* VS-mode: read sireg (CSR 0x151, really vsireg) */
+static uintptr_t _vs_read_sireg(uintptr_t arg)
+{
+    (void)arg;
+    uintptr_t val;
+    asm volatile("csrr %0, 0x151" : "=r"(val));
+    return val;
+}
+
+/* VS-mode: write siselect (CSR 0x150, really vsiselect) */
+static uintptr_t _vs_write_siselect(uintptr_t val)
+{
+    asm volatile("csrw 0x150, %0" :: "r"(val));
+    return 0;
 }
 
 /* ===================================================================

@@ -160,6 +160,12 @@ uintptr_t vs_exec_ecall(uintptr_t arg);
 /* Execute EBREAK in VS-mode. */
 uintptr_t vs_exec_ebreak(uintptr_t arg);
 
+/* Execute an illegal instruction (UNIMP) in VS-mode. */
+uintptr_t vs_exec_illegal(uintptr_t arg);
+
+/* Simple NOP function safe for VS-mode (returns immediately). */
+uintptr_t vs_nop_fn(uintptr_t arg);
+
 /* ===================================================================
  * VS/VU-mode H-CSR access trampolines (should cause virtual-inst).
  * =================================================================== */
@@ -190,6 +196,36 @@ uintptr_t vs_exec_hfence_vvma(uintptr_t arg);
 
 /* Execute HFENCE.GVMA — should trap in V=1. */
 uintptr_t vs_exec_hfence_gvma(uintptr_t arg);
+
+/* Additional H-CSR reads — should trap in V=1. */
+uintptr_t vs_read_hideleg(uintptr_t arg);
+uintptr_t vs_read_hcounteren(uintptr_t arg);
+uintptr_t vs_read_htimedelta(uintptr_t arg);
+uintptr_t vs_read_hip(uintptr_t arg);
+uintptr_t vs_read_hie(uintptr_t arg);
+uintptr_t vs_read_hvip(uintptr_t arg);
+uintptr_t vs_read_henvcfg(uintptr_t arg);
+
+/* H-CSR write — should trap in V=1. */
+uintptr_t vs_write_hstatus(uintptr_t val);
+
+/* HLV width variants — should trap in V=1. */
+uintptr_t vs_exec_hlv_b(uintptr_t arg);
+uintptr_t vs_exec_hlv_h(uintptr_t arg);
+uintptr_t vs_exec_hlv_d(uintptr_t arg);
+
+/* HLVX width variants — should trap in V=1. */
+uintptr_t vs_exec_hlvx_bu(uintptr_t arg);
+uintptr_t vs_exec_hlvx_hu(uintptr_t arg);
+
+/* HSV width variants — should trap in V=1. */
+uintptr_t vs_exec_hsv_b(uintptr_t arg);
+uintptr_t vs_exec_hsv_h(uintptr_t arg);
+uintptr_t vs_exec_hsv_d(uintptr_t arg);
+
+/* Execute HLV.W in U-mode (V=0). Tests hstatus.HU behavior:
+ * HU=0 -> illegal-inst, HU=1 -> executes HLV. */
+uintptr_t u_exec_hlv_w(uintptr_t addr);
 
 /* ===================================================================
  * Counter access trampolines (VS/VU-mode).

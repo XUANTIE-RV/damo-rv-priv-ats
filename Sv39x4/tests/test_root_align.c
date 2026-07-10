@@ -43,7 +43,9 @@ bool test_groot_01_ppn_low2_masked(void) {
     HYP_TEST_END();
 }
 
-/* GROOT-02: a correctly 16KB-aligned root table works for translation. */
+/* GROOT-02: a correctly 16KB-aligned root table works for translation.
+ * Verifies not only alignment + enable, but actual VS-mode read/write
+ * through the 16KB root page table (norm:hgatp_mode_x4). */
 TEST_REGISTER(test_groot_02_aligned_root_works);
 bool test_groot_02_aligned_root_works(void) {
 #if SUITE_HGATP_MODE == HGATP_MODE_SV39X4
@@ -67,14 +69,19 @@ bool test_groot_02_aligned_root_works(void) {
                                       G_FLAGS_RWXU_AD, PT_LEVEL_2M);
     TEST_ASSERT_EQ("identity mapping created", rc, 0);
 
-    /* Activate G-stage (smoke test of the hgatp write + HFENCE.GVMA
-     * path). */
-    gpt_enable(&ctx.g_ctx, /*vmid=*/0);
+    /* Activate G-stage and verify translation works end-to-end
+     * via VS-mode read/write through the 16KB root. */
+    uintptr_t target = (uintptr_t)test_data_area;
+    *(volatile uint64_t *)target = 0;
+    uintptr_t r = two_stage_run_in_vs(&ctx, test_vs_read_write, target);
+    TEST_ASSERT_EQ("VS-mode r/w through 16KB root succeeds", r, 0UL);
+
+    /* Verify hgatp.MODE is active. */
     TEST_ASSERT_EQ("hgatp.MODE active",
                    HGATP_GET_MODE(hgatp_read()),
                    (uintptr_t)SUITE_HGATP_MODE);
-    gpt_disable();
-    TEST_ASSERT_EQ("hgatp back to Bare", hgatp_read(), 0UL);
 
+    two_stage_cleanup(&ctx);
+    hyp_reset_state();
     HYP_TEST_END();
 }

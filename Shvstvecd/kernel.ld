@@ -1,7 +1,7 @@
 /* Shvstvecd extension linker script - includes base link.ld */
 
 /* Include the base link.ld first */
-INCLUDE "../common/config/qemu-rv64-max/link.ld"
+INCLUDE "link.ld"
 
 /* Extension-specific sections (placed after link.ld's sections) */
 SECTIONS
@@ -64,6 +64,32 @@ SECTIONS
         . += 16 * 1024;
         PROVIDE(__smode_stack_end = .);
     }
+
+    /*
+     * Test region for two-stage VS-mode fault tests.
+     *  Page 0: test_data_area    (R/W data)
+     *  Page 1: test_fault_page   (unmapped / perm-restricted target)
+     *  Page 2: test_exec_page    (executable code)
+     *  Page 3: test_exec_target  (fetch fault target)
+     *  Page 4: test_pmp_page     (PMP access-fault target)
+     *  Page 5-7: scratch
+     */
+    . = ALIGN(0x200000);
+    .vm_test_region (NOLOAD) : {
+        PROVIDE(__vm_test_region_start = .);
+        PROVIDE(test_data_area   = .); . += 4096;
+        PROVIDE(test_fault_page  = .); . += 4096;
+        PROVIDE(test_exec_page   = .); . += 4096;
+        PROVIDE(test_exec_target = .); . += 4096;
+        PROVIDE(test_pmp_page    = .); . += 4096;
+        . += 3 * 4096;
+        PROVIDE(__vm_test_region_end = .);
+    }
+
+    /* PMP test region placeholders (required by pmp_init.S) */
+    . = ALIGN(8);
+    PROVIDE(__pmp_test_code = .);
+    PROVIDE(__pmp_test_nomap = .);
 
     /* Override _end from link.ld (must be direct assignment, not PROVIDE) */
     _end = .;

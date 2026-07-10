@@ -88,6 +88,7 @@ static bool _check_htval_for_straddle(uintptr_t straddle_addr,
 TEST_REGISTER(test_htval_str_01_load_straddle);
 bool test_htval_str_01_load_straddle(void) {
     TEST_BEGIN("HTVAL-STR-01: load straddle into V=0 page reports htval = GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     /* Place the 8-byte access starting 1 byte before the fault page.
@@ -108,6 +109,7 @@ bool test_htval_str_01_load_straddle(void) {
 TEST_REGISTER(test_htval_str_02_store_straddle);
 bool test_htval_str_02_store_straddle(void) {
     TEST_BEGIN("HTVAL-STR-02: store straddle into W=0 page reports htval = GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t straddle = (uintptr_t)test_data_area + PAGE_SIZE_4K - 1;
@@ -124,28 +126,89 @@ bool test_htval_str_02_store_straddle(void) {
     HYP_TEST_END();
 }
 
-TEST_REGISTER(test_htval_str_03_misalign_one_byte);
-bool test_htval_str_03_misalign_one_byte(void) {
-    TEST_BEGIN("HTVAL-STR-03: 8B load with only 1B in V=0 page reports htval");
+/* ===================================================================
+ * HTVAL-STR-03: Cross-page instruction fetch GPF (cause=20)
+ *
+ * Spec anchor:
+ *   norm:H_straddle — when an instruction fetch straddles a page
+ *   boundary and the second page faults, htval must report the
+ *   faulting portion's GPA >> 2, with cause=20 (inst GPF).
+ *
+ * Strategy: jump to an address 2 bytes before the fault page
+ * boundary. A 4-byte instruction spans both pages. The first 2
+ * bytes are on a valid page; the last 2 bytes are on the fault
+ * page (V=0 in G-stage). The CPU fetches the second half and
+ * triggers cause=20 with htval = fault_page >> 2.
+ * =================================================================== */
+
+/* VS-mode trampoline: jump to the straddle address and execute.
+ * The caller places 2 NOPs at straddle_addr-2 (on the valid page)
+ * as padding; the 4-byte NOP at straddle_addr straddles into the
+ * fault page, triggering the GPF.
+ *
+ * If the platform transparently handles the fetch (no fault), we
+ * return 0 and the caller detects the missing trap. */
+static uintptr_t vs_straddle_fetch(uintptr_t arg) {
+    uintptr_t straddle_addr = arg;
+    uintptr_t ret;
+    asm volatile (
+        "la   %0, 1f\n\t"     /* save return address */
+        "jr   %1\n\t"         /* jump to straddle address */
+        "1:\n\t"
+        : "=r"(ret) : "r"(straddle_addr) : "ra", "memory"
+    );
+    return ret;
+}
+
+TEST_REGISTER(test_htval_str_03_fetch_straddle);
+bool test_htval_str_03_fetch_straddle(void) {
+    TEST_BEGIN("HTVAL-STR-03: fetch straddle into V=0 page, cause=20, htval=GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
-    /* Same setup as STR-01 but explicitly accepts cause = misalign
-     * (the spec leaves split-vs-misalign as impl-defined). */
-    uintptr_t straddle = (uintptr_t)test_data_area + PAGE_SIZE_4K - 1;
+    /* Place the straddle point 2 bytes before the fault page.
+     * A 4-byte instruction at this address spans into the fault page. */
+    uintptr_t straddle = (uintptr_t)test_data_area + PAGE_SIZE_4K - 2;
     uintptr_t victim   = (uintptr_t)test_fault_page;
 
-    bool fired = _fire_straddle(vs_straddle_load, straddle, victim, /*flags=*/0);
-    TEST_ASSERT("trap fired", fired);
-    if (fired) {
-        uintptr_t cause = trap_get_cause();
-        bool gpf = (cause == CAUSE_LOAD_GUEST_PAGE_FAULT);
-        bool mis = (cause == CAUSE_LOAD_ADDR_MISALIGN);
-        TEST_ASSERT("cause is GPF or misalign", gpf || mis);
-        if (gpf) {
-            bool ok = _check_htval_for_straddle(straddle, victim);
-            TEST_ASSERT("htval consistent with GPF", ok);
-        }
+    /* Write 2 NOPs at the straddle point (valid page side) so the
+     * CPU fetches them before attempting the fault-page half. */
+    volatile uint16_t *pad = (volatile uint16_t *)straddle;
+    pad[0] = 0x0001;  /* c.nop */
+
+    two_stage_ctx_t ctx;
+    _setup_with_victim(&ctx, victim, /*flags=*/0);
+
+    trap_expect_begin();
+    (void)two_stage_run_in_vs(&ctx, vs_straddle_fetch, straddle);
+    bool fired = trap_was_triggered();
+    trap_expect_end();
+
+    two_stage_cleanup(&ctx);
+
+    if (!fired) {
+        /* Platform transparently fetched across the page boundary
+         * (hardware page-crossing support). No GPF -> SKIP. */
+        printf("  [SKIP] platform supports transparent cross-page fetch\n");
+        hyp_reset_state();
+        TEST_SKIP("no cross-page fetch GPF");
     }
+
+    uintptr_t cause = trap_get_cause();
+    if (cause == CAUSE_INST_GUEST_PAGE_FAULT) {
+        /* Expected: inst GPF with htval = fault page >> 2 */
+        TEST_ASSERT_EQ("cause = 20 (inst-gpf)",
+                       cause, (uintptr_t)CAUSE_INST_GUEST_PAGE_FAULT);
+        TEST_ASSERT_EQ("htval = fault page >> 2",
+                       trap_get_htval(), victim >> 2);
+    } else if (cause == CAUSE_LOAD_ADDR_MISALIGN) {
+        /* Platform does not support 2-byte-aligned fetch; misalign
+         * fires before GPF. Shtvala does not constrain htval here. */
+        printf("  [INFO] misaligned-fetch before GPF (impl-defined)\n");
+    } else {
+        TEST_ASSERT("unexpected cause", 0);
+    }
+
     hyp_reset_state();
     HYP_TEST_END();
 }

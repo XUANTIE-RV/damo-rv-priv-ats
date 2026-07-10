@@ -41,14 +41,21 @@ bool test_shvstvecd_vec_01_probe(void) {
     TEST_END();
 }
 
-/* VSTVEC-VEC-02: If Vectored is supported, verify VSSIP lands at
- * BASE + 4*1 (cause=1 for supervisor software interrupt).
+/* VSTVEC-VEC-02: Verify Vectored mode interrupt offset (BASE + 4*cause).
  *
- * We need a vectored trap table where entry[1] (the SSI slot) contains
- * a valid instruction. Since building a full vectored table is complex,
- * we skip this test if Vectored is not supported. When supported, we
- * verify by checking that the trap landing PC != BASE (i.e., it has
- * the 4*cause offset applied). */
+ * Uses shvstvecd_vectored_table as the trap base:
+ *   [0] BASE+0: nop (Direct landing, fall through)
+ *   [1] BASE+4: j shvstvecd_vectored_handler (Vectored cause=1)
+ *   [2] BASE+8: j shvstvecd_trap_entry
+ *   ...
+ *
+ * In Direct mode: CPU lands at slot 0, falls through to slot 1,
+ *   jumps to shvstvecd_trap_entry. g_shvstvecd_vec_marker stays 0.
+ * In Vectored mode (cause=1 SSI): CPU lands at slot 1, jumps to
+ *   shvstvecd_vectored_handler which sets g_shvstvecd_vec_marker=1,
+ *   then jumps to shvstvecd_trap_entry.
+ *
+ * The test asserts g_shvstvecd_vec_marker == 1 for Vectored mode. */
 
 /* VS-mode payload for Vectored VSSIP test. Sets stvec with MODE=1. */
 static uintptr_t vsmode_enable_vssi_vectored(uintptr_t entry_with_mode) {
@@ -69,40 +76,21 @@ TEST_REGISTER(test_shvstvecd_vec_02_vectored_offset);
 bool test_shvstvecd_vec_02_vectored_offset(void) {
     TEST_BEGIN("VSTVEC-VEC-02: Vectored VSSIP lands at BASE+4*cause");
 
-    /* First check if Vectored is supported using framework API */
+    /* First check if Vectored is supported */
     if (!vstvec_supports_vectored()) {
         TEST_SKIP("vstvec Vectored mode not supported on this platform");
     }
 
-    /* Vectored mode is supported. However, to properly test this we'd
-     * need a vectored trap table with a valid instruction at offset
-     * 4*1 = +4 bytes from BASE. The shvstvecd_trap_entry is only a
-     * single Direct-mode entry point.
-     *
-     * For this non-normative test, we verify the concept by:
-     * 1. Setting vstvec = shvstvecd_trap_entry | 1 (Vectored)
-     * 2. Injecting VSSIP (cause=1)
-     * 3. Checking that the trap landing differs from Direct behavior.
-     *
-     * NOTE: The trap entry code at shvstvecd_trap_entry+4 is the
-     * second instruction of our handler (sd t1, 0(t0)), which happens
-     * to be valid. So if Vectored works, the CPU jumps to entry+4
-     * instead of entry+0. Our handler will still record something
-     * (or crash). We check g_shvstvecd_trap_pc to see if it recorded
-     * the base address or if we got different behavior.
-     *
-     * Since the trap_entry always records its own la (shvstvecd_trap_entry)
-     * not the actual PC, a more precise test would need a real vectored
-     * table. For now, just verify that entry+4 is reachable and doesn't
-     * crash, indicating Vectored offset is applied. We skip with a note. */
-
     VSTVEC_SAVE();
 
-    uintptr_t entry = (uintptr_t)&shvstvecd_trap_entry;
+    uintptr_t entry = (uintptr_t)&shvstvecd_vectored_table;
 
     /* Delegate VSSIP to VS-mode */
     hyp_delegate_to_vs(0, 1UL << 2);
     shvstvecd_reset_trap_record();
+
+    /* Reset the Vectored marker */
+    g_shvstvecd_vec_marker = 0;
 
     /* Inject VSSIP */
     hvip_set_vssi(true);
@@ -111,23 +99,20 @@ bool test_shvstvecd_vec_02_vectored_offset(void) {
     uintptr_t entry_vectored = entry | VSTVEC_MODE_VECTORED;
     run_in_vs_mode(vsmode_enable_vssi_vectored, entry_vectored);
 
-    /* In Vectored mode with VSSIP (cause=1), trap should land at
-     * BASE + 4*1 = entry + 4. Our handler still records
-     * g_shvstvecd_trap_pc = &shvstvecd_trap_entry (the la instruction
-     * always loads the symbol address). So we can't directly observe
-     * the vectored offset from g_shvstvecd_trap_pc.
+    /* In Vectored mode with VSSIP (cause=1), CPU jumps to BASE+4*1.
+     * shvstvecd_vectored_handler runs and sets g_shvstvecd_vec_marker=1.
      *
-     * However, if the handler executed successfully (trap was triggered),
-     * it means the CPU did reach executable code at the vectored offset,
-     * confirming the MODE=Vectored behavior is functional. */
-    printf("    [INFO] Vectored mode test: trap_pc=0x%lx, expected_base=0x%lx\n",
-           (unsigned long)g_shvstvecd_trap_pc,
-           (unsigned long)entry);
+     * In Direct mode (if MODE=1 was not accepted), CPU would land at
+     * slot 0 (nop), fall through to slot 1 -> shvstvecd_trap_entry.
+     * g_shvstvecd_vec_marker would stay 0. */
+    TEST_ASSERT("Vectored mode: marker == 1 (vectored handler executed)",
+                g_shvstvecd_vec_marker == 1);
+    TEST_ASSERT("trap handler was invoked (cause != 0)",
+                g_shvstvecd_trap_cause != 0);
 
-    /* If we got here without crash, Vectored dispatch works.
-     * The detailed offset verification is non-normative for Shvstvecd. */
-    TEST_ASSERT("Vectored mode did not crash (trap handler reachable)",
-                g_shvstvecd_trap_pc != 0 || g_shvstvecd_trap_cause != 0);
+    printf("    [INFO] Vectored: marker=%lu, trap_cause=0x%lx\n",
+           (unsigned long)g_shvstvecd_vec_marker,
+           (unsigned long)g_shvstvecd_trap_cause);
 
     hvip_set_vssi(false);
     hyp_undelegate();

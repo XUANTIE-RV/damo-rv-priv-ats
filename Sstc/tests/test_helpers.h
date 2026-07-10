@@ -34,7 +34,17 @@ static inline uintptr_t stimecmp_read(void) {
 }
 
 static inline void stimecmp_write(uintptr_t v) {
+#if __riscv_xlen == 32
+    /* RV32: three-step write to avoid transient STIP:
+     *   1. stimecmph = MAX  (prevent stimecmp < time transient)
+     *   2. stimecmp  = v    (set low half)
+     *   3. stimecmph = 0    (set high half to target) */
+    asm volatile("csrw 0x15D, %0" :: "r"((uintptr_t)-1) : "memory");
     asm volatile("csrw 0x14D, %0" :: "r"(v) : "memory");
+    asm volatile("csrw 0x15D, zero" ::: "memory");
+#else
+    asm volatile("csrw 0x14D, %0" :: "r"(v) : "memory");
+#endif
 }
 
 static inline uintptr_t vstimecmp_read(void) {
@@ -44,11 +54,21 @@ static inline uintptr_t vstimecmp_read(void) {
 }
 
 static inline void vstimecmp_write(uintptr_t v) {
+#if __riscv_xlen == 32
+    /* RV32: three-step write to avoid transient VSTIP */
+    asm volatile("csrw 0x25D, %0" :: "r"((uintptr_t)-1) : "memory");
     asm volatile("csrw 0x24D, %0" :: "r"(v) : "memory");
+    asm volatile("csrw 0x25D, zero" ::: "memory");
+#else
+    asm volatile("csrw 0x24D, %0" :: "r"(v) : "memory");
+#endif
 }
 
 /* ===================================================================
  * time CSR read helper
+ *
+ * RV32: time is 64-bit, split across time(0xC01) and timeh(0xC81).
+ * RV64: single CSR.
  * =================================================================== */
 static inline uintptr_t time_read(void) {
     uintptr_t v;
@@ -58,7 +78,54 @@ static inline uintptr_t time_read(void) {
 
 /* ===================================================================
  * menvcfg / henvcfg helpers
+ *
+ * rv64: single 64-bit CSR (0x30A/0x60A). STCE=bit63.
+ * rv32: split into menvcfg(0x30A)[31:0] + menvcfgh(0x31A)[63:32].
+ *       STCE (bit63) lives in menvcfgh bit31 on rv32.
+ *       All Sstc-relevant bits are in the high half, so rv32
+ *       set/clear/read must target menvcfgh/henvcfgh.
  * =================================================================== */
+#if __riscv_xlen == 32
+/* Override encoding.h: STCE bit63 → menvcfgh bit31 on RV32 */
+#undef MENVCFG_STCE
+#define MENVCFG_STCE    (1UL << 31)
+
+static inline uintptr_t menvcfg_read(void) {
+    uintptr_t v;
+    asm volatile("csrr %0, 0x31A" : "=r"(v) :: "memory");
+    return v;
+}
+
+static inline void menvcfg_write(uintptr_t v) {
+    asm volatile("csrw 0x31A, %0" :: "r"(v) : "memory");
+}
+
+static inline void menvcfg_set(uintptr_t bits) {
+    asm volatile("csrs 0x31A, %0" :: "r"(bits) : "memory");
+}
+
+static inline void menvcfg_clear(uintptr_t bits) {
+    asm volatile("csrc 0x31A, %0" :: "r"(bits) : "memory");
+}
+
+static inline uintptr_t henvcfg_read(void) {
+    uintptr_t v;
+    asm volatile("csrr %0, 0x61A" : "=r"(v) :: "memory");
+    return v;
+}
+
+static inline void henvcfg_write(uintptr_t v) {
+    asm volatile("csrw 0x61A, %0" :: "r"(v) : "memory");
+}
+
+static inline void henvcfg_set(uintptr_t bits) {
+    asm volatile("csrs 0x61A, %0" :: "r"(bits) : "memory");
+}
+
+static inline void henvcfg_clear(uintptr_t bits) {
+    asm volatile("csrc 0x61A, %0" :: "r"(bits) : "memory");
+}
+#else
 static inline uintptr_t menvcfg_read(void) {
     uintptr_t v;
     asm volatile("csrr %0, 0x30A" : "=r"(v) :: "memory");
@@ -94,6 +161,7 @@ static inline void henvcfg_set(uintptr_t bits) {
 static inline void henvcfg_clear(uintptr_t bits) {
     asm volatile("csrc 0x60A, %0" :: "r"(bits) : "memory");
 }
+#endif
 
 /* ===================================================================
  * mcounteren / hcounteren helpers
@@ -209,13 +277,37 @@ static inline void sstc_disable_stce(void) {
 
 /* Ensure stimecmp is set to max (no pending interrupt) */
 static inline void sstc_clear_timer(void) {
+#if __riscv_xlen == 32
+    /* RV32: write both halves to max */
+    asm volatile("csrw 0x15D, %0" :: "r"((uintptr_t)-1) : "memory");
+    asm volatile("csrw 0x14D, %0" :: "r"((uintptr_t)-1) : "memory");
+#else
     stimecmp_write((uintptr_t)-1);
+#endif
 }
 
 /* Trigger STIP by setting stimecmp to a past value */
 static inline void sstc_trigger_stip(void) {
+#if __riscv_xlen == 32
+    /* RV32: read full 64-bit time, write stimecmp = time - 1 */
+    uint32_t lo, hi, hi2;
+    do {
+        asm volatile("csrr %0, 0xC81" : "=r"(hi) :: "memory");
+        asm volatile("csrr %0, 0xC01" : "=r"(lo) :: "memory");
+        asm volatile("csrr %0, 0xC81" : "=r"(hi2) :: "memory");
+    } while (hi != hi2);
+    /* Compute time - 1 with 64-bit borrow */
+    if (lo == 0) {
+        asm volatile("csrw 0x15D, %0" :: "r"(hi - 1) : "memory");
+    } else {
+        asm volatile("csrw 0x15D, %0" :: "r"(hi) : "memory");
+    }
+    uint32_t cmp_lo = (lo == 0) ? 0xFFFFFFFF : (lo - 1);
+    asm volatile("csrw 0x14D, %0" :: "r"(cmp_lo) : "memory");
+#else
     uintptr_t now = time_read();
     stimecmp_write(now > 0 ? now - 1 : 0);
+#endif
 }
 
 /* Install S-mode trap handler for sstc tests */

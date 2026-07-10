@@ -19,5 +19,5 @@
 
 #include "test_helpers.h"
 
-/* --- Group 5: Hypervisor × Svinval (HCROSS-SINVAL-01~14) --- */
+/* --- Group 5: Hypervisor × Svinval (HCROSS-SINVAL-01~15) --- */
 #include "test_hcross_svinval.c"

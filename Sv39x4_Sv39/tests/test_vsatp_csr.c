@@ -15,15 +15,13 @@
  * behavior of vsatp itself, plus its independence from satp.
  *
  * Cases:
- *   TS-VSATP-01  csrrw vsatp from HS-mode does not trap
- *   TS-VSATP-02  Writing vsatp.MODE = Sv39 reads back as Sv39
- *   TS-VSATP-03  vsatp supports each Sv* mode the platform also
- *                supports on satp (Sv39 mandatory; Sv48/Sv57 if avail)
- *   TS-VSATP-04  Writing an unsupported MODE: vsatp clears MODE to BARE
- *                (per spec, distinct from satp WARL semantics)
+ *   TS-VSATP-01  V=1: VS-mode csrr satp reads vsatp (alias)
+ *   TS-VSATP-02  V=1: VS-mode csrw satp writes vsatp (alias)
+ *   TS-VSATP-03  V=1: write unsupported MODE via satp is ignored
+ *   TS-VSATP-04  V=0: write unsupported MODE to vsatp -> WARL/ignored
  *   TS-VSATP-05  vsatp.PPN field is writable and reads back
  *   TS-VSATP-06  vsatp.ASID field obeys ASIDLEN (mask matches platform)
- *   TS-VSATP-07  Writing vsatp does NOT mutate satp (and vice versa)
+ *   TS-VSATP-07  hstatus.VTVM=1: VS-mode satp access -> virtual-inst (22)
  *
  * Source-included by per-suite test_register.c. Runs entirely from
  * M-mode using csr_accessors; does not require two_stage_helpers.
@@ -36,56 +34,148 @@
 #define MAKE_VSATP(mode, asid, ppn)  MAKE_SATP((mode), (asid), (ppn))
 
 /* ===================================================================
- * TS-VSATP-01: csrrw vsatp from HS/M-mode does not trap
+ * VS-mode helpers for satp alias tests.
+ * When V=1, satp is an alias for vsatp.
  * =================================================================== */
-TEST_REGISTER(test_ts_vsatp_01_no_trap);
-bool test_ts_vsatp_01_no_trap(void)
-{
-    TEST_BEGIN("TS-VSATP-01: csrrw vsatp from M-mode does not trap");
+static uintptr_t vs_satp_read_fn(uintptr_t arg) {
+    (void)arg;
+    uintptr_t val;
+    asm volatile ("csrr %0, satp" : "=r"(val));
+    return val;
+}
 
-    uintptr_t saved = vsatp_read();
-    EXPECT_NO_TRAP(vsatp_write(0));
-    EXPECT_NO_TRAP((void)vsatp_read());
-    vsatp_write(saved);
-
-    HYP_TEST_END();
+static uintptr_t vs_satp_write_fn(uintptr_t new_val) {
+    asm volatile ("csrw satp, %0" :: "r"(new_val));
+    /* Flush TLB so subsequent instructions use the new mappings. */
+    asm volatile ("sfence.vma" ::: "memory");
+    return 0;
 }
 
 /* ===================================================================
- * TS-VSATP-02: Writing vsatp.MODE=Sv39 reads back as Sv39
+ * TS-VSATP-01: V=1 — VS-mode csrr satp reads vsatp.
+ *
+ * Spec (norm:vsatp_sz_acc_op): When V=1, satp substitutes for vsatp.
+ * From VS-mode, reading satp must return the vsatp value.
  * =================================================================== */
-TEST_REGISTER(test_ts_vsatp_02_mode_sv39_writeback);
-bool test_ts_vsatp_02_mode_sv39_writeback(void)
+TEST_REGISTER(test_ts_vsatp_01_v1_satp_reads_vsatp);
+bool test_ts_vsatp_01_v1_satp_reads_vsatp(void)
 {
-    TEST_BEGIN("TS-VSATP-02: vsatp MODE=Sv39 writeback");
+    TEST_BEGIN("TS-VSATP-01: V=1 csrr satp reads vsatp");
     REQUIRE_VSATP_MODE(SATP_MODE_SV39);
 
     uintptr_t saved = vsatp_read();
-    vsatp_write(MAKE_VSATP(SATP_MODE_SV39, 0, 0));
-    uintptr_t got = vsatp_read();
-    TEST_ASSERT_EQ("vsatp.MODE reads back Sv39",
-                   SATP_GET_MODE(got), (uintptr_t)SATP_MODE_SV39);
+
+    /* Setup two-stage context (builds page tables in memory). */
+    two_stage_ctx_t ctx;
+    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+
+    /* Activate two-stage (writes vsatp/hgatp CSRs). */
+    two_stage_enable(&ctx, /*vmid=*/0);
+
+    /* Read vsatp AFTER activation — this is what VS-mode should see. */
+    uintptr_t expected = vsatp_read();
+
+    /* Enter VS-mode (V=1) and read satp; should return vsatp. */
+    uintptr_t got = run_in_vs_mode(vs_satp_read_fn, 0);
+
+    /* Manual cleanup (avoid double-cleanup from ts2_finish which
+     * would zero vsatp before we can verify). */
+    gpt_disable();
+    asm volatile ("csrw 0x280, zero" ::: "memory");  /* vsatp = 0 */
+    hyp_reset_state();
+
+    TEST_ASSERT_EQ("V=1: csrr satp == vsatp", got, expected);
 
     vsatp_write(saved);
+    asm volatile ("sfence.vma" ::: "memory");
     HYP_TEST_END();
 }
 
 /* ===================================================================
- * TS-VSATP-03: vsatp supports Sv48 (skip if platform lacks it)
+ * TS-VSATP-02: V=1 — VS-mode csrw satp writes vsatp.
+ *
+ * Spec (norm:vsatp_sz_acc_op): When V=1, writing satp actually
+ * writes vsatp. Verify by reading vsatp from HS/M-mode afterward.
  * =================================================================== */
-TEST_REGISTER(test_ts_vsatp_03_mode_sv48);
-bool test_ts_vsatp_03_mode_sv48(void)
+TEST_REGISTER(test_ts_vsatp_02_v1_satp_writes_vsatp);
+bool test_ts_vsatp_02_v1_satp_writes_vsatp(void)
 {
-    TEST_BEGIN("TS-VSATP-03: vsatp MODE=Sv48 writeback");
-    REQUIRE_VSATP_MODE(SATP_MODE_SV48);
+    TEST_BEGIN("TS-VSATP-02: V=1 csrw satp writes vsatp");
+    REQUIRE_VSATP_MODE(SATP_MODE_SV39);
 
     uintptr_t saved = vsatp_read();
-    vsatp_write(MAKE_VSATP(SATP_MODE_SV48, 0, 0));
+
+    two_stage_ctx_t ctx;
+    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+
+    /* Activate two-stage so vsatp has a valid root PPN. */
+    two_stage_enable(&ctx, /*vmid=*/0);
+    uintptr_t current_vsatp = vsatp_read();
+    uintptr_t current_ppn = current_vsatp & ((1UL << 44) - 1);
+    uintptr_t test_val = MAKE_VSATP(SATP_MODE_SV39, 0x55, current_ppn);
+
+    /* VS-mode writes satp (=vsatp) with new ASID, same PPN. */
+    (void)run_in_vs_mode(vs_satp_write_fn, test_val);
+
+    /* Read vsatp BEFORE cleanup (cleanup would zero it). */
     uintptr_t got = vsatp_read();
-    TEST_ASSERT_EQ("vsatp.MODE reads back Sv48",
-                   SATP_GET_MODE(got), (uintptr_t)SATP_MODE_SV48);
+
+    /* Manual cleanup. */
+    gpt_disable();
+    asm volatile ("csrw 0x280, zero" ::: "memory");  /* vsatp = 0 */
+    hyp_reset_state();
+
+    TEST_ASSERT_EQ("V=1: vsatp was written via satp", got, test_val);
 
     vsatp_write(saved);
+    asm volatile ("sfence.vma" ::: "memory");
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * TS-VSATP-03: V=1 — write unsupported MODE via satp is ignored.
+ *
+ * Spec (norm:vsatp_mode_unsupported_v1):
+ *   "when V=1, a write to satp with an unsupported MODE value is
+ *    ignored and no write to vsatp is effected."
+ *
+ * This differs from V=0 (TS-VSATP-04) where WARL is permitted.
+ * =================================================================== */
+TEST_REGISTER(test_ts_vsatp_03_v1_unsupported_mode_ignored);
+bool test_ts_vsatp_03_v1_unsupported_mode_ignored(void)
+{
+    TEST_BEGIN("TS-VSATP-03: V=1 satp unsupported MODE ignored");
+    REQUIRE_VSATP_MODE(SATP_MODE_SV39);
+
+    uintptr_t saved = vsatp_read();
+
+    two_stage_ctx_t ctx;
+    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+
+    /* Activate two-stage so vsatp has the actual VS root PPN. */
+    two_stage_enable(&ctx, /*vmid=*/0);
+
+    /* Read vsatp AFTER activation — this is the value that should
+     * remain unchanged if the V=1 unsupported-MODE write is ignored. */
+    uintptr_t pre_val = vsatp_read();
+
+    /* VS-mode tries to write satp with reserved MODE=7. */
+    uintptr_t bad_val = MAKE_VSATP(7, 0, 0x2000);
+    (void)run_in_vs_mode(vs_satp_write_fn, bad_val);
+
+    /* Read vsatp BEFORE cleanup. */
+    uintptr_t got = vsatp_read();
+
+    /* Manual cleanup. */
+    gpt_disable();
+    asm volatile ("csrw 0x280, zero" ::: "memory");
+    hyp_reset_state();
+
+    TEST_ASSERT_EQ("V=1: vsatp unchanged after unsupported MODE write via satp",
+                   got, pre_val);
+
+    vsatp_write(saved);
+    asm volatile ("sfence.vma" ::: "memory");
     HYP_TEST_END();
 }
 
@@ -194,33 +284,38 @@ bool test_ts_vsatp_06_asid_warl(void)
 }
 
 /* ===================================================================
- * TS-VSATP-07: Writing vsatp does not mutate satp (and vice versa)
+ * TS-VSATP-07: hstatus.VTVM=1 -> VS-mode satp access traps as
+ *              virtual-instruction exception (cause=22).
+ *
+ * Spec: hstatus.VTVM=1 causes VS-mode attempts to access satp
+ * (or execute SFENCE.VMA / SINVAL.VMA) to raise a virtual-instruction
+ * exception.
  * =================================================================== */
-TEST_REGISTER(test_ts_vsatp_07_independence_from_satp);
-bool test_ts_vsatp_07_independence_from_satp(void)
+TEST_REGISTER(test_ts_vsatp_07_vtvm_traps_satp);
+bool test_ts_vsatp_07_vtvm_traps_satp(void)
 {
-    TEST_BEGIN("TS-VSATP-07: vsatp and satp are independent");
+    TEST_BEGIN("TS-VSATP-07: VTVM=1 + VS satp access -> virt-inst (22)");
     REQUIRE_VSATP_MODE(SATP_MODE_SV39);
-    REQUIRE_SATP_MODE(SATP_MODE_SV39);
 
-    uintptr_t vs_saved   = vsatp_read();
-    uintptr_t s_saved    = satp_read();
+    two_stage_ctx_t ctx;
+    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
 
-    /* Mutate vsatp; verify satp unchanged. */
-    vsatp_write(MAKE_VSATP(SATP_MODE_SV39, 0xAA, 0x100));
-    TEST_ASSERT_EQ("satp unchanged after vsatp write",
-                   satp_read(), s_saved);
+    /* Set hstatus.VTVM=1 (bit 20). */
+    asm volatile ("csrs hstatus, %0" :: "r"((uintptr_t)HSTATUS_VTVM));
 
-    /* Mutate satp; verify vsatp unchanged. */
-    uintptr_t vs_after_self = vsatp_read();
-    satp_write(MAKE_SATP(SATP_MODE_SV39, 0x55, 0x200));
-    TEST_ASSERT_EQ("vsatp unchanged after satp write",
-                   vsatp_read(), vs_after_self);
+    /* VS-mode reads satp -> should trap as virtual-instruction. */
+    trap_expect_begin();
+    (void)two_stage_run_in_vs(&ctx, vs_satp_read_fn, 0);
+    bool fired = trap_was_triggered();
+    uintptr_t cause = fired ? trap_get_cause() : 0;
+    trap_expect_end();
 
-    /* Restore. */
-    vsatp_write(vs_saved);
-    satp_write(s_saved);
-    asm volatile ("sfence.vma" ::: "memory");
+    /* Restore hstatus.VTVM=0. */
+    asm volatile ("csrc hstatus, %0" :: "r"((uintptr_t)HSTATUS_VTVM));
+    ts2_finish(&ctx);
 
+    TEST_ASSERT("trap fired on VS-mode satp access with VTVM=1", fired);
+    TEST_ASSERT_EQ("cause = virtual-instruction (22)",
+                   cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
     HYP_TEST_END();
 }

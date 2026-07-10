@@ -29,6 +29,7 @@
 TEST_REGISTER(test_htval_lgp_01_load_perm);
 bool test_htval_lgp_01_load_perm(void) {
     TEST_BEGIN("HTVAL-LGP-01: load gpf (R=0) reports htval = GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -47,6 +48,7 @@ bool test_htval_lgp_01_load_perm(void) {
 TEST_REGISTER(test_htval_lgp_02_load_invalid);
 bool test_htval_lgp_02_load_invalid(void) {
     TEST_BEGIN("HTVAL-LGP-02: load gpf (V=0) reports htval = GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -67,6 +69,7 @@ bool test_htval_lgp_02_load_invalid(void) {
 TEST_REGISTER(test_htval_sgp_01_store_perm);
 bool test_htval_sgp_01_store_perm(void) {
     TEST_BEGIN("HTVAL-SGP-01: store gpf (W=0) reports htval = GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -85,6 +88,7 @@ bool test_htval_sgp_01_store_perm(void) {
 TEST_REGISTER(test_htval_sgp_02_store_invalid);
 bool test_htval_sgp_02_store_invalid(void) {
     TEST_BEGIN("HTVAL-SGP-02: store gpf (V=0) reports htval = GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -110,6 +114,7 @@ bool test_htval_sgp_02_store_invalid(void) {
 TEST_REGISTER(test_htval_lgp_03_two_stage);
 bool test_htval_lgp_03_two_stage(void) {
     TEST_BEGIN("HTVAL-LGP-03: load gpf after VS-stage translation, htval = GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     /* test_gpa = test_fault_page's physical address (= GPA under identity map). */
@@ -141,6 +146,7 @@ bool test_htval_lgp_03_two_stage(void) {
 TEST_REGISTER(test_htval_sgp_02_store_ad);
 bool test_htval_sgp_02_store_ad(void) {
     TEST_BEGIN("HTVAL-SGP-02: store gpf (A=1,D=0) reports htval = GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -167,6 +173,7 @@ bool test_htval_sgp_02_store_ad(void) {
 TEST_REGISTER(test_htval_amo_01_store_gpf);
 bool test_htval_amo_01_store_gpf(void) {
     TEST_BEGIN("HTVAL-AMO-01: AMO gpf (W=0) reports htval = GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -188,6 +195,7 @@ bool test_htval_amo_01_store_gpf(void) {
 TEST_REGISTER(test_htval_igp_01_fetch_perm);
 bool test_htval_igp_01_fetch_perm(void) {
     TEST_BEGIN("HTVAL-IGP-01: fetch gpf (X=0) reports htval = GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -206,6 +214,7 @@ bool test_htval_igp_01_fetch_perm(void) {
 TEST_REGISTER(test_htval_igp_02_fetch_invalid);
 bool test_htval_igp_02_fetch_invalid(void) {
     TEST_BEGIN("HTVAL-IGP-02: fetch gpf (V=0) reports htval = GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;

@@ -15,6 +15,7 @@
 #include "test_vs_helpers.h"
 #include "hyp_defs.h"
 #include "test_framework.h"
+#include "mem_ops.h"
 
 /* ===================================================================
  * Successful-access helpers
@@ -92,11 +93,11 @@ uintptr_t test_vs_exec_expect_fault(uintptr_t arg) {
         ".option norvc\n\t"
         "la   t0, 1f\n\t"
         "la   t1, _exec_return_addr\n\t"
-        "sd   t0, 0(t1)\n\t"
+        STORE "   t0, 0(t1)\n\t"
         "mv   ra, t0\n\t"
         "jr   %0\n\t"
         "1:\n\t"
-        "sd   zero, 0(t1)\n\t"
+        STORE "   zero, 0(t1)\n\t"
         ".option pop\n\t"
         :: "r"(arg)
         : "t0", "t1", "ra", "memory"

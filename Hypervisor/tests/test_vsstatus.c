@@ -432,6 +432,10 @@ bool vsst_09_vector_makes_both_vs_dirty(void)
  * SD is computed from FS/VS/XS in vsstatus only (not sstatus).
  * When vsstatus.FS=Clean and vsstatus.VS=Clean, SD should be 0.
  * When vsstatus.FS=Dirty, SD should be 1.
+ *
+ * Cross-validation (norm:vsstatus_sd_xs_op):
+ * HS-level sstatus.FS must NOT affect vsstatus.SD. Setting
+ * mstatus.FS=Dirty while vsstatus.FS=Off must leave SD=0.
  * =================================================================== */
 TEST_REGISTER(vsst_10_sd_reflects_vs_view);
 bool vsst_10_sd_reflects_vs_view(void)
@@ -468,6 +472,35 @@ bool vsst_10_sd_reflects_vs_view(void)
         asm volatile ("csrr %0, 0x200" : "=r"(readback));
         TEST_ASSERT_EQ("SD=1 when VS=Dirty",
                        readback & SSTATUS_SD_BIT, SSTATUS_SD_BIT);
+    }
+
+    /* Cross-validation: mstatus.FS=Dirty + vsstatus.FS=Off → SD=0.
+     * HS-level sstatus.FS must NOT influence vsstatus.SD. */
+    {
+        uintptr_t saved_mstatus;
+        asm volatile ("csrr %0, mstatus" : "=r"(saved_mstatus));
+
+        /* Set mstatus.FS = Dirty at HS level. */
+        uintptr_t mstatus = (saved_mstatus & ~SSTATUS_FS_MASK)
+                            | SSTATUS_FS_DIRTY;
+        asm volatile ("csrw mstatus, %0" :: "r"(mstatus));
+
+        /* Set vsstatus.FS = Off, vsstatus.VS = Off. */
+        vsstatus = (vsstatus & ~(SSTATUS_FS_MASK | SSTATUS_VS_MASK))
+                   | SSTATUS_FS_OFF | SSTATUS_VS_OFF;
+        asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+
+        asm volatile ("csrr %0, 0x200" : "=r"(readback));
+        TEST_ASSERT_EQ("SD=0 despite mstatus.FS=Dirty (HS independent)",
+                       readback & SSTATUS_SD_BIT, 0UL);
+
+        /* Also verify HS sstatus.SD IS set (mstatus.FS=Dirty). */
+        uintptr_t hs_sstatus;
+        asm volatile ("csrr %0, sstatus" : "=r"(hs_sstatus));
+        TEST_ASSERT_EQ("HS sstatus.SD=1 when mstatus.FS=Dirty",
+                       hs_sstatus & SSTATUS_SD_BIT, SSTATUS_SD_BIT);
+
+        asm volatile ("csrw mstatus, %0" :: "r"(saved_mstatus));
     }
 
     HYP_TEST_END();

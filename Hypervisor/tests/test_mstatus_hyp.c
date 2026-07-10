@@ -70,19 +70,58 @@ bool mstatus_mpv_hs_trap(void) {
 }
 
 /* ------------------------------------------------------------------
- * MSTAT-03: MRET with V←MPV
+ * MSTAT-03: MRET with V<-MPV
+ *
+ * Manually set MPV=1, MPP=1(S), then execute MRET.  Per spec
+ * norm:mstatus_mpv_op, MRET sets V=MPV (unless MPP=3).
+ * We verify V=1 by executing csrr hgatp in the post-MRET context:
+ * hgatp is an HS-only CSR, so accessing it with V=1 triggers
+ * virtual-instruction (cause=22).
  * ------------------------------------------------------------------ */
 TEST_REGISTER(mstatus_mret_v_from_mpv);
 bool mstatus_mret_v_from_mpv(void) {
-    TEST_BEGIN("MSTAT-03: Verify MRET sets V←MPV");
+    TEST_BEGIN("MSTAT-03: Verify MRET sets V<-MPV");
 
-    /* Run in VS-mode to verify V=1 after MRET.
-     * Use vs_read_sstatus (safe in VS-mode) instead of vs_exec_ecall
-     * which would trigger an extra trap inside VS-mode. */
-    uintptr_t r = run_in_vs_mode(vs_read_sstatus, 0);
+    /* Save current stack pointer (M-mode sp) for recovery. */
+    uintptr_t saved_sp;
+    asm volatile("mv %0, sp" : "=r"(saved_sp));
 
-    /* Simply verify we can run in VS-mode and return. */
-    TEST_ASSERT("VS-mode execution successful", r != (uintptr_t)-1);
+    /* Configure mstatus: MPP=1(S), MPV=1, clear MPRV. */
+    uintptr_t ms;
+    asm volatile("csrr %0, mstatus" : "=r"(ms));
+    ms &= ~((3UL << 11) | (1UL << 17));   /* clear MPP, MPRV */
+    ms |=  (1UL << 11);                    /* MPP = S (1) */
+    ms |=  (1UL << 39);                    /* MPV = 1 */
+    asm volatile("csrw mstatus, %0" :: "r"(ms));
+
+    /* Arm trap handler before entering VS-mode. */
+    trap_expect_begin();
+
+    asm volatile (
+        "mv   s1, %0\n\t"          /* save M-mode sp in s1 (callee-saved) */
+        "la   t0, 1f\n\t"
+        "csrw mepc, t0\n\t"
+        "mret\n\t"                 /* MPP=S, MPV=1 -> V=1, S-mode */
+        "1:\n\t"
+        /* Now in VS-mode (V=1).  Access hgatp -> cause=22. */
+        "csrr t0, 0x680\n\t"       /* hgatp: virtual-inst if V=1 */
+        /* After trap handler advances mepc, ecall returns to M. */
+        "li   t0, 1\n\t"           /* ECALL_GOTO_PRIV = 1 */
+        "la   t1, ecall_args\n\t"
+        "sd   t0, 0(t1)\n\t"       /* ecall_args[0] = ECALL_GOTO_PRIV */
+        "li   t0, 3\n\t"           /* PRIV_M = 3 */
+        "sd   t0, 8(t1)\n\t"       /* ecall_args[1] = PRIV_M */
+        "ecall\n\t"                 /* VS->M via goto_priv handler */
+        "mv   sp, s1\n\t"          /* restore M-mode sp */
+        : : "r"(saved_sp) : "s1", "t0", "t1", "memory"
+    );
+
+    /* If V=1 after MRET, the hgatp access triggered cause=22. */
+    TEST_ASSERT("virtual-inst trap triggered (proves V=1)",
+                trap_was_triggered());
+    TEST_ASSERT_EQ("cause=22 (virtual-instruction)",
+                   trap_get_cause(), (uintptr_t)22);
+    trap_expect_end();
 
     HYP_TEST_END();
 }
@@ -135,32 +174,39 @@ bool mstatus_gva_m_mode(void) {
     uintptr_t flags = G_FLAGS_RWXU_AD | PTE_R;
     fire_vs_load_fault(victim_gpa, flags);
 
-    /* Check mstatus.GVA. */
+    /* Per norm:mstatus_gva_op: guest-page-fault writes a GVA to mtval,
+     * so GVA must be set to 1. */
     uintptr_t ms;
     asm volatile("csrr %0, mstatus" : "=r"(ms));
     uintptr_t gva = (ms >> 38) & 1;
-    TEST_ASSERT("GVA set correctly on guest page fault", gva == 0 || gva == 1);
+    TEST_ASSERT_EQ("GVA=1 on guest page fault", gva, (uintptr_t)1);
 
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
- * MSTAT-06: TSR only affects HS-mode
+ * MSTAT-06: TSR only affects HS-mode, not VS-mode
+ *
+ * Per norm:mstatus_modes: "The TSR and TVM fields of mstatus affect
+ * execution only in HS-mode, not in VS-mode."
+ * Set mstatus.TSR=1 and hstatus.VTSR=0, then execute SRET in
+ * VS-mode.  SRET must NOT trap because TSR does not affect VS-mode.
  * ------------------------------------------------------------------ */
 TEST_REGISTER(mstatus_tsr_hs_only);
 bool mstatus_tsr_hs_only(void) {
     TEST_BEGIN("MSTAT-06: Verify TSR only affects HS-mode SRET");
 
-    /* Set TSR bit (bit 22). */
+    /* Set TSR bit (bit 22) in mstatus. */
     uintptr_t ms;
     asm volatile("csrr %0, mstatus" : "=r"(ms));
     ms |= (1UL << 22);
     asm volatile("csrw mstatus, %0" :: "r"(ms));
 
-    /* Verify TSR bit is set. */
-    asm volatile("csrr %0, mstatus" : "=r"(ms));
-    uintptr_t tsr = (ms >> 22) & 1;
-    TEST_ASSERT_EQ("TSR bit should be set", tsr, 1);
+    /* Clear VTSR to ensure only mstatus.TSR is the factor. */
+    hstatus_set_vtsr(0);
+
+    /* VS-mode SRET should NOT trap: TSR does not affect VS-mode. */
+    VS_EXPECT_NO_TRAP(run_in_vs_mode(vs_exec_sret, 0));
 
     /* Clear TSR bit. */
     asm volatile("csrr %0, mstatus" : "=r"(ms));
@@ -302,24 +348,68 @@ bool mstatus_mprv_mpv_zero(void) {
 
 /* ------------------------------------------------------------------
  * MSTAT-13: MPRV does not affect HLV/HSV
+ *
+ * Per norm:mstatus_mprv_hlsv: "MPRV does not affect the virtual-
+ * machine load/store instructions, HLV, HLVX, and HSV.  The
+ * explicit loads and stores of these instructions always act as
+ * though V=1 and the nominal privilege mode were hstatus.SPVP,
+ * overriding MPRV."
+ *
+ * Set up two-stage translation (G-stage identity + VS-stage Bare),
+ * then execute HLV.W from M-mode with MPRV=1 MPP=S.  If MPRV
+ * incorrectly affected HLV, the instruction would behave
+ * differently.  A successful load proves HLV ignores MPRV.
  * ------------------------------------------------------------------ */
 TEST_REGISTER(mstatus_mprv_hlv_hsv);
 bool mstatus_mprv_hlv_hsv(void) {
     TEST_BEGIN("MSTAT-13: Verify MPRV does not affect HLV/HSV");
 
-    /* Verify MPRV bit is writable. */
+    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+
+    /* Set up G-stage identity mapping + VS-stage Bare. */
+    gpt_pool_reset();
+    two_stage_ctx_t ctx;
+    two_stage_init(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+
+    /* Identity-map low memory (kernel/UART region). */
+    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
+    uintptr_t lo_end  = (uintptr_t)__vm_test_region_start
+                        & ~(PAGE_SIZE_2M - 1);
+    two_stage_setup_identity(&ctx, lo_base, lo_end - lo_base,
+                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
+
+    /* Identity-map test region. */
+    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
+    uintptr_t r_size  = (uintptr_t)__vm_test_region_end - r_start;
+    two_stage_setup_identity(&ctx, r_start, r_size,
+                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+
+    /* Activate G-stage (hgatp); VS-stage stays Bare. */
+    two_stage_enable(&ctx, 0);
+
+    /* Baseline: HLV.W with MPRV=0 from M-mode should succeed. */
+    uintptr_t target = (uintptr_t)test_data_area;
+    EXPECT_NO_TRAP(hlv_w(target));
+
+    /* Set MPRV=1, MPP=S(1).  Per spec, HLV ignores MPRV and always
+     * acts as V=1 + SPVP, so it must still succeed. */
     uintptr_t ms;
     asm volatile("csrr %0, mstatus" : "=r"(ms));
-    ms |= (1UL << 17); /* Set MPRV (bit 17). */
+    ms &= ~((3UL << 11) | (1UL << 17));  /* clear MPP, MPRV */
+    ms |=  (1UL << 11);                   /* MPP = S (1) */
+    ms |=  (1UL << 17);                   /* MPRV = 1 */
     asm volatile("csrw mstatus, %0" :: "r"(ms));
 
-    asm volatile("csrr %0, mstatus" : "=r"(ms));
-    uintptr_t mprv = (ms >> 17) & 1;
-    TEST_ASSERT_EQ("MPRV bit should be set", mprv, 1);
+    /* HLV.W with MPRV=1: must NOT trap with illegal-instruction.
+     * A successful load proves HLV ignores MPRV as required by spec. */
+    EXPECT_NO_TRAP(hlv_w(target));
 
-    /* Clear MPRV bit. */
+    /* Clear MPRV. */
+    asm volatile("csrr %0, mstatus" : "=r"(ms));
     ms &= ~(1UL << 17);
     asm volatile("csrw mstatus, %0" :: "r"(ms));
+
+    two_stage_cleanup(&ctx);
 
     HYP_TEST_END();
 }

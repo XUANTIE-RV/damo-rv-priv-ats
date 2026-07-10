@@ -56,6 +56,7 @@ static bool _run_mode_check(int g_mode, const char *mode_name) {
 TEST_REGISTER(test_htval_mod_01_sv39x4);
 bool test_htval_mod_01_sv39x4(void) {
     TEST_BEGIN("HTVAL-MOD-01: htval = GPA>>2 under hgatp.MODE = Sv39x4");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     TEST_ASSERT("Sv39x4 htval ok", _run_mode_check(HGATP_MODE_SV39X4, "Sv39x4"));
     HYP_TEST_END();
@@ -64,6 +65,7 @@ bool test_htval_mod_01_sv39x4(void) {
 TEST_REGISTER(test_htval_mod_02_sv48x4);
 bool test_htval_mod_02_sv48x4(void) {
     TEST_BEGIN("HTVAL-MOD-02: htval = GPA>>2 under hgatp.MODE = Sv48x4");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV48X4);
     TEST_ASSERT("Sv48x4 htval ok", _run_mode_check(HGATP_MODE_SV48X4, "Sv48x4"));
     HYP_TEST_END();
@@ -72,6 +74,7 @@ bool test_htval_mod_02_sv48x4(void) {
 TEST_REGISTER(test_htval_mod_03_sv57x4);
 bool test_htval_mod_03_sv57x4(void) {
     TEST_BEGIN("HTVAL-MOD-03: htval = GPA>>2 under hgatp.MODE = Sv57x4");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV57X4);
     TEST_ASSERT("Sv57x4 htval ok", _run_mode_check(HGATP_MODE_SV57X4, "Sv57x4"));
     HYP_TEST_END();
@@ -80,6 +83,7 @@ bool test_htval_mod_03_sv57x4(void) {
 TEST_REGISTER(test_htval_mod_04_sv39x4_replay);
 bool test_htval_mod_04_sv39x4_replay(void) {
     TEST_BEGIN("HTVAL-MOD-04: Sv39x4 sanity replay (deterministic htval)");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     bool a = _run_mode_check(HGATP_MODE_SV39X4, "Sv39x4#1");
     bool b = _run_mode_check(HGATP_MODE_SV39X4, "Sv39x4#2");
@@ -133,6 +137,7 @@ static bool _fire_overflow_load_fault(int g_mode, uintptr_t overflow_gpa) {
 TEST_REGISTER(test_htval_mod_05_sv39x4_overflow);
 bool test_htval_mod_05_sv39x4_overflow(void) {
     TEST_BEGIN("HTVAL-MOD-05: Sv39x4 GPA bit41=1 overflow -> GPF with htval");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     /* Sv39x4 requires GPA bits 63:41 == 0. Bit 41 set = overflow. */
@@ -153,6 +158,7 @@ bool test_htval_mod_05_sv39x4_overflow(void) {
 TEST_REGISTER(test_htval_mod_06_sv48x4_overflow);
 bool test_htval_mod_06_sv48x4_overflow(void) {
     TEST_BEGIN("HTVAL-MOD-06: Sv48x4 GPA bit50=1 overflow -> GPF with htval");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV48X4);
 
     /* Sv48x4 requires GPA bits 63:50 == 0. Bit 50 set = overflow. */
@@ -173,6 +179,7 @@ bool test_htval_mod_06_sv48x4_overflow(void) {
 TEST_REGISTER(test_htval_mod_07_sv57x4_overflow);
 bool test_htval_mod_07_sv57x4_overflow(void) {
     TEST_BEGIN("HTVAL-MOD-07: Sv57x4 GPA bit59=1 overflow -> GPF with htval");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV57X4);
 
     /* Sv57x4 requires GPA bits 63:59 == 0. Bit 59 set = overflow. */

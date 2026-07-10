@@ -66,8 +66,11 @@ bool test_shlcofideleg_ro_vsie_lcofie(void) {
     }
 
     uintptr_t saved_hideleg = hideleg_read();
+    uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);
     uintptr_t saved_sie = csr_read(CSR_SIE);
 
+    /* Prerequisite: mideleg[13]=1 so sie.LCOFIE is visible in HS-mode. */
+    csr_write(CSR_MIDELEG, saved_mideleg | LCOFI_BIT);
     /* Set hideleg[13]=0. */
     hideleg_write(saved_hideleg & ~LCOFI_BIT);
 
@@ -87,6 +90,7 @@ bool test_shlcofideleg_ro_vsie_lcofie(void) {
 
     /* Restore. */
     csr_write(CSR_SIE, saved_sie);
+    csr_write(CSR_MIDELEG, saved_mideleg);
     hideleg_write(saved_hideleg);
     HYP_TEST_END();
 }

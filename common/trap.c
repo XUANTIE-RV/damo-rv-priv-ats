@@ -31,6 +31,7 @@ typedef volatile struct {
     uintptr_t cause;        /* mcause / scause value */
     uintptr_t epc;          /* mepc / sepc value */
     uintptr_t tval;         /* mtval / stval value */
+    uintptr_t status_snap;  /* mstatus/sstatus snapshot at trap entry */
     uintptr_t return_addr;  /* for instruction faults: where to resume */
 #ifdef ENABLE_HYP
     uintptr_t htval;        /* mtval2 (M-mode) / htval (S-mode) >> 2 */
@@ -40,6 +41,14 @@ typedef volatile struct {
 } trap_record_t;
 
 trap_record_t trap_record;
+
+#ifdef ENABLE_HYP
+/* Snapshot of mstatus.MPV/MPP captured at M-mode trap entry, before
+ * the handler modifies them.  Tests use trap_get_mpv/mpp() to verify
+ * hardware auto-writes on trap entry (e.g. TENT-12/13/14). */
+static volatile bool      _m_trap_mpv_snap;
+static volatile uintptr_t _m_trap_mpp_snap;
+#endif
 
 /* Bridge to _exec_return_addr (weak symbol, default=0) */
 uintptr_t _exec_return_addr __attribute__((weak)) = 0;
@@ -264,14 +273,55 @@ unsigned m_trap_handler(void) {
              * to clear the interrupt source and prevent re-entry */
             asm volatile("csrw 0x14D, %0" :: "r"((uintptr_t)-1) : "memory");
         }
+        if (irq == 7) {
+            /* M-mode timer interrupt (ACLINT MTIMER): write MTIMECMP[0]
+             * to max value to clear the interrupt source */
+            #ifdef CLINT_BASE_ADDRESS
+            uintptr_t mtimecmp_addr = CLINT_BASE_ADDRESS + 0x4000UL;
+            #else
+            uintptr_t mtimecmp_addr = 0x02004000UL;
+            #endif
+            asm volatile(
+                "li t0, -1\n\t"
+                "sw t0, 0(%0)\n\t"
+                "sw t0, 4(%0)\n\t"
+                "fence\n\t"
+                :: "r"(mtimecmp_addr) : "t0", "memory"
+            );
+        }
+        if (irq == 3) {
+            /* M-mode software interrupt (ACLINT MSWI): write MSIP[0]
+             * to 0 to clear the interrupt source */
+            #ifdef CLINT_BASE_ADDRESS
+            uintptr_t msip_addr = CLINT_BASE_ADDRESS + 0x0000UL;
+            #else
+            uintptr_t msip_addr = 0x02000000UL;
+            #endif
+            asm volatile(
+                "sw zero, 0(%0)\n\t"
+                "fence\n\t"
+                :: "r"(msip_addr) : "memory"
+            );
+        }
+        if (irq == 1) {
+            /* S-mode software interrupt (SSIP): clear mip.SSIP to
+             * prevent infinite re-entry. SSIP is software-writable. */
+            CSRC(mip, (1UL << 1));
+        }
+        if (irq == 9) {
+            /* S-mode external interrupt (SEIP): clear mip.SEIP software
+             * bit to prevent infinite re-entry. */
+            CSRC(mip, (1UL << 9));
+        }
         /* Record interrupt in trap_record if armed */
         if (trap_record.armed) {
-            trap_record.triggered  = true;
-            trap_record.priv_level = PRIV_M;
-            trap_record.cause      = cause;
-            trap_record.epc        = epc;
-            trap_record.tval       = tval;
-            trap_record.armed      = false;
+            trap_record.triggered   = true;
+            trap_record.priv_level  = PRIV_M;
+            trap_record.cause       = cause;
+            trap_record.epc         = epc;
+            trap_record.tval        = tval;
+            trap_record.status_snap = CSRR(mstatus);
+            trap_record.armed       = false;
         }
         /* Return to interrupted instruction (no epc advance for interrupts) */
         return PRIV_M;
@@ -287,11 +337,12 @@ unsigned m_trap_handler(void) {
          * unrelated IAFs are untouched. */
         cause = normalize_qemu_tvm_cause(cause, epc);
 #endif
-        trap_record.triggered  = true;
-        trap_record.priv_level = PRIV_M;
-        trap_record.cause      = cause;
-        trap_record.epc        = epc;
-        trap_record.tval       = tval;
+        trap_record.triggered   = true;
+        trap_record.priv_level  = PRIV_M;
+        trap_record.cause       = cause;
+        trap_record.epc         = epc;
+        trap_record.tval        = tval;
+        trap_record.status_snap = CSRR(mstatus);
 #ifdef ENABLE_HYP
         if (is_guest_page_fault(cause))
             hyp_capture_m();
@@ -299,6 +350,12 @@ unsigned m_trap_handler(void) {
             trap_record.htval  = 0;
             trap_record.htinst = 0;
             trap_record.gva    = false;
+        }
+        /* Snapshot mstatus.MPV/MPP before handler consumes them via mret. */
+        {
+            uintptr_t _ms = CSRR(mstatus);
+            _m_trap_mpv_snap = ((_ms >> 39) & 0x1UL) != 0;
+            _m_trap_mpp_snap = (_ms >> MSTATUS_MPP_OFF) & 0x3UL;
         }
 #endif
 #ifdef ENABLE_TRAP_ARM_DIAG
@@ -320,11 +377,14 @@ unsigned m_trap_handler(void) {
          * before mret, the restored ELP=LP_EXPECTED will cause the
          * next non-LPAD instruction at the recovery PC to fault again
          * (with armed=false → UNEXPECTED TRAP).  Clear both MPELP and
-         * SPELP to ensure clean recovery. */
+         * SPELP to ensure clean recovery.
+         * Note: MPELP(bit 41) and SPELP(bit 33) only exist on RV64. */
+#if __riscv_xlen > 32
         if (cause == CAUSE_SOFTWARE_CHECK) {
             uintptr_t pelp_bits = MSTATUS_MPELP_BIT | MSTATUS_SPELP_BIT;
             CSRC(mstatus, pelp_bits);
         }
+#endif
 
         /* Recovery: if exec_at() set a recovery address, always use it.
          * exec_at() jumps to arbitrary code that may trigger any exception
@@ -410,12 +470,13 @@ unsigned s_trap_handler(void) {
         }
         /* Record interrupt in trap_record if armed */
         if (trap_record.armed) {
-            trap_record.triggered  = true;
-            trap_record.priv_level = PRIV_S;
-            trap_record.cause      = cause;
-            trap_record.epc        = epc;
-            trap_record.tval       = tval;
-            trap_record.armed      = false;
+            trap_record.triggered   = true;
+            trap_record.priv_level  = PRIV_S;
+            trap_record.cause       = cause;
+            trap_record.epc         = epc;
+            trap_record.tval        = tval;
+            trap_record.status_snap = CSRR(sstatus);
+            trap_record.armed       = false;
         }
         /* Return to interrupted instruction (no epc advance for interrupts) */
         return PRIV_S;
@@ -423,11 +484,12 @@ unsigned s_trap_handler(void) {
 
     /* ---- Handle expected (armed) exceptions ---- */
     if (trap_record.armed) {
-        trap_record.triggered  = true;
-        trap_record.priv_level = PRIV_S;
-        trap_record.cause      = cause;
-        trap_record.epc        = epc;
-        trap_record.tval       = tval;
+        trap_record.triggered   = true;
+        trap_record.priv_level  = PRIV_S;
+        trap_record.cause       = cause;
+        trap_record.epc         = epc;
+        trap_record.tval        = tval;
+        trap_record.status_snap = CSRR(sstatus);
 #ifdef ENABLE_HYP
         if (is_guest_page_fault(cause))
             hyp_capture_s();
@@ -484,6 +546,7 @@ void trap_expect_begin(void) {
     trap_record.cause       = 0;
     trap_record.epc         = 0;
     trap_record.tval        = 0;
+    trap_record.status_snap  = 0;
 #ifdef ENABLE_TRAP_ARM_DIAG
     _diag_arm_begin_count++;
 #endif
@@ -515,6 +578,10 @@ uintptr_t trap_get_tval(void) {
     return trap_record.tval;
 }
 
+uintptr_t trap_get_status_snap(void) {
+    return trap_record.status_snap;
+}
+
 #ifdef ENABLE_HYP
 uintptr_t trap_get_htval(void) {
     return trap_record.htval;
@@ -526,5 +593,13 @@ uintptr_t trap_get_htinst(void) {
 
 bool trap_get_gva(void) {
     return trap_record.gva;
+}
+
+bool trap_get_mpv(void) {
+    return _m_trap_mpv_snap;
+}
+
+uintptr_t trap_get_mpp(void) {
+    return _m_trap_mpp_snap;
 }
 #endif

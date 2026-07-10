@@ -8,7 +8,7 @@
  *
  * Provides VS-mode payload functions for triggering guest-page-faults,
  * virtual-instruction exceptions, and VS-mode trap handler support
- * for delegated fault tests.
+ * for delegated VS-stage page-fault tests (HCROSS-SSTVALA-04/05).
  * =================================================================== */
 
 #include "test_helpers.h"
@@ -20,6 +20,13 @@
 uintptr_t g_vs_trap_vstval = 0;
 uintptr_t g_vs_trap_cause = 0;
 bool      g_vs_trap_triggered = false;
+
+/* Recovery PC used by VS-mode handler to return past an instruction
+ * page-fault. Set by payload functions before triggering a jump fault.
+ * When non-zero, the handler uses this value as sepc instead of
+ * sepc+4, because for inst page-faults sepc points to the unmapped
+ * target address (not the faulting instruction). */
+uintptr_t g_vs_recovery_pc = 0;
 
 /* ===================================================================
  * VS-mode payload functions (non-delegated faults)
@@ -153,10 +160,20 @@ static void vs_trap_handler_sstvala(void) {
         "li     t0, 1\n\t"
         "sb     t0, 0(t2)\n\t"
 
-        /* Advance sepc past the faulting instruction (assume 4 bytes) */
+        /* Check g_vs_recovery_pc: if non-zero, use it as sepc.
+         * This handles instruction page-faults where sepc points to
+         * the unmapped target address (not the faulting jr). */
+        "la     t2, g_vs_recovery_pc\n\t"
+        "ld     t0, 0(t2)\n\t"
+        "beqz   t0, 1f\n\t"
+        "csrw   sepc, t0\n\t"
+        "j      2f\n\t"
+        "1:\n\t"
+        /* No recovery PC: advance sepc past the faulting instruction */
         "csrr   t0, sepc\n\t"
         "addi   t0, t0, 4\n\t"
         "csrw   sepc, t0\n\t"
+        "2:\n\t"
 
         /* Restore registers */
         "ld     ra, 0(sp)\n\t"
@@ -175,42 +192,48 @@ void setup_vs_trap_handler_for_sstvala(void) {
     g_vs_trap_vstval = 0;
     g_vs_trap_cause = 0;
     g_vs_trap_triggered = false;
+    g_vs_recovery_pc = 0;
 
     /* Install VS-mode trap handler (Direct mode) */
     vs_trap_setup_direct((uintptr_t)vs_trap_handler_sstvala);
 }
 
 /* ===================================================================
- * VS-mode payload functions (delegated faults)
+ * VS-mode payload functions (delegated VS-stage page-faults)
  *
- * These trigger guest-page-faults that are delegated to VS-mode via
- * hedeleg. The VS-mode handler records trap info, then execution
- * continues and returns to HS-mode normally.
+ * These trigger VS-stage page-faults (cause 12/13) that are delegated
+ * to VS-mode via medeleg+hedeleg. The VS-mode handler records trap
+ * info, then execution continues and returns to HS-mode normally.
  * =================================================================== */
 
 uintptr_t test_vs_jump_delegated(uintptr_t arg) {
-    /* Jump to arg. If G-stage unmapped, triggers inst guest-page-fault
-     * which is delegated to VS-mode handler. Handler advances sepc
-     * past the faulting instruction, so we continue here. */
+    /* Jump to arg. VS-stage unmapped -> inst page-fault (cause=12)
+     * delegated to VS-mode handler. For inst page-fault, sepc points
+     * to the target address (unmapped), so we save the return address
+     * to g_vs_recovery_pc for the handler to use as sepc. */
+    extern uintptr_t g_vs_recovery_pc;
     asm volatile (
         ".option push\n\t"
         ".option norvc\n\t"
         "la     t0, 1f\n\t"
+        "la     t1, g_vs_recovery_pc\n\t"
+        "sd     t0, 0(t1)\n\t"
         "mv     ra, t0\n\t"
         "jr     %0\n\t"
         "1:\n\t"
         ".option pop\n\t"
         :: "r"(arg)
-        : "t0", "ra", "memory"
+        : "t0", "t1", "ra", "memory"
     );
     return 0;
 }
 
-uintptr_t test_vs_store_delegated(uintptr_t arg) {
-    /* Store to arg. If G-stage unmapped, triggers store guest-page-fault
-     * which is delegated to VS-mode handler. Handler advances sepc
+uintptr_t test_vs_load_delegated(uintptr_t arg) {
+    /* Load from arg. VS-stage unmapped -> load page-fault (cause=13)
+     * delegated to VS-mode handler. Handler advances sepc
      * past the faulting instruction, so we continue here. */
-    volatile uint64_t *p = (volatile uint64_t *)arg;
-    *p = 0xDEADBEEF;
+    volatile uint64_t dummy;
+    dummy = *(volatile uint64_t *)arg;
+    (void)dummy;
     return 0;
 }

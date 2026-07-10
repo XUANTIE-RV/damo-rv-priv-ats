@@ -23,6 +23,7 @@
 #include "hyp_priv.h"
 #include "encoding.h"
 #include "uart.h"
+#include "hyp/hyp_csr.h"
 
 extern unsigned current_priv;
 extern uintptr_t ecall_args[2];
@@ -80,6 +81,18 @@ static uintptr_t run_in_virt_priv(unsigned target,
 
     /* Update tracked privilege so subsequent ecall returns set MPV/MPP correctly. */
     current_priv = target;
+
+    /* Ensure the trampoline's ecall (cause=10, ecall-from-VS) always
+     * traps to M-mode. If medeleg[10]=1 or hedeleg[10]=1, the hardware
+     * would delegate the ecall to S/VS-mode instead, breaking the
+     * return path. Clear both bits before mret. */
+    uintptr_t md = CSRR(medeleg);
+    md &= ~(1UL << 10);
+    CSRW(medeleg, md);
+
+    uintptr_t hd = hedeleg_read();
+    hd &= ~(1UL << 10);
+    hedeleg_write(hd);
 
     /* Enter VS/VU at _v_trampoline, return here via the ecall round-trip. */
     asm volatile (

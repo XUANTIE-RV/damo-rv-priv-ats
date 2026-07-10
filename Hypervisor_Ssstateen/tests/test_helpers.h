@@ -150,4 +150,24 @@ static uintptr_t _vs_write_scontext(uintptr_t arg)
     return 0;
 }
 
+#if __riscv_xlen == 32
+/* sieh (CSR 0x154) - RV32 Ssaia: upper 32 bits of sie */
+static uintptr_t _vs_read_sieh(uintptr_t arg)
+{
+    (void)arg;
+    uintptr_t val;
+    asm volatile("csrr %0, 0x154" : "=r"(val));
+    return val;
+}
+
+/* siph (CSR 0x155) - RV32 Ssaia: upper 32 bits of sip */
+static uintptr_t _vs_read_siph(uintptr_t arg)
+{
+    (void)arg;
+    uintptr_t val;
+    asm volatile("csrr %0, 0x155" : "=r"(val));
+    return val;
+}
+#endif /* __riscv_xlen == 32 */
+
 #endif /* HYPERVISOR_SSSTATEEN_TEST_HELPERS_H */

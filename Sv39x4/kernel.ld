@@ -1,7 +1,7 @@
 /* Sv39x4 extension linker script - includes base link.ld */
 
 /* Include the base link.ld first */
-INCLUDE "../common/config/qemu-rv64-max/link.ld"
+INCLUDE "link.ld"
 
 /* Extension-specific sections (placed after link.ld's sections) */
 SECTIONS

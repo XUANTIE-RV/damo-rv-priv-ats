@@ -50,8 +50,12 @@ static void set_prev_priv(unsigned target) {
     switch (current_priv) {
     case PRIV_M: {
         uintptr_t mstatus = CSRR(mstatus);
-        /* Clear MPP field [12:11] and MPV (bit 39) */
+        /* Clear MPP field [12:11] and MPV (bit 39, RV64 only) */
+#if __riscv_xlen > 32
         mstatus &= ~(MSTATUS_MPP_MASK | MSTATUS_MPV);
+#else
+        mstatus &= ~MSTATUS_MPP_MASK;
+#endif
         /* Set MPP to nominal privilege (low 2 bits) */
         mstatus |= ((uintptr_t)(target & 3) << MSTATUS_MPP_OFF);
 #ifdef ENABLE_HYP
@@ -255,6 +259,7 @@ static uintptr_t _run_result;
 static uintptr_t (*_run_fn)(uintptr_t);
 static uintptr_t _run_arg;
 
+__attribute__((used))
 static void _run_trampoline(void) {
     _run_result = _run_fn(_run_arg);
     /* Return to M-mode */

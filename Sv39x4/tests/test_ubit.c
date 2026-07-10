@@ -61,8 +61,9 @@ bool test_gubit_03_u0_fetch(void) {
 /* GUBIT-04: U=1 leaf, VU-mode access -> success
  *
  * Sets up a normal RWXU mapping and runs test_vs_read_write inside
- * VU-mode. Because all G-stage accesses are checked as U-mode and
- * U=1, this should complete without fault. */
+ * VU-mode via two_stage_run_in_vu(). Because all G-stage accesses
+ * are checked as U-mode and U=1, this should complete without fault.
+ * The VS-stage is Bare so VU-mode sees GVA = GPA directly. */
 TEST_REGISTER(test_gubit_04_u1_vu_ok);
 bool test_gubit_04_u1_vu_ok(void) {
     TEST_BEGIN("GUBIT-04: U=1 G-stage leaf permits VU-mode access");
@@ -73,21 +74,15 @@ bool test_gubit_04_u1_vu_ok(void) {
     /* Pre-zero the target so read_write magic-roundtrip is clean. */
     *(volatile uint64_t *)test_fault_page = 0;
 
-    /* Drive G-stage activation via two_stage_run_in_vs (sets hgatp,
-     * mret with MPV=1), but ask the trampoline to drop into VU.
-     * Our framework provides a separate run_in_vu_mode() but it
-     * doesn't manage hgatp; for this test we approximate VU-mode
-     * by running in VS first, since both share the same G-stage
-     * checks (the U-bit is enforced identically).
-     *
-     * NOTE: A future refinement would extend two_stage_run_in_vs to
-     * accept a target priv (VS/VU); for now this still proves the
-     * U=1 path works under V=1. */
-    uintptr_t r = two_stage_run_in_vs(&ctx, test_vs_read_write,
+    /* Use two_stage_run_in_vu to actually enter VU-mode (V=1, U).
+     * G-stage treats all accesses as U-mode (norm:H_vm_gpapriv),
+     * and U=1 in the G-stage PTE permits U-mode access. */
+    uintptr_t r = two_stage_run_in_vu(&ctx, test_vs_read_write,
                                       (uintptr_t)test_fault_page);
     TEST_ASSERT("U=1 leaf VU-mode r/w returns 0", r == 0);
 
     two_stage_cleanup(&ctx);
+    hyp_reset_state();
     HYP_TEST_END();
 }
 

@@ -908,33 +908,33 @@ bool test_mprv_mpv_vs_level(void) {
 
 ### 文件组织（9 目录拆分布局）
 
-两阶段（VS+G）测试用例从原 `Sv39x4/`、`Sv48x4/`、`Sv57x4/` 三个 G-stage 目录中剥离出来，按 (VS-mode, G-mode) 笛卡尔积单独建立 **9 个目录**，每个目录独立测试一种 (VS, G) 组合，并完整遍历该组合下支持的所有页面粒度。
+两阶段（VS+G）测试用例从原 `Sv39x4/`、`Sv48x4/`、`Sv57x4/` 三个 G-stage 目录中剥离出来，按 (G-mode, VS-mode) 笛卡尔积单独建立 **9 个目录**，每个目录独立测试一种 (G, VS) 组合，并完整遍历该组合下支持的所有页面粒度。
 
 采用「主目录持有 + 其他借用」模式：
 
-- **主目录** `Sv39_Sv39x4/`：物理持有全部 22 个 group test `.c` 文件 + 1 个新增 `test_granular_matrix.c` 笛卡尔积驱动文件。
-- **8 个借用目录**：`Sv39_Sv48x4/`、`Sv39_Sv57x4/`、`Sv48_Sv39x4/`、`Sv48_Sv48x4/`、`Sv48_Sv57x4/`、`Sv57_Sv39x4/`、`Sv57_Sv48x4/`、`Sv57_Sv57x4/`。每个目录通过 Makefile `CFLAGS += -I../Sv39_Sv39x4/tests` 借用源码，仅在自身 `tests/test_register.c` 中定制 `SUITE_VSATP_MODE` / `SUITE_HGATP_MODE` 宏。
+- **主目录** `Sv39x4_Sv39/`：物理持有全部 22 个 group test `.c` 文件 + 1 个新增 `test_granular_matrix.c` 笛卡尔积驱动文件。
+- **8 个借用目录**：`Sv39x4_Sv48/`、`Sv39x4_Sv57/`、`Sv48x4_Sv39/`、`Sv48x4_Sv48/`、`Sv48x4_Sv57/`、`Sv57x4_Sv39/`、`Sv57x4_Sv48/`、`Sv57x4_Sv57/`。每个目录通过 symlink 共享主目录 `tests/` 下所有源文件，仅在自身 `Makefile` 中定制 `SUITE_VSATP_MODE` / `SUITE_HGATP_MODE` 宏。
 - 原三个 G-stage 目录（`Sv39x4/`、`Sv48x4/`、`Sv57x4/`）退化为**纯 G-stage 测试目录**（保留 11 个 G-stage group：HCSR/ROOT/MAP/HIGH/VALID/RWX/UBIT/AD/ALIGN/GBIT/FAULT），不再承担两阶段测试。
 
 ```
 damo-priv-test/
 ├── Sv39x4/  Sv48x4/  Sv57x4/    # 纯 G-stage 测试（清理 two_stage 后）
 │
-├── Sv39_Sv39x4/                 # 【主目录】持有 22 个 two_stage/*.c
+├── Sv39x4_Sv39/                 # 【主目录】持有 22 个 two_stage/*.c
 │   ├── Makefile                 #   ENABLE_TWO_STAGE=1, ENABLE_HYP=1
 │   ├── kernel.ld                #   16KB 对齐根表段（同 Sv39x4）
 │   ├── main.c
 │   └── tests/
 │       ├── test_helpers.h       # forward header（仅转发框架头）
 │       ├── test_register.c      # 22 个 two_stage/*.c #include + SUITE 宏
-│       └── two_stage/           # 22 个原始 group + test_granular_matrix.c
+│       └── (22 个 group test .c + test_granular_matrix.c)
 │
-├── Sv39_Sv48x4/  ...  Sv57_Sv57x4/   # 8 个借用目录
-│   ├── Makefile                 #   CFLAGS += -I../Sv39_Sv39x4/tests
+├── Sv39x4_Sv48/  ...  Sv57x4_Sv57/   # 8 个借用目录（symlink → 主目录）
+│   ├── Makefile                 #   定制 SUITE_VSATP_MODE / SUITE_HGATP_MODE
 │   ├── kernel.ld                #   与主目录完全一致
 │   ├── main.c                   #   仅 banner 不同
 │   └── tests/
-│       └── test_register.c      # 22 个 #include + 定制 SUITE 宏
+│       └── test_register.c -> ../../Sv39x4_Sv39/tests/test_register.c
 │
 └── common/hyp/                  # 框架层（仅含通用 helper，禁测试逻辑）
 ```
@@ -943,15 +943,15 @@ damo-priv-test/
 
 | 目录 | SUITE_VSATP_MODE | SUITE_HGATP_MODE | 笛卡尔积粒度数 |
 |---|---|---|---|
-| `Sv39_Sv39x4` *(主)* | `SATP_MODE_SV39` | `HGATP_MODE_SV39X4` | 3 × 3 = **9** |
-| `Sv39_Sv48x4` | `SATP_MODE_SV39` | `HGATP_MODE_SV48X4` | 3 × 4 = **12** |
-| `Sv39_Sv57x4` | `SATP_MODE_SV39` | `HGATP_MODE_SV57X4` | 3 × 5 = **15** |
-| `Sv48_Sv39x4` | `SATP_MODE_SV48` | `HGATP_MODE_SV39X4` | 4 × 3 = **12** |
-| `Sv48_Sv48x4` | `SATP_MODE_SV48` | `HGATP_MODE_SV48X4` | 4 × 4 = **16** |
-| `Sv48_Sv57x4` | `SATP_MODE_SV48` | `HGATP_MODE_SV57X4` | 4 × 5 = **20** |
-| `Sv57_Sv39x4` | `SATP_MODE_SV57` | `HGATP_MODE_SV39X4` | 5 × 3 = **15** |
-| `Sv57_Sv48x4` | `SATP_MODE_SV57` | `HGATP_MODE_SV48X4` | 5 × 4 = **20** |
-| `Sv57_Sv57x4` | `SATP_MODE_SV57` | `HGATP_MODE_SV57X4` | 5 × 5 = **25** |
+| `Sv39x4_Sv39` *(主)* | `SATP_MODE_SV39` | `HGATP_MODE_SV39X4` | 3 × 3 = **9** |
+| `Sv39x4_Sv48` | `SATP_MODE_SV48` | `HGATP_MODE_SV39X4` | 3 × 4 = **12** |
+| `Sv39x4_Sv57` | `SATP_MODE_SV57` | `HGATP_MODE_SV39X4` | 3 × 5 = **15** |
+| `Sv48x4_Sv39` | `SATP_MODE_SV39` | `HGATP_MODE_SV48X4` | 4 × 3 = **12** |
+| `Sv48x4_Sv48` | `SATP_MODE_SV48` | `HGATP_MODE_SV48X4` | 4 × 4 = **16** |
+| `Sv48x4_Sv57` | `SATP_MODE_SV57` | `HGATP_MODE_SV48X4` | 4 × 5 = **20** |
+| `Sv57x4_Sv39` | `SATP_MODE_SV39` | `HGATP_MODE_SV57X4` | 5 × 3 = **15** |
+| `Sv57x4_Sv48` | `SATP_MODE_SV48` | `HGATP_MODE_SV57X4` | 5 × 4 = **20** |
+| `Sv57x4_Sv57` | `SATP_MODE_SV57` | `HGATP_MODE_SV57X4` | 5 × 5 = **25** |
 | **合计粒度组合** | | | **144** |
 
 #### VS×G 粒度矩阵（每目录完整遍历）

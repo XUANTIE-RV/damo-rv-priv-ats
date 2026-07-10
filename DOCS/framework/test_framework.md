@@ -690,7 +690,7 @@ include ../common/Makefile.common
 **典型扩展 kernel.ld 结构：**
 
 ```ld
-INCLUDE "../common/config/qemu-rv64-max/link.ld"
+INCLUDE "link.ld"
 
 /* 扩展特定段 */
 .test_table : { ... }

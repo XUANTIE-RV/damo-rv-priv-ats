@@ -106,11 +106,14 @@ static bool platform_supports_pma_config(void) {
  * VS-mode test trampolines
  * =================================================================== */
 
-/* VS-mode load: returns 0 on success, cause on trap */
+/* VS-mode load: returns 0 on success, cause on trap.
+ * The loaded value is stored in vs_loaded_value so the M-mode
+ * caller can verify data correctness after the call returns. */
+static uintptr_t vs_loaded_value;
+
 static uintptr_t vs_load(uintptr_t arg) {
     trap_expect_begin();
-    volatile uintptr_t val = *(volatile uintptr_t *)arg;
-    (void)val;
+    vs_loaded_value = *(volatile uintptr_t *)arg;
     trap_expect_end();
     if (trap_was_triggered())
         return trap_get_cause();

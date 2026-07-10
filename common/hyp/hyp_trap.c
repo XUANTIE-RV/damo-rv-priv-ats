@@ -71,7 +71,7 @@ unsigned hs_trap_handler(void) {
     _hs_trap_record.spv        = spv;
 
     /* Handle specific trap causes */
-    uintptr_t cause_code = cause & ~(1UL << 63); /* mask interrupt bit */
+    uintptr_t cause_code = cause & ~CAUSE_INTERRUPT_BIT; /* mask interrupt bit */
 
     switch (cause_code) {
     case CAUSE_ECALL_FROM_VS:

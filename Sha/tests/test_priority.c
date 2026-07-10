@@ -20,10 +20,30 @@ static uintptr_t _prio_vs_do_load(uintptr_t addr) {
     return val;
 }
 
-/* VS-mode helper: perform a store to an address */
-static uintptr_t _prio_vs_do_store(uintptr_t addr) {
-    uintptr_t val = 0x42;
-    asm volatile ("sd %0, 0(%1)" :: "r"(val), "r"(addr));
+/* VS-mode payload: jump to target address (X=0 page -> inst-fetch GPF).
+ *
+ * Uses the _exec_return_addr recovery pattern (same as
+ * test_vs_exec_expect_fault / test_vs_jump_to) so the M-mode trap
+ * handler can redirect mepc back to the recovery label after
+ * capturing the fault, instead of advancing epc into the same
+ * X=0 page and re-faulting forever. */
+static uintptr_t _prio_vs_fetch_target(uintptr_t addr)
+{
+    extern uintptr_t _exec_return_addr __attribute__((unused));
+    asm volatile (
+        ".option push\n\t"
+        ".option norvc\n\t"
+        "la   t0, 1f\n\t"
+        "la   t1, _exec_return_addr\n\t"
+        "sd   t0, 0(t1)\n\t"
+        "mv   ra, t0\n\t"
+        "jr   %0\n\t"
+        "1:\n\t"
+        "sd   zero, 0(t1)\n\t"
+        ".option pop\n\t"
+        :: "r"(addr)
+        : "t0", "t1", "ra", "memory"
+    );
     return 0;
 }
 
@@ -34,21 +54,19 @@ bool test_sha_prio_gstage_over_vsstage(void) {
     TEST_BEGIN("SHA-PRIO-01: G-stage fault takes priority over VS-stage fault");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
-    /* Set up G-stage identity mapping for kernel, but leave a target
-     * GPA unmapped. VS-mode (vsatp=Bare) accesses the unmapped GPA.
-     * Expected: G-stage load GPF (cause=21), htval = GPA >> 2. */
-
     uintptr_t target_gpa = 0x50000000UL;
 
     gpt_pool_reset();
     two_stage_ctx_t ctx;
     two_stage_init(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
 
-    /* Identity-map kernel region */
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     two_stage_setup_identity(&ctx, base, PLATFORM_MEM_SIZE,
                              G_FLAGS_RWXU_AD, PT_LEVEL_2M);
-    /* target_gpa is NOT mapped in G-stage */
+
+    uintptr_t saved_mie;
+    asm volatile ("csrr %0, 0x304" : "=r"(saved_mie));
+    asm volatile ("csrc 0x304, %0" :: "r"(1UL << 7));
 
     trap_expect_begin();
     two_stage_run_in_vs(&ctx, _prio_vs_do_load, target_gpa);
@@ -57,11 +75,11 @@ bool test_sha_prio_gstage_over_vsstage(void) {
     uintptr_t htval = fired ? trap_get_htval() : 0;
     trap_expect_end();
 
+    asm volatile ("csrw 0x304, %0" :: "r"(saved_mie));
     two_stage_cleanup(&ctx);
 
     TEST_ASSERT("G-stage fault triggered", fired);
     if (fired) {
-        /* G-stage load page fault, not VS-stage (cause=13) */
         TEST_ASSERT_EQ("cause == load guest-page-fault (21)",
                        cause, (uintptr_t)CAUSE_LOAD_GUEST_PAGE_FAULT);
         TEST_ASSERT_EQ("htval == target GPA >> 2",
@@ -72,21 +90,27 @@ bool test_sha_prio_gstage_over_vsstage(void) {
     HYP_TEST_END();
 }
 
-/* ---- SHA-PRIO-02: G-stage store fault (W=0) fires correctly ---- */
+/* ---- SHA-PRIO-02: Inst-fetch G-stage fault > illegal-instruction ---- */
 
-TEST_REGISTER(test_sha_prio_store_gpf_with_no_write);
-bool test_sha_prio_store_gpf_with_no_write(void) {
-    TEST_BEGIN("SHA-PRIO-02: G-stage store GPF (W=0) fires with correct htval");
+TEST_REGISTER(test_sha_prio_inst_fetch_over_illegal);
+bool test_sha_prio_inst_fetch_over_illegal(void) {
+    TEST_BEGIN("SHA-PRIO-02: inst-fetch GPF takes priority over illegal-inst");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
-    /* Map a target GPA outside the kernel 2MB region at 4KB granularity
-     * with R+X but NO W permission. VS-mode (vsatp=Bare) attempts a
-     * store to this GPA.
-     * Expected: G-stage store GPF (cause=23), htval = GPA >> 2.
+    /* Spec: norm:HSyncExcPrio — guest-page-fault from G-stage has higher
+     * priority than illegal-instruction exception.
      *
-     * We use GPA 0x50000000 which is outside the kernel memory region,
-     * so there's no conflict with the 2MB identity mapping. We map it
-     * separately at 4KB granularity with restricted permissions. */
+     * The G-stage translation check occurs during the instruction fetch
+     * stage, before instruction decode. Therefore, if a G-stage page has
+     * X=0, the fetch itself faults (cause=20) before the instruction can
+     * be decoded — an illegal instruction at the same address would never
+     * be detected. This test verifies that priority by mapping a page
+     * with R+W+U but X=0 in G-stage and jumping to it from VS-mode.
+     *
+     * The GPF is not delegated (medeleg[20]=0), so it traps to M-mode.
+     * The M-mode handler captures cause/htval and redirects mepc to the
+     * _exec_return_addr recovery label set by _prio_vs_fetch_target,
+     * escaping the X=0 page in one shot. */
 
     uintptr_t target_gpa = 0x50000000UL;
 
@@ -94,33 +118,45 @@ bool test_sha_prio_store_gpf_with_no_write(void) {
     two_stage_ctx_t ctx;
     two_stage_init(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
 
-    /* Identity-map kernel region with full permissions (2MB pages) */
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     two_stage_setup_identity(&ctx, base, PLATFORM_MEM_SIZE,
                              G_FLAGS_RWXU_AD, PT_LEVEL_2M);
 
-    /* Map target page at 4KB with R+X but NO W.
-     * This GPA (0x50000000) is outside the kernel 2MB region,
-     * so no conflict with existing leaf PTEs. The backing SPA
-     * doesn't need to be real memory — the G-stage permission
-     * check (W=0 -> store GPF) fires before any actual access. */
-    uintptr_t no_w_flags = PTE_V | PTE_R | PTE_X | PTE_U | PTE_A | PTE_D;
+    /* Map target GPA with R+W+U, NO X — triggers inst-fetch GPF.
+     * The page is mapped (valid PTE) but lacks execute permission,
+     * so the G-stage fetch check faults before instruction decode. */
+    uintptr_t no_x_flags = PTE_V | PTE_R | PTE_W | PTE_U | PTE_A | PTE_D;
     two_stage_g_map_page(&ctx, target_gpa, target_gpa,
-                         no_w_flags, PT_LEVEL_4K);
+                         no_x_flags, PT_LEVEL_4K);
 
+    /* Disable timer interrupts to protect armed flag */
+    uintptr_t saved_mie;
+    asm volatile ("csrr %0, 0x304" : "=r"(saved_mie));
+    asm volatile ("csrc 0x304, %0" :: "r"(1UL << 7));
+
+    /* Arm the M-mode trap mechanism */
     trap_expect_begin();
-    two_stage_run_in_vs(&ctx, _prio_vs_do_store, target_gpa);
+
+    /* Run in VS-mode: jalr to X=0 page -> inst-fetch GPF captured by
+     * M-mode handler via _exec_return_addr recovery. */
+    two_stage_run_in_vs(&ctx, _prio_vs_fetch_target, target_gpa);
+
+    /* Read trap record */
     bool fired = trap_was_triggered();
     uintptr_t cause = fired ? trap_get_cause() : 0;
     uintptr_t htval = fired ? trap_get_htval() : 0;
     trap_expect_end();
 
+    /* Restore state */
+    asm volatile ("csrw 0x304, %0" :: "r"(saved_mie));
+
     two_stage_cleanup(&ctx);
 
-    TEST_ASSERT("G-stage store fault triggered", fired);
+    /* Verify: the inst-fetch GPF was captured by the M-mode handler */
+    TEST_ASSERT("inst-fetch GPF triggered", fired);
     if (fired) {
-        TEST_ASSERT_EQ("cause == store guest-page-fault (23)",
-                       cause, (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);
+        TEST_ASSERT_EQ("cause == inst guest-page-fault (20)",
+                       cause, (uintptr_t)CAUSE_INST_GUEST_PAGE_FAULT);
         TEST_ASSERT_EQ("htval == target GPA >> 2",
                        htval, target_gpa >> 2);
         TEST_ASSERT("htval != 0 (Shtvala guarantee)", htval != 0);

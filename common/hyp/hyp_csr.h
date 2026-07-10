@@ -202,6 +202,18 @@ uintptr_t vstval_read(void);
 void      vstval_write(uintptr_t value);
 
 /* ===================================================================
+ * vsie (CSR 0x204) / vsip (CSR 0x244) -- VS-mode interrupt registers
+ *
+ * Direct HS/M-mode access for alias-chain verification tests.
+ * =================================================================== */
+
+uintptr_t vsie_read(void);
+void      vsie_write(uintptr_t value);
+
+uintptr_t vsip_read(void);
+void      vsip_write(uintptr_t value);
+
+/* ===================================================================
  * vsatp (CSR 0x280) -- VS-stage address translation
  *
  * Direct HS/M-mode access to vsatp for mode probing and configuration.

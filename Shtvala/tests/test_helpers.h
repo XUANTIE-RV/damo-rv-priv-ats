@@ -42,6 +42,20 @@
 #include "hyp/two_stage.h"
 #include "hyp/test_vs_helpers.h"
 
+/* SHTVALA_REQUIRE - Skip test when Shtvala extension is not available.
+ *
+ * The Shtvala extension tightens the H-ext baseline: htval MUST be the
+ * faulting GPA>>2 on GPF (H-ext allows writing 0). Without Shtvala,
+ * htval != 0 assertions would legitimately fail.
+ *
+ * Define NO_SHTVALA=1 in the Makefile (or as a compile-time flag) when
+ * building for a platform that does not implement Shtvala. */
+#ifndef NO_SHTVALA
+#define SHTVALA_REQUIRE()  ((void)0)
+#else
+#define SHTVALA_REQUIRE()  TEST_SKIP("Shtvala extension not available")
+#endif
+
 /* Linker-provided test-region symbols (see shtvala/kernel.ld). */
 extern uint8_t test_data_area[];
 extern uint8_t test_fault_page[];

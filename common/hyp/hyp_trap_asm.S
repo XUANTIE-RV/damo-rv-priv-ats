@@ -18,6 +18,18 @@
 
 #ifdef ENABLE_HYP
 
+#if __riscv_xlen == 64
+    #define LOAD    ld
+    #define STORE   sd
+    #define REGSIZE 8
+#else
+    #define LOAD    lw
+    #define STORE   sw
+    #define REGSIZE 4
+#endif
+
+#define HS_CONTEXT_SIZE (REGSIZE * 23)
+
 .section .text
 .global _hs_trap_entry
 .align 4
@@ -30,37 +42,33 @@ _hs_trap_entry:
     /* Swap sp with sscratch if coming from V=1 (SPV=1 in hstatus).
      * For simplicity in this test framework, we assume the stack is
      * already valid (tests run with a shared flat address space). */
-    addi sp, sp, -256
+    addi sp, sp, -HS_CONTEXT_SIZE
 
-    /* Save all caller-saved + temporary registers */
-    sd ra,   0(sp)
-    sd t0,   8(sp)
-    sd t1,  16(sp)
-    sd t2,  24(sp)
-    sd t3,  32(sp)
-    sd t4,  40(sp)
-    sd t5,  48(sp)
-    sd t6,  56(sp)
-    sd a0,  64(sp)
-    sd a1,  72(sp)
-    sd a2,  80(sp)
-    sd a3,  88(sp)
-    sd a4,  96(sp)
-    sd a5, 104(sp)
-    sd a6, 112(sp)
-    sd a7, 120(sp)
-    sd s0, 128(sp)
-    sd s1, 136(sp)
-    sd s2, 144(sp)
-    sd s3, 152(sp)
-    sd s4, 160(sp)
-    sd s5, 168(sp)
-    sd s6, 176(sp)
-    sd s7, 184(sp)
-    sd s8, 192(sp)
-    sd s9, 200(sp)
-    sd s10, 208(sp)
-    sd s11, 216(sp)
+    /* Save s0-s6: VS-mode test code uses these; s7-s11 are unused by
+     * VS test payloads AND preserved by hs_trap_handler (C callee-saved). */
+    STORE ra,   0*REGSIZE(sp)
+    STORE t0,   1*REGSIZE(sp)
+    STORE t1,   2*REGSIZE(sp)
+    STORE t2,   3*REGSIZE(sp)
+    STORE t3,   4*REGSIZE(sp)
+    STORE t4,   5*REGSIZE(sp)
+    STORE t5,   6*REGSIZE(sp)
+    STORE t6,   7*REGSIZE(sp)
+    STORE a0,   8*REGSIZE(sp)
+    STORE a1,   9*REGSIZE(sp)
+    STORE a2,  10*REGSIZE(sp)
+    STORE a3,  11*REGSIZE(sp)
+    STORE a4,  12*REGSIZE(sp)
+    STORE a5,  13*REGSIZE(sp)
+    STORE a6,  14*REGSIZE(sp)
+    STORE a7,  15*REGSIZE(sp)
+    STORE s0,  16*REGSIZE(sp)
+    STORE s1,  17*REGSIZE(sp)
+    STORE s2,  18*REGSIZE(sp)
+    STORE s3,  19*REGSIZE(sp)
+    STORE s4,  20*REGSIZE(sp)
+    STORE s5,  21*REGSIZE(sp)
+    STORE s6,  22*REGSIZE(sp)
 
     /* Call C handler: unsigned hs_trap_handler(void) */
     call hs_trap_handler
@@ -68,36 +76,31 @@ _hs_trap_entry:
     /* a0 = return value (unused for now, reserved for future use) */
 
     /* Restore registers */
-    ld ra,   0(sp)
-    ld t0,   8(sp)
-    ld t1,  16(sp)
-    ld t2,  24(sp)
-    ld t3,  32(sp)
-    ld t4,  40(sp)
-    ld t5,  48(sp)
-    ld t6,  56(sp)
-    ld a0,  64(sp)
-    ld a1,  72(sp)
-    ld a2,  80(sp)
-    ld a3,  88(sp)
-    ld a4,  96(sp)
-    ld a5, 104(sp)
-    ld a6, 112(sp)
-    ld a7, 120(sp)
-    ld s0, 128(sp)
-    ld s1, 136(sp)
-    ld s2, 144(sp)
-    ld s3, 152(sp)
-    ld s4, 160(sp)
-    ld s5, 168(sp)
-    ld s6, 176(sp)
-    ld s7, 184(sp)
-    ld s8, 192(sp)
-    ld s9, 200(sp)
-    ld s10, 208(sp)
-    ld s11, 216(sp)
+    LOAD ra,   0*REGSIZE(sp)
+    LOAD t0,   1*REGSIZE(sp)
+    LOAD t1,   2*REGSIZE(sp)
+    LOAD t2,   3*REGSIZE(sp)
+    LOAD t3,   4*REGSIZE(sp)
+    LOAD t4,   5*REGSIZE(sp)
+    LOAD t5,   6*REGSIZE(sp)
+    LOAD t6,   7*REGSIZE(sp)
+    LOAD a0,   8*REGSIZE(sp)
+    LOAD a1,   9*REGSIZE(sp)
+    LOAD a2,  10*REGSIZE(sp)
+    LOAD a3,  11*REGSIZE(sp)
+    LOAD a4,  12*REGSIZE(sp)
+    LOAD a5,  13*REGSIZE(sp)
+    LOAD a6,  14*REGSIZE(sp)
+    LOAD a7,  15*REGSIZE(sp)
+    LOAD s0,  16*REGSIZE(sp)
+    LOAD s1,  17*REGSIZE(sp)
+    LOAD s2,  18*REGSIZE(sp)
+    LOAD s3,  19*REGSIZE(sp)
+    LOAD s4,  20*REGSIZE(sp)
+    LOAD s5,  21*REGSIZE(sp)
+    LOAD s6,  22*REGSIZE(sp)
 
-    addi sp, sp, 256
+    addi sp, sp, HS_CONTEXT_SIZE
 
     sret
 

@@ -424,6 +424,30 @@ void vstval_write(uintptr_t value) {
 }
 
 /* ===================================================================
+ * vsie (CSR 0x204) / vsip (CSR 0x244)
+ * =================================================================== */
+
+uintptr_t vsie_read(void) {
+    uintptr_t v;
+    asm volatile ("csrr %0, 0x204" : "=r"(v) :: "memory");
+    return v;
+}
+
+void vsie_write(uintptr_t value) {
+    asm volatile ("csrw 0x204, %0" :: "r"(value) : "memory");
+}
+
+uintptr_t vsip_read(void) {
+    uintptr_t v;
+    asm volatile ("csrr %0, 0x244" : "=r"(v) :: "memory");
+    return v;
+}
+
+void vsip_write(uintptr_t value) {
+    asm volatile ("csrw 0x244, %0" :: "r"(value) : "memory");
+}
+
+/* ===================================================================
  * vsatp (CSR 0x280)
  * =================================================================== */
 

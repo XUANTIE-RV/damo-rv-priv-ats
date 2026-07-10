@@ -17,8 +17,8 @@
  *   HCROSS-SSTVALA-01: Instruction guest-page-fault stval precision
  *   HCROSS-SSTVALA-02: Store guest-page-fault stval precision
  *   HCROSS-SSTVALA-03: AMO guest-page-fault stval precision
- *   HCROSS-SSTVALA-04: Instruction guest-page-fault vstval (delegated)
- *   HCROSS-SSTVALA-05: Store guest-page-fault vstval (delegated)
+ *   HCROSS-SSTVALA-04: VS-stage inst page-fault (cause=12) vstval (delegated)
+ *   HCROSS-SSTVALA-05: VS-stage load page-fault (cause=13) vstval (delegated)
  *   HCROSS-SSTVALA-06: Virtual-instruction stval (read hstatus)
  *   HCROSS-SSTVALA-07: Virtual-instruction stval (write hgatp)
  *   HCROSS-SSTVALA-08: Virtual-instruction stval (read hideleg)
