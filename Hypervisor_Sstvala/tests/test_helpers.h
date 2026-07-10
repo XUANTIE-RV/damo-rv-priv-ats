@@ -13,8 +13,8 @@
  *   HCROSS-SSTVALA-01: Instruction guest-page-fault stval precision
  *   HCROSS-SSTVALA-02: Store guest-page-fault stval precision
  *   HCROSS-SSTVALA-03: AMO guest-page-fault stval precision
- *   HCROSS-SSTVALA-04: Instruction guest-page-fault vstval (delegated)
- *   HCROSS-SSTVALA-05: Store guest-page-fault vstval (delegated)
+ *   HCROSS-SSTVALA-04: VS-stage inst page-fault (cause=12) vstval (delegated)
+ *   HCROSS-SSTVALA-05: VS-stage load page-fault (cause=13) vstval (delegated)
  *   HCROSS-SSTVALA-06: Virtual-instruction stval == encoding (read hstatus)
  *   HCROSS-SSTVALA-07: Virtual-instruction stval == encoding (write hgatp)
  *   HCROSS-SSTVALA-08: Virtual-instruction stval == encoding (read hideleg)
@@ -31,6 +31,7 @@
 #include "hyp/hyp_fence.h"
 #include "hyp/gstage_pt.h"
 #include "hyp/two_stage.h"
+#include "hyp/two_stage_helpers.h"
 #include "hyp/test_vs_helpers.h"
 #include "hyp/hyp_trap.h"
 #include "hyp/hyp_vs_trap.h"
@@ -77,9 +78,9 @@ uintptr_t test_vs_vi_read_hideleg(uintptr_t arg);
 /* ===================================================================
  * VS-mode trap handler support for delegated fault tests.
  *
- * For HCROSS-SSTVALA-04/05, guest-page-faults are delegated to VS-mode
- * via hedeleg. The VS-mode trap handler records vscause/vstval into
- * global variables, then returns to HS-mode via ecall.
+ * For HCROSS-SSTVALA-04/05, VS-stage page-faults (cause 12/13) are
+ * delegated to VS-mode via medeleg+hedeleg. The VS-mode trap handler
+ * records vscause/vstval into global variables, then returns via sret.
  * =================================================================== */
 
 /* Global variables populated by VS-mode trap handler */
@@ -87,15 +88,18 @@ extern uintptr_t g_vs_trap_vstval;
 extern uintptr_t g_vs_trap_cause;
 extern bool      g_vs_trap_triggered;
 
-/* Configure VS-mode trap handler for delegated guest-page-fault tests.
+/* Recovery PC for instruction page-faults (set by payload before jump) */
+extern uintptr_t g_vs_recovery_pc;
+
+/* Configure VS-mode trap handler for delegated VS fault tests.
  * Sets up vstvec and clears the global trap record. */
 void setup_vs_trap_handler_for_sstvala(void);
 
-/* VS-mode payload: jump to arg, fault delegated to VS handler.
- * After VS handler runs, returns to HS via ecall. */
+/* VS-mode payload: jump to arg, VS-stage page-fault delegated to VS handler.
+ * After VS handler runs, returns to caller normally. */
 uintptr_t test_vs_jump_delegated(uintptr_t arg);
 
-/* VS-mode payload: store to arg, fault delegated to VS handler. */
-uintptr_t test_vs_store_delegated(uintptr_t arg);
+/* VS-mode payload: load from arg, page-fault delegated to VS handler. */
+uintptr_t test_vs_load_delegated(uintptr_t arg);
 
 #endif /* HYPERVISOR_SSTVALA_TEST_HELPERS_H */

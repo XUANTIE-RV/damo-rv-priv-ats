@@ -6,7 +6,7 @@
 /*
  * Test Group 6: henvcfg configuration
  *
- * Tests HENV-01 through HENV-19 verify henvcfg register fields
+ * Tests HENV-01 through HENV-29 verify henvcfg register fields
  * and their control over the VS-mode execution environment.
  *
  * Each henvcfg bit is constrained by the corresponding menvcfg bit:
@@ -24,10 +24,14 @@
  * =================================================================== */
 
 #define ENVCFG_FIOM       (1ULL << 0)   /* Fence of I/O implies Memory */
+#define ENVCFG_LPE        (1ULL << 2)   /* Landing Pad Enable (Zicfilp) */
+#define ENVCFG_SSE        (1ULL << 3)   /* Shadow Stack Enable (Zicfiss) */
 #define ENVCFG_CBIE_OFF   4             /* CBIE field offset [5:4] */
 #define ENVCFG_CBIE_MASK  (3ULL << 4)   /* CBIE field mask */
 #define ENVCFG_CBCFE      (1ULL << 6)   /* CBO.CLEAN/FLUSH Enable */
 #define ENVCFG_CBZE       (1ULL << 7)   /* CBO.ZERO Enable */
+#define ENVCFG_PMM_OFF    32            /* PMM field offset [33:32] */
+#define ENVCFG_PMM_MASK   (3ULL << 32)  /* PMM field mask */
 #define ENVCFG_DTE        (1ULL << 59)  /* Double Trap Enable (Ssdbltrp) */
 #define ENVCFG_PBMTE      (1ULL << 62)  /* Page-Based Memory Types Enable */
 #define ENVCFG_STCE       (1ULL << 63)  /* STimecmp Enable */
@@ -118,6 +122,13 @@ static uintptr_t vs_exec_cbo_clean(uintptr_t addr) {
 static uintptr_t vs_exec_cbo_inval(uintptr_t addr) {
     register uintptr_t base asm("a0") = addr;
     asm volatile (".4byte 0x0005200F" :: "r"(base) : "memory");
+    return 0;
+}
+
+/* CBO.FLUSH (Zicbom): funct12=0x002, encoding: 0x0025200F. */
+static uintptr_t vs_exec_cbo_flush(uintptr_t addr) {
+    register uintptr_t base asm("a0") = addr;
+    asm volatile (".4byte 0x0025200F" :: "r"(base) : "memory");
     return 0;
 }
 
@@ -404,6 +415,11 @@ bool henvcfg_06_adue_enabled(void) {
     /* VS-mode load: with ADUE=1, HW sets A bit — no fault. */
     VS_EXPECT_NO_TRAP(two_stage_run_in_vs(&ctx, test_vs_load, target));
 
+    /* Verify hardware actually set the A bit in VS-stage PTE. */
+    uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, page, PT_LEVEL_4K);
+    TEST_ASSERT("hardware set A bit in VS-stage PTE",
+                pte != NULL && (*pte & PTE_A) != 0);
+
     two_stage_cleanup(&ctx);
     HYP_TEST_END();
 }
@@ -582,6 +598,9 @@ bool henvcfg_12_cbcfe_enabled(void) {
 
     VS_EXPECT_NO_TRAP(run_in_vs_mode(vs_exec_cbo_clean, target));
 
+    /* Also verify CBO.FLUSH is enabled when CBCFE=1. */
+    VS_EXPECT_NO_TRAP(run_in_vs_mode(vs_exec_cbo_flush, target));
+
     HYP_TEST_END();
 }
 
@@ -607,6 +626,9 @@ bool henvcfg_13_cbcfe_disabled(void) {
     uintptr_t target = (uintptr_t)test_data_area;
 
     EXPECT_VIRTUAL_INST(run_in_vs_mode(vs_exec_cbo_clean, target));
+
+    /* Also verify CBO.FLUSH triggers virtual-instruction when CBCFE=0. */
+    EXPECT_VIRTUAL_INST(run_in_vs_mode(vs_exec_cbo_flush, target));
 
     HYP_TEST_END();
 }
@@ -783,6 +805,295 @@ bool henvcfg_19_stce_unimplemented(void) {
     henvcfg_write(henvcfg_read() | ENVCFG_STCE);
     TEST_ASSERT_EQ("henvcfg.STCE reads zero",
                    henvcfg_read() & ENVCFG_STCE, 0UL);
+
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * HENV-20: CBIE=11 makes CBO.INVAL perform invalidate in VS-mode
+ * norm:henvcfg_cbie
+ *
+ * When henvcfg.CBIE=11, CBO.INVAL in VS-mode performs a true
+ * invalidate operation. The instruction should execute without
+ * exception.
+ * =================================================================== */
+TEST_REGISTER(henvcfg_20_cbie_inval);
+bool henvcfg_20_cbie_inval(void) {
+    TEST_BEGIN("HENV-20: CBIE=11 CBO.INVAL performs invalidate");
+
+    if (!probe_menvcfg_bit(ENVCFG_CBCFE))
+        TEST_SKIP("Zicbom not implemented (menvcfg.CBCFE not writable)");
+
+    /* Enable menvcfg CBIE field. */
+    uintptr_t mcfg = menvcfg_read();
+    mcfg |= ENVCFG_CBIE_MASK | ENVCFG_CBCFE;
+    menvcfg_write(mcfg);
+
+    /* Set henvcfg.CBIE=11 (invalidate). */
+    set_henvcfg_cbie(CBIE_INVAL);
+    uintptr_t cbie_val = (henvcfg_read() & ENVCFG_CBIE_MASK) >> ENVCFG_CBIE_OFF;
+    TEST_ASSERT_EQ("henvcfg.CBIE=11", cbie_val, CBIE_INVAL);
+
+    uintptr_t target = (uintptr_t)test_data_area;
+
+    /* CBO.INVAL should execute as invalidate -- no exception. */
+    VS_EXPECT_NO_TRAP(run_in_vs_mode(vs_exec_cbo_inval, target));
+
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * HENV-21: CBIE=10 is reserved, WARL behavior
+ * norm:henvcfg_cbie
+ *
+ * The encoding 10b is reserved for CBIE. Writing it should result
+ * in a legal value (WARL). Verify the field does not retain the
+ * reserved encoding.
+ * =================================================================== */
+TEST_REGISTER(henvcfg_21_cbie_reserved);
+bool henvcfg_21_cbie_reserved(void) {
+    TEST_BEGIN("HENV-21: CBIE=10 reserved WARL behavior");
+
+    if (!probe_menvcfg_bit(ENVCFG_CBCFE))
+        TEST_SKIP("Zicbom not implemented (menvcfg.CBCFE not writable)");
+
+    /* Enable menvcfg CBIE field. */
+    uintptr_t mcfg = menvcfg_read();
+    mcfg |= ENVCFG_CBIE_MASK | ENVCFG_CBCFE;
+    menvcfg_write(mcfg);
+
+    /* Also enable menvcfg.CBIE=11 so henvcfg.CBIE is not constrained. */
+    mcfg = menvcfg_read();
+    mcfg &= ~ENVCFG_CBIE_MASK;
+    mcfg |= (CBIE_INVAL << ENVCFG_CBIE_OFF) & ENVCFG_CBIE_MASK;
+    menvcfg_write(mcfg);
+
+    /* Write reserved encoding 10b to henvcfg.CBIE. */
+    set_henvcfg_cbie(2ULL);
+    uintptr_t cbie_val = (henvcfg_read() & ENVCFG_CBIE_MASK) >> ENVCFG_CBIE_OFF;
+
+    /* WARL: the reserved encoding 10b must NOT be retained. */
+    TEST_ASSERT("CBIE does not retain reserved encoding 10b",
+                cbie_val != 2ULL);
+
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * HENV-22: PMM field read/write (Ssnpm)
+ * norm:henvcfg_pmm_op
+ *
+ * When Ssnpm is implemented, the PMM WARL field in henvcfg controls
+ * pointer masking for VS-mode. Legal values are 00, 10, 11.
+ * Value 01 is reserved.
+ * =================================================================== */
+TEST_REGISTER(henvcfg_22_pmm_rw);
+bool henvcfg_22_pmm_rw(void) {
+    TEST_BEGIN("HENV-22: PMM field read/write (Ssnpm)");
+
+    /* Probe: enable menvcfg.PMM and check if writable. */
+    uintptr_t orig_m = menvcfg_read();
+    uintptr_t pmm_en = 3ULL << ENVCFG_PMM_OFF;  /* PMM=11 */
+    menvcfg_write(orig_m | pmm_en);
+    uintptr_t m_rb = menvcfg_read();
+    menvcfg_write(orig_m);
+    if ((m_rb & ENVCFG_PMM_MASK) == 0)
+        TEST_SKIP("Ssnpm not implemented (menvcfg.PMM not writable)");
+
+    /* Enable PMM=11 in menvcfg so henvcfg.PMM is unconstrained. */
+    menvcfg_write(menvcfg_read() | pmm_en);
+
+    /* Test PMM=00 (disable). */
+    uintptr_t cfg = henvcfg_read() & ~ENVCFG_PMM_MASK;
+    henvcfg_write(cfg);
+    TEST_ASSERT_EQ("PMM=00 writable",
+                   (henvcfg_read() & ENVCFG_PMM_MASK) >> ENVCFG_PMM_OFF, 0UL);
+
+    /* Test PMM=10 (PMLEN=7). */
+    henvcfg_write(cfg | (2ULL << ENVCFG_PMM_OFF));
+    uintptr_t rb = (henvcfg_read() & ENVCFG_PMM_MASK) >> ENVCFG_PMM_OFF;
+    TEST_ASSERT_EQ("PMM=10 writable", rb, 2UL);
+
+    /* Test PMM=11 (PMLEN=16). */
+    henvcfg_write(cfg | (3ULL << ENVCFG_PMM_OFF));
+    rb = (henvcfg_read() & ENVCFG_PMM_MASK) >> ENVCFG_PMM_OFF;
+    TEST_ASSERT_EQ("PMM=11 writable", rb, 3UL);
+
+    /* Test PMM=01 (reserved) -- WARL: must not retain 01. */
+    henvcfg_write(cfg | (1ULL << ENVCFG_PMM_OFF));
+    rb = (henvcfg_read() & ENVCFG_PMM_MASK) >> ENVCFG_PMM_OFF;
+    TEST_ASSERT("PMM=01 reserved not retained (WARL)", rb != 1UL);
+
+    /* Restore PMM=00. */
+    henvcfg_write(cfg);
+    menvcfg_write(orig_m);
+
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * HENV-23: LPE/SSE field read/write (Zicfilp / Zicfiss)
+ * norm:henvcfg_lpe_op / norm:henvcfg_sse_op
+ *
+ * When implemented, LPE (bit 2) and SSE (bit 3) should be writable
+ * in henvcfg (constrained by menvcfg).
+ * =================================================================== */
+TEST_REGISTER(henvcfg_23_lpe_sse_rw);
+bool henvcfg_23_lpe_sse_rw(void) {
+    TEST_BEGIN("HENV-23: LPE/SSE field read/write");
+
+    /* --- LPE (Zicfilp) --- */
+    if (!probe_menvcfg_bit(ENVCFG_LPE)) {
+        /* LPE not implemented -- verify henvcfg.LPE reads zero. */
+        henvcfg_write(henvcfg_read() | ENVCFG_LPE);
+        TEST_ASSERT_EQ("henvcfg.LPE read-only zero (Zicfilp not impl)",
+                       henvcfg_read() & ENVCFG_LPE, 0UL);
+    } else {
+        enable_envcfg_bit(ENVCFG_LPE);
+        TEST_ASSERT_EQ("henvcfg.LPE=1",
+                       henvcfg_read() & ENVCFG_LPE, ENVCFG_LPE);
+
+        disable_henvcfg_bit(ENVCFG_LPE);
+        TEST_ASSERT_EQ("henvcfg.LPE=0",
+                       henvcfg_read() & ENVCFG_LPE, 0UL);
+    }
+
+    /* --- SSE (Zicfiss) --- */
+    if (!probe_menvcfg_bit(ENVCFG_SSE)) {
+        /* SSE not implemented -- verify henvcfg.SSE reads zero. */
+        henvcfg_write(henvcfg_read() | ENVCFG_SSE);
+        TEST_ASSERT_EQ("henvcfg.SSE read-only zero (Zicfiss not impl)",
+                       henvcfg_read() & ENVCFG_SSE, 0UL);
+    } else {
+        enable_envcfg_bit(ENVCFG_SSE);
+        TEST_ASSERT_EQ("henvcfg.SSE=1",
+                       henvcfg_read() & ENVCFG_SSE, ENVCFG_SSE);
+
+        disable_henvcfg_bit(ENVCFG_SSE);
+        TEST_ASSERT_EQ("henvcfg.SSE=0",
+                       henvcfg_read() & ENVCFG_SSE, 0UL);
+    }
+
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * HENV-24: PMM reads zero when Ssnpm not implemented
+ * norm:henvcfg_pmm_op
+ *
+ * If the platform does not implement Ssnpm, menvcfg.PMM is read-only
+ * zero, and consequently henvcfg.PMM must also be zero.
+ * =================================================================== */
+TEST_REGISTER(henvcfg_24_pmm_unimplemented);
+bool henvcfg_24_pmm_unimplemented(void) {
+    TEST_BEGIN("HENV-24: PMM reads zero when Ssnpm not implemented");
+
+    /* Probe menvcfg.PMM. */
+    uintptr_t orig_m = menvcfg_read();
+    uintptr_t pmm_en = 3ULL << ENVCFG_PMM_OFF;
+    menvcfg_write(orig_m | pmm_en);
+    uintptr_t m_rb = menvcfg_read();
+    menvcfg_write(orig_m);
+    if ((m_rb & ENVCFG_PMM_MASK) != 0)
+        TEST_SKIP("Ssnpm IS implemented -- test only for non-impl case");
+
+    /* menvcfg.PMM=0 (not writable), so henvcfg.PMM must read zero. */
+    henvcfg_write(henvcfg_read() | ENVCFG_PMM_MASK);
+    TEST_ASSERT_EQ("henvcfg.PMM reads zero",
+                   henvcfg_read() & ENVCFG_PMM_MASK, 0UL);
+
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * HENV-25: CBIE reads zero when Zicbom not implemented
+ * norm:henvcfg_cbie
+ *
+ * If the platform does not implement Zicbom, the CBIE field in
+ * henvcfg is read-only zero.
+ * =================================================================== */
+TEST_REGISTER(henvcfg_25_cbie_unimplemented);
+bool henvcfg_25_cbie_unimplemented(void) {
+    TEST_BEGIN("HENV-25: CBIE reads zero when Zicbom not implemented");
+
+    if (probe_menvcfg_bit(ENVCFG_CBCFE))
+        TEST_SKIP("Zicbom IS implemented -- test only for non-impl case");
+
+    henvcfg_write(henvcfg_read() | ENVCFG_CBIE_MASK);
+    TEST_ASSERT_EQ("henvcfg.CBIE reads zero",
+                   henvcfg_read() & ENVCFG_CBIE_MASK, 0UL);
+
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * HENV-26: CBCFE reads zero when Zicbom not implemented
+ * norm:henvcfg_cbcfe
+ * =================================================================== */
+TEST_REGISTER(henvcfg_26_cbcfe_unimplemented);
+bool henvcfg_26_cbcfe_unimplemented(void) {
+    TEST_BEGIN("HENV-26: CBCFE reads zero when Zicbom not implemented");
+
+    if (probe_menvcfg_bit(ENVCFG_CBCFE))
+        TEST_SKIP("Zicbom IS implemented -- test only for non-impl case");
+
+    henvcfg_write(henvcfg_read() | ENVCFG_CBCFE);
+    TEST_ASSERT_EQ("henvcfg.CBCFE reads zero",
+                   henvcfg_read() & ENVCFG_CBCFE, 0UL);
+
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * HENV-27: CBZE reads zero when Zicboz not implemented
+ * norm:henvcfg_cbze
+ * =================================================================== */
+TEST_REGISTER(henvcfg_27_cbze_unimplemented);
+bool henvcfg_27_cbze_unimplemented(void) {
+    TEST_BEGIN("HENV-27: CBZE reads zero when Zicboz not implemented");
+
+    if (probe_menvcfg_bit(ENVCFG_CBZE))
+        TEST_SKIP("Zicboz IS implemented -- test only for non-impl case");
+
+    henvcfg_write(henvcfg_read() | ENVCFG_CBZE);
+    TEST_ASSERT_EQ("henvcfg.CBZE reads zero",
+                   henvcfg_read() & ENVCFG_CBZE, 0UL);
+
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * HENV-28: DTE reads zero when Ssdbltrp not implemented
+ * norm:henvcfg_dte_op
+ * =================================================================== */
+TEST_REGISTER(henvcfg_28_dte_unimplemented);
+bool henvcfg_28_dte_unimplemented(void) {
+    TEST_BEGIN("HENV-28: DTE reads zero when Ssdbltrp not implemented");
+
+    if (probe_menvcfg_bit(ENVCFG_DTE))
+        TEST_SKIP("Ssdbltrp IS implemented -- test only for non-impl case");
+
+    henvcfg_write(henvcfg_read() | ENVCFG_DTE);
+    TEST_ASSERT_EQ("henvcfg.DTE reads zero",
+                   henvcfg_read() & ENVCFG_DTE, 0UL);
+
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * HENV-29: ADUE reads zero when Svadu not implemented
+ * norm:henvcfg_adue_op
+ * =================================================================== */
+TEST_REGISTER(henvcfg_29_adue_unimplemented);
+bool henvcfg_29_adue_unimplemented(void) {
+    TEST_BEGIN("HENV-29: ADUE reads zero when Svadu not implemented");
+
+    if (probe_menvcfg_bit(MENVCFG_ADUE))
+        TEST_SKIP("Svadu IS implemented -- test only for non-impl case");
+
+    henvcfg_write(henvcfg_read() | MENVCFG_ADUE);
+    TEST_ASSERT_EQ("henvcfg.ADUE reads zero",
+                   henvcfg_read() & MENVCFG_ADUE, 0UL);
 
     HYP_TEST_END();
 }

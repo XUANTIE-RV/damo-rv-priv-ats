@@ -15,11 +15,23 @@
  * Reuses _setup_with_victim() and _vsfault_check() from test_helpers.c.
  * =================================================================== */
 
-/* GRWX-01: R-only leaf, store -> store gpf */
+/* GRWX-01: R-only leaf, load succeeds + store -> store gpf */
 TEST_REGISTER(test_grwx_01_ronly_store);
 bool test_grwx_01_ronly_store(void) {
-    TEST_BEGIN("GRWX-01: G-stage R-only leaf -> store gpf");
+    TEST_BEGIN("GRWX-01: G-stage R-only leaf -> load ok, store gpf");
     uintptr_t flags = PTE_V | PTE_R | PTE_U | PTE_A | PTE_D;
+
+    /* Verify load succeeds on R-only leaf. */
+    two_stage_ctx_t ctx;
+    _setup_with_victim(&ctx, (uintptr_t)test_fault_page, flags);
+    *(volatile uint64_t *)test_fault_page = 0;
+    uintptr_t r = two_stage_run_in_vs(&ctx, test_vs_load,
+                                      (uintptr_t)test_fault_page);
+    TEST_ASSERT("R-only leaf: load succeeds", r == 0 || r == 0 /* load returns value */);
+    two_stage_cleanup(&ctx);
+    hyp_reset_state();
+
+    /* Verify store faults on R-only leaf. */
     bool ok = _vsfault_check(test_vs_store_expect_fault,
                              (uintptr_t)test_fault_page,
                              flags, CAUSE_STORE_GUEST_PAGE_FAULT);
@@ -27,11 +39,23 @@ bool test_grwx_01_ronly_store(void) {
     HYP_TEST_END();
 }
 
-/* GRWX-02: RW leaf, exec -> inst gpf */
+/* GRWX-02: RW leaf, load/store succeed + exec -> inst gpf */
 TEST_REGISTER(test_grwx_02_rw_exec);
 bool test_grwx_02_rw_exec(void) {
-    TEST_BEGIN("GRWX-02: G-stage RW leaf -> inst gpf on exec");
+    TEST_BEGIN("GRWX-02: G-stage RW leaf -> load/store ok, inst gpf on exec");
     uintptr_t flags = PTE_V | PTE_R | PTE_W | PTE_U | PTE_A | PTE_D;
+
+    /* Verify load+store succeed on RW leaf. */
+    two_stage_ctx_t ctx;
+    _setup_with_victim(&ctx, (uintptr_t)test_fault_page, flags);
+    *(volatile uint64_t *)test_fault_page = 0;
+    uintptr_t r = two_stage_run_in_vs(&ctx, test_vs_read_write,
+                                      (uintptr_t)test_fault_page);
+    TEST_ASSERT("RW leaf: load/store succeeds", r == 0);
+    two_stage_cleanup(&ctx);
+    hyp_reset_state();
+
+    /* Verify exec faults on RW leaf. */
     bool ok = _vsfault_check(test_vs_exec_expect_fault,
                              (uintptr_t)test_fault_page,
                              flags, CAUSE_INST_GUEST_PAGE_FAULT);
@@ -39,11 +63,23 @@ bool test_grwx_02_rw_exec(void) {
     HYP_TEST_END();
 }
 
-/* GRWX-03: RX leaf, store -> store gpf */
+/* GRWX-03: RX leaf, load/fetch succeed + store -> store gpf */
 TEST_REGISTER(test_grwx_03_rx_store);
 bool test_grwx_03_rx_store(void) {
-    TEST_BEGIN("GRWX-03: G-stage RX leaf -> store gpf");
+    TEST_BEGIN("GRWX-03: G-stage RX leaf -> load/fetch ok, store gpf");
     uintptr_t flags = PTE_V | PTE_R | PTE_X | PTE_U | PTE_A | PTE_D;
+
+    /* Verify load succeeds on RX leaf. */
+    two_stage_ctx_t ctx;
+    _setup_with_victim(&ctx, (uintptr_t)test_fault_page, flags);
+    *(volatile uint64_t *)test_fault_page = 0;
+    uintptr_t r = two_stage_run_in_vs(&ctx, test_vs_load,
+                                      (uintptr_t)test_fault_page);
+    TEST_ASSERT("RX leaf: load succeeds", r == 0 || r == 0 /* load returns value */);
+    two_stage_cleanup(&ctx);
+    hyp_reset_state();
+
+    /* Verify store faults on RX leaf. */
     bool ok = _vsfault_check(test_vs_store_expect_fault,
                              (uintptr_t)test_fault_page,
                              flags, CAUSE_STORE_GUEST_PAGE_FAULT);
@@ -69,7 +105,14 @@ bool test_grwx_04_rwx_ok(void) {
     HYP_TEST_END();
 }
 
-/* GRWX-05: X-only leaf, load -> load gpf (sstatus.MXR=0 default) */
+/* GRWX-05: X-only leaf, load -> load gpf (sstatus.MXR=0 default)
+ *
+ * NOTE: We cannot directly verify "fetch succeeds" on X-only leaf
+ * because the fault page contains no valid executable code — the
+ * fetch would pass G-stage (X=1) but then hit an illegal-instruction
+ * trap from the page content. G-stage fetch permission is implicitly
+ * validated by the G-stage translation allowing the access through;
+ * explicit fetch-success testing would require a code-bearing page. */
 TEST_REGISTER(test_grwx_05_xonly_load);
 bool test_grwx_05_xonly_load(void) {
     TEST_BEGIN("GRWX-05: G-stage X-only leaf -> load gpf");

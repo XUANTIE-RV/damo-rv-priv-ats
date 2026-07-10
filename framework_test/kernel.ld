@@ -1,6 +1,6 @@
 /* Framework test linker script */
 
-INCLUDE "../common/config/qemu-rv64-max/link.ld"
+INCLUDE "link.ld"
 
 SECTIONS
 {

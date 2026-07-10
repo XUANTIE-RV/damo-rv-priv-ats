@@ -691,7 +691,7 @@ Base linker scripts are located in platform configuration directories `common/co
 **Typical Extension kernel.ld Structure:**
 
 ```ld
-INCLUDE "../common/config/qemu-rv64-max/link.ld"
+INCLUDE "link.ld"
 
 /* Extension-specific sections */
 .test_table : { ... }

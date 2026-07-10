@@ -316,12 +316,37 @@ bool test_hcross_sssta_31(void)
         TEST_SKIP("hstateen0.IMSIC not writable");
     }
 
-    /* With IMSIC=1, VS-mode stopei access should not trap due to
-     * stateen gating (may still trap if IMSIC not configured) */
-    printf("  IMSIC=1 set; actual access depends on IMSIC config\n");
-    TEST_ASSERT("hstateen0.IMSIC set to 1",
-                (hstateen_read(0) & STATEEN0_IMSIC) != 0);
+    /* VS-mode stopei access requires hstatus.VGEIN to be a valid
+     * guest interrupt file number (non-zero). Per AIA spec: when
+     * VGEIN is not an implemented guest external interrupt number,
+     * VS-mode stopei access raises virtual-instruction exception.
+     * This is independent of the stateen gate. */
+    uintptr_t saved_hstatus;
+    asm volatile("csrr %0, 0x600" : "=r"(saved_hstatus));
 
+    /* Try setting VGEIN=1 */
+    uintptr_t new_hs = (saved_hstatus & ~HSTATUS_VGEIN_MASK) |
+                       (1UL << HSTATUS_VGEIN_SHIFT);
+    asm volatile("csrw 0x600, %0" :: "r"(new_hs));
+    uintptr_t rb_hs;
+    asm volatile("csrr %0, 0x600" : "=r"(rb_hs));
+
+    if (((rb_hs & HSTATUS_VGEIN_MASK) >> HSTATUS_VGEIN_SHIFT) == 0)
+    {
+        /* GEILEN=0, cannot configure valid VGEIN */
+        asm volatile("csrw 0x600, %0" :: "r"(saved_hstatus));
+        hstateen_write(0, saved_h);
+        mstateen_write(0, saved_m);
+        TEST_SKIP("No guest interrupt files (GEILEN=0), "
+                   "cannot test stopei access");
+    }
+
+    /* With IMSIC=1 and valid VGEIN, VS-mode stopei access should
+     * not trap due to stateen gating. */
+    printf("  IMSIC=1, VGEIN=1; verifying VS-mode stopei not blocked\n");
+    VS_EXPECT_NO_TRAP(run_in_vs_mode(_vs_read_stopei, 0));
+
+    asm volatile("csrw 0x600, %0" :: "r"(saved_hstatus));
     hstateen_write(0, saved_h);
     mstateen_write(0, saved_m);
     HYP_TEST_END();
@@ -355,7 +380,8 @@ bool test_hcross_sssta_32(void)
     TEST_ASSERT("hstateen0.IMSIC == 0",
                 (hstateen_read(0) & STATEEN0_IMSIC) == 0);
 
-    printf("  IMSIC=0: VS-mode guest IMSIC blocked (equiv VGEIN=0)\n");
+    /* VS-mode stopei access should trigger virtual-instruction */
+    EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_read_stopei, 0));
 
     hstateen_write(0, saved_h);
     mstateen_write(0, saved_m);
@@ -388,7 +414,17 @@ bool test_hcross_sssta_33(void)
     TEST_ASSERT("hstateen0.AIA cleared to 0",
                 (hstateen_read(0) & STATEEN0_AIA) == 0);
 
-    printf("  AIA=0: VS-mode Ssaia non-CSRIND/IMSIC state blocked\n");
+#if __riscv_xlen == 32
+    /* RV32: AIA controls sieh/siph access. With AIA=0, VS-mode
+     * access to sieh should trigger virtual-instruction. */
+    EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_read_sieh, 0));
+#else
+    /* RV64: AIA controls Ssaia state not covered by CSRIND/IMSIC.
+     * On typical RV64, CSRIND+IMSIC cover all main Ssaia supervisor
+     * state (siselect/sireg* + stopei). The AIA bit may control
+     * implementation-specific state; verified at register level. */
+    printf("  AIA=0: on RV64, remaining Ssaia state is platform-specific\n");
+#endif
 
     hstateen_write(0, saved_h);
     mstateen_write(0, saved_m);
@@ -417,6 +453,15 @@ bool test_hcross_sssta_34(void)
 
     TEST_ASSERT("hstateen0.AIA set to 1",
                 (hstateen_read(0) & STATEEN0_AIA) != 0);
+
+#if __riscv_xlen == 32
+    /* RV32: AIA=1 allows VS-mode access to sieh/siph */
+    VS_EXPECT_NO_TRAP(run_in_vs_mode(_vs_read_sieh, 0));
+#else
+    /* RV64: AIA controls Ssaia state not covered by CSRIND/IMSIC.
+     * On typical RV64, no additional supervisor state remains. */
+    printf("  AIA=1: on RV64, remaining Ssaia state is platform-specific\n");
+#endif
 
     hstateen_write(0, saved_h);
     mstateen_write(0, saved_m);
@@ -450,7 +495,8 @@ bool test_hcross_sssta_35(void)
         TEST_SKIP("Neither CSRIND nor IMSIC writable");
     }
 
-    /* AIA=0 should NOT affect CSRIND/IMSIC controlled state */
+    /* AIA=0 should NOT affect CSRIND/IMSIC controlled state.
+     * Verify at hstateen0 register level. */
     if (csrind_set)
     {
         TEST_ASSERT("CSRIND still 1 with AIA=0",
@@ -460,6 +506,36 @@ bool test_hcross_sssta_35(void)
     {
         TEST_ASSERT("IMSIC still 1 with AIA=0",
                     (hstateen_read(0) & STATEEN0_IMSIC) != 0);
+    }
+
+    /* Verify VS-mode can still access CSRIND/IMSIC controlled
+     * CSRs despite AIA=0, proving AIA does not gate them. */
+    if (csrind_set)
+    {
+        VS_EXPECT_NO_TRAP(run_in_vs_mode(_vs_read_siselect, 0));
+    }
+    if (imsic_set)
+    {
+        /* stopei requires valid VGEIN per AIA spec. */
+        uintptr_t saved_hstatus;
+        asm volatile("csrr %0, 0x600" : "=r"(saved_hstatus));
+
+        uintptr_t new_hs = (saved_hstatus & ~HSTATUS_VGEIN_MASK) |
+                           (1UL << HSTATUS_VGEIN_SHIFT);
+        asm volatile("csrw 0x600, %0" :: "r"(new_hs));
+        uintptr_t rb_hs;
+        asm volatile("csrr %0, 0x600" : "=r"(rb_hs));
+
+        if (((rb_hs & HSTATUS_VGEIN_MASK) >> HSTATUS_VGEIN_SHIFT) != 0)
+        {
+            VS_EXPECT_NO_TRAP(run_in_vs_mode(_vs_read_stopei, 0));
+        }
+        else
+        {
+            printf("  stopei VS-mode access skipped: GEILEN=0\n");
+        }
+
+        asm volatile("csrw 0x600, %0" :: "r"(saved_hstatus));
     }
 
     hstateen_write(0, saved_h);

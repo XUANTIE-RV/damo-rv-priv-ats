@@ -2,23 +2,61 @@
 
 # Hypervisor Two-Stage Address Translation Test Plan
 
-## Overview
+This document defines the test plan for **RISC-V Hypervisor Extension Two-Stage Address Translation** (VS-stage + G-stage). It covers the joint behavior of VS-stage (controlled by `vsatp`) and G-stage (controlled by `hgatp`) when V=1: the complete VA → GPA → SPA chain, G-stage faults triggered by implicit accesses, permission intersection, TLB fences, HLV/HLVX/HSV instructions, and two-stage access triggered by `mstatus.MPRV+MPV` in M-mode.
 
-This document defines the test plan for **RISC-V Hypervisor Extension Two-Stage Address Translation** (VS-stage + G-stage), covering 23 test groups and approximately 164 test cases.
+> **Scope**: This plan covers the following five categories of scenarios:
+> 1. V=1 and hgatp=Bare: VS-stage only (verify vsatp behaves identically to satp)
+> 2. V=1 and vsatp=Bare (GVA=GPA): G-stage only (exhaustively covered in the companion document `docs/gstage_translation_test_plan.md`; this document only cross-references)
+> 3. V=1 with both stages enabled: VS-stage + G-stage full chain
+> 4. HLV/HLVX/HSV: Explicit two-stage triggering from HS-mode (or U-mode with HU=1)
+> 5. `mstatus.MPRV=1 + MPV=1`: Explicit two-stage triggering from M-mode
+>
+> The current repository is RV64, covering only Sv39/Sv48/Sv57 and Sv39x4/Sv48x4/Sv57x4.
+
+> **Companion Document**: This plan is paired with `docs/gstage_translation_test_plan.md`, sharing the same hypervisor test framework (`docs/hypervisor_framework.md`) and the `sv39x4/`, `sv48x4/`, `sv57x4/` directory structure.
 
 ---
 
-## Normative Rules
+## Applicability and Combination Matrix
 
-The following table lists all specification norms referenced by this test plan and their descriptions (quoted from `SPEC/hypervisor.adoc`):
+Two-stage translation involves VS-stage (4 MODEs) × G-stage (4 MODEs) = 16 combinations. This plan allocates test responsibilities as follows:
+
+| VS-stage \ G-stage | Bare | Sv39x4 | Sv48x4 | Sv57x4 |
+|-------------------|------|--------|--------|--------|
+| **Bare** | ❌ V=0 equivalent (not in this plan) | (Group A) → see `gstage_translation_test_plan.md` | (Group A) → see same doc | (Group A) → see same doc |
+| **Sv39** | Group B | **Group C primary** | Group C′ | Group C′ |
+| **Sv48** | Group B | Group C′ | **Group C primary** | Group C′ |
+| **Sv57** | Group B | Group C′ | Group C′ | **Group C primary** |
+
+- **Group A**: G-stage only (VS-stage Bare), independently covered by `gstage_translation_test_plan.md`
+- **Group B**: VS-stage only (hgatp=Bare), verify that vsatp under V=1 behaves equivalently to normal satp
+- **Group C primary**: 3 same-width matching combinations (Sv39+Sv39x4 / Sv48+Sv48x4 / Sv57+Sv57x4), covering core two-stage behavior
+- **Group C′ cross-width combinations**: 6 cross-width combinations, with at least 1~2 sanity test cases per pair
+
+---
+
+## Specification Reference
+
+- `SPEC/hypervisor.adoc` — "H" Extension for Hypervisor Support, Version 1.0
+  - Two-Stage Address Translation
+  - Guest Physical Address Translation
+  - Virtual Supervisor Address Translation and Protection (`vsatp`) Register
+  - Hypervisor Memory-Management Fence Instructions (HFENCE.VVMA / HFENCE.GVMA)
+  - Hypervisor Virtual-Machine Load and Store Instructions (HLV / HLVX / HSV)
+  - Memory-Management Fences (with V=0/V=1 SFENCE.VMA semantics)
+  - Machine Status (`mstatus` and `mstatush`) Registers — MPV / MPRV table
+  - Trap Cause Codes
+  - Hypervisor Trap Value (`htval`) Register / Hypervisor Trap Instruction (`htinst`) Register
+  - Transformed Instruction or Pseudoinstruction for `mtinst` or `htinst`
+
+## Covered Specification Points
+
+The following table lists the specification norms referenced by this test plan (original text from `SPEC/hypervisor.adoc`):
 
 | Norm ID | Original Specification Text |
 |---------|---------------------------|
 | `norm:H_vm_twostage` | When V=1, two-stage address translation is in effect: VS-stage translation is controlled by `vsatp` and G-stage translation is controlled by `hgatp`. Either stage can be "effectively disabled" by setting the corresponding ATP to Bare. |
 | `norm:H_vm_gstagetrans` | When V=1, any implicit memory access for VS-stage address translation (i.e., a read or write of a VS-level page table) is itself subject to G-stage address translation. |
-| `norm:hgatp_mode_sv39x4` | When `hgatp`.MODE=Sv39x4, the G-stage address translation uses the Sv39x4 scheme. |
-| `norm:hgatp_mode_sv48x4` | When `hgatp`.MODE=Sv48x4, the G-stage address translation uses the Sv48x4 scheme. |
-| `norm:hgatp_mode_sv57x4` | When `hgatp`.MODE=Sv57x4, the G-stage address translation uses the Sv57x4 scheme. |
 | `norm:H_vm_gpatrans` | The conversion of an Sv32x4, Sv39x4, Sv48x4, or Sv57x4 guest physical address uses the same algorithm as Sv32, Sv39, Sv48, or Sv57, except: `hgatp` substitutes for `satp`; the effective privilege mode must be VS-mode or VU-mode; the current privilege mode is always taken to be U-mode when checking the U bit; and guest-page-fault exceptions are raised instead of regular page-fault exceptions. |
 | `norm:H_vm_gpapriv` | For G-stage address translation, all memory accesses are considered to be user-level accesses. Access type permissions are checked during G-stage translation the same as for VS-stage. For memory accesses supporting VS-stage translation, permissions and A/D bit needs are checked as though for an implicit load or store, not for the original access type. However, any exception is always reported for the original access type. |
 | `norm:vsstatus_mxr_vm` | The `vsstatus` field MXR, which makes execute-only pages readable by explicit loads, only overrides VS-stage page protection. Setting MXR at VS-level does not override guest-physical page protections. |
@@ -583,23 +621,23 @@ Two-stage (VS+G) test cases are extracted from the original `Sv39x4/`, `Sv48x4/`
 
 Adopts "main directory holds + others borrow" model:
 
-- **Main directory** `Sv39_Sv39x4/`: Physically holds all 22 group test `.c` files + 1 new `test_granular_matrix.c` Cartesian product driver file.
-- **8 borrowing directories**: `Sv39_Sv48x4/`, `Sv39_Sv57x4/`, `Sv48_Sv39x4/`, `Sv48_Sv48x4/`, `Sv48_Sv57x4/`, `Sv57_Sv39x4/`, `Sv57_Sv48x4/`, `Sv57_Sv57x4/`. Each directory borrows source code via Makefile `CFLAGS += -I../Sv39_Sv39x4/tests`, only customizing `SUITE_VSATP_MODE` / `SUITE_HGATP_MODE` macros in its own `tests/test_register.c`.
+- **Main directory** `Sv39x4_Sv39/`: Physically holds all 22 group test `.c` files + 1 new `test_granular_matrix.c` Cartesian product driver file.
+- **8 borrowing directories**: `Sv48x4_Sv39/`, `Sv57x4_Sv39/`, `Sv39x4_Sv48/`, `Sv48x4_Sv48/`, `Sv57x4_Sv48/`, `Sv39x4_Sv57/`, `Sv48x4_Sv57/`, `Sv57x4_Sv57/`. Each directory borrows source code via Makefile `CFLAGS += -I../Sv39x4_Sv39/tests`, only customizing `SUITE_VSATP_MODE` / `SUITE_HGATP_MODE` macros in its own `tests/test_register.c`.
 - Original three G-stage directories (`Sv39x4/`, `Sv48x4/`, `Sv57x4/`) degrade to **pure G-stage test directories** (retaining 11 G-stage groups: HCSR/ROOT/MAP/HIGH/VALID/RWX/UBIT/AD/ALIGN/GBIT/FAULT), no longer handling two-stage tests.
 
 #### 9-Directory Mapping Table
 
 | Directory | SUITE_VSATP_MODE | SUITE_HGATP_MODE | Cartesian Product Granularity Count |
 |-----------|------------------|------------------|-------------------------------------|
-| `Sv39_Sv39x4` *(main)* | `SATP_MODE_SV39` | `HGATP_MODE_SV39X4` | 3 x 3 = **9** |
-| `Sv39_Sv48x4` | `SATP_MODE_SV39` | `HGATP_MODE_SV48X4` | 3 x 4 = **12** |
-| `Sv39_Sv57x4` | `SATP_MODE_SV39` | `HGATP_MODE_SV57X4` | 3 x 5 = **15** |
-| `Sv48_Sv39x4` | `SATP_MODE_SV48` | `HGATP_MODE_SV39X4` | 4 x 3 = **12** |
-| `Sv48_Sv48x4` | `SATP_MODE_SV48` | `HGATP_MODE_SV48X4` | 4 x 4 = **16** |
-| `Sv48_Sv57x4` | `SATP_MODE_SV48` | `HGATP_MODE_SV57X4` | 4 x 5 = **20** |
-| `Sv57_Sv39x4` | `SATP_MODE_SV57` | `HGATP_MODE_SV39X4` | 5 x 3 = **15** |
-| `Sv57_Sv48x4` | `SATP_MODE_SV57` | `HGATP_MODE_SV48X4` | 5 x 4 = **20** |
-| `Sv57_Sv57x4` | `SATP_MODE_SV57` | `HGATP_MODE_SV57X4` | 5 x 5 = **25** |
+| `Sv39x4_Sv39` *(main)* | `SATP_MODE_SV39` | `HGATP_MODE_SV39X4` | 3 x 3 = **9** |
+| `Sv48x4_Sv39` | `SATP_MODE_SV39` | `HGATP_MODE_SV48X4` | 3 x 4 = **12** |
+| `Sv57x4_Sv39` | `SATP_MODE_SV39` | `HGATP_MODE_SV57X4` | 3 x 5 = **15** |
+| `Sv39x4_Sv48` | `SATP_MODE_SV48` | `HGATP_MODE_SV39X4` | 4 x 3 = **12** |
+| `Sv48x4_Sv48` | `SATP_MODE_SV48` | `HGATP_MODE_SV48X4` | 4 x 4 = **16** |
+| `Sv57x4_Sv48` | `SATP_MODE_SV48` | `HGATP_MODE_SV57X4` | 4 x 5 = **20** |
+| `Sv39x4_Sv57` | `SATP_MODE_SV57` | `HGATP_MODE_SV39X4` | 5 x 3 = **15** |
+| `Sv48x4_Sv57` | `SATP_MODE_SV57` | `HGATP_MODE_SV48X4` | 5 x 4 = **20** |
+| `Sv57x4_Sv57` | `SATP_MODE_SV57` | `HGATP_MODE_SV57X4` | 5 x 5 = **25** |
 | **Total Granularity Combinations** | | | **144** |
 
 #### VS x G Granularity Matrix (Full Traversal per Directory)
@@ -699,44 +737,37 @@ Existing but critical dependencies for this refactoring: `ts2_setup_granular()`,
 5. **SUM only affects VS-stage**:
    - `vsstatus.SUM` controls VS-stage U-bit checking
    - G-stage always U-mode perspective, no SUM concept
+   - HS-level `sstatus.SUM` is ignored during HLV/HSV (`norm:hlsv_trans`)
 
-6. **A/D bit hardware update control** (`norm:henvcfg_adue_op`):
-   - henvcfg.ADUE=0: VS-stage behaves as Svade (A/D=0 triggers page-fault, hardware does not auto-update)
-   - henvcfg.ADUE=1: Hardware can auto-update VS-stage PTE A/D bits
-   - G-stage PTE A/D bits always require hardware update support
+6. **VS-stage A bit speculative restriction** (`norm:vs_stage_speculative_a_bit`):
+   - VS-stage A bit must not be set by misprediction (unless actually in VS/VU-mode)
+   - This is microarchitectural behavior that is generally not observably verifiable on QEMU. This plan does not include direct verification test cases, only documents the constraint
 
-7. **HFENCE instruction semantics**:
-   - HFENCE.VVMA: Flushes VS-stage translation cache, valid in M/HS-mode, not affected by TVM/VTVM
-   - HFENCE.GVMA: Flushes G-stage translation cache, valid in M-mode or HS-mode with TVM=0
-   - SFENCE.VMA under V=1: Flushes VS-stage only, not G-stage
+7. **World switching order** (refer to `docs/hypervisor_framework.md`):
+   - Strict order when switching VMID: vsatp=0 → write hgatp → write vsatp
+   - Avoid speculative execution polluting TLB tags
 
-8. **MPRV+MPV two-stage triggering** (`norm:mstatus_mprv_hypervisor`):
-   - M-mode MPRV=1 + MPV=1 + MPP=S: VS-level two-stage
-   - M-mode MPRV=1 + MPV=1 + MPP=U: VU-level two-stage
-   - M-mode MPRV=1 + MPP=M: No translation (direct physical access)
-   - MPRV does not affect HLV/HLVX/HSV instructions
+8. **HLV/HSV triggers virtual-instruction exception when V=1** (cause=22), not illegal-instruction
 
-9. **Page boundary straddle** (`norm:H_straddle`):
-   - Instruction fetch or misaligned access crossing page boundary involves two translations
-   - On guest-page-fault, stval may be page boundary address (higher than original VA)
-   - htval must correspond to exact virtual address in stval (for non-implicit access)
+9. **MPRV does not affect HLV/HSV** (`norm:mstatus_mprv_hlsv`): HLV/HSV always act as V=1 + SPVP
 
-10. **hgatp alignment and WARL** (`norm:hgatp_ppn_op`, `norm:hgatp_mode_warl`):
-    - G-stage root page table is 16 KiB, must be 16 KiB aligned
-    - hgatp.PPN[1:0] always read as zero (WARL enforced)
-    - Writing unsupported MODE is WARL (not ignored like satp)
+10. **Stack safety for MPRV+MPV tests**: After M-mode sets MPRV=1, all load/store are translated, including stack accesses. Must enable MPRV within minimal window and strictly control with inline asm (see Group 14 notes)
 
-11. **G-stage PTE G bit ignored** (`norm:H_vm_gpa_g`):
-    - G bit in G-stage PTEs is currently unused
-    - Software should clear for forward compatibility
-    - Hardware must ignore (setting G=1 does not affect translation)
+11. **QEMU platform limitations**:
+    - Requires `-cpu rv64,h=true` (or newer versions with H extension enabled by default)
+    - 512GB / 256TB large superpages limited by physical memory
+    - Some implementations may not support Sv57/Sv57x4, should probe before testing
 
 ---
 
 ## References
 
-- RISC-V Privileged Specification (Version 20240411)
-- RISC-V Hypervisor Extension Specification
-- `docs/vm_test_plan.md` (S-mode single-stage translation test plan)
-- `common/hyp/two_stage_helpers.h` (Two-stage translation test framework)
-- `common/vm/page_table.c` (Page table manipulation utilities)
+- `SPEC/hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
+- `docs/gstage_translation_test_plan.md` — G-stage Independent Translation Test Plan (companion)
+- `docs/vm_test_plan.md` — VS-stage / Normal VM Test Plan (behavior baseline)
+- `docs/hypervisor_framework.md` — Hypervisor Test Framework Design
+- `common/hyp/two_stage.c` — Two-stage management API
+- `common/hyp/gstage_pt.c` — G-stage page table management API
+- `common/hyp/hyp_ldst.c` — HLV/HLVX/HSV instruction wrappers
+- `common/hyp/hyp_fence.c` — HFENCE.VVMA/GVMA instruction wrappers
+- `common/hyp/hyp_csr.c` — Hypervisor CSR operation API

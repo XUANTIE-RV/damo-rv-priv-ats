@@ -370,6 +370,16 @@ static uintptr_t vu_exec_sfence_inval_ir(uintptr_t arg) {
     return 0;
 }
 
+/* VU-mode: execute SINVAL.VMA(arg, 0) */
+static uintptr_t vu_exec_sinval_vma(uintptr_t arg) {
+    trap_expect_begin();
+    SINVAL_VMA(arg, 0);
+    trap_expect_end();
+    if (trap_was_triggered())
+        return trap_get_cause();
+    return 0;
+}
+
 /* ===================================================================
  * VS-mode memory access trampolines
  * =================================================================== */

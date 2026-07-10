@@ -373,6 +373,16 @@
 | HENV-17 | DTE=1 启用 VS-mode Ssdbltrp | henvcfg.DTE=1，写 vsstatus.SDT=1 并读回 | SDT 可写可读 |
 | HENV-18 | PBMTE 未实现时只读零 | 若 Svpbmt 未实现，读 henvcfg.PBMTE | 只读零 |
 | HENV-19 | STCE 未实现时只读零 | 若 Sstc 未实现，读 henvcfg.STCE | 只读零 |
+| HENV-20 | CBIE=11 CBO.INVAL 执行 invalidate | henvcfg.CBIE=11，VS-mode 执行 CBO.INVAL | 执行 invalidate 操作 |
+| HENV-21 | CBIE=10 保留编码 WARL 行为 | 写 CBIE=10（保留值），读回 | WARL：不保留保留编码 10b |
+| HENV-22 | PMM 字段读写（Ssnpm） | 写 PMM=00/10/11，读回；写 PMM=01（保留） | 合法值可写，保留值 WARL |
+| HENV-23 | LPE/SSE 字段读写 | 写 LPE/SSE=1，读回 | 已实现时可写；未实现时只读零 |
+| HENV-24 | PMM 未实现时只读零 | 若 Ssnpm 未实现，读 henvcfg.PMM | 只读零 |
+| HENV-25 | CBIE 未实现时只读零 | 若 Zicbom 未实现，读 henvcfg.CBIE | 只读零 |
+| HENV-26 | CBCFE 未实现时只读零 | 若 Zicbom 未实现，读 henvcfg.CBCFE | 只读零 |
+| HENV-27 | CBZE 未实现时只读零 | 若 Zicboz 未实现，读 henvcfg.CBZE | 只读零 |
+| HENV-28 | DTE 未实现时只读零 | 若 Ssdbltrp 未实现，读 henvcfg.DTE | 只读零 |
+| HENV-29 | ADUE 未实现时只读零 | 若 Svadu 未实现，读 henvcfg.ADUE | 只读零 |
 
 ---
 
@@ -431,8 +441,9 @@
 - `norm:vsip_vsie_sei`：hideleg[10]=0 时 vsip.SEIP/vsie.SEIE 只读零；否则是 hip.VSEIP/hie.VSEIE 的 alias
 - `norm:vsip_vsie_sti`：hideleg[6]=0 时 vsip.STIP/vsie.STIE 只读零；否则是 hip.VSTIP/hie.VSTIE 的 alias
 - `norm:vsip_vsie_ssi`：hideleg[2]=0 时 vsip.SSIP/vsie.SSIE 只读零；否则是 hip.VSSIP/hie.VSSIE 的 alias
+- `norm:vsip_vsie_lcofi`：Shlcofideleg 扩展，hideleg[13] 控制 vsip.LCOFIP/vsie.LCOFIE 的 alias
 
-**测试职责**：验证 vsip/vsie 的替代机制和 alias 关系。
+**测试职责**：验证 vsip/vsie 的替代机制、alias 关系、读方向只读零 WARL、写方向无效屏蔽、直接 CSR 读写，以及 LCOFI 扩展。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
@@ -446,6 +457,18 @@
 | VSIE-08 | vsie.SEIE alias 验证 | hideleg[10]=1，VS-mode 写 sie.SEIE=1，HS-mode 读 hie.VSEIE | hie.VSEIE=1 |
 | VSIE-09 | vsie.STIE alias 验证 | hideleg[6]=1，VS-mode 写 sie.STIE=1，HS-mode 读 hie.VSTIE | hie.VSTIE=1 |
 | VSIE-10 | vsie.SSIE alias 验证 | hideleg[2]=1，VS-mode 写 sie.SSIE=1，HS-mode 读 hie.VSSIE | hie.VSSIE=1 |
+| VSIE-11 | hideleg[10]=0 时 vsie.SEIE 只读零 | 设 hie.VSEIE=1, hideleg[10]=0，VS-mode 读 sie.SEIE | 读到 0 |
+| VSIE-12 | hideleg[6]=0 时 vsie.STIE 只读零 | 设 hie.VSTIE=1, hideleg[6]=0，VS-mode 读 sie.STIE | 读到 0 |
+| VSIE-13 | hideleg[2]=0 时 vsie.SSIE 只读零 | 设 hie.VSSIE=1, hideleg[2]=0，VS-mode 读 sie.SSIE | 读到 0 |
+| VSIE-14 | hideleg[10]=0 时 VS 写 sie.SEIE 无效 | hideleg[10]=0，VS-mode 写 sie.SEIE=1，读 hie.VSEIE | hie.VSEIE=0（写无效）|
+| VSIE-15 | hideleg[6]=0 时 VS 写 sie.STIE 无效 | hideleg[6]=0，VS-mode 写 sie.STIE=1，读 hie.VSTIE | hie.VSTIE=0（写无效）|
+| VSIE-16 | hideleg[2]=0 时 VS 写 sie.SSIE 无效 | hideleg[2]=0，VS-mode 写 sie.SSIE=1，读 hie.VSSIE | hie.VSSIE=0（写无效）|
+| VSIE-17 | vsie 直接 CSR 读写验证 | M-mode 写 vsie(0x204) SEIE|STIE|SSIE，读回 | 读回匹配写入值 |
+| VSIE-18 | vsip.SSIP M-mode 可写验证 | hideleg[2]=1，M-mode 写 vsip(0x244) SSIP=1，读回 | vsip.SSIP=1 |
+| VSIE-19 | vsip alias 链 M-mode 视角验证（VSSI） | hideleg[2]=1, hvip.VSSIP=1，M-mode 读 vsip | vsip.SSIP=1 |
+| VSIE-20 | vsip alias 链 M-mode 视角验证（VSEI） | hideleg[10]=1, hvip.VSEIP=1，M-mode 读 vsip | vsip.SEIP=1（bit 9）|
+| VSIE-21 | hideleg[13] 可写性探测（Shlcofideleg） | 写 hideleg[13]=1，读回检测 | 位粘滞表示扩展已实现 |
+| VSIE-22 | hideleg[13]=0 时 vsip/vsie LCOFI 只读零 | hideleg[13]=0，读 vsip.LCOFIP 和 vsie.LCOFIE | 两者均为 0 |
 
 ---
 
@@ -538,6 +561,26 @@
 | VINST-22 | VS=0 时是 illegal 而非 virtual | V=1 时 sstatus.VS=0 或 vsstatus.VS=0，VS-mode 执行 Vector | illegal-instruction exception (cause=2)，非 cause=22 |
 | VINST-23 | virtual-instruction trap 时 stval 正确 | VS-mode 触发 virtual-instruction exception | stval 与 illegal-instruction trap 写法相同 |
 | VINST-24 | mstatus.TW=1 覆盖 VTW（illegal 而非 virtual） | mstatus.TW=1, VS-mode WFI | illegal-instruction exception (cause=2) |
+| VINST-25 | VS-mode 访问 hideleg | VS-mode csrr hideleg | virtual-instruction exception (cause=22) |
+| VINST-26 | VS-mode 访问 hcounteren | VS-mode csrr hcounteren | virtual-instruction exception (cause=22) |
+| VINST-27 | VS-mode 访问 htimedelta | VS-mode csrr htimedelta | virtual-instruction exception (cause=22) |
+| VINST-28 | VS-mode 访问 hip | VS-mode csrr hip | virtual-instruction exception (cause=22) |
+| VINST-29 | VS-mode 访问 hie | VS-mode csrr hie | virtual-instruction exception (cause=22) |
+| VINST-30 | VS-mode 访问 hvip | VS-mode csrr hvip | virtual-instruction exception (cause=22) |
+| VINST-31 | VS-mode 访问 henvcfg | VS-mode csrr henvcfg | virtual-instruction exception (cause=22) |
+| VINST-32 | VS-mode 写 hstatus | VS-mode csrw hstatus | virtual-instruction exception (cause=22) |
+| VINST-33 | VU-mode 访问 sie | VU-mode csrr sie | virtual-instruction exception (cause=22) |
+| VINST-34 | VU-mode 访问 sip | VU-mode csrr sip | virtual-instruction exception (cause=22) |
+| VINST-35 | VU-mode 访问 stvec | VU-mode csrr stvec | virtual-instruction exception (cause=22) |
+| VINST-36 | VU-mode 访问 sepc | VU-mode csrr sepc | virtual-instruction exception (cause=22) |
+| VINST-37 | VS-mode 写 satp + VTVM=1 | hstatus.VTVM=1, VS-mode csrw satp | virtual-instruction exception (cause=22) |
+| VINST-38 | VS-mode 执行 HLV.B | VS-mode 执行 HLV.B | virtual-instruction exception (cause=22) |
+| VINST-39 | VS-mode 执行 HLV.H | VS-mode 执行 HLV.H | virtual-instruction exception (cause=22) |
+| VINST-40 | VS-mode 执行 HLV.D | VS-mode 执行 HLV.D | virtual-instruction exception (cause=22) |
+| VINST-41 | VS-mode 执行 HSV.B | VS-mode 执行 HSV.B | virtual-instruction exception (cause=22) |
+| VINST-42 | VS-mode 执行 HSV.H | VS-mode 执行 HSV.H | virtual-instruction exception (cause=22) |
+| VINST-43 | VS-mode 执行 HSV.D | VS-mode 执行 HSV.D | virtual-instruction exception (cause=22) |
+| VINST-44 | mstatus.TSR=1 不影响 VS-mode SRET | mstatus.TSR=1, hstatus.VTSR=1, VS-mode SRET。TSR 仅影响 HS-mode（norm:mstatus_modes），VS-mode SRET 仅受 VTSR 控制 | virtual-instruction exception (cause=22) |
 
 ---
 

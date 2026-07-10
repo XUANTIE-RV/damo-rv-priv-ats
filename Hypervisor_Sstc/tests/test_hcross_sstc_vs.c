@@ -151,6 +151,14 @@ bool test_hcross_sstc_10(void)
 
 /* ------------------------------------------------------------------ */
 /* HCROSS-SSTC-11: VSTIP = hvip.VSTIP OR vstimecmp signal             */
+/*                                                                    */
+/* Per spec (Sstc): when henvcfg.STCE=1, hip.VSTIP is read-only and   */
+/* is the logical-OR of hvip.VSTIP and the vstimecmp signal.  In this */
+/* mode hvip.VSTIP is also read-only zero (writes ignored), so the    */
+/* OR reduces to: hip.VSTIP = vstimecmp_signal.                       */
+/* We verify: (1) signal=0 -> VSTIP=0, (2) signal=1 -> VSTIP=1,      */
+/*            (3) signal returns to 0 -> VSTIP=0.                     */
+/* The hvip.VSTIP input to the OR gate is covered by HCROSS-SSTC-12.  */
 /* ------------------------------------------------------------------ */
 TEST_REGISTER(test_hcross_sstc_11);
 bool test_hcross_sstc_11(void)
@@ -160,82 +168,89 @@ bool test_hcross_sstc_11(void)
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
 
     menvcfg_set(MENVCFG_STCE);
-
-    /* Disable henvcfg.STCE so hvip.VSTIP reverts to software-writable */
-    henvcfg_clear(HENVCFG_STCE);
-
-    /* Clear any residual, then set VSTIP via hvip */
+    henvcfg_set(HENVCFG_STCE);  /* STCE=1: vstimecmp signal active */
     hvip_clear(HVIP_VSTIP);
+
+    /* ---- Sub-case A: vstimecmp=MAX -> signal=0 -> VSTIP=0 ---- */
     vstimecmp_write((uintptr_t)-1);
     DELAY_LOOP(HCROSS_SSTC_DELAY);
 
-    hvip_set(HVIP_VSTIP);
+    uintptr_t hip_val = hip_read();
+    TEST_ASSERT("VSTIP=0 when vstimecmp=MAX (no signal)",
+                (hip_val & HIP_VSTIP) == 0);
+
+    /* ---- Sub-case B: vstimecmp expired -> signal=1 -> VSTIP=1 ---- */
+    /* Compute a past virtual time = time + htimedelta */
+    uintptr_t htd = htimedelta_read();
+    uintptr_t now = time_read();
+    uintptr_t vtime = now + htd;
+    vstimecmp_write(vtime > 0 ? vtime - 1 : 0);
     DELAY_LOOP(HCROSS_SSTC_DELAY);
 
-    uintptr_t hvip_val = hvip_read();
-    uintptr_t hip_val = hip_read();
+    hip_val = hip_read();
+    TEST_ASSERT("VSTIP=1 from vstimecmp signal (expired)",
+                (hip_val & HIP_VSTIP) != 0);
 
-    /* When STCE=0, hvip.VSTIP should be writable and hip reflects it */
-    if ((hvip_val & HVIP_VSTIP) != 0) {
-        TEST_ASSERT("VSTIP=1 from hvip.VSTIP (STCE=0)",
-                    (hip_val & HIP_VSTIP) != 0);
-    } else {
-        /* Some implementations may still not allow hvip.VSTIP writes;
-         * in that case the vstimecmp comparison result drives VSTIP.
-         * Verify vstimecmp-driven VSTIP instead. */
-        henvcfg_set(HENVCFG_STCE);
-        vstimecmp_write(0);  /* expired value -> VSTIP=1 */
-        DELAY_LOOP(HCROSS_SSTC_DELAY);
-        hip_val = hip_read();
-        TEST_ASSERT("VSTIP=1 from vstimecmp signal",
-                    (hip_val & HIP_VSTIP) != 0);
-    }
+    /* ---- Sub-case C: restore vstimecmp=MAX -> signal=0 -> VSTIP=0 ---- */
+    vstimecmp_write((uintptr_t)-1);
+    DELAY_LOOP(HCROSS_SSTC_DELAY);
+
+    hip_val = hip_read();
+    TEST_ASSERT("VSTIP=0 after vstimecmp returns to MAX",
+                (hip_val & HIP_VSTIP) == 0);
 
     /* Clean up */
     hvip_clear(HVIP_VSTIP);
-    henvcfg_set(HENVCFG_STCE);
-    vstimecmp_write((uintptr_t)-1);
     TEST_END();
 }
 
 /* ------------------------------------------------------------------ */
-/* HCROSS-SSTC-12: henvcfg.STCE=0, VS-mode vstimecmp access denied    */
+/* HCROSS-SSTC-12: henvcfg.STCE=0, VSTIP reverts to hvip-only         */
+/*                                                                    */
+/* Per spec: when henvcfg.STCE=0, the vstimecmp comparison signal is  */
+/* disabled and hip.VSTIP is determined solely by the software-       */
+/* writable hvip.VSTIP bit (old behaviour before Sstc).               */
+/* We verify that a past vstimecmp value does NOT drive VSTIP=1.      */
 /* ------------------------------------------------------------------ */
 TEST_REGISTER(test_hcross_sstc_12);
 bool test_hcross_sstc_12(void)
 {
-    TEST_BEGIN("HCROSS-SSTC-12: henvcfg.STCE=0, VS-mode vstimecmp access denied");
+    TEST_BEGIN("HCROSS-SSTC-12: henvcfg.STCE=0, VSTIP reverts to hvip-only");
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
 
     menvcfg_set(MENVCFG_STCE);
-    mcounteren_set(MCOUNTEREN_TM);
-    henvcfg_clear(HENVCFG_STCE);
-    hcounteren_set(HCOUNTEREN_TM);
+    henvcfg_clear(HENVCFG_STCE);   /* STCE=0: vstimecmp signal disabled */
+    hvip_clear(HVIP_VSTIP);
 
-    /* First ensure vstimecmp is cleared */
-    vstimecmp_write((uintptr_t)-1);
+    /* Set vstimecmp to a past value; with STCE=0, this must NOT
+     * generate a VSTIP signal. */
+    vstimecmp_write(0);
+    DELAY_LOOP(HCROSS_SSTC_DELAY);
 
-    /* Verify VS-mode cannot access stimecmp when STCE=0 */
-    trap_expect_begin();
-    run_in_vs_mode(_vs_stimecmp_read, 0);
-    TEST_ASSERT("VS access denied when henvcfg.STCE=0",
-                trap_was_triggered());
-    if (trap_was_triggered()) {
-        TEST_ASSERT_EQ("cause is virtual-instruction",
-                       trap_get_cause(),
-                       (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
-    }
-    trap_expect_end();
+    /* ---- Sub-case A: hvip.VSTIP=0, vstimecmp=past -> VSTIP=0 ---- */
+    uintptr_t hip_val = hip_read();
+    TEST_ASSERT("VSTIP=0 when STCE=0 despite vstimecmp=past",
+                (hip_val & HIP_VSTIP) == 0);
 
-    /* Then verify enabling STCE=1 allows access */
-    henvcfg_set(HENVCFG_STCE);
-    trap_expect_begin();
-    run_in_vs_mode(_vs_stimecmp_read, 0);
-    TEST_ASSERT("VS access allowed when henvcfg.STCE=1",
-                !trap_was_triggered());
-    trap_expect_end();
+    /* ---- Sub-case B: hvip.VSTIP=1 (manually set) -> VSTIP=1 ---- */
+    /* Proves that VSTIP is now driven only by hvip.VSTIP. */
+    hvip_set(HVIP_VSTIP);
+    DELAY_LOOP(HCROSS_SSTC_DELAY);
 
+    hip_val = hip_read();
+    TEST_ASSERT("VSTIP=1 from hvip.VSTIP only when STCE=0",
+                (hip_val & HIP_VSTIP) != 0);
+
+    /* ---- Sub-case C: clear hvip.VSTIP -> VSTIP=0 again ---- */
+    hvip_clear(HVIP_VSTIP);
+    DELAY_LOOP(HCROSS_SSTC_DELAY);
+
+    hip_val = hip_read();
+    TEST_ASSERT("VSTIP=0 after clearing hvip.VSTIP (STCE=0)",
+                (hip_val & HIP_VSTIP) == 0);
+
+    /* Clean up */
     vstimecmp_write((uintptr_t)-1);
     TEST_END();
 }

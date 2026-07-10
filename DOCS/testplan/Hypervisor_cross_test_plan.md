@@ -47,7 +47,7 @@
 | `norm:svadu_hfence_gvma_sync` | `svadu.adoc` | After modifying `menvcfg.ADUE`, a `HFENCE.GVMA(x0,x0)` is required to synchronize the change across all VMIDs. | 修改 `menvcfg.ADUE` 后，需要执行 `HFENCE.GVMA(x0,x0)` 以在所有 VMID 间同步该变更。 |
 | `norm:H_guest_page_fault` | `hypervisor.adoc` | On a guest-page fault, `mtval` or `stval` is written with the faulting guest virtual address. | 客户页错误时 `mtval`/`stval` 写入故障客户虚拟地址。 |
 | `norm:sstvala_stval_pc` | `sstvala.adoc` | When a page-fault is triggered by an instruction fetch, `stval` is written with the faulting virtual address (PC). | 当取指触发 page-fault 时，`stval` 写入故障虚拟地址（PC）。 |
-| `norm:Ssccptr_cacheable_coherent_supports_pt_read` | `ssccptr.adoc` | If the Ssccptr extension is implemented, then main memory regions with both the cacheability and coherence PMAs must support hardware page-table reads. | 如果实现了 Ssccptr 扩展，则同时具有可缓存性和一致性 PMA 的主存区域必须支持硬件页表读取。 |
+| `norm:ssccptr_memory_pte_reads` | `ssccptr.adoc` | If the Ssccptr extension is implemented, then main memory regions with both the cacheability and coherence PMAs must support hardware page-table reads. | 如果实现了 Ssccptr 扩展，则同时具有可缓存性和一致性 PMA 的主存区域必须支持硬件页表读取。 |
 | `norm:sscounterenw_hpmcounter_hcounteren` | `sscounterenw.adoc` | If the Sscounterenw extension is implemented, then for any `hpmcounter` that is not read-only zero, the corresponding bit in `scounteren` must be writable. | 若实现了 Sscounterenw 扩展，则对于任何非只读零的 `hpmcounter`，`scounteren` 中的对应位必须可写。 |
 | `norm:hcounteren_vs_vu_control` | `hypervisor.adoc` | The `hcounteren` CSR controls availability of performance monitoring counters to VS-mode and VU-mode. | `hcounteren` CSR 控制 VS 和 VU 模式下性能监控计数器的可用性。 |
 | `norm:Svinval_hinval_vvma_gvma` | `svinval.adoc` | HINVAL.VVMA and HINVAL.GVMA have the same semantics as SINVAL.VMA, except that they combine with SFENCE.W.INVAL and SFENCE.INVAL.IR to replace HFENCE.VVMA and HFENCE.GVMA, respectively. | HINVAL.VVMA 和 HINVAL.GVMA 与 SINVAL.VMA 具有相同的语义，只是它们与 SFENCE.W.INVAL 和 SFENCE.INVAL.IR 结合分别替换 HFENCE.VVMA 和 HFENCE.GVMA。 |
@@ -97,14 +97,15 @@
 | HCROSS-SVADU-01 | henvcfg.ADUE 可写性验证 | HS-mode 写 henvcfg.ADUE=1，读回验证；再写 ADUE=0，读回验证 | 若实现 Svadu，ADUE 可写且读回一致；若未实现 Svadu，ADUE 只读零 |
 | HCROSS-SVADU-02 | HLV 指令与 Svadu 交互（ADUE=1） | henvcfg.ADUE=1，VS-stage PTE A=0，HS-mode 执行 HLV.D 读取该 GPA | 访问成功，VS-stage PTE A 位被硬件自动设为 1（HLV 触发的隐式访问也遵循 ADUE 控制） |
 | HCROSS-SVADU-03 | HSV 指令与 Svadu 交互（ADUE=1） | henvcfg.ADUE=1，VS-stage PTE A=1,D=0，HS-mode 执行 HSV.D 写入该 GPA | 访问成功，VS-stage PTE D 位被硬件自动设为 1 |
-| HCROSS-SVADU-04 | HLV 指令与 Svade 交互（ADUE=0） | henvcfg.ADUE=0，VS-stage PTE A=0，HS-mode 执行 HLV.D 读取该 GPA | guest-page-fault (cause=21)，硬件不自动更新 A 位（行为如同 Svade） |
+| HCROSS-SVADU-04 | HLV 指令与 Svade 交互（ADUE=0） | henvcfg.ADUE=0，VS-stage PTE A=0，HS-mode 执行 HLV.D 读取该 GPA | page-fault (cause=13)，硬件不自动更新 A 位（行为如同 Svade）。注意：VS-stage 翻译异常产生 page-fault (cause=13)，非 guest-page-fault (cause=21)。guest-page-fault 仅用于 G-stage 翻译异常（norm:H_vm_gpatrans） |
 | HCROSS-SVADU-05 | menvcfg.ADUE 修改后 HFENCE.GVMA 同步 | menvcfg.ADUE 从 0 改为 1，不执行 HFENCE.GVMA，VS-mode 访问 A=0 的页；再执行 HFENCE.GVMA(x0,x0) 后重复访问 | 第一次访问可能仍按旧行为（实现相关）；HFENCE.GVMA 后行为必须按新 ADUE 值（A 位被硬件更新） |
 | HCROSS-SVADU-06 | menvcfg.ADUE 修改后特定 VMID 同步 | menvcfg.ADUE 从 1 改为 0，仅对特定 VMID 执行 HFENCE.GVMA(vmid, x0)，验证该 VMID 和其他 VMID 的行为 | 指定 VMID 的行为必须按新 ADUE 值；其他 VMID 行为实现相关（可能仍按旧值） |
 
 > [!NOTE]
 > - HCROSS-SVADU-02~04 需要在 HS-mode 执行 HLV/HSV 指令，验证隐式访问（页表遍历）的 A/D 更新行为也受 `henvcfg.ADUE` 控制。
+> - HCROSS-SVADU-04~07 中 VS-stage 翻译异常（A=0 + Svade）产生 **page-fault (cause=13)**，而非 guest-page-fault (cause=21)。根据 norm:H_vm_gpatrans，guest-page-fault 仅用于 **G-stage** 翻译异常，VS-stage 翻译异常使用常规 page-fault cause 码。
 > - HCROSS-SVADU-05~06 验证 `menvcfg.ADUE` 变更后的同步语义。`HFENCE.GVMA(x0,x0)` 刷新所有 VMID，`HFENCE.GVMA(vmid,x0)` 仅刷新特定 VMID。
-> - 若平台未实现 Svadu 扩展，HCROSS-SVADU-01 应验证 ADUE 只读零，HCROSS-SVADU-02~06 应 TEST_SKIP。
+> - 若平台未实现 Svadu 扩展，HCROSS-SVADU-01 应验证 ADUE 只读零，HCROSS-SVADU-02~07 应 TEST_SKIP。
 
 ---
 
@@ -122,15 +123,15 @@
 | HCROSS-SSTVALA-01 | Instruction guest-page-fault (cause=20) 时 stval 精确值 | VS-mode 跳转执行一个 G-stage 未映射的 GPA 地址，触发 inst guest-page-fault trap 到 HS-mode | scause=20，stval == faulting GVA（即跳转目标地址），而非 0 或其他值 |
 | HCROSS-SSTVALA-02 | Store guest-page-fault (cause=23) 时 stval 精确值 | VS-mode 对一个 G-stage 未映射的 GPA 地址执行 store，触发 store guest-page-fault trap 到 HS-mode | scause=23，stval == faulting GVA（即 store 目标地址），而非 0 |
 | HCROSS-SSTVALA-03 | AMO guest-page-fault (cause=23) 时 stval 精确值 | VS-mode 对一个 G-stage 未映射的 GPA 地址执行 AMO（如 AMOADD.W），触发 guest-page-fault trap 到 HS-mode | scause=23，stval == faulting GVA（即 AMO 目标地址） |
-| HCROSS-SSTVALA-04 | Instruction guest-page-fault 时 vstval 精确值（委托到 VS-mode） | 配置 hedeleg 将 inst guest-page-fault 委托到 VS-mode，VS-mode 跳转执行未映射地址 | vscause=20，vstval == faulting GVA |
-| HCROSS-SSTVALA-05 | Store guest-page-fault 时 vstval 精确值（委托到 VS-mode） | 配置 hedeleg 将 store guest-page-fault 委托到 VS-mode，VS-mode store 到未映射地址 | vscause=23，vstval == faulting GVA |
+| HCROSS-SSTVALA-04 | VS-stage inst page-fault (cause=12) 委托到 VS-mode 时 vstval 精确值 | 启用 VS-stage 翻译（SV39），配置 medeleg+hedeleg 将 inst page-fault (cause=12) 委托到 VS-mode。VS-mode 跳转执行一个 VS-stage 未映射的地址，触发 inst page-fault 委托到 VS-mode handler | vscause=12，vstval == faulting VA（跳转目标虚拟地址） |
+| HCROSS-SSTVALA-05 | VS-stage load page-fault (cause=13) 委托到 VS-mode 时 vstval 精确值 | 启用 VS-stage 翻译（SV39），配置 medeleg+hedeleg 将 load page-fault (cause=13) 委托到 VS-mode。VS-mode load 一个 VS-stage 未映射的地址，触发 load page-fault 委托到 VS-mode handler | vscause=13，vstval == faulting VA（load 目标虚拟地址） |
 | HCROSS-SSTVALA-06 | Virtual-instruction 异常时 stval 精确值：VS-mode 读 hstatus | VS-mode 执行 `csrrs x5, hstatus, x0`（编码 0x600022F3），触发 virtual-instruction（cause=22） | scause=22，stval == 0x600022F3（故障指令编码） |
 | HCROSS-SSTVALA-07 | Virtual-instruction 异常时 stval 精确值：VS-mode 写 hgatp | VS-mode 执行 `csrrw x0, hgatp, x0`（编码 0x68001073），触发 virtual-instruction（cause=22） | scause=22，stval == 0x68001073（故障指令编码） |
 | HCROSS-SSTVALA-08 | Virtual-instruction 异常时 stval 精确值：VS-mode 读 hideleg | VS-mode 执行 `csrrs x5, hideleg, x0`（编码 0x603022F3），触发 virtual-instruction（cause=22） | scause=22，stval == 0x603022F3（故障指令编码） |
 
 > [!NOTE]
 > - Sstvala 的核心语义是保证 `stval` 写入 faulting 地址（而非 0）。基础 H 扩展规范允许 `stval` 在某些场景下为 0，而 Sstvala 扩展强制要求写入精确地址。
-> - HCROSS-SSTVALA-01~03 验证 trap 到 HS-mode 时 `stval` 的精确性；HCROSS-SSTVALA-04~05 验证委托到 VS-mode 时 `vstval` 的精确性。
+> - HCROSS-SSTVALA-01~03 验证 guest-page-fault（G-stage fault）trap 到 HS-mode 时 `stval` 的精确性；HCROSS-SSTVALA-04~05 验证 VS-stage page-fault 通过 medeleg+hedeleg 委托到 VS-mode 时 `vstval` 的精确性。04/05 使用 VS-stage page-fault（cause 12/13）而非 guest-page-fault（cause 20/23），因为 RISC-V SPEC 规定 guest-page-fault 不能通过 hedeleg 委托到 VS-mode（hedeleg bits 20/21/23 为 read-only zero，详见 `Hypervisor_test_plan.md` DELEG-15/16）。
 > - 与 `Hypervisor_gstage_test_plan.md` 的 GFAULT 系列用例的区别：GFAULT 系列主要验证 fault 触发和 htval 编码，本组专注于 stval/vstval 的精确值断言。
 > - HCROSS-SSTVALA-06~08 验证 Sstvala 对 **指令类异常** 的精确性要求：virtual-instruction 异常（cause=22）时，`stval` 必须包含触发异常的指令编码（零扩展到 XLEN）。这与 guest-page-fault（地址类异常）的 stval 语义不同——后者要求写入故障虚拟地址。指令编码推导：`csrrs x5, 0x600, x0` = `[31:20]=0x600 [19:15]=00000 [14:12]=010 [11:7]=00101 [6:0]=1110011` = `0x600022F3`。
 > - HCROSS-SSTVALA-06~08 从 `sstvala_test_plan.md` Group 6（TVAL-VI-01~03）迁移而来。需要 H 扩展（`ENABLE_HYP=1`）。
@@ -140,7 +141,7 @@
 ## Group 3. Hypervisor × Ssccptr 交叉测试
 
 **规范依据**：
-- `norm:Ssccptr_cacheable_coherent_supports_pt_read`：具有 cacheability 和 coherence PMA 的主存区域必须支持硬件页表读取
+- `norm:ssccptr_memory_pte_reads`：具有 cacheability 和 coherence PMA 的主存区域必须支持硬件页表读取
 
 **测试职责**：验证在 Hypervisor 两级翻译场景下，VS-stage 和 G-stage 页表遍历在满足 PMA 条件的主存区域中能够正确完成。
 
@@ -198,12 +199,14 @@
 | HCROSS-SINVAL-12 | VU-mode 执行 SFENCE.INVAL.IR 触发 virtual-instruction | VU-mode 执行 SFENCE.INVAL.IR | virtual-instruction exception (cause=22) |
 | HCROSS-SINVAL-13 | VS-mode 执行 SFENCE.W.INVAL 正常（VTVM=0） | hstatus.VTVM=0，VS-mode 执行 SFENCE.W.INVAL | 正常执行，无异常（SFENCE.W.INVAL 不受 VTVM 控制） |
 | HCROSS-SINVAL-14 | VS-mode 执行 SFENCE.INVAL.IR 正常（VTVM=0） | hstatus.VTVM=0，VS-mode 执行 SFENCE.INVAL.IR | 正常执行，无异常 |
+| HCROSS-SINVAL-15 | VU-mode 执行 SINVAL.VMA 触发 virtual-instruction | VU-mode 执行 SINVAL.VMA | virtual-instruction exception (cause=22) |
 
 > [!NOTE]
 > - HINVAL.VVMA/GVMA 是 Svinval 扩展为 Hypervisor 场景提供的细粒度 TLB 刷新指令，与 HFENCE.VVMA/GVMA 功能等价但支持批量刷新优化。
 > - HCROSS-SINVAL-05~06 验证 HINVAL.GVMA 的 VMID 语义：VMID 非零时仅刷新特定 VMID 的 TLB，VMID=0 时刷新所有 VMID。这与 HFENCE.GVMA 的语义一致。
 > - HCROSS-SINVAL-07~12 验证 VS/VU-mode 执行 HINVAL 和 SFENCE.W.INVAL/SFENCE.INVAL.IR 时的 virtual-instruction 异常触发，这是 Hypervisor 安全隔离的关键保证。
-> - 与 `Hypervisor_2_stage_test_plan.md` Group 22 的区别：Group 22 仅覆盖了 VTVM=1 时 SINVAL.VMA 和 TVM=1 时 HINVAL.GVMA 的异常触发（2 个用例），本组补充了 HINVAL 指令功能、VMID 语义、以及 VS/VU-mode 的完整 virtual-instruction 覆盖（14 个用例）。
+> - HCROSS-SINVAL-15 验证 VU-mode 执行 SINVAL.VMA 时触发 virtual-instruction 异常，与 HINVAL.VVMA/GVMA 在 VU-mode 的异常行为保持一致，完整覆盖 `norm:Svinval_virtual_instruction_vu_vs` 规范。
+> - 与 `Hypervisor_2_stage_test_plan.md` Group 22 的区别：Group 22 仅覆盖了 VTVM=1 时 SINVAL.VMA 和 TVM=1 时 HINVAL.GVMA 的异常触发（2 个用例），本组补充了 HINVAL 指令功能、VMID 语义、以及 VS/VU-mode 的完整 virtual-instruction 覆盖（15 个用例）。
 
 ---
 
@@ -716,7 +719,7 @@ bool test_hcross_svpbmt_04(void) {
 |---------|----------|----------|----------|----------|
 | HCROSS-SSTC-09 | vstimecmp 触发 VSTIP | 设置 vstimecmp 为过去值（相对于 time + htimedelta），检查 hip.VSTIP | VSTIP = 1 | `norm:hip_vstip_vstie_acc_op` |
 | HCROSS-SSTC-10 | vstimecmp 清除 VSTIP | 设置 vstimecmp 为最大值，检查 hip.VSTIP（假设 hvip.VSTIP=0） | VSTIP = 0 | `norm:hip_vstip_vstie_acc_op` |
-| HCROSS-SSTC-11 | VSTIP = hvip.VSTIP OR vstimecmp 信号 | hvip.VSTIP=1, vstimecmp 为最大值，检查 hip.VSTIP | VSTIP = 1（hvip.VSTIP 贡献） | `norm:hip_vstip_vstie_acc_op` |
+| HCROSS-SSTC-11 | VSTIP = hvip.VSTIP OR vstimecmp 信号 | STCE=1 时验证 vstimecmp 信号三态跳变：vstimecmp=MAX→VSTIP=0，vstimecmp=expired→VSTIP=1，vstimecmp=MAX→VSTIP=0 | 各态 hip.VSTIP 符合预期 | `norm:hip_vstip_vstie_acc_op` |
 | HCROSS-SSTC-12 | henvcfg.STCE=0 时 VSTIP 恢复旧行为 | menvcfg.STCE=1, henvcfg.STCE=0, 设 vstimecmp 为过去值，检查 hip.VSTIP | VSTIP 仅由 hvip.VSTIP 决定（vstimecmp 信号不生效） | `norm:henvcfg_stce` |
 
 #### 9.5 VS-mode 定时器功能
@@ -874,38 +877,65 @@ bool test_hcross_sstc_15(void) {
 
 **规范依据**：
 - `norm:sscsrind_csrs_access_control`：若 Smstateen 与 Smcsrind 同时实现，`mstateen0[60]` (CSRIND) 控制对 `siselect`、`sireg*`、`vsiselect`、`vsireg*` 的访问。当 `mstateen0[60]=0` 时，从低于 M-mode 的特权级访问这些 CSR 触发 illegal-instruction 异常。
+- `norm:hypervisor_impl_csrs_access_control`：若 Hypervisor 扩展已实现，`hstateen0[60]` 同样定义，但仅控制 VS/VU-mode 对 `siselect`/`sireg*`（实为 `vsiselect`/`vsireg*`）的访问。当 `hstateen0[60]=0` 且 `mstateen0[60]=1` 时，VS/VU-mode 访问 `siselect`/`sireg*` 触发 virtual-instruction 异常（非 illegal-instruction）。
 
-**测试职责**：验证 Smcsrind 扩展在 Hypervisor 场景下，`mstateen0[60]` (CSRIND) 对 S-mode (HS-mode) 访问 `vsiselect`/`vsireg*` 的控制行为。注意：vsiselect/vsireg* 是 H 扩展引入的 CSR，仅在 H 扩展存在时可用。
+**测试职责**：验证 Smcsrind 扩展在 Hypervisor 场景下的 CSRIND 访问控制：
+- Part A (01-08)：`mstateen0[60]` 对 S-mode (HS-mode) 访问 `vsiselect`/`vsireg*` 的控制。M-mode 访问不受 state-enable 影响。
+- Part B (09-11)：`hstateen0[60]` 对 VS-mode 访问 `siselect`/`sireg*`（实为 `vsiselect`/`vsireg*`）的控制。当 `hstateen0[60]=0` 且 `mstateen0[60]=1` 时触发 virtual-instruction 异常。
+
+注意：vsiselect/vsireg* 是 H 扩展引入的 CSR，仅在 H 扩展存在时可用。
 
 > **注意**：本组测试从 `Smcsrind_test_plan.md` Group 4 提取而来，专门针对依赖 H 扩展的用例。需要 H 扩展、Smcsrind 扩展和 Smstateen 扩展同时可用。
 >
-> **前提配置**：M-mode 需预先将 `mstateen0[60]` 设为所需值以控制 HS-mode 对 vsiselect/vsireg* 的访问。
+> **前提配置**：
+> - Part A：M-mode 需预先将 `mstateen0[60]` 设为所需值以控制 HS-mode 对 vsiselect/vsireg* 的访问。
+> - Part B：M-mode 需预先将 `mstateen0[60]` 和 `mstateen0[63]` (SE0) 设为 1，以放行 HS-mode 对 hstateen0 的访问和 CSRIND 控制的状态。
 
 ### 测试 ID 映射表
 
+#### Part A: mstateen0[60] 控制 S-mode (HS-mode) 访问
+
 | 原始 ID | 新 ID | 测试名称 |
-|---------|-------|---------|
+|---------|-------|--------|
 | MCSRIND-STA（新增） | HCROSS-SMCSRIND-01 | mstateen0[60]=0 阻止 S-mode 读 vsiselect |
 | MCSRIND-STA（新增） | HCROSS-SMCSRIND-02 | mstateen0[60]=0 阻止 S-mode 写 vsiselect |
 | MCSRIND-STA（新增） | HCROSS-SMCSRIND-03 | mstateen0[60]=0 阻止 S-mode 读 vsireg |
-| MCSRIND-STA（新增） | HCROSS-SMCSRIND-04 | mstateen0[60]=0 阻止 S-mode 读 vsireg2~vsireg6 |
+| MCSRIND-STA（新增） | HCROSS-SMCSRIND-04 | mstateen0[60]=0 阻止 S-mode 读写 vsireg2~vsireg6 |
 | MCSRIND-STA（新增） | HCROSS-SMCSRIND-05 | mstateen0[60]=1 允许 S-mode 访问 vsiselect |
 | MCSRIND-STA（新增） | HCROSS-SMCSRIND-06 | mstateen0[60]=1 允许 S-mode 访问 vsireg* |
 | MCSRIND-STA-07（补充） | HCROSS-SMCSRIND-07 | mstateen0[60]=0 不影响 M-mode 访问 vsiselect |
 | MCSRIND-STA-08（补充） | HCROSS-SMCSRIND-08 | mstateen0[60]=0 不影响 M-mode 访问 vsireg* |
 
+#### Part B: hstateen0[60] 控制 VS-mode 访问
+
+| 原始 ID | 新 ID | 测试名称 |
+|---------|-------|--------|
+| HCROSS-SMCSRIND-09（补充） | HCROSS-SMCSRIND-09 | hstateen0[60]=0 阻止 VS-mode 读 siselect |
+| HCROSS-SMCSRIND-10（补充） | HCROSS-SMCSRIND-10 | hstateen0[60]=0 阻止 VS-mode 读 sireg |
+| HCROSS-SMCSRIND-11（补充） | HCROSS-SMCSRIND-11 | hstateen0[60]=1 允许 VS-mode 访问 siselect/sireg |
+
 ### 测试用例清单
+
+#### Part A: mstateen0[60] 控制 S-mode (HS-mode) 访问
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 | 规范引用 |
 |---------|----------|----------|----------|----------|
 | HCROSS-SMCSRIND-01 | mstateen0[60]=0 阻止 S-mode 读 vsiselect | mstateen0[60]=0，S-mode (HS-mode) 读 vsiselect (0x250) | 触发 illegal-instruction 异常 (cause=2) | `norm:sscsrind_csrs_access_control` |
 | HCROSS-SMCSRIND-02 | mstateen0[60]=0 阻止 S-mode 写 vsiselect | mstateen0[60]=0，S-mode 写 vsiselect | 触发 illegal-instruction 异常 (cause=2) | `norm:sscsrind_csrs_access_control` |
 | HCROSS-SMCSRIND-03 | mstateen0[60]=0 阻止 S-mode 读 vsireg | mstateen0[60]=0，S-mode 读 vsireg (0x251) | 触发 illegal-instruction 异常 (cause=2) | `norm:sscsrind_csrs_access_control` |
-| HCROSS-SMCSRIND-04 | mstateen0[60]=0 阻止 S-mode 读 vsireg2~vsireg6 | mstateen0[60]=0，S-mode 逐一读 vsireg2~vsireg6 | 每个都触发 illegal-instruction 异常 (cause=2) | `norm:sscsrind_csrs_access_control` |
+| HCROSS-SMCSRIND-04 | mstateen0[60]=0 阻止 S-mode 读写 vsireg2~vsireg6 | mstateen0[60]=0，S-mode 逐一读写 vsireg2~vsireg6 | 每个都触发 illegal-instruction 异常 (cause=2) | `norm:sscsrind_csrs_access_control` |
 | HCROSS-SMCSRIND-05 | mstateen0[60]=1 允许 S-mode 访问 vsiselect | mstateen0[60]=1，S-mode 读写 vsiselect | 访问正常，无异常 | `norm:sscsrind_csrs_access_control` |
-| HCROSS-SMCSRIND-06 | mstateen0[60]=1 允许 S-mode 访问 vsireg* | mstateen0[60]=1，S-mode 读写 vsireg~vsireg6 | 访问正常，无异常（具体 vsireg_i 行为取决于 vsiselect 值） | `norm:sscsrind_csrs_access_control` |
+| HCROSS-SMCSRIND-06 | mstateen0[60]=1 允许 S-mode 访问 vsireg* | mstateen0[60]=1，S-mode 读写 vsireg~vsireg6 | 访问不因 mstateen0 被阻止（vsireg2-6 可能因实现可选性触发 illegal-instruction） | `norm:sscsrind_csrs_access_control` |
 | HCROSS-SMCSRIND-07 | mstateen0[60]=0 不影响 M-mode 访问 vsiselect | mstateen0[60]=0，M-mode 读写 vsiselect | 访问正常，无异常（state-enable 不控制 M-mode） | `norm:sscsrind_csrs_access_control` |
 | HCROSS-SMCSRIND-08 | mstateen0[60]=0 不影响 M-mode 访问 vsireg* | mstateen0[60]=0，M-mode 读写 vsireg~vsireg6 | 访问正常，无异常 | `norm:sscsrind_csrs_access_control` |
+
+#### Part B: hstateen0[60] 控制 VS-mode 访问
+
+| 测试 ID | 测试名称 | 测试描述 | 预期结果 | 规范引用 |
+|---------|----------|----------|----------|----------|
+| HCROSS-SMCSRIND-09 | hstateen0[60]=0 阻止 VS-mode 读 siselect | mstateen0[60]=1, hstateen0[60]=0，VS-mode 读 siselect (0x150, 实为 vsiselect) | 触发 virtual-instruction 异常 (cause=22) | `norm:hypervisor_impl_csrs_access_control` |
+| HCROSS-SMCSRIND-10 | hstateen0[60]=0 阻止 VS-mode 读 sireg | mstateen0[60]=1, hstateen0[60]=0，VS-mode 读 sireg (0x151, 实为 vsireg) | 触发 virtual-instruction 异常 (cause=22) | `norm:hypervisor_impl_csrs_access_control` |
+| HCROSS-SMCSRIND-11 | hstateen0[60]=1 允许 VS-mode 访问 siselect/sireg | mstateen0[60]=1, hstateen0[60]=1，VS-mode 写 siselect、读 sireg | siselect 访问正常；sireg 不因 hstateen0 被阻止 | `norm:hypervisor_impl_csrs_access_control` |
 
 ### 代码示例
 
@@ -1004,13 +1034,54 @@ bool test_hcross_smcsrind_07(void) {
 }
 ```
 
+```c
+/* HCROSS-SMCSRIND-09: hstateen0[60]=0 blocks VS-mode read siselect */
+TEST_REGISTER(test_hcross_smcsrind_09);
+bool test_hcross_smcsrind_09(void) {
+    TEST_BEGIN("HCROSS-SMCSRIND-09: hstateen0[60]=0 blocks VS siselect");
+
+    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!platform_has_smcsrind()) TEST_SKIP("Smcsrind not available");
+    if (!platform_has_smstateen()) TEST_SKIP("Smstateen not available");
+
+    uintptr_t orig_m = CSRR(0x30C);  /* mstateen0 */
+    uintptr_t orig_h = CSRR(0x60C);  /* hstateen0 */
+
+    /* Enable mstateen0.SE0 + mstateen0.CSRIND */
+    CSRW(0x30C, orig_m | (1ULL << 63) | (1ULL << 60));
+
+    /* Verify hstateen0.CSRIND is writable (Sscsrind support) */
+    uintptr_t test_h = CSRR(0x60C);
+    CSRW(0x60C, test_h | (1UL << 60));
+    if (!(CSRR(0x60C) & (1UL << 60))) {
+        CSRW(0x30C, orig_m);
+        TEST_SKIP("hstateen0.CSRIND not writable");
+    }
+
+    /* Set hstateen0.CSRIND=0 to block VS-mode access */
+    CSRW(0x60C, CSRR(0x60C) & ~(1UL << 60));
+
+    /* VS-mode read siselect (0x150) should trigger
+     * virtual-instruction exception */
+    EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_read_siselect, 0));
+
+    CSRW(0x60C, orig_h);
+    CSRW(0x30C, orig_m);
+    HYP_TEST_END();
+}
+```
+
 > [!NOTE]
-> - 本组测试验证 Smcsrind 扩展在 Hypervisor 场景下的 `mstateen0[60]` 访问控制。vsiselect/vsireg* 是 H 扩展引入的 CSR（vsiselect=0x250, vsireg=0x251, vsireg2=0x252, vsireg3=0x253, vsireg4=0x255, vsireg5=0x256, vsireg6=0x257），仅在 H 扩展存在时可用。
-> - HCROSS-SMCSRIND-01~04 验证 `mstateen0[60]=0` 时 S-mode (HS-mode, V=0) 访问 vsiselect/vsireg* 触发 illegal-instruction 异常 (cause=2)。这与 S-mode 访问 siselect/sireg*（在 `Smcsrind_test_plan.md` Group 4 中覆盖）的行为对称。
-> - HCROSS-SMCSRIND-05~06 验证 `mstateen0[60]=1` 时 S-mode 可以正常访问 vsiselect/vsireg*。
+> - **Part A** 验证 Smcsrind 扩展在 Hypervisor 场景下的 `mstateen0[60]` 访问控制。vsiselect/vsireg* 是 H 扩展引入的 CSR（vsiselect=0x250, vsireg=0x251, vsireg2=0x252, vsireg3=0x253, vsireg4=0x255, vsireg5=0x256, vsireg6=0x257），仅在 H 扩展存在时可用。
+> - HCROSS-SMCSRIND-01~04 验证 `mstateen0[60]=0` 时 S-mode (HS-mode, V=0) 访问 vsiselect/vsireg* 触发 illegal-instruction 异常 (cause=2)。04 同时覆盖读和写操作。这与 S-mode 访问 siselect/sireg*（在 `Smcsrind_test_plan.md` Group 4 中覆盖）的行为对称。
+> - HCROSS-SMCSRIND-05~06 验证 `mstateen0[60]=1` 时 S-mode 可以正常访问 vsiselect/vsireg*。注意：vsireg2-6 是可选实现的 CSR，当实现不支持时可能触发 illegal-instruction（SPEC 允许），测试以诊断方式输出 trap cause。
 > - HCROSS-SMCSRIND-07~08 验证 state-enable CSR **不影响** M-mode 自身的访问。这是 SPEC 明确指出的：state-enable CSR 仅影响低于 M-mode 的特权级。
-> - 与 Group 8.4 (HCROSS-SSSTA-27~29) 的区别：Group 8.4 验证 `hstateen0[60]` 对 **VS-mode** 访问 vsiselect/vsireg* 的控制（触发 virtual-instruction），本组验证 `mstateen0[60]` 对 **S-mode (HS-mode)** 访问 vsiselect/vsireg* 的控制（触发 illegal-instruction）。两者是不同层级的控制机制。
-> - 所有测试必须在运行时检测 H 扩展、Smcsrind 扩展和 Smstateen 扩展的可用性，任一不可用则 TEST_SKIP。
+> - **Part B** 验证 `hstateen0[60]` 对 VS-mode 访问 siselect/sireg*（实为 vsiselect/vsireg*）的控制。与 Part A 的区别：Part A 中 `mstateen0[60]` 控制 HS-mode (V=0) 访问，触发 illegal-instruction (cause=2)；Part B 中 `hstateen0[60]` 控制 VS-mode (V=1) 访问，触发 virtual-instruction (cause=22)。两者是不同层级的控制机制，规范依据分别为 `norm:sscsrind_csrs_access_control` 和 `norm:hypervisor_impl_csrs_access_control`。
+> - HCROSS-SMCSRIND-09~10 验证 `hstateen0[60]=0` 且 `mstateen0[60]=1` 时，VS-mode 访问 siselect/sireg 触发 virtual-instruction 异常。注意：异常类型是 virtual-instruction 而非 illegal-instruction，因为 M-mode 已放行（mstateen0=1），但 HS-mode 的 hypervisor 选择不放行（hstateen0=0）。
+> - HCROSS-SMCSRIND-11 验证 `hstateen0[60]=1` 时 VS-mode 可以访问 siselect/sireg。sireg 访问可能因 vsiselect 值触发其他异常，但不应触发 virtual-instruction。
+> - Part B 前提配置：M-mode 需将 `mstateen0[63]` (SE0) 设为 1 以放行 HS-mode 对 hstateen0 的访问，并将 `mstateen0[60]` (CSRIND) 设为 1 以放行 CSRIND 控制的状态。
+> - 与 Group 8.4 (HCROSS-SSSTA-27~29) 的关系：两者验证相同的 `hstateen0[60]` 控制行为，但 Group 8.4 从 Smstateen 角度验证，本组 Part B 从 Smcsrind 角度验证。实现时可交叉引用。
+> - 所有测试必须在运行时检测 H 扩展、Smcsrind 扩展和 Smstateen 扩展的可用性，任一不可用则 TEST_SKIP。Part B 还需检测 `hstateen0.CSRIND` 可写性。
 
 ---
 
@@ -1749,7 +1820,7 @@ bool test_hcross_ssctr_21(void) {
 
 | 优先级 | 测试组 | 覆盖的测试 ID | 理由 |
 |--------|--------|--------------|------|
-| P0（必须） | Group 5 (Svinval) | HCROSS-SINVAL-01~14 | HINVAL 指令功能和 virtual-instruction 异常是 Hypervisor 安全隔离的核心，现有计划覆盖严重不足 |
+| P0（必须） | Group 5 (Svinval) | HCROSS-SINVAL-01~15 | HINVAL 指令功能和 virtual-instruction 异常是 Hypervisor 安全隔离的核心，现有计划覆盖严重不足 |
 | P0（必须） | Group 11.2 (Virtual-inst) | HCROSS-SSCSRIND-11~21 | virtual-instruction 异常是虚拟化安全隔离的核心保证 |
 | P0（必须） | Group 12.2 (vsstatus.SDT) | HCROSS-SSDBLTRP-07~12 | VS-mode double-trap 是虚拟化场景的关键安全机制 |
 | P1（重要） | Group 1 (Svadu) | HCROSS-SVADU-01~06 | henvcfg.ADUE 可写性和 HLV/HSV 交互是 Svadu 在虚拟化场景下的关键行为 |

@@ -133,36 +133,83 @@ bool test_sha_hctl_bit63_zero_sstateen0_roz(void) {
     HYP_TEST_END();
 }
 
-/* ---- SHA-HCTL-05: hstateen0 bit59 AIA gate (skip if no AIA) ---- */
+/* ---- SHA-HCTL-05: hstateen0 CSRIND gate on siselect/sireg ---- */
 
-TEST_REGISTER(test_sha_hctl_bit59_aia);
-bool test_sha_hctl_bit59_aia(void) {
-    TEST_BEGIN("SHA-HCTL-05: hstateen0 bit59 AIA gate (if implemented)");
+/* CSR addresses for Sscsrind CSRs */
+#define CSR_SISELECT    0x150
+#define CSR_SIREG       0x151
+
+/* CSRIND bit in stateen0: bit 60 per smstateen spec.
+ * Controls VS/VU access to siselect/sireg (really vsiselect/vsireg). */
+#define STATEEN0_CSRIND  (1UL << 60)
+
+/* VS-mode helper: read siselect (CSR 0x150) */
+static uintptr_t _vs_read_siselect(uintptr_t arg) {
+    (void)arg;
+    uintptr_t val;
+    asm volatile ("csrr %0, 0x150" : "=r"(val));
+    return val;
+}
+
+TEST_REGISTER(test_sha_hctl_csrind_gate);
+bool test_sha_hctl_csrind_gate(void) {
+    TEST_BEGIN("SHA-HCTL-05: hstateen0 CSRIND gate on VS siselect access");
 
     mstateen_set_bit63(0, true);
 
-    /* Also ensure mstateen0 bit 59 = 1 to allow HS access */
+    /* Also ensure mstateen0 CSRIND bit = 1 to allow HS-level access */
     uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_set_bits(0, 1UL << 59);
+    mstateen_set_bits(0, STATEEN0_CSRIND);
 
     uintptr_t saved_hstateen0 = hstateen_read(0);
 
-    /* Probe: is bit 59 writable in hstateen0? */
-    hstateen_set_bits(0, 1UL << 59);
+    /* Probe: is CSRIND bit writable in hstateen0?
+     * If not, Sscsrind is not implemented — skip. */
+    hstateen_set_bits(0, STATEEN0_CSRIND);
     uintptr_t rb = hstateen_read(0);
-    if ((rb & (1UL << 59)) == 0) {
-        /* bit 59 not implemented in hstateen0 — no AIA state to gate */
+    if ((rb & STATEEN0_CSRIND) == 0) {
         hstateen_write(0, saved_hstateen0);
         mstateen_write(0, saved_mstateen0);
-        TEST_SKIP("hstateen0 bit 59 not writable (no AIA gate)");
+        TEST_SKIP("hstateen0 CSRIND bit not writable (no Sscsrind)");
     }
 
-    /* bit 59 is writable. Verify toggle. */
-    TEST_ASSERT("hstateen0 bit 59 set to 1", (rb & (1UL << 59)) != 0);
+    /* Also verify siselect is a valid CSR (Sscsrind actually implemented).
+     * The hstateen0 bit may be writable even when Sscsrind is not
+     * implemented (WARL behavior), so the writability probe alone is
+     * insufficient. Try reading siselect from M-mode: if it traps with
+     * illegal-instruction, Sscsrind is not present. */
+    trap_expect_begin();
+    uintptr_t sival;
+    asm volatile (
+        ".option push\n\t"
+        ".option norvc\n\t"
+        "csrr %0, 0x150\n\t"
+        ".option pop\n\t"
+        : "=r"(sival) :: "memory"
+    );
+    bool siselect_valid = !trap_was_triggered();
+    trap_expect_end();
+    if (!siselect_valid) {
+        hstateen_write(0, saved_hstateen0);
+        mstateen_write(0, saved_mstateen0);
+        TEST_SKIP("siselect not accessible (no Sscsrind implemented)");
+    }
 
-    hstateen_clear_bits(0, 1UL << 59);
+    /* CSRIND bit is writable. Verify it can be set and cleared. */
+    TEST_ASSERT("hstateen0 CSRIND bit set to 1",
+                (rb & STATEEN0_CSRIND) != 0);
+
+    hstateen_clear_bits(0, STATEEN0_CSRIND);
     rb = hstateen_read(0);
-    TEST_ASSERT("hstateen0 bit 59 cleared to 0", (rb & (1UL << 59)) == 0);
+    TEST_ASSERT("hstateen0 CSRIND bit cleared to 0",
+                (rb & STATEEN0_CSRIND) == 0);
+
+    /* Key test: With hstateen0 CSRIND=0 and mstateen0 CSRIND=1,
+     * VS-mode access to siselect triggers virtual-instruction (cause=22).
+     * Per spec norm:hstateen0_csrind_op. */
+    EXPECT_VIRTUAL_INST(
+        run_in_vs_mode(_vs_read_siselect, 0)
+    );
 
     hstateen_write(0, saved_hstateen0);
     mstateen_write(0, saved_mstateen0);

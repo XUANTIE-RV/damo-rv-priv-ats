@@ -6,7 +6,7 @@
 /* ===================================================================
  * test_hcross_svinval.c - Hypervisor × Svinval cross tests
  *
- * Implements 14 test cases from DOCS/testplan/Hypervisor_cross_test_plan.md
+ * Implements 15 test cases from DOCS/testplan/Hypervisor_cross_test_plan.md
  * Group 5: Hypervisor × Svinval.
  *
  * Svinval extension provides fine-grained TLB invalidation:
@@ -19,6 +19,7 @@
  *   HCROSS-SINVAL-05~06: VMID semantics
  *   HCROSS-SINVAL-07~12: VS/VU-mode virtual-instruction exceptions
  *   HCROSS-SINVAL-13~14: VS-mode SFENCE.W.INVAL/SFENCE.INVAL.IR (VTVM=0)
+ *   HCROSS-SINVAL-15: VU-mode SINVAL.VMA -> virtual-instruction
  * =================================================================== */
 
 #include "test_helpers.h"
@@ -522,6 +523,39 @@ bool test_hcross_svinval_14(void) {
     trap_expect_begin();
     two_stage_run_in_vs(&ctx, vs_exec_sfence_inval_ir, 0);
     TEST_ASSERT("no trap for SFENCE.INVAL.IR in VS-mode", !trap_was_triggered());
+    trap_expect_end();
+
+    ts2_finish(&ctx);
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * HCROSS-SINVAL-15: VU-mode SINVAL.VMA -> virtual-instruction
+ *
+ * VU-mode executes SINVAL.VMA, should trigger virtual-instruction
+ * exception (cause=22). Per norm:Svinval_virtual_instruction_vu_vs,
+ * "to execute SINVAL.VMA in VU-mode raises a virtual-instruction
+ * exception."
+ * =================================================================== */
+TEST_REGISTER(test_hcross_svinval_15);
+bool test_hcross_svinval_15(void) {
+    TEST_BEGIN("HCROSS-SINVAL-15: VU-mode SINVAL.VMA -> virtual-inst");
+
+    H_REQUIRED_OR_SKIP();
+    SVINVAL_REQUIRED_OR_SKIP();
+
+    two_stage_ctx_t ctx;
+    pt_pool_reset();
+    gpt_pool_reset();
+    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+
+    trap_expect_begin();
+    two_stage_run_in_vu(&ctx, vu_exec_sinval_vma, 0);
+    TEST_ASSERT("virtual-inst trap triggered", trap_was_triggered());
+    if (trap_was_triggered()) {
+        TEST_ASSERT_EQ("cause=22 (virtual-instruction)",
+                       trap_get_cause(), (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
+    }
     trap_expect_end();
 
     ts2_finish(&ctx);

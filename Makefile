@@ -13,6 +13,7 @@
 #   make spike-pmp          # Run one on Spike
 #   make sail-pmp           # Run one on Sail
 #   make qemu-pmp           # Run one on QEMU
+#   make whisper-<ext>      # Run one on Whisper
 #   make clean              # Clean all
 # =====================================================================
 
@@ -20,14 +21,14 @@
 PMP_GROUP = pmp smepmp spmp pmp_sv39 pmp_sv48 pmp_sv57
 SV_GROUP  = Sv39 Sv48 Sv57 Svbare Svade Svadu Svnapot Svinval Svpbmt Svvptc Svrsw60t59b
 SS_GROUP  = Ssccptr Sscofpmf Sscounterenw Ssstateen Sstc Sstvala Sstvecd Ssu64xl
-SM_GROUP  = Smstateen smrnmi
+SM_GROUP  = Smstateen smrnmi Sm_CSR
 HYP_GROUP = Sv39x4 Sv48x4 Sv57x4 \
             Sv39_Sv39x4 Sv39_Sv48x4 Sv39_Sv57x4 \
             Sv48_Sv39x4 Sv48_Sv48x4 Sv48_Sv57x4 \
             Sv57_Sv39x4 Sv57_Sv48x4 Sv57_Sv57x4 \
 			Shgatpa Shtvala Shcounterenw Shvstvecd Shvstvala Shvsatpa Shlcofideleg \
 			Hypervisor Sha Hypervisor_Sscounterenw Hypervisor_Svinval Hypervisor_Sstc
-INT_GROUP = aia_aplic aia_imsic aia_smaia aia_iommu aia_hypervisor
+INT_GROUP = aia_aplic aia_imsic aia_smaia aia_iommu aia_hypervisor aclint
 
 # All extensions (union of groups + ungrouped)
 EXTENSIONS = $(PMP_GROUP) $(SV_GROUP) $(SS_GROUP) $(SM_GROUP) $(HYP_GROUP) $(INT_GROUP) zpm
@@ -39,16 +40,18 @@ MAKE_VARS = $(if $(XLEN),XLEN=$(XLEN)) \
             $(if $(LOG_LEVEL),LOG_LEVEL=$(LOG_LEVEL)) \
             $(if $(SAIL),SAIL=$(SAIL)) \
             $(if $(SPIKE),SPIKE=$(SPIKE)) \
-            $(if $(SPIKE_ISA),SPIKE_ISA=$(SPIKE_ISA))
+            $(if $(SPIKE_ISA),SPIKE_ISA=$(SPIKE_ISA)) \
+            $(if $(WHISPER),WHISPER=$(WHISPER))
 
-# Generate sail-<ext>, spike-<ext>, and qemu-<ext> targets
+# Generate sail-<ext>, spike-<ext>, qemu-<ext>, and whisper-<ext> targets
 SAIL_TARGETS  = $(addprefix sail-,$(EXTENSIONS))
 SPIKE_TARGETS = $(addprefix spike-,$(EXTENSIONS))
 QEMU_TARGETS  = $(addprefix qemu-,$(EXTENSIONS))
+WHISPER_TARGETS = $(addprefix whisper-,$(EXTENSIONS))
 
-.PHONY: help all clean sail spike qemu \
+.PHONY: help all clean sail spike qemu whisper \
         pmp_group sv_group ss_group hyp_group \
-        $(EXTENSIONS) $(SAIL_TARGETS) $(SPIKE_TARGETS) $(QEMU_TARGETS)
+        $(EXTENSIONS) $(SAIL_TARGETS) $(SPIKE_TARGETS) $(QEMU_TARGETS) $(WHISPER_TARGETS)
 
 # Default target: print usage help
 .DEFAULT_GOAL := help
@@ -74,6 +77,8 @@ help:
 	@echo "    make sail             Run all on Sail"
 	@echo "    make sail-<ext>       Run one on Sail"
 	@echo "    make qemu-<ext>       Run one on QEMU"
+	@echo "    make whisper           Run all on Whisper"
+	@echo "    make whisper-<ext>     Run one on Whisper (e.g., make whisper-Sv39)"
 	@echo ""
 	@echo "  Options:"
 	@echo "    XLEN=32|64            Architecture (default: 64)"
@@ -132,3 +137,14 @@ $(SPIKE_TARGETS):
 # Build and run a single extension on QEMU (e.g., make qemu-sv39)
 $(QEMU_TARGETS):
 	$(MAKE) -C $(patsubst qemu-%,%,$@) qemu $(MAKE_VARS)
+
+# Build and run all extensions on Whisper simulator (sequentially)
+whisper:
+	@for ext in $(EXTENSIONS); do \
+		echo "========== Whisper: $$ext =========="; \
+		$(MAKE) -C $$ext whisper $(MAKE_VARS) || exit 1; \
+	done
+
+# Build and run a single extension on Whisper (e.g., make whisper-Sv39)
+$(WHISPER_TARGETS):
+	$(MAKE) -C $(patsubst whisper-%,%,$@) whisper $(MAKE_VARS)

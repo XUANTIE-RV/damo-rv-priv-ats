@@ -219,6 +219,18 @@ uintptr_t vs_exec_ebreak(uintptr_t arg) {
     return 0;
 }
 
+uintptr_t vs_exec_illegal(uintptr_t arg) {
+    (void)arg;
+    /* UNIMP (0x00000000) is guaranteed illegal on all implementations. */
+    asm volatile (".word 0x00000000");
+    return 0;
+}
+
+uintptr_t vs_nop_fn(uintptr_t arg) {
+    (void)arg;
+    return 0;
+}
+
 /* ===================================================================
  * VS/VU-mode H-CSR access trampolines (should cause virtual-inst).
  * =================================================================== */
@@ -287,6 +299,134 @@ uintptr_t vs_exec_hfence_gvma(uintptr_t arg) {
 }
 
 /* ===================================================================
+ * Additional H-CSR access trampolines.
+ *
+ * Each attempts to read an HS-only CSR by its raw address.
+ * All should trigger virtual-instruction exception when V=1.
+ * =================================================================== */
+
+uintptr_t vs_read_hideleg(uintptr_t arg) {
+    (void)arg;
+    uintptr_t v;
+    asm volatile ("csrr %0, 0x603" : "=r"(v));  /* hideleg */
+    return v;
+}
+
+uintptr_t vs_read_hcounteren(uintptr_t arg) {
+    (void)arg;
+    uintptr_t v;
+    asm volatile ("csrr %0, 0x606" : "=r"(v));  /* hcounteren */
+    return v;
+}
+
+uintptr_t vs_read_htimedelta(uintptr_t arg) {
+    (void)arg;
+    uintptr_t v;
+    asm volatile ("csrr %0, 0x605" : "=r"(v));  /* htimedelta */
+    return v;
+}
+
+uintptr_t vs_read_hip(uintptr_t arg) {
+    (void)arg;
+    uintptr_t v;
+    asm volatile ("csrr %0, 0x644" : "=r"(v));  /* hip */
+    return v;
+}
+
+uintptr_t vs_read_hie(uintptr_t arg) {
+    (void)arg;
+    uintptr_t v;
+    asm volatile ("csrr %0, 0x604" : "=r"(v));  /* hie */
+    return v;
+}
+
+uintptr_t vs_read_hvip(uintptr_t arg) {
+    (void)arg;
+    uintptr_t v;
+    asm volatile ("csrr %0, 0x645" : "=r"(v));  /* hvip */
+    return v;
+}
+
+uintptr_t vs_read_henvcfg(uintptr_t arg) {
+    (void)arg;
+    uintptr_t v;
+    asm volatile ("csrr %0, 0x60A" : "=r"(v));  /* henvcfg */
+    return v;
+}
+
+uintptr_t vs_write_hstatus(uintptr_t val) {
+    asm volatile ("csrw 0x600, %0" :: "r"(val));  /* hstatus */
+    return 0;
+}
+
+/* ===================================================================
+ * Additional HLV/HSV width-variant trampolines.
+ *
+ * Each should trigger virtual-instruction exception when V=1.
+ * =================================================================== */
+
+uintptr_t vs_exec_hlv_b(uintptr_t arg) {
+    uintptr_t v;
+    /* hlv.b rd, (rs1): funct7=0x30, funct3=4 */
+    asm volatile (".insn r 0x73, 0x4, 0x30, %0, %1, x0"
+                  : "=r"(v) : "r"(arg));
+    return v;
+}
+
+uintptr_t vs_exec_hlv_h(uintptr_t arg) {
+    uintptr_t v;
+    /* hlv.h rd, (rs1): funct7=0x32, funct3=4 */
+    asm volatile (".insn r 0x73, 0x4, 0x32, %0, %1, x0"
+                  : "=r"(v) : "r"(arg));
+    return v;
+}
+
+uintptr_t vs_exec_hlv_d(uintptr_t arg) {
+    uintptr_t v;
+    /* hlv.d rd, (rs1): funct7=0x36, funct3=4 */
+    asm volatile (".insn r 0x73, 0x4, 0x36, %0, %1, x0"
+                  : "=r"(v) : "r"(arg));
+    return v;
+}
+
+uintptr_t vs_exec_hlvx_bu(uintptr_t arg) {
+    uintptr_t v;
+    /* hlvx.bu rd, (rs1): funct7=0x30, funct3=4, rs2=3 */
+    asm volatile (".insn r 0x73, 0x4, 0x30, %0, %1, x3"
+                  : "=r"(v) : "r"(arg));
+    return v;
+}
+
+uintptr_t vs_exec_hlvx_hu(uintptr_t arg) {
+    uintptr_t v;
+    /* hlvx.hu rd, (rs1): funct7=0x32, funct3=4, rs2=3 */
+    asm volatile (".insn r 0x73, 0x4, 0x32, %0, %1, x3"
+                  : "=r"(v) : "r"(arg));
+    return v;
+}
+
+uintptr_t vs_exec_hsv_b(uintptr_t arg) {
+    /* hsv.b rs2, (rs1): funct7=0x31, funct3=4 */
+    asm volatile (".insn r 0x73, 0x4, 0x31, x0, %0, x0"
+                  :: "r"(arg));
+    return 0;
+}
+
+uintptr_t vs_exec_hsv_h(uintptr_t arg) {
+    /* hsv.h rs2, (rs1): funct7=0x33, funct3=4 */
+    asm volatile (".insn r 0x73, 0x4, 0x33, x0, %0, x0"
+                  :: "r"(arg));
+    return 0;
+}
+
+uintptr_t vs_exec_hsv_d(uintptr_t arg) {
+    /* hsv.d rs2, (rs1): funct7=0x37, funct3=4 */
+    asm volatile (".insn r 0x73, 0x4, 0x37, x0, %0, x0"
+                  :: "r"(arg));
+    return 0;
+}
+
+/* ===================================================================
  * Counter access trampolines.
  * =================================================================== */
 
@@ -308,6 +448,22 @@ uintptr_t vs_read_instret(uintptr_t arg) {
     (void)arg;
     uintptr_t v;
     asm volatile ("csrr %0, instret" : "=r"(v));
+    return v;
+}
+
+/* ===================================================================
+ * U-mode HLV trampoline (for HU bit testing).
+ *
+ * Executed via run_in_priv(PRIV_U, ...) in V=0 U-mode.
+ * With hstatus.HU=0 this triggers illegal-instruction (cause=2).
+ * With hstatus.HU=1 the HLV.W executes (may fault on translation).
+ * =================================================================== */
+
+uintptr_t u_exec_hlv_w(uintptr_t addr) {
+    uintptr_t v;
+    /* hlv.w rd, (rs1): .insn r 0x73, 0x4, 0x34, rd, rs1, x0 */
+    asm volatile (".insn r 0x73, 0x4, 0x34, %0, %1, x0"
+                  : "=r"(v) : "r"(addr));
     return v;
 }
 

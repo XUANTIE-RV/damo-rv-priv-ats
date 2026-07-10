@@ -13,7 +13,7 @@
  *   HCROSS-SSCCPTR-04: PMA attribute verification for G-stage PT pages
  *
  * Normative references:
- *   norm:Ssccptr_cacheable_coherent_supports_pt_read
+ *   norm:ssccptr_memory_pte_reads
  *     - Main memory regions with cacheability and coherence PMA
  *       attributes must support hardware page table reads.
  *
@@ -65,6 +65,10 @@ bool test_hcross_ssccptr_01(void) {
     TEST_ASSERT_EQ("VS-stage PT walk succeeded, load OK",
                    result, (uintptr_t)0);
 
+    /* Verify the loaded value matches what we wrote */
+    TEST_ASSERT_EQ("VS-stage load returned correct value",
+                   vs_loaded_value, (uintptr_t)HYP_TEST_MAGIC);
+
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -108,6 +112,10 @@ bool test_hcross_ssccptr_02(void) {
     TEST_ASSERT_EQ("G-stage PT walk succeeded, load OK",
                    result, (uintptr_t)0);
 
+    /* Verify the loaded value matches what we wrote */
+    TEST_ASSERT_EQ("G-stage load returned correct value",
+                   vs_loaded_value, (uintptr_t)HYP_TEST_MAGIC);
+
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -140,10 +148,17 @@ bool test_hcross_ssccptr_03(void) {
     /* Target VA in test region (already identity-mapped by ts2_setup_full) */
     uintptr_t test_va = (uintptr_t)test_data_area;
 
+    /* Write a known value before the load test */
+    *(volatile uintptr_t *)test_va = HYP_TEST_MAGIC;
+
     /* Phase 1: VS-mode load — verifies read path page walk */
     uintptr_t load_result = two_stage_run_in_vs(&ctx, vs_load, test_va);
     TEST_ASSERT_EQ("Two-stage PT walk succeeded, load OK",
                    load_result, (uintptr_t)0);
+
+    /* Verify the loaded value matches what we wrote */
+    TEST_ASSERT_EQ("Two-stage load returned correct value",
+                   vs_loaded_value, (uintptr_t)HYP_TEST_MAGIC);
 
     /* Phase 2: VS-mode store — verifies write path page walk */
     uintptr_t store_result = two_stage_run_in_vs(&ctx, vs_store, test_va);

@@ -7,3 +7,15 @@
 [submodule "SPEC/riscv-ras-eri"]
 	path = SPEC/riscv-ras-eri
 	url = https://github.com/riscv-non-isa/riscv-ras-eri.git
+[submodule "SPEC/riscv-isa-manual"]
+	path = SPEC/riscv-isa-manual
+	url = https://github.com/riscv/riscv-isa-manual.git
+[submodule "SPEC/riscv-aclint"]
+	path = SPEC/riscv-aclint
+	url = https://github.com/riscvarchive/riscv-aclint.git
+[submodule "SPEC/riscv-debug"]
+	path = SPEC/riscv-debug
+	url = https://github.com/riscv/riscv-debug-spec.git
+[submodule "SPEC/clic_0.1"]
+	path = SPEC/clic_0.1
+	url = https://github.com/riscv/riscv-fast-interrupt.git

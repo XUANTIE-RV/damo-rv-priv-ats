@@ -266,6 +266,7 @@ extern bool trap_was_triggered(void);
 extern uintptr_t trap_get_cause(void);
 extern uintptr_t trap_get_epc(void);
 extern uintptr_t trap_get_tval(void);
+extern uintptr_t trap_get_status_snap(void);
 
 /* ===================================================================
  * Double Trap (Smdbltrp) Support

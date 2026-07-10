@@ -45,7 +45,14 @@ bool test_sstc_acc_stce0_smode_write(void) {
     mcounteren_set(MCOUNTEREN_TM);
 
     goto_priv(PRIV_S);
+#if __riscv_xlen == 32
+    /* RV32: stimecmp_write does three CSR writes; only test one here */
+    PRIV_DO_TRAP({
+        asm volatile("csrw 0x14D, %0" :: "r"((uintptr_t)-1) : "memory");
+    });
+#else
     PRIV_DO_TRAP(stimecmp_write((uintptr_t)-1));
+#endif
     goto_priv(PRIV_M);
 
     CHECK_TRAP("illegal-instruction on stimecmp write", CAUSE_ILLEGAL_INST);
@@ -84,7 +91,13 @@ bool test_sstc_acc_stce1_tm0_smode_write(void) {
     mcounteren_clear(MCOUNTEREN_TM);
 
     goto_priv(PRIV_S);
+#if __riscv_xlen == 32
+    PRIV_DO_TRAP({
+        asm volatile("csrw 0x14D, %0" :: "r"((uintptr_t)-1) : "memory");
+    });
+#else
     PRIV_DO_TRAP(stimecmp_write((uintptr_t)-1));
+#endif
     goto_priv(PRIV_M);
 
     CHECK_TRAP("illegal-instruction on stimecmp write (TM=0)", CAUSE_ILLEGAL_INST);

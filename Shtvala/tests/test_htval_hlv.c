@@ -44,6 +44,7 @@
 TEST_REGISTER(test_htval_hlv_01a_hlvx_vu);
 bool test_htval_hlv_01a_hlvx_vu(void) {
     TEST_BEGIN("HTVAL-HLV-01a: HLVX.WU @ VU (SPVP=0) gpf reports mtval2 = GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -65,6 +66,7 @@ bool test_htval_hlv_01a_hlvx_vu(void) {
 TEST_REGISTER(test_htval_hlv_01b_hlvx_vs);
 bool test_htval_hlv_01b_hlvx_vs(void) {
     TEST_BEGIN("HTVAL-HLV-01b: HLVX.WU @ VS (SPVP=1) gpf reports mtval2 = GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -86,6 +88,7 @@ bool test_htval_hlv_01b_hlvx_vs(void) {
 TEST_REGISTER(test_htval_hlv_02_hlv);
 bool test_htval_hlv_02_hlv(void) {
     TEST_BEGIN("HTVAL-HLV-02: HLV.D gpf (V=0) reports mtval2 = GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -106,6 +109,7 @@ bool test_htval_hlv_02_hlv(void) {
 TEST_REGISTER(test_htval_hlv_03_hsv);
 bool test_htval_hlv_03_hsv(void) {
     TEST_BEGIN("HTVAL-HLV-03: HSV.D gpf (V=0) reports mtval2 = GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -126,6 +130,7 @@ bool test_htval_hlv_03_hsv(void) {
 TEST_REGISTER(test_htval_hlv_04_hlvx_bare);
 bool test_htval_hlv_04_hlvx_bare(void) {
     TEST_BEGIN("HTVAL-HLV-04: HLVX.WU (vsatp=BARE) gpf reports mtval2 = GPA>>2");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;

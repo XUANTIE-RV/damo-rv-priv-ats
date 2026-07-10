@@ -5,8 +5,11 @@
  * cross test suite. Tests are organized by Group as defined in
  * DOCS/testplan/Hypervisor_cross_test_plan.md Group 10.
  *
- * Group 10: mstateen0[60] (CSRIND) control over S-mode (HS-mode)
- *           access to vsiselect/vsireg* (HCROSS-SMCSRIND-01~08)
+ * Group 10: Smcsrind CSRIND access control in Hypervisor scenarios
+ *   Part A (01-08):  mstateen0[60] controls S-mode (HS-mode) access
+ *                    to vsiselect/vsireg* (HCROSS-SMCSRIND-01~08)
+ *   Part B (09-11):  hstateen0[60] controls VS-mode access to
+ *                    siselect/sireg* (HCROSS-SMCSRIND-09~11)
  */
 
 #include "test_helpers.h"

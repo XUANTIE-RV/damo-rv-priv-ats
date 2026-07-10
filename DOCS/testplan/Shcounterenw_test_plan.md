@@ -137,7 +137,7 @@ VU-mode 下访问计数器需同时满足：
 ## 测试分组
 
 > [!IMPORTANT]
-> 共 5 个测试组、20 个测试用例。Group 1 在 M-mode 验证 hcounteren bit 的基础可写性；Group 2 在 VS-mode 端到端验证 hcounteren 的访问控制效果；Group 3 验证 bit 反复切换一致性；Group 4 验证 VU-mode 下的层级交互；Group 5 记录 read-only zero 计数器的 hcounteren bit 行为。
+> 共 5 个测试组、21 个测试用例。Group 1 在 M-mode 验证 hcounteren bit 的基础可写性；Group 2 在 VS-mode 端到端验证 hcounteren 的访问控制效果；Group 3 验证 bit 反复切换一致性；Group 4 验证 VU-mode 下的层级交互；Group 5 记录 read-only zero 计数器的 hcounteren bit 行为。
 
 ---
 

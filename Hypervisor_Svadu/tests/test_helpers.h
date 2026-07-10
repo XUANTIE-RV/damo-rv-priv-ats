@@ -47,11 +47,19 @@ extern uint8_t __vm_test_region_end[];
 #define TEST_REGION_BASE   ((uintptr_t)__vm_test_region_start)
 
 /* ===================================================================
- * Guest-page-fault cause codes (from RISC-V Privileged Spec)
+ * Exception cause codes for two-stage translation faults
+ * (from RISC-V Privileged Spec, hypervisor extension)
+ *
+ * VS-stage translation faults produce regular page-faults (cause 13/15).
+ * G-stage translation faults produce guest-page-faults (cause 21/23).
+ * Per norm:H_vm_gpatrans: "guest-page-fault exceptions are raised
+ * instead of regular page-fault exceptions" — but only for G-stage.
  * =================================================================== */
-#define CAUSE_INST_GUEST_PAGE_FAULT    20
-#define CAUSE_LOAD_GUEST_PAGE_FAULT    21
-#define CAUSE_STORE_GUEST_PAGE_FAULT   23
+#define CAUSE_LOAD_PAGE_FAULT           13   /* VS-stage translation fault */
+#define CAUSE_STORE_PAGE_FAULT          15   /* VS-stage store/AMO fault */
+#define CAUSE_INST_GUEST_PAGE_FAULT    20   /* G-stage instruction fault */
+#define CAUSE_LOAD_GUEST_PAGE_FAULT    21   /* G-stage load fault */
+#define CAUSE_STORE_GUEST_PAGE_FAULT   23   /* G-stage store/AMO fault */
 
 /* ===================================================================
  * H extension detection
@@ -71,11 +79,18 @@ static bool check_h_extension(void) {
 } while (0)
 
 /* ===================================================================
- * Svadu detection via henvcfg.ADUE writability
+ * Svadu detection via menvcfg.ADUE writability
  *
- * Per spec norm:svadu_henvcfg_adue_writable: when Svadu is implemented,
- * henvcfg.ADUE must be writable. If ADUE is read-only zero, Svadu is
- * not implemented.
+ * Per spec norm:Svadu_hw_update_a_d_bits: "If the Svadu extension is
+ * implemented, the menvcfg.ADUE field is writable."
+ * Per spec norm:menvcfg_adue_rdonly0: "If Svadu is not implemented,
+ * ADUE is read-only zero."
+ *
+ * We must test menvcfg.ADUE (not henvcfg.ADUE) because
+ * norm:menvcfg_adue_henvcfg_adue_rdonly0 states that
+ * henvcfg.ADUE is read-only zero when menvcfg.ADUE is zero.
+ * Testing henvcfg.ADUE writability would give a false negative
+ * when menvcfg.ADUE happens to be zero.
  * =================================================================== */
 static bool svadu_detected = false;
 static bool svadu_detection_done = false;
@@ -84,14 +99,12 @@ static bool check_svadu_via_adue(void) {
     if (svadu_detection_done)
         return svadu_detected;
 
-    /* Try to write henvcfg.ADUE=1 and read back */
-    uintptr_t old_henvcfg = henvcfg_read();
-    henvcfg_set_adue(true);
-    uintptr_t new_henvcfg = henvcfg_read();
-    henvcfg_write(old_henvcfg);  /* restore */
+    /* Try to write menvcfg.ADUE=1 and read back */
+    uintptr_t old_menvcfg = menvcfg_read();
+    menvcfg_write(old_menvcfg | MENVCFG_ADUE);
+    svadu_detected = ((menvcfg_read() & MENVCFG_ADUE) != 0);
+    menvcfg_write(old_menvcfg);  /* restore */
 
-    /* henvcfg.ADUE is bit 61, same as menvcfg.ADUE */
-    svadu_detected = ((new_henvcfg & MENVCFG_ADUE) != 0);
     svadu_detection_done = true;
     return svadu_detected;
 }
@@ -152,6 +165,17 @@ static void vs_pte_clear_ad(two_stage_ctx_t *ctx, uintptr_t va, int level) {
     if (pte) {
         *pte &= ~(PTE_A | PTE_D);
         hfence_vvma_all();
+    }
+}
+
+/* Clear A/D bits in VS-stage PTE WITHOUT flushing TLB.
+ * Used when the caller needs to preserve cached TLB entries
+ * (e.g., cross-VMID ADUE synchronization tests where flushing
+ * would destroy TLB state for other VMIDs). */
+static void vs_pte_clear_ad_nofence(two_stage_ctx_t *ctx, uintptr_t va, int level) {
+    uintptr_t *pte = pt_get_pte(&ctx->vs_ctx, va, level);
+    if (pte) {
+        *pte &= ~(PTE_A | PTE_D);
     }
 }
 

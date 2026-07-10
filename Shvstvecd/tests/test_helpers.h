@@ -27,6 +27,7 @@
 #include "hyp/hyp_test.h"
 #include "hyp/hyp_reset.h"
 #include "hyp/hyp_vs_trap.h"
+#include "hyp/two_stage_helpers.h"
 
 /* ===================================================================
  * vstvec field layout / mode encoding
@@ -61,6 +62,9 @@ extern volatile uintptr_t g_shvstvecd_trap_pc;
 extern volatile uintptr_t g_shvstvecd_trap_cause;
 extern void               shvstvecd_trap_entry(void);
 extern unsigned long      shvstvecd_trap_scratch[];
+extern void               shvstvecd_vectored_table(void);
+extern void               shvstvecd_vectored_handler(void);
+extern volatile uintptr_t g_shvstvecd_vec_marker;
 
 /* ===================================================================
  * vstvec read/write helpers via CSR 0x205 (M/HS-mode)
@@ -107,5 +111,11 @@ static inline int shvstvecd_is_interrupt(uintptr_t cause) {
 static inline uintptr_t shvstvecd_cause_code(uintptr_t cause) {
     return cause & ~SCAUSE_INTERRUPT_BIT;
 }
+
+/* ===================================================================
+ * Unmapped VA for page-fault tests (DIR-03).
+ * This address is deliberately NOT mapped in VS-stage page tables.
+ * =================================================================== */
+#define UNMAPPED_VA_1  0x40000000UL
 
 #endif /* SHVSTVECD_TEST_HELPERS_H */

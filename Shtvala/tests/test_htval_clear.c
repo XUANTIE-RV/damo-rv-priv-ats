@@ -38,6 +38,7 @@ static inline uintptr_t htval_peek(void) {
 TEST_REGISTER(test_htval_clr_01_illegal_inst);
 bool test_htval_clr_01_illegal_inst(void) {
     TEST_BEGIN("HTVAL-CLR-01: illegal-instruction does not modify htval");
+    SHTVALA_REQUIRE();
     htval_seed(HTVAL_SENTINEL);
 
     EXPECT_TRAP(CAUSE_ILLEGAL_INST, {
@@ -59,6 +60,7 @@ bool test_htval_clr_01_illegal_inst(void) {
 TEST_REGISTER(test_htval_clr_02_csr_ro_write);
 bool test_htval_clr_02_csr_ro_write(void) {
     TEST_BEGIN("HTVAL-CLR-02: write to RO CSR (illegal-inst) does not modify htval");
+    SHTVALA_REQUIRE();
     htval_seed(HTVAL_SENTINEL);
 
     /* csrrw zero, cycle, zero — write to read-only CSR cycle. The
@@ -80,6 +82,7 @@ bool test_htval_clr_02_csr_ro_write(void) {
 TEST_REGISTER(test_htval_clr_03_ebreak);
 bool test_htval_clr_03_ebreak(void) {
     TEST_BEGIN("HTVAL-CLR-03: EBREAK does not modify htval");
+    SHTVALA_REQUIRE();
 
 #ifdef SKIP_BREAKPOINT_TESTS
     TEST_SKIP("platform does not support breakpoint (SKIP_BREAKPOINT_TESTS)");
@@ -99,6 +102,7 @@ bool test_htval_clr_03_ebreak(void) {
 TEST_REGISTER(test_htval_clr_04_misalign);
 bool test_htval_clr_04_misalign(void) {
     TEST_BEGIN("HTVAL-CLR-04: load-misalign (no H walk) does not modify htval");
+    SHTVALA_REQUIRE();
     htval_seed(HTVAL_SENTINEL);
 
     /* Try a misaligned 8B load on M-mode bare metal. The platform
@@ -147,6 +151,7 @@ static uintptr_t vs_plain_ecall_clr(uintptr_t arg) {
 TEST_REGISTER(test_htval_clr_05_gpf_then_ecall);
 bool test_htval_clr_05_gpf_then_ecall(void) {
     TEST_BEGIN("HTVAL-CLR-05: htval=0 on VS ecall after GPF");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -185,6 +190,7 @@ static uintptr_t vs_illegal_inst_clr(uintptr_t arg) {
 TEST_REGISTER(test_htval_clr_06_gpf_then_illegal);
 bool test_htval_clr_06_gpf_then_illegal(void) {
     TEST_BEGIN("HTVAL-CLR-06: htval=0 on VS illegal-inst after GPF");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -211,6 +217,7 @@ bool test_htval_clr_06_gpf_then_illegal(void) {
 TEST_REGISTER(test_htval_clr_07_gpf_then_pagefault);
 bool test_htval_clr_07_gpf_then_pagefault(void) {
     TEST_BEGIN("HTVAL-CLR-07: htval=0 on VS page-fault after GPF");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -271,6 +278,7 @@ static uintptr_t vs_csrr_hstatus_clr(uintptr_t arg) {
 TEST_REGISTER(test_htval_clr_08_gpf_then_virtual_inst);
 bool test_htval_clr_08_gpf_then_virtual_inst(void) {
     TEST_BEGIN("HTVAL-CLR-08: htval=0 on virtual-instruction after GPF");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;

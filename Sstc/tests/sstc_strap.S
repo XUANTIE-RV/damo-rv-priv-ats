@@ -14,27 +14,41 @@
  *   - Only t0, t1 are clobbered; restored before sret.
  */
 
+#if __riscv_xlen == 64
+    #define STORE   sd
+    #define LOAD    ld
+    #define REGSIZE  8
+#else
+    #define STORE   sw
+    #define LOAD    lw
+    #define REGSIZE  4
+#endif
+
     .section .text
     .globl  sstc_trap_entry
     .align  2                          /* 4 byte aligned -> valid stvec.BASE */
 sstc_trap_entry:
     /* Spill t0/t1 into the scratch region pointed at by sscratch. */
     csrrw   t0, sscratch, t0           /* t0 <-> sscratch (t0 = scratch ptr) */
-    sd      t1,  0(t0)                 /* save user t1 */
+    STORE   t1,  0(t0)                 /* save user t1 */
     csrr    t1, sscratch               /* t1 = user's original t0 */
-    sd      t1,  8(t0)                 /* save user t0 */
+    STORE   t1,  REGSIZE(t0)           /* save user t0 */
     csrw    sscratch, t0               /* restore sscratch -> scratch ptr */
 
     /* Record scause */
     csrr    t1, scause
     la      t0, g_sstc_trap_cause
-    sd      t1, 0(t0)
+    STORE   t1, 0(t0)
 
     /* If this is an interrupt (scause MSB set), clear timer interrupt
-     * by writing stimecmp (CSR 0x14D) to max value. */
+     * by writing stimecmp to max value.
+     * RV32: must write both stimecmph (0x15D) and stimecmp (0x14D). */
     csrr    t1, scause
     bgez    t1, .Lsstc_not_int        /* MSB == 0 -> sync exception */
     li      t1, -1
+#if __riscv_xlen == 32
+    csrw    0x15D, t1                  /* stimecmph = MAX */
+#endif
     csrw    0x14D, t1                  /* stimecmp = MAX */
 .Lsstc_not_int:
 
@@ -45,8 +59,8 @@ sstc_trap_entry:
 
     /* Restore t0/t1 from the scratch region (sscratch is still ptr). */
     csrr    t0, sscratch
-    ld      t1,  0(t0)                 /* restore t1 */
-    ld      t0,  8(t0)                 /* restore t0 (must be last) */
+    LOAD    t1,  0(t0)                 /* restore t1 */
+    LOAD    t0,  REGSIZE(t0)           /* restore t0 (must be last) */
     sret
 
 

@@ -4,7 +4,7 @@
 CROSS_COMPILER ?= riscv32-unknown-elf-
 
 # QEMU configuration
-QEMU = /opt/toolchains/shared/xuantie-qemu/bin/qemu-system-riscv$(XLEN)
+QEMU = qemu-system-riscv$(XLEN)
 QEMU_CPU ?= max
 QEMU_MEM ?= 4G
 QEMU_SMP ?= 1

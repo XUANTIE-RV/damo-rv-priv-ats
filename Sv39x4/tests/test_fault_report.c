@@ -16,9 +16,9 @@
  * M-mode. The trap framework captures mtval2 / mtinst / mstatus.GVA
  * and exposes them as trap_get_htval/htinst/gva (M-mode synonyms).
  *
- * GFAULT-01: inst gpf  -> mcause = 20
- * GFAULT-02: load gpf  -> mcause = 21
- * GFAULT-03: store gpf -> mcause = 23
+ * GFAULT-01: load gpf  -> mcause = 21
+ * GFAULT-02: store gpf -> mcause = 23
+ * GFAULT-03: inst gpf  -> mcause = 20
  * GFAULT-04: htval == GPA >> 2 (load fault)
  * GFAULT-05: stval == GVA      (load fault)
  * GFAULT-06: GVA flag set on load gpf
@@ -31,22 +31,10 @@
  * survives until inspection.
  * =================================================================== */
 
-/* GFAULT-01: inst guest-page-fault -> cause 20 */
-TEST_REGISTER(test_gfault_01_inst_cause);
-bool test_gfault_01_inst_cause(void) {
-    TEST_BEGIN("GFAULT-01: inst guest-page-fault cause = 20");
-    uintptr_t flags = (G_FLAGS_RWXU_AD & ~PTE_X);  /* X=0 */
-    bool ok = _vsfault_check(test_vs_exec_expect_fault,
-                             (uintptr_t)test_fault_page,
-                             flags, CAUSE_INST_GUEST_PAGE_FAULT);
-    TEST_ASSERT("inst gpf cause = 20", ok);
-    HYP_TEST_END();
-}
-
-/* GFAULT-02: load guest-page-fault -> cause 21 */
-TEST_REGISTER(test_gfault_02_load_cause);
-bool test_gfault_02_load_cause(void) {
-    TEST_BEGIN("GFAULT-02: load guest-page-fault cause = 21");
+/* GFAULT-01: load guest-page-fault -> cause 21 */
+TEST_REGISTER(test_gfault_01_load_cause);
+bool test_gfault_01_load_cause(void) {
+    TEST_BEGIN("GFAULT-01: load guest-page-fault cause = 21");
     uintptr_t flags = (G_FLAGS_RWXU_AD & ~PTE_R);  /* R=0 */
     bool ok = _vsfault_check(test_vs_load_expect_fault,
                              (uintptr_t)test_fault_page,
@@ -55,15 +43,27 @@ bool test_gfault_02_load_cause(void) {
     HYP_TEST_END();
 }
 
-/* GFAULT-03: store guest-page-fault -> cause 23 */
-TEST_REGISTER(test_gfault_03_store_cause);
-bool test_gfault_03_store_cause(void) {
-    TEST_BEGIN("GFAULT-03: store guest-page-fault cause = 23");
+/* GFAULT-02: store guest-page-fault -> cause 23 */
+TEST_REGISTER(test_gfault_02_store_cause);
+bool test_gfault_02_store_cause(void) {
+    TEST_BEGIN("GFAULT-02: store guest-page-fault cause = 23");
     uintptr_t flags = (G_FLAGS_RWXU_AD & ~PTE_W);  /* W=0 */
     bool ok = _vsfault_check(test_vs_store_expect_fault,
                              (uintptr_t)test_fault_page,
                              flags, CAUSE_STORE_GUEST_PAGE_FAULT);
     TEST_ASSERT("store gpf cause = 23", ok);
+    HYP_TEST_END();
+}
+
+/* GFAULT-03: inst guest-page-fault -> cause 20 */
+TEST_REGISTER(test_gfault_03_inst_cause);
+bool test_gfault_03_inst_cause(void) {
+    TEST_BEGIN("GFAULT-03: inst guest-page-fault cause = 20");
+    uintptr_t flags = (G_FLAGS_RWXU_AD & ~PTE_X);  /* X=0 */
+    bool ok = _vsfault_check(test_vs_exec_expect_fault,
+                             (uintptr_t)test_fault_page,
+                             flags, CAUSE_INST_GUEST_PAGE_FAULT);
+    TEST_ASSERT("inst gpf cause = 20", ok);
     HYP_TEST_END();
 }
 

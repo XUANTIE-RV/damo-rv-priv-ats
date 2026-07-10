@@ -20,6 +20,7 @@
 TEST_REGISTER(test_htval_gva_01_load);
 bool test_htval_gva_01_load(void) {
     TEST_BEGIN("HTVAL-GVA-01: load gpf sets GVA and writes htval together");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -38,6 +39,7 @@ bool test_htval_gva_01_load(void) {
 TEST_REGISTER(test_htval_gva_02_fetch);
 bool test_htval_gva_02_fetch(void) {
     TEST_BEGIN("HTVAL-GVA-02: fetch gpf sets GVA and writes htval together");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -64,6 +66,7 @@ static uintptr_t vs_csrr_hstatus_gva(uintptr_t arg) {
 TEST_REGISTER(test_htval_gva_03_non_gpf);
 bool test_htval_gva_03_non_gpf(void) {
     TEST_BEGIN("HTVAL-GVA-03: non-GPF trap sets GVA=0 and htval=0");
+    SHTVALA_REQUIRE();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     /* Trigger a virtual-instruction exception from VS-mode by

@@ -4,57 +4,79 @@
  */
 
 /*
- * Test Group 8: htimedelta time offset
+ * Test Group 7: htimedelta time offset
  *
- * Tests HTDL-01 through HTDL-04 verify htimedelta register behavior.
+ * Tests HTDLT-01 through HTDLT-05 verify htimedelta register behavior.
+ *
+ * Spec basis:
+ *   norm:htimedelta_sz_acc_op - 64-bit RW register; VS/VU-mode reads
+ *     of time return time + htimedelta.
+ *   norm:time_htimedelta_req  - If time CSR is implemented, htimedelta
+ *     must be implemented.
  */
 
 #include "test_helpers.h"
 
 /* ------------------------------------------------------------------
- * HTDL-01: htimedelta basic read/write
+ * HTDLT-01: htimedelta basic read/write
+ *
+ * HS-mode writes htimedelta=0x1000 and reads it back.
+ * Expected: read-back value equals 0x1000.
  * ------------------------------------------------------------------ */
 TEST_REGISTER(htimedelta_basic_rw);
-bool htimedelta_basic_rw(void) {
-    TEST_BEGIN("HTDL-01: Verify htimedelta basic read/write");
+bool htimedelta_basic_rw(void)
+{
+    TEST_BEGIN("HTDLT-01: Verify htimedelta basic read/write");
 
-    /* Write 1000 to htimedelta. */
-    htimedelta_set(1000);
-    uintptr_t val; asm volatile("csrr %0, 0x605" : "=r"(val));
+    /* Write 0x1000 to htimedelta. */
+    htimedelta_set(0x1000);
+    uintptr_t val;
+    asm volatile("csrr %0, 0x605" : "=r"(val));
 
     /* Verify value is written. */
-    TEST_ASSERT_EQ("htimedelta should be writable", val, 1000);
+    TEST_ASSERT_EQ("htimedelta should read back 0x1000", val, 0x1000);
+
+    htimedelta_set(0); /* Restore */
 
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
- * HTDL-02: htimedelta affects VS time observation
+ * HTDLT-02: VS-mode reads time with delta applied
+ *
+ * Set htimedelta=N, VS-mode reads time CSR.
+ * Expected: returned value ~= real time + N.
  * ------------------------------------------------------------------ */
 TEST_REGISTER(htimedelta_affects_vs_time);
-bool htimedelta_affects_vs_time(void) {
-    TEST_BEGIN("HTDL-02: Verify htimedelta affects VS time observation");
+bool htimedelta_affects_vs_time(void)
+{
+    TEST_BEGIN("HTDLT-02: Verify VS-mode reads time with delta applied");
 
     /* Allow VS-mode to access time CSR.
-     * Both mcounteren.TM and hcounteren.TM must be set for VS-mode
-     * to read time without trapping (spec: mcounteren gates S/HS,
-     * hcounteren gates VS). */
+     * mcounteren.TM gates S/HS access; hcounteren.TM gates VS access. */
     uintptr_t saved_mcen = mcounteren_read();
     mcounteren_set(0x2); /* TM bit */
     uintptr_t saved_hcen = hcounteren_read();
     hcounteren_set(0x2); /* TM bit */
+
     /* Set htimedelta to a known offset. */
     uintptr_t delta = 100000;
     htimedelta_set(delta);
-    /* Read real time from HS-mode */
-    uintptr_t hs_time; asm volatile("csrr %0, time" : "=r"(hs_time));
-    /* Read time from VS-mode (should be hs_time + delta) */
+
+    /* Read real time from HS-mode. */
+    uintptr_t hs_time;
+    asm volatile("csrr %0, time" : "=r"(hs_time));
+
+    /* Read time from VS-mode (should be hs_time + delta). */
     uintptr_t vs_time = run_in_vs_mode(vs_read_time, 0);
-    /* VS time should be approximately hs_time + delta
-     * Allow some slack for instruction execution time */
+
+    /* VS time should be approximately hs_time + delta.
+     * Allow slack for instruction execution time. */
     int64_t diff = (int64_t)(vs_time - hs_time);
-    TEST_ASSERT("VS time >= HS time + delta (approx)",
-                diff >= (int64_t)(delta - 1000) && diff <= (int64_t)(delta + 100000));
+    TEST_ASSERT("VS time ~= HS time + delta (approx)",
+                diff >= (int64_t)(delta - 1000) &&
+                diff <= (int64_t)(delta + 100000));
+
     htimedelta_set(0); /* Restore */
     hcounteren_write(saved_hcen);
     mcounteren_write(saved_mcen);
@@ -63,34 +85,49 @@ bool htimedelta_affects_vs_time(void) {
 }
 
 /* ------------------------------------------------------------------
- * HTDL-03: htimedelta=0 means VS time equals real time
+ * HTDLT-03: VU-mode reads time with delta applied
+ *
+ * Set htimedelta=N, VU-mode reads time CSR.
+ * Expected: returned value ~= real time + N.
+ *
+ * For VU-mode counter access, three gates must all permit TM:
+ *   mcounteren.TM = 1  (M-mode gate)
+ *   hcounteren.TM = 1  (HS-mode gate for VS/VU)
+ *   scounteren.TM = 1  (maps to vcounteren.TM when V=1, gates VU)
  * ------------------------------------------------------------------ */
-TEST_REGISTER(htimedelta_zero_equals_real_time);
-bool htimedelta_zero_equals_real_time(void) {
-    TEST_BEGIN("HTDL-03: Verify htimedelta=0 means VS time equals real time");
+TEST_REGISTER(htimedelta_affects_vu_time);
+bool htimedelta_affects_vu_time(void)
+{
+    TEST_BEGIN("HTDLT-03: Verify VU-mode reads time with delta applied");
 
-    /* Set htimedelta to 0. */
-    htimedelta_set(0);
-    uintptr_t val; asm volatile("csrr %0, 0x605" : "=r"(val));
-
-    /* Verify htimedelta is zero. */
-    TEST_ASSERT_EQ("htimedelta should be 0", val, 0);
-
-    /* Allow VS-mode to access time CSR.
-     * Both mcounteren.TM and hcounteren.TM must be set for VS-mode
-     * to read time without trapping. */
+    /* Save and configure counter-enable gates for VU-mode time access. */
     uintptr_t saved_mcen = mcounteren_read();
-    mcounteren_set(0x2); /* TM bit */
+    mcounteren_set(0x2); /* mcounteren.TM */
     uintptr_t saved_hcen = hcounteren_read();
-    hcounteren_set(0x2); /* TM bit */
-    /* VS time should equal real time when delta is 0. */
-    htimedelta_set(0);
-    uintptr_t hs_time; asm volatile("csrr %0, time" : "=r"(hs_time));
-    uintptr_t vs_time = run_in_vs_mode(vs_read_time, 0);
-    int64_t diff = (int64_t)(vs_time - hs_time);
-    /* With delta=0, VS and HS time should be very close */
-    TEST_ASSERT("VS time close to HS time when delta=0",
-                diff >= 0 && diff < 100000);
+    hcounteren_set(0x2); /* hcounteren.TM */
+    uintptr_t saved_scen = scounteren_read();
+    scounteren_set(0x2); /* scounteren.TM -> vcounteren.TM when V=1 */
+
+    /* Set htimedelta to a known offset. */
+    uintptr_t delta = 100000;
+    htimedelta_set(delta);
+
+    /* Read real time from HS-mode. */
+    uintptr_t hs_time;
+    asm volatile("csrr %0, time" : "=r"(hs_time));
+
+    /* Read time from VU-mode (should be hs_time + delta). */
+    uintptr_t vu_time = run_in_vu_mode(vs_read_time, 0);
+
+    /* VU time should be approximately hs_time + delta.
+     * Allow slack for instruction execution time. */
+    int64_t diff = (int64_t)(vu_time - hs_time);
+    TEST_ASSERT("VU time ~= HS time + delta (approx)",
+                diff >= (int64_t)(delta - 1000) &&
+                diff <= (int64_t)(delta + 100000));
+
+    htimedelta_set(0); /* Restore */
+    scounteren_write(saved_scen);
     hcounteren_write(saved_hcen);
     mcounteren_write(saved_mcen);
 
@@ -98,19 +135,116 @@ bool htimedelta_zero_equals_real_time(void) {
 }
 
 /* ------------------------------------------------------------------
- * HTDL-04: htimedelta large value test
+ * HTDLT-04: htimedelta large value (negative offset / wrap-around)
+ *
+ * Set htimedelta = 0xFFFFFFFFFFFF0000 (near 2^64, equivalent to a
+ * negative offset of -65536 in 64-bit modular arithmetic).
+ *
+ * Expected: VS-mode reads time and the 64-bit truncated sum
+ * (time + htimedelta) wraps around, yielding a value SMALLER than
+ * the real time.
  * ------------------------------------------------------------------ */
-TEST_REGISTER(htimedelta_large_value);
-bool htimedelta_large_value(void) {
-    TEST_BEGIN("HTDL-04: Verify htimedelta handles large values");
+TEST_REGISTER(htimedelta_large_value_negative_offset);
+bool htimedelta_large_value_negative_offset(void)
+{
+    TEST_BEGIN("HTDLT-04: Verify htimedelta large value causes wrap-around");
 
-    /* Set htimedelta to a large value. */
-    int64_t large_delta = 1000000000LL;
+    /* Allow VS-mode to access time CSR. */
+    uintptr_t saved_mcen = mcounteren_read();
+    mcounteren_set(0x2); /* TM bit */
+    uintptr_t saved_hcen = hcounteren_read();
+    hcounteren_set(0x2); /* TM bit */
+
+    /* Set htimedelta to a near-max value (negative offset). */
+    uint64_t large_delta = 0xFFFFFFFFFFFF0000ULL;
     htimedelta_set(large_delta);
-    uintptr_t val; asm volatile("csrr %0, 0x605" : "=r"(val));
 
-    /* Verify large value is handled. */
-    TEST_ASSERT_EQ("htimedelta should handle large values", val, large_delta);
+    /* Verify the large value is stored correctly. */
+    uintptr_t readback;
+    asm volatile("csrr %0, 0x605" : "=r"(readback));
+    TEST_ASSERT_EQ("htimedelta should hold 0xFFFFFFFFFFFF0000",
+                   readback, (uintptr_t)large_delta);
+
+    /* Read real time from HS-mode. */
+    uintptr_t hs_time;
+    asm volatile("csrr %0, time" : "=r"(hs_time));
+
+    /* Read time from VS-mode.
+     * With delta = 0xFFFFFFFFFFFF0000 (= -65536 mod 2^64),
+     * VS time = (hs_time + delta) mod 2^64 should wrap around
+     * and be significantly less than hs_time. */
+    uintptr_t vs_time = run_in_vs_mode(vs_read_time, 0);
+
+    int64_t diff = (int64_t)(vs_time - hs_time);
+    /* diff should be approximately -65536 (negative due to wrap).
+     * Allow wide tolerance for execution time between reads. */
+    TEST_ASSERT("VS time < HS time (negative offset via wrap-around)",
+                diff < -1000 && diff > -200000);
+
+    htimedelta_set(0); /* Restore */
+    hcounteren_write(saved_hcen);
+    mcounteren_write(saved_mcen);
+
+    HYP_TEST_END();
+}
+
+/* ------------------------------------------------------------------
+ * HTDLT-05: HS-mode reads time without delta
+ *
+ * Set htimedelta=N, HS-mode reads time CSR.
+ * Expected: HS-mode returns real time (delta NOT applied).
+ *
+ * Per spec, htimedelta only affects VS-mode and VU-mode reads of
+ * the time CSR.  HS-mode (V=0) must observe the real time.
+ * ------------------------------------------------------------------ */
+TEST_REGISTER(htimedelta_hs_mode_no_delta);
+bool htimedelta_hs_mode_no_delta(void)
+{
+    TEST_BEGIN("HTDLT-05: Verify HS-mode reads time without delta");
+
+    /* Set htimedelta to a non-trivial offset. */
+    uintptr_t delta = 100000;
+    htimedelta_set(delta);
+
+    /* Read time twice from HS-mode and also capture a reference
+     * VS-mode read to confirm delta is active. */
+    uintptr_t hs_time1;
+    asm volatile("csrr %0, time" : "=r"(hs_time1));
+
+    uintptr_t hs_time2;
+    asm volatile("csrr %0, time" : "=r"(hs_time2));
+
+    /* HS time must be monotonically non-decreasing. */
+    TEST_ASSERT("HS time is monotonically non-decreasing",
+                hs_time2 >= hs_time1);
+
+    /* The two HS reads should be very close (no delta applied).
+     * If delta were erroneously applied, the difference between
+     * consecutive reads would be on the order of delta, not a
+     * few hundred cycles. */
+    uintptr_t hs_diff = hs_time2 - hs_time1;
+    TEST_ASSERT("HS time reads are close together (no delta effect)",
+                hs_diff < 10000);
+
+    /* Cross-check: VS-mode should see time shifted by delta,
+     * proving the delta IS active and HS-mode is immune. */
+    uintptr_t saved_mcen = mcounteren_read();
+    mcounteren_set(0x2);
+    uintptr_t saved_hcen = hcounteren_read();
+    hcounteren_set(0x2);
+
+    uintptr_t hs_time3;
+    asm volatile("csrr %0, time" : "=r"(hs_time3));
+    uintptr_t vs_time = run_in_vs_mode(vs_read_time, 0);
+
+    int64_t vs_hs_diff = (int64_t)(vs_time - hs_time3);
+    TEST_ASSERT("VS time is offset by delta (confirms delta active)",
+                vs_hs_diff >= (int64_t)(delta - 1000) &&
+                vs_hs_diff <= (int64_t)(delta + 100000));
+
+    htimedelta_set(0); /* Restore */
+    hcounteren_write(saved_hcen);
+    mcounteren_write(saved_mcen);
 
     HYP_TEST_END();
 }

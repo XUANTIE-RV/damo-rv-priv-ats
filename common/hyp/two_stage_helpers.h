@@ -351,7 +351,16 @@ static inline void ts2_clear_mprv(void) {
 /** M-mode load via MPRV (reads 8 bytes from @addr with current MPP/MPV). */
 static inline uint64_t ts2_mprv_load_d(uintptr_t addr) {
     uint64_t val;
+#if __riscv_xlen == 64
     asm volatile("ld %0, 0(%1)" : "=r"(val) : "r"(addr) : "memory");
+#else
+    uint32_t lo, hi;
+    asm volatile("lw %0, 0(%2)\n\t"
+                 "lw %1, 4(%2)"
+                 : "=&r"(lo), "=r"(hi)
+                 : "r"(addr) : "memory");
+    val = ((uint64_t)hi << 32) | lo;
+#endif
     return val;
 }
 
