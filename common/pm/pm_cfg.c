@@ -17,14 +17,14 @@ extern bool trap_was_triggered(void);
  * =================================================================== */
 
 void pm_set_umode(unsigned pmm) {
-    uintptr_t val = CSRR(0x10A);  /* senvcfg */
+    uintptr_t val = CSRR(CSR_SENVCFG);
     val &= ~SENVCFG_PMM_MASK;
     val |= ((uintptr_t)(pmm & 0x3) << SENVCFG_PMM_OFF);
-    CSRW(0x10A, val);
+    CSRW(CSR_SENVCFG, val);
 }
 
 unsigned pm_get_umode(void) {
-    uintptr_t val = CSRR(0x10A);  /* senvcfg */
+    uintptr_t val = CSRR(CSR_SENVCFG);
     return (unsigned)((val >> SENVCFG_PMM_OFF) & 0x3);
 }
 
@@ -33,14 +33,14 @@ unsigned pm_get_umode(void) {
  * =================================================================== */
 
 void pm_set_smode(unsigned pmm) {
-    uintptr_t val = CSRR(0x30A);  /* menvcfg */
+    uintptr_t val = CSRR(CSR_MENVCFG);
     val &= ~MENVCFG_PMM_MASK;
     val |= ((uintptr_t)(pmm & 0x3) << MENVCFG_PMM_OFF);
-    CSRW(0x30A, val);
+    CSRW(CSR_MENVCFG, val);
 }
 
 unsigned pm_get_smode(void) {
-    uintptr_t val = CSRR(0x30A);  /* menvcfg */
+    uintptr_t val = CSRR(CSR_MENVCFG);
     return (unsigned)((val >> MENVCFG_PMM_OFF) & 0x3);
 }
 
@@ -49,14 +49,14 @@ unsigned pm_get_smode(void) {
  * =================================================================== */
 
 void pm_set_mmode(unsigned pmm) {
-    uintptr_t val = CSRR(0x747);  /* mseccfg */
+    uintptr_t val = CSRR(CSR_MSECCFG);
     val &= ~MSECCFG_PMM_MASK;
     val |= ((uintptr_t)(pmm & 0x3) << MSECCFG_PMM_OFF);
-    CSRW(0x747, val);
+    CSRW(CSR_MSECCFG, val);
 }
 
 unsigned pm_get_mmode(void) {
-    uintptr_t val = CSRR(0x747);  /* mseccfg */
+    uintptr_t val = CSRR(CSR_MSECCFG);
     return (unsigned)((val >> MSECCFG_PMM_OFF) & 0x3);
 }
 

@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PLATFORM_SPIKE_H
-#define PLATFORM_SPIKE_H
+#ifndef PLATFORM_SAIL_RV64_MAX_H
+#define PLATFORM_SAIL_RV64_MAX_H
 
-/* ===== Spike RISC-V ISA simulator platform address map ===== */
+/* ===== Sail RISC-V model platform address map ===== */
 
-/* UART: Spike does not have an MMIO UART device.
+/* UART: SAIL does not have an MMIO UART device.
  * Terminal output uses HTIF (Host-Target Interface) via tohost/fromhost.
  * PLATFORM_UART0_BASE is retained as a placeholder because other code
  * (e.g. page_table.c, smepmp) references it; the HTIF UART driver in
@@ -25,14 +25,13 @@
 
 #define PLATFORM_MEM_SIZE       0x10000000UL    /* 256 MB */
 
-/* Spike uses tohost/fromhost for termination (no test device) */
+/* Sail uses tohost/fromhost for termination (no test device) */
 
 /* Platform name */
-#define CONFIG_NAME           "Spike RV64 RISC-V ISA simulator"
+#define CONFIG_NAME           "Sail RV64 RISC-V model"
 
-/* Enable double trap support for Spike (Smdbltrp/Ssdbltrp extensions).
- * Spike implements Smdbltrp which sets MDT=1 on M-mode trap entry.
- * This enables the framework's clear_mdt() and M_TRAP_EXPECT_BEGIN(). */
-#define PLATFORM_DOUBLE_TRAP  1
+/* Sail currently dose not support sdtrig extension
+ Skip any breakpoint tests */
+#define SKIP_BREAKPOINT_TESTS  1
 
-#endif /* PLATFORM_SPIKE_H */
+#endif /* PLATFORM_SAIL_RV64_MAX_H */

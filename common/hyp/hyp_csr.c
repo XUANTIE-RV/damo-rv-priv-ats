@@ -16,16 +16,14 @@
  * =================================================================== */
 
 uintptr_t hgatp_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x680" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_HGATP);
 }
 
 /* Raw write: write the value untouched. Reserved for tests that
  * deliberately probe WARL behaviour (see hgatp_write_raw doc in
  * hyp_csr.h). */
 void hgatp_write_raw(uintptr_t value) {
-    asm volatile ("csrw 0x680, %0" :: "r"(value) : "memory");
+    CSRW(CSR_HGATP, value);
 }
 
 /* Spec-correct write: apply the WARL masking required by the
@@ -43,7 +41,7 @@ void hgatp_write_raw(uintptr_t value) {
  * Tests that explicitly probe HW WARL behaviour for reserved MODE
  * values must call hgatp_write_raw() instead. */
 void hgatp_write(uintptr_t value) {
-    uintptr_t mode = (value >> HGATP64_MODE_SHIFT) & 0xFUL;
+    uintptr_t mode = (uintptr_t)((uint64_t)value >> HGATP64_MODE_SHIFT) & 0xFUL;
     if (mode == HGATP_MODE_BARE) {
         value = 0;
     } else if (mode == HGATP_MODE_SV39X4 ||
@@ -51,7 +49,7 @@ void hgatp_write(uintptr_t value) {
                mode == HGATP_MODE_SV57X4) {
         value &= ~((uintptr_t)0x3UL);
     }
-    asm volatile ("csrw 0x680, %0" :: "r"(value) : "memory");
+    CSRW(CSR_HGATP, value);
 }
 
 void hgatp_set(int mode, unsigned vmid, uintptr_t root_ppn) {
@@ -78,13 +76,11 @@ bool hgatp_supports_mode(int mode) {
  * =================================================================== */
 
 uintptr_t hstatus_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x600" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_HSTATUS);
 }
 
 void hstatus_write(uintptr_t value) {
-    asm volatile ("csrw 0x600, %0" :: "r"(value) : "memory");
+    CSRW(CSR_HSTATUS, value);
 }
 
 void hstatus_set_spv(bool v) {
@@ -114,21 +110,17 @@ unsigned hstatus_get_spv(void) {
  * =================================================================== */
 
 void hedeleg_write(uintptr_t value) {
-    asm volatile ("csrw 0x602, %0" :: "r"(value) : "memory");
+    CSRW(CSR_HEDELEG, value);
 }
 uintptr_t hedeleg_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x602" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_HEDELEG);
 }
 
 void hideleg_write(uintptr_t value) {
-    asm volatile ("csrw 0x603, %0" :: "r"(value) : "memory");
+    CSRW(CSR_HIDELEG, value);
 }
 uintptr_t hideleg_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x603" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_HIDELEG);
 }
 
 /* ===================================================================
@@ -136,20 +128,18 @@ uintptr_t hideleg_read(void) {
  * =================================================================== */
 
 void henvcfg_write(uintptr_t value) {
-    asm volatile ("csrw 0x60A, %0" :: "r"(value) : "memory");
+    CSRW(CSR_HENVCFG, value);
 }
 uintptr_t henvcfg_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x60A" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_HENVCFG);
 }
 
 void hcounteren_write(uintptr_t value) {
-    asm volatile ("csrw 0x606, %0" :: "r"(value) : "memory");
+    CSRW(CSR_HCOUNTEREN, value);
 }
 
 void htimedelta_write(uintptr_t value) {
-    asm volatile ("csrw 0x605, %0" :: "r"(value) : "memory");
+    CSRW(CSR_HTIMEDELTA, value);
 }
 
 /* ===================================================================
@@ -161,13 +151,11 @@ void htimedelta_write(uintptr_t value) {
  * =================================================================== */
 
 uintptr_t menvcfg_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x30A" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_MENVCFG);
 }
 
 void menvcfg_write(uintptr_t value) {
-    asm volatile ("csrw 0x30A, %0" :: "r"(value) : "memory");
+    CSRW(CSR_MENVCFG, value);
 }
 
 /* ===================================================================
@@ -208,15 +196,15 @@ void hstatus_set_hu(bool enable) {
 
 void hyp_delegate_to_vs(uintptr_t hedeleg_mask, uintptr_t hideleg_mask) {
     /* First ensure medeleg/mideleg delegates these to HS-mode.
-     * Read current medeleg and OR in the requested bits. */
-    uintptr_t medeleg;
-    uintptr_t mideleg;
-    asm volatile ("csrr %0, 0x302" : "=r"(medeleg) :: "memory"); /* medeleg */
-    asm volatile ("csrr %0, 0x303" : "=r"(mideleg) :: "memory"); /* mideleg */
-    medeleg |= hedeleg_mask;
-    mideleg |= hideleg_mask;
-    asm volatile ("csrw 0x302, %0" :: "r"(medeleg) : "memory");
-    asm volatile ("csrw 0x303, %0" :: "r"(mideleg) : "memory");
+     * Read current medeleg and OR in the requested bits.
+     * Local variables use _val suffix to avoid shadowing the CSR
+     * name macros used in CSRR/CSRW. */
+    uintptr_t md_val  = CSRR(medeleg);
+    uintptr_t mid_val = CSRR(mideleg);
+    md_val  |= hedeleg_mask;
+    mid_val |= hideleg_mask;
+    CSRW(medeleg, md_val);
+    CSRW(mideleg, mid_val);
 
     /* Then delegate from HS-mode to VS-mode via hedeleg/hideleg. */
     hedeleg_write(hedeleg_read() | hedeleg_mask);
@@ -251,13 +239,11 @@ void hyp_undelegate(void) {
 #endif
 
 uintptr_t hvip_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x645" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_HVIP);
 }
 
 void hvip_write(uintptr_t value) {
-    asm volatile ("csrw 0x645, %0" :: "r"(value) : "memory");
+    CSRW(CSR_HVIP, value);
 }
 
 void hvip_set_vssi(bool pending) {
@@ -316,21 +302,15 @@ void henvcfg_set_stce(bool enable) {
  * =================================================================== */
 
 uintptr_t hcounteren_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x606" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_HCOUNTEREN);
 }
 
-void hcounteren_set(uint32_t mask) {
-    uintptr_t v = hcounteren_read();
-    v |= (uintptr_t)mask;
-    hcounteren_write(v);
+void hcounteren_set(uintptr_t mask) {
+    CSRS(CSR_HCOUNTEREN, mask);
 }
 
-void hcounteren_clear(uint32_t mask) {
-    uintptr_t v = hcounteren_read();
-    v &= ~(uintptr_t)mask;
-    hcounteren_write(v);
+void hcounteren_clear(uintptr_t mask) {
+    CSRC(CSR_HCOUNTEREN, mask);
 }
 
 void htimedelta_set(uint64_t delta) {
@@ -338,47 +318,43 @@ void htimedelta_set(uint64_t delta) {
 }
 
 /* ===================================================================
- * mcounteren / scounteren
+ * mcounteren (M-mode Counter Enable, CSR 0x306)
  * =================================================================== */
 
 uintptr_t mcounteren_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x306" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_MCOUNTEREN);
 }
 
 void mcounteren_write(uintptr_t value) {
-    asm volatile ("csrw 0x306, %0" :: "r"(value) : "memory");
+    CSRW(CSR_MCOUNTEREN, value);
 }
 
-void mcounteren_set(uint32_t mask) {
-    uintptr_t v = mcounteren_read();
-    mcounteren_write(v | (uintptr_t)mask);
+void mcounteren_set(uintptr_t mask) {
+    CSRS(CSR_MCOUNTEREN, mask);
 }
 
-void mcounteren_clear(uint32_t mask) {
-    uintptr_t v = mcounteren_read();
-    mcounteren_write(v & ~(uintptr_t)mask);
+void mcounteren_clear(uintptr_t mask) {
+    CSRC(CSR_MCOUNTEREN, mask);
 }
+
+/* ===================================================================
+ * scounteren (S-mode Counter Enable, CSR 0x106)
+ * =================================================================== */
 
 uintptr_t scounteren_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x106" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_SCOUNTEREN);
 }
 
 void scounteren_write(uintptr_t value) {
-    asm volatile ("csrw 0x106, %0" :: "r"(value) : "memory");
+    CSRW(CSR_SCOUNTEREN, value);
 }
 
-void scounteren_set(uint32_t mask) {
-    uintptr_t v = scounteren_read();
-    scounteren_write(v | (uintptr_t)mask);
+void scounteren_set(uintptr_t mask) {
+    CSRS(CSR_SCOUNTEREN, mask);
 }
 
-void scounteren_clear(uint32_t mask) {
-    uintptr_t v = scounteren_read();
-    scounteren_write(v & ~(uintptr_t)mask);
+void scounteren_clear(uintptr_t mask) {
+    CSRC(CSR_SCOUNTEREN, mask);
 }
 
 /* ===================================================================
@@ -386,13 +362,11 @@ void scounteren_clear(uint32_t mask) {
  * =================================================================== */
 
 uintptr_t vstvec_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x205" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_VSTVEC);
 }
 
 void vstvec_write(uintptr_t value) {
-    asm volatile ("csrw 0x205, %0" :: "r"(value) : "memory");
+    CSRW(CSR_VSTVEC, value);
 }
 
 void vstvec_set_mode(int mode) {
@@ -414,13 +388,11 @@ int vstvec_get_mode(void) {
  * =================================================================== */
 
 uintptr_t vstval_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x243" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_VSTVAL);
 }
 
 void vstval_write(uintptr_t value) {
-    asm volatile ("csrw 0x243, %0" :: "r"(value) : "memory");
+    CSRW(CSR_VSTVAL, value);
 }
 
 /* ===================================================================
@@ -428,23 +400,19 @@ void vstval_write(uintptr_t value) {
  * =================================================================== */
 
 uintptr_t vsie_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x204" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_VSIE);
 }
 
 void vsie_write(uintptr_t value) {
-    asm volatile ("csrw 0x204, %0" :: "r"(value) : "memory");
+    CSRW(CSR_VSIE, value);
 }
 
 uintptr_t vsip_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x244" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_VSIP);
 }
 
 void vsip_write(uintptr_t value) {
-    asm volatile ("csrw 0x244, %0" :: "r"(value) : "memory");
+    CSRW(CSR_VSIP, value);
 }
 
 /* ===================================================================
@@ -452,17 +420,11 @@ void vsip_write(uintptr_t value) {
  * =================================================================== */
 
 uintptr_t vsatp_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x280" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_VSATP);
 }
 
 void vsatp_write(uintptr_t value) {
-    asm volatile ("csrw 0x280, %0" :: "r"(value) : "memory");
-}
-
-void vsatp_write_raw(uintptr_t value) {
-    asm volatile ("csrw 0x280, %0" :: "r"(value) : "memory");
+    CSRW(CSR_VSATP, value);
 }
 
 /* ===================================================================
@@ -470,13 +432,11 @@ void vsatp_write_raw(uintptr_t value) {
  * =================================================================== */
 
 uintptr_t satp_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x180" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_SATP);
 }
 
 void satp_write(uintptr_t value) {
-    asm volatile ("csrw 0x180, %0" :: "r"(value) : "memory");
+    CSRW(CSR_SATP, value);
 }
 
 /* ===================================================================
@@ -619,10 +579,10 @@ bool hpmcounter_is_writable(int idx) {
 uintptr_t mstateen_read(int idx) {
     uintptr_t v = 0;
     switch (idx) {
-    case 0: asm volatile ("csrr %0, 0x30C" : "=r"(v) :: "memory"); break;
-    case 1: asm volatile ("csrr %0, 0x30D" : "=r"(v) :: "memory"); break;
-    case 2: asm volatile ("csrr %0, 0x30E" : "=r"(v) :: "memory"); break;
-    case 3: asm volatile ("csrr %0, 0x30F" : "=r"(v) :: "memory"); break;
+    case 0: v = CSRR(CSR_MSTATEEN0); break;
+    case 1: v = CSRR(CSR_MSTATEEN1); break;
+    case 2: v = CSRR(CSR_MSTATEEN2); break;
+    case 3: v = CSRR(CSR_MSTATEEN3); break;
     default: break;
     }
     return v;
@@ -630,10 +590,10 @@ uintptr_t mstateen_read(int idx) {
 
 void mstateen_write(int idx, uintptr_t value) {
     switch (idx) {
-    case 0: asm volatile ("csrw 0x30C, %0" :: "r"(value) : "memory"); break;
-    case 1: asm volatile ("csrw 0x30D, %0" :: "r"(value) : "memory"); break;
-    case 2: asm volatile ("csrw 0x30E, %0" :: "r"(value) : "memory"); break;
-    case 3: asm volatile ("csrw 0x30F, %0" :: "r"(value) : "memory"); break;
+    case 0: CSRW(CSR_MSTATEEN0, value); break;
+    case 1: CSRW(CSR_MSTATEEN1, value); break;
+    case 2: CSRW(CSR_MSTATEEN2, value); break;
+    case 3: CSRW(CSR_MSTATEEN3, value); break;
     default: break;
     }
 }
@@ -649,10 +609,10 @@ void mstateen_clear_bits(int idx, uintptr_t mask) {
 uintptr_t hstateen_read(int idx) {
     uintptr_t v = 0;
     switch (idx) {
-    case 0: asm volatile ("csrr %0, 0x60C" : "=r"(v) :: "memory"); break;
-    case 1: asm volatile ("csrr %0, 0x60D" : "=r"(v) :: "memory"); break;
-    case 2: asm volatile ("csrr %0, 0x60E" : "=r"(v) :: "memory"); break;
-    case 3: asm volatile ("csrr %0, 0x60F" : "=r"(v) :: "memory"); break;
+    case 0: v = CSRR(CSR_HSTATEEN0); break;
+    case 1: v = CSRR(CSR_HSTATEEN1); break;
+    case 2: v = CSRR(CSR_HSTATEEN2); break;
+    case 3: v = CSRR(CSR_HSTATEEN3); break;
     default: break;
     }
     return v;
@@ -660,10 +620,10 @@ uintptr_t hstateen_read(int idx) {
 
 void hstateen_write(int idx, uintptr_t value) {
     switch (idx) {
-    case 0: asm volatile ("csrw 0x60C, %0" :: "r"(value) : "memory"); break;
-    case 1: asm volatile ("csrw 0x60D, %0" :: "r"(value) : "memory"); break;
-    case 2: asm volatile ("csrw 0x60E, %0" :: "r"(value) : "memory"); break;
-    case 3: asm volatile ("csrw 0x60F, %0" :: "r"(value) : "memory"); break;
+    case 0: CSRW(CSR_HSTATEEN0, value); break;
+    case 1: CSRW(CSR_HSTATEEN1, value); break;
+    case 2: CSRW(CSR_HSTATEEN2, value); break;
+    case 3: CSRW(CSR_HSTATEEN3, value); break;
     default: break;
     }
 }
@@ -679,10 +639,10 @@ void hstateen_clear_bits(int idx, uintptr_t mask) {
 uintptr_t sstateen_read(int idx) {
     uintptr_t v = 0;
     switch (idx) {
-    case 0: asm volatile ("csrr %0, 0x10C" : "=r"(v) :: "memory"); break;
-    case 1: asm volatile ("csrr %0, 0x10D" : "=r"(v) :: "memory"); break;
-    case 2: asm volatile ("csrr %0, 0x10E" : "=r"(v) :: "memory"); break;
-    case 3: asm volatile ("csrr %0, 0x10F" : "=r"(v) :: "memory"); break;
+    case 0: v = CSRR(CSR_SSTATEEN0); break;
+    case 1: v = CSRR(CSR_SSTATEEN1); break;
+    case 2: v = CSRR(CSR_SSTATEEN2); break;
+    case 3: v = CSRR(CSR_SSTATEEN3); break;
     default: break;
     }
     return v;
@@ -690,10 +650,10 @@ uintptr_t sstateen_read(int idx) {
 
 void sstateen_write(int idx, uintptr_t value) {
     switch (idx) {
-    case 0: asm volatile ("csrw 0x10C, %0" :: "r"(value) : "memory"); break;
-    case 1: asm volatile ("csrw 0x10D, %0" :: "r"(value) : "memory"); break;
-    case 2: asm volatile ("csrw 0x10E, %0" :: "r"(value) : "memory"); break;
-    case 3: asm volatile ("csrw 0x10F, %0" :: "r"(value) : "memory"); break;
+    case 0: CSRW(CSR_SSTATEEN0, value); break;
+    case 1: CSRW(CSR_SSTATEEN1, value); break;
+    case 2: CSRW(CSR_SSTATEEN2, value); break;
+    case 3: CSRW(CSR_SSTATEEN3, value); break;
     default: break;
     }
 }

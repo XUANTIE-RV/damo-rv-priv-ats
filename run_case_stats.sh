@@ -3,7 +3,7 @@
 
 SCRIPT_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
-SIMULATOR="${SIMULATOR:-spike}"
+SIMULATOR="${SIMULATOR:-qemu}"
 LOGDIR="${SCRIPT_DIR}/statistics"
 RESULT_FILE="${LOGDIR}/${SIMULATOR}_case_summary.log"
 CSV_FILE="${LOGDIR}/${SIMULATOR}_case_summary.csv"
@@ -14,7 +14,7 @@ EXT_SV="Sv39 Sv48 Sv57 Svbare Svade Svadu Svnapot Svinval Svpbmt Svvptc Svrsw60t
 
 # Machine extensions
 EXT_SM="Smcsrind Smstateen"
-EXT_PMP="pmp smepmp spmp pmp_sv39 pmp_sv48 pmp_sv57"
+EXT_PMP="pmp pmp_sv39 pmp_sv48 pmp_sv57"
 
 
 # Hypervisor extensions Shvstvecd
@@ -27,15 +27,15 @@ EXT_HYP_SV="Sv39x4 Sv48x4 Sv57x4 Sv39x4_Sv39 Sv39x4_Sv48 Sv39x4_Sv57 Sv48x4_Sv39
 EXT_HYP_CROSS="Hypervisor_Smcsrind Hypervisor_Smstateen Hypervisor_Ssccptr Hypervisor_Sscsrind Hypervisor_Ssdbltrp Hypervisor_Ssstateen Hypervisor_Sstc Hypervisor_Sstvala Hypervisor_Svadu Hypervisor_Svinval Hypervisor_Svnapot Hypervisor_Svpbmt"
 
 # Compose final extension list
-EXTENSIONS="${EXT_HYP} ${EXT_HYP_SV} ${EXT_HYP_CROSS}"
+EXTENSIONS="${EXT_HYP} ${EXT_HYP_SV} ${EXT_HYP_CROSS} ${EXT_SS} ${EXT_SV} ${EXT_SM} ${EXT_PMP}"
 
 
 
 cd $SCRIPT_DIR
 mkdir -p $LOGDIR
-echo "=== Starting Extension tests on ${SIMULATOR} ===" > "$RESULT_FILE"
-echo "Time: $(date)" >> "$RESULT_FILE"
-echo "" >> "$RESULT_FILE"
+echo "=== Starting Extension tests on ${SIMULATOR} ===" | tee "$RESULT_FILE"
+echo "Time: $(date)" | tee -a "$RESULT_FILE"
+echo "" | tee -a "$RESULT_FILE"
 
 # Initialize CSV file with header
 echo "CASE,TOTAL,PASS,FAIL,SKIP" > "$CSV_FILE"
@@ -68,6 +68,6 @@ for ext in $EXTENSIONS; do
     echo ""
 done
 
-echo "" >> "$RESULT_FILE"
-echo "=== Completed at $(date) ===" >> "$RESULT_FILE"
+echo "" | tee -a "$RESULT_FILE"
+echo "=== Completed at $(date) ===" | tee -a "$RESULT_FILE"
 echo "All extension tests completed on ${SIMULATOR} "

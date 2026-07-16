@@ -9,11 +9,11 @@
 
 #define STANDARD_SM_SUPPORTED
 
-##### STARTUP #####
+// ===== STARTUP =====
 
-# Perform boot operations. Can be empty or left undefined unless needed for
-# DUT-specific behavior such as turning on a memory controller or
-# initializing custom state.
+// Perform boot operations. Can be empty or left undefined unless needed for
+// DUT-specific behavior such as turning on a memory controller or
+// initializing custom state.
 
 #define APLIC_BASE       0x0c000000 /* machine APLIC domain base address */
 #define SAPLIC_BASE      0x0d000000 /* supervisor APLIC domain base address (child of machine domain) */
@@ -95,10 +95,10 @@
 // state in a fashion similar to RVTEST_BOOT_TO_MMODE.
 //#define RVMODEL_BOOT_TO_MMODE
 
-##### TERMINATION #####
+// ===== TERMINATION =====
 
-# Terminate test with a pass indication.
-# When the test is run in simulation, this should end the simulation.
+// Terminate test with a pass indication.
+// When the test is run in simulation, this should end the simulation.
 #define RVMODEL_HALT_PASS  \
   li x1, 1                ;\
   la t0, tohost           ;\
@@ -108,8 +108,8 @@
   self_loop_pass:         ;\
     j self_loop_pass      ;\
 
-# Terminate test with a fail indication.
-# When the test is run in simulation, this should end the simulation.
+// Terminate test with a fail indication.
+// When the test is run in simulation, this should end the simulation.
 #define RVMODEL_HALT_FAIL \
   li x1, 3                ;\
   la t0, tohost           ;\
@@ -119,18 +119,18 @@
   self_loop_fail:         ;\
     j self_loop_fail      ;\
 
-##### IO #####
+// ===== IO =====
 
-# Initialization steps needed prior to writing to the console
-# _R1, _R2, and _R3 can be used as temporary registers if needed.
-# Do not modify any other registers (or make sure to restore them).
-# Can be empty or left undefined if no initialization is needed.
+// Initialization steps needed prior to writing to the console
+// _R1, _R2, and _R3 can be used as temporary registers if needed.
+// Do not modify any other registers (or make sure to restore them).
+// Can be empty or left undefined if no initialization is needed.
  //#define RVMODEL_IO_INIT(_R1, _R2, _R3)
 
-# Prints a null-terminated string using a DUT specific mechanism.
-# A pointer to the string is passed in _STR_PTR.
-# _R1, _R2, and _R3 can be used as temporary registers if needed.
-# Do not modify any other registers (or make sure to restore them).
+// Prints a null-terminated string using a DUT specific mechanism.
+// A pointer to the string is passed in _STR_PTR.
+// _R1, _R2, and _R3 can be used as temporary registers if needed.
+// Do not modify any other registers (or make sure to restore them).
 #define RVMODEL_IO_WRITE_STR(_R1, _R2, _R3, _STR_PTR) \
 1:                           ;                        \
   lbu  _R1, 0(_STR_PTR)      ; /* Load byte */        \
@@ -142,18 +142,18 @@
   j 1b                       ; /* Loop */             \
 3:
 
-##### Access Fault #####
+// ===== Access Fault =====
 
 #define RVMODEL_ACCESS_FAULT_ADDRESS 0x00000000
 
-##### Machine Interrupts #####
+// ===== Machine Interrupts =====
 
 // Interrupt latency configuration
 #define RVMODEL_INTERRUPT_LATENCY 10
 
 #define RVMODEL_TIMER_INT_SOON_DELAY 100
 
-##### Machine Timer #####
+// ===== Machine Timer =====
 #define RVMODEL_MAX_CYCLES_PER_TIMER_TICK 1
 
 #define RVMODEL_MTIMECMP_ADDRESS  0x02004000  /* Address of mtimecmp CSR */
@@ -186,7 +186,7 @@
   li      _R1, RVMODEL_MSIP_ADDRESS; \
   sw      x0, 0(_R1);
 
-##### Supervisor Interrupts #####
+// ===== Supervisor Interrupts =====
 
 #define WHISPER_SSIP_ADDRESS (CLINT_BASE_ADDRESS + 0xC000)
 

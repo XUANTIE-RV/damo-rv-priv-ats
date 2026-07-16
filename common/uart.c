@@ -6,7 +6,7 @@
 #include "uart.h"
 
 /* ===== UART driver type selection =====
- * Platforms define PLATFORM_UART_TYPE in their platform.h.
+ * Platforms define PLATFORM_UART_TYPE in their platform_config.h.
  * Default is NS16550 (full initialization).
  *   - UART_TYPE_NS16550 (0): Full NS16550 init (QEMU, FPGA, real HW)
  *   - UART_TYPE_SAIL    (1): HTIF-based output for Sail RISC-V model */
@@ -76,6 +76,8 @@ void uart_putc(char c) {
 #define UART_LCR_DLAB       (1 << 7)
 #define UART_LCR_8BIT       0x03
 #define UART_FCR_ENABLE     0x01
+#define UART_FCR_CLEAR      0x06  /* Clear RX + TX FIFOs */
+#define UART_MCR_DTR_RTS    0x03  /* Data Terminal Ready + Request To Send */
 
 /* Register spacing: most 16550-compatible UARTs use byte spacing (shift=0),
  * but some (e.g. snps,dw-apb-uart with reg-shift=<2>) use wider spacing.
@@ -114,13 +116,23 @@ static inline uint8_t uart_reg_read(unsigned int reg) {
 }
 #endif
 
-void uart_init(void) {
-    /* Full NS16550 initialization (QEMU, FPGA, real hardware) */
+void uart_init(void)
+{
+#ifdef UART_SILENT_MODE
+    /* Skip all UART hardware init in silent mode.
+     * Output is captured in the memory buffer only. */
+    return;
+#endif
 
-    /* Disable interrupts */
+    /* Full NS16550 initialization (QEMU, FPGA, real hardware).
+     * Sequence matches the DesignWare APB UART (snps,dw-apb-uart)
+     * recovery procedure: disable IRQ → baud → format → modem →
+     * FIFO reset → status clear. */
+
+    /* 1. Disable interrupts */
     uart_reg_write(UART_IER, 0x00);
 
-    /* Set baud rate: enable DLAB, set divisor */
+    /* 2. Set baud rate: enable DLAB, set divisor */
     uart_reg_write(UART_LCR, UART_LCR_DLAB);
 #if defined(UART_DLL_VALUE) && defined(UART_DLM_VALUE)
     uart_reg_write(UART_DLL, UART_DLL_VALUE);
@@ -130,19 +142,66 @@ void uart_init(void) {
     uart_reg_write(UART_DLM, 0x00);
 #endif
 
-    /* 8 data bits, no parity, 1 stop bit */
+    /* 3. 8 data bits, no parity, 1 stop bit (clears DLAB) */
     uart_reg_write(UART_LCR, UART_LCR_8BIT);
 
-    /* Enable FIFO */
-    uart_reg_write(UART_FCR, UART_FCR_ENABLE);
+    /* 4. Assert DTR and RTS modem control lines.
+     *    Required for TX path on DesignWare APB UART, especially
+     *    after taking over from Linux where a system reset may
+     *    deassert these lines. */
+    uart_reg_write(UART_MCR, UART_MCR_DTR_RTS);
+
+    /* 5. Enable FIFO and clear both RX and TX FIFOs.
+     *    Clearing is essential when taking over from a previous
+     *    owner (e.g. Linux after system reset), where residual
+     *    FIFO state can cause LSR.TEMT (bit 6) to stay low. */
+    uart_reg_write(UART_FCR, UART_FCR_ENABLE | UART_FCR_CLEAR);
+
+    /* 6. Drain any stale data from RX FIFO */
+    while (uart_reg_read(UART_LSR) & 0x01)
+        (void)uart_reg_read(UART_RBR);
+
+    /* 7. Final status clear: read IIR + LSR to ack any pending
+     *    interrupt and clear line-status flags. */
+    (void)uart_reg_read(UART_FCR);  /* read IIR (same offset as FCR) */
+    (void)uart_reg_read(UART_LSR);
 }
 
+#ifdef UART_OUTPUT_BUFFER_SIZE
+static volatile char uart_output_buf[UART_OUTPUT_BUFFER_SIZE];
+static volatile unsigned int uart_output_pos = 0;
+#endif
+
 void uart_putc(char c) {
-    /* Wait until both THR and shift register are empty (bit 6).
-     * On DesignWare APB UART, checking only bit 5 (THRE) can race
-     * with the THR-to-shift-register transfer, causing data loss. */
+#ifdef UART_OUTPUT_BUFFER_SIZE
+    /* Always write to memory buffer for GDB reading.
+     * Ensures output is captured even when UART hardware
+     * cannot transmit (e.g., baud clock not running). */
+    if (uart_output_pos < UART_OUTPUT_BUFFER_SIZE) {
+        uart_output_buf[uart_output_pos++] = c;
+    }
+#endif
+
+#ifdef UART_SILENT_MODE
+    /* Skip all UART hardware access in silent mode.
+     * Output is captured in the memory buffer for GDB reading. */
+    return;
+#endif
+
+    /* Wait until THR is empty.
+     * On platforms with UART_TX_TIMEOUT_CYCLES defined, use THRE (bit 5)
+     * with a timeout to avoid hanging when the baud clock is unreliable.
+     * Otherwise, use TEMT (bit 6) for strict shift-register-empty check. */
+#ifdef UART_TX_TIMEOUT_CYCLES
+    {
+        int timeout = UART_TX_TIMEOUT_CYCLES;
+        while ((uart_reg_read(UART_LSR) & UART_LSR_TX_EMPTY) == 0 && timeout-- > 0)
+            ;
+    }
+#else
     while ((uart_reg_read(UART_LSR) & UART_LSR_TX_BOTH_EMPTY) == 0)
         ;
+#endif
     uart_reg_write(UART_THR, (uint8_t)c);
 }
 

@@ -10,10 +10,7 @@
  * External dependencies from privilege.c and trap.c
  * =================================================================== */
 
-/* Privilege level definitions (must match privilege.c) */
-#define PRIV_U  0
-#define PRIV_S  1
-#define PRIV_M  3
+/* Privilege level definitions are in encoding.h. */
 
 /* From privilege.c */
 extern uintptr_t run_in_priv(unsigned priv, uintptr_t (*fn)(uintptr_t),
@@ -26,8 +23,8 @@ extern void s_trap_entry(void);
 extern uintptr_t __smode_stack_end;
 
 /* From csr_accessors.c */
-extern uintptr_t csr_read(int csr_num);
-extern void csr_write(int csr_num, uintptr_t val);
+extern uintptr_t csr_read(uint16_t csr);
+extern void csr_write(uint16_t csr, uintptr_t val);
 
 /* ===================================================================
  * PMP helpers for VM
@@ -38,12 +35,8 @@ extern void csr_write(int csr_num, uintptr_t val);
  * the entire address space to grant RWX permissions.
  * =================================================================== */
 
-/* PMP configuration bits (duplicated here to avoid pmp_cfg.h dependency) */
-#define VM_PMP_R        (1U << 0)
-#define VM_PMP_W        (1U << 1)
-#define VM_PMP_X        (1U << 2)
-#define VM_PMP_A_NAPOT  (3U << 3)
-#define VM_PMP_RWX      (VM_PMP_R | VM_PMP_W | VM_PMP_X)
+/* PMP constants (PMP_R, PMP_W, PMP_X, PMP_A_NAPOT, PMP_RWX) are
+ * defined in sm_defs.h, included via encoding.h through vm.h. */
 
 /* PMP entry index used by VM framework */
 #define VM_PMP_ENTRY    15
@@ -74,7 +67,7 @@ static void vm_pmp_allow_all(void) {
 
     uintptr_t cfg_val = csr_read(cfg_csr);
     uintptr_t mask = ~((uintptr_t)0xFF << byte_offset);
-    cfg_val = (cfg_val & mask) | ((uintptr_t)(VM_PMP_A_NAPOT | VM_PMP_RWX) << byte_offset);
+    cfg_val = (cfg_val & mask) | ((uintptr_t)(PMP_A_NAPOT | PMP_RWX) << byte_offset);
     csr_write(cfg_csr, cfg_val);
 }
 

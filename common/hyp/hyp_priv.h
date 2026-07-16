@@ -43,7 +43,7 @@ uintptr_t run_in_vu_mode(uintptr_t (*fn)(uintptr_t), uintptr_t arg);
  * Must be called from HS-mode (i.e., current_priv == PRIV_S).
  * The caller must set sepc to the desired entry point before calling.
  */
-void goto_vs_mode(void);
+void goto_vs_mode(void) __attribute__((noreturn));
 
 /**
  * goto_vu_mode - Switch from VS-mode to VU-mode
@@ -51,7 +51,7 @@ void goto_vs_mode(void);
  * Sets sstatus.SPP=0 (actually vsstatus.SPP in V=1), then sret.
  * Must be called from VS-mode. The caller must set sepc (vsepc).
  */
-void goto_vu_mode(void);
+void goto_vu_mode(void) __attribute__((noreturn));
 
 /**
  * return_to_hs_mode - Return from VS/VU-mode to HS-mode

@@ -18,6 +18,20 @@
  * - hyp_trap_record_t: extended trap record with hypervisor fields
  * - hs_trap_handler: HS-mode trap handler for hedeleg-delegated traps
  * - trap_get_spv: query whether trap came from V=1
+ *
+ * LIMITATION: The HS-mode trap handler (hs_trap_handler) records
+ * trap information into a SEPARATE _hs_trap_record, which is
+ * distinct from the M-mode trap record in common/trap.c.
+ * Consequently, when traps are delegated to HS-mode via hedeleg,
+ * the standard trap_get_htval() / trap_get_htinst() /
+ * trap_get_gva() / trap_get_cause() accessors (which read from
+ * the M-mode record) will NOT reflect the HS-mode trap data.
+ * Only trap_get_spv() reads from the HS-mode record.
+ *
+ * Tests that delegate traps to HS-mode should use trap_get_spv()
+ * for SPV verification and be aware that CHECK_HTVAL / CHECK_HTINST
+ * / CHECK_GVA macros are not valid in that context. For full
+ * trap-field verification, keep hedeleg=0 so traps go to M-mode.
  * =================================================================== */
 
 #include "types.h"
@@ -56,16 +70,12 @@ typedef struct {
  * 0 otherwise). Use trap_get_htval() in tests instead of calling
  * this from a trap-recovery context. */
 static inline uintptr_t mtval2_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x34B" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_MTVAL2);
 }
 
 /* Read mtinst directly. */
 static inline uintptr_t mtinst_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, 0x34A" : "=r"(v) :: "memory");
-    return v;
+    return CSRR(CSR_MTINST);
 }
 
 /* ===================================================================

@@ -357,19 +357,23 @@ bool vscr_06_v0_trap_uses_sepc(void)
      * framework's trap handler captures them. */
     clear_all_deleg();
 
-    /* Arm M-mode trap capture */
-    trap_expect_begin();
-
     /* Trigger S-mode ecall (cause=9). With medeleg=0 and hedeleg=0,
-     * this traps to M-mode. V=0 throughout. */
-    asm volatile ("ecall");
+     * this traps to M-mode. V=0 throughout.
+     *
+     * Must execute ecall from HS-mode (S-mode, V=0), not M-mode.
+     * M-mode ecall would produce cause=11 (ECALL_FROM_M), not
+     * cause=9 (ECALL_FROM_S). Use goto_priv + PRIV_DO pattern
+     * (same as PRIO-04) to switch to S-mode, arm trap capture
+     * only around the ecall, then return to M-mode. */
+    goto_priv(PRIV_S);
+    PRIV_DO(vs_exec_ecall(0));
+    goto_priv(PRIV_M);
 
     /* Verify M-mode trap was captured */
     bool trapped = trap_was_triggered();
     TEST_ASSERT("M-mode trap was triggered", trapped);
     TEST_ASSERT_EQ("cause == CAUSE_ECALL_FROM_S (9)",
                    trap_get_cause(), (uintptr_t)CAUSE_ECALL_FROM_S);
-    trap_expect_end();
 
     /* Verify sepc/scause/stval were written by the trap
      * (sepc should point to the ecall instruction) */

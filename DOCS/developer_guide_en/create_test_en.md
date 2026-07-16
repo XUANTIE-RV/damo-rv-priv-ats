@@ -592,12 +592,12 @@ Create the `common/config/my_board/` directory with the following files:
 
 ```
 common/config/my_board/
-├── platform.h         # Platform hardware definitions
+├──platfrom_config.h         # Platform hardware definitions
 ├── rvmodel_macros.h   # Platform model parameters
 └── platform.mk        # Platform build configuration
 ```
 
-### 4.2 Create `platform.h`
+### 4.2 Create platfrom_config.h`
 
 ```c
 #define PLATFORM_UART0_BASE  0x10000000UL
@@ -623,11 +623,11 @@ make CONFIG=my_board XLEN=64 CROSS_COMPILER=riscv64-unknown-elf-
 
 Each platform configuration consists of three key files:
 
-- **platform.h**: Hardware-specific definitions (UART base address, memory layout, platform-specific features)
+- *platfrom_config.h**: Hardware-specific definitions (UART base address, memory layout, platform-specific features)
 - **platform.mk**: Build configuration (cross-compiler path, memory base, simulator options)
 - **rvmodel_macros.h**: Model parameters for the platform
 
-These files are automatically included via GCC's `-include` flag, so you don't need to add `#include "platform.h"` in your source code. The build system handles this transparently.
+These files are automatically included via GCC's `-include` flag, so you don't need to add `#include platfrom_config.h"` in your source code. The build system handles this transparently.
 
 #### Key Differences Between Platforms
 

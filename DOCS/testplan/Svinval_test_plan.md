@@ -863,4 +863,4 @@ bool test_xxx(void) {
 - `common/vm/vm.h` — VM API 声明
 - `common/vm/vm_defs.h` — 常量和宏定义
 - `common/pmp/pmp_cfg.h` — PMP 配置 API
-- `common/platform/qemu_virt/platform.h` — QEMU virt 平台定义（`PLATFORM_MEM_BASE` 等）
+- `common/platform/qemu_virtplatfrom_config.h` — QEMU virt 平台定义（`PLATFORM_MEM_BASE` 等）

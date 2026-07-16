@@ -43,10 +43,7 @@ void hfence_vvma(uintptr_t vaddr, uintptr_t asid) {
     );
 }
 
-void hfence_vvma_all(void) {
-    /* hfence.vvma x0, x0  =>  0x22000073 */
-    asm volatile (".word 0x22000073" ::: "memory");
-}
+/* hfence_vvma_all() is provided as a static inline in hyp_csr.h. */
 
 /* ===================================================================
  * HFENCE.GVMA
@@ -62,7 +59,4 @@ void hfence_gvma(uintptr_t gpa_shifted, uintptr_t vmid) {
     );
 }
 
-void hfence_gvma_all(void) {
-    /* hfence.gvma x0, x0  =>  0x62000073 */
-    asm volatile (".word 0x62000073" ::: "memory");
-}
+/* hfence_gvma_all() is provided as a static inline in hyp_csr.h. */

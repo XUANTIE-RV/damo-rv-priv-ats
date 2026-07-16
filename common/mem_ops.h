@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PMP_MEM_OPS_H
-#define PMP_MEM_OPS_H
+#ifndef COMMON_MEM_OPS_H
+#define COMMON_MEM_OPS_H
 
 #include "types.h"
 
@@ -123,6 +123,15 @@ static inline void mem_store64(uintptr_t addr, uint64_t val) {
 }
 #endif
 
+/* XLEN-width convenience aliases */
+#if __riscv_xlen == 64
+#define mem_load_xlen   mem_load64
+#define mem_store_xlen  mem_store64
+#else
+#define mem_load_xlen   mem_load32
+#define mem_store_xlen  mem_store32
+#endif
+
 /* ===== Execute operation ===== */
 
 /*
@@ -192,4 +201,4 @@ static inline uint32_t mem_sc_w(uintptr_t addr, uint32_t val) {
     return result;
 }
 
-#endif /* PMP_MEM_OPS_H */
+#endif /* COMMON_MEM_OPS_H */

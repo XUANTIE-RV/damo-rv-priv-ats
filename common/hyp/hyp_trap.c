@@ -46,16 +46,14 @@ static inline uintptr_t hs_next_instruction(uintptr_t epc) {
 
 unsigned hs_trap_handler(void) {
     uintptr_t cause, epc, tval;
-    asm volatile ("csrr %0, scause" : "=r"(cause));
-    asm volatile ("csrr %0, sepc"   : "=r"(epc));
-    asm volatile ("csrr %0, stval"  : "=r"(tval));
+    cause = CSRR(scause);
+    epc   = CSRR(sepc);
+    tval  = CSRR(stval);
 
     /* Read hypervisor-extension trap info */
     uintptr_t hstat  = hstatus_read();
-    uintptr_t htval_v;
-    uintptr_t htinst_v;
-    asm volatile ("csrr %0, 0x643" : "=r"(htval_v));   /* htval */
-    asm volatile ("csrr %0, 0x64A" : "=r"(htinst_v));  /* htinst */
+    uintptr_t htval_v   = CSRR(CSR_HTVAL);
+    uintptr_t htinst_v  = CSRR(CSR_HTINST);
 
     bool spv = (hstat & HSTATUS_SPV) ? true : false;
     bool gva = (hstat & HSTATUS_GVA) ? true : false;
@@ -78,12 +76,12 @@ unsigned hs_trap_handler(void) {
         /* VS-mode ecall — advance past ecall and return to HS-mode.
          * SPP will be set to the mode before trap (VS), but we want
          * to return to VS-mode normally after sret. */
-        asm volatile ("csrw sepc, %0" :: "r"(epc + 4));
+        CSRW(sepc, epc + 4);
         break;
 
     case CAUSE_VIRTUAL_INSTRUCTION:
         /* Virtual-instruction exception — skip the faulting instruction */
-        asm volatile ("csrw sepc, %0" :: "r"(hs_next_instruction(epc)));
+        CSRW(sepc, hs_next_instruction(epc));
         break;
 
     case CAUSE_INST_GUEST_PAGE_FAULT:
@@ -91,12 +89,12 @@ unsigned hs_trap_handler(void) {
     case CAUSE_STORE_GUEST_PAGE_FAULT:
         /* Guest-page fault — skip the faulting instruction.
          * htval contains the faulting GPA >> 2. */
-        asm volatile ("csrw sepc, %0" :: "r"(hs_next_instruction(epc)));
+        CSRW(sepc, hs_next_instruction(epc));
         break;
 
     default:
         /* For other traps, just advance past the instruction */
-        asm volatile ("csrw sepc, %0" :: "r"(hs_next_instruction(epc)));
+        CSRW(sepc, hs_next_instruction(epc));
         break;
     }
 

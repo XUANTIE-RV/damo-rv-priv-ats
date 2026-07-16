@@ -19,3 +19,9 @@
 [submodule "SPEC/clic_0.1"]
 	path = SPEC/clic_0.1
 	url = https://github.com/riscv/riscv-fast-interrupt.git
+[submodule "SPEC/riscv-iopmp0p82"]
+	path = SPEC/riscv-iopmp0p82
+	url = https://github.com/riscv-non-isa/riscv-iopmp.git
+[submodule "SPEC/riscv-iopmp0p7"]
+	path = SPEC/riscv-iopmp0p7
+	url = https://github.com/riscv-non-isa/riscv-iopmp.git

@@ -18,6 +18,12 @@
 #include "test_framework.h"
 #ifdef ENABLE_HYP
 #include "hyp/hyp_priv.h"
+/* mcounteren_read/set/clear are defined in hyp_csr.c (linked via ENABLE_HYP).
+ * Declared here as extern to avoid pulling in hyp_csr.h which would
+ * conflict with local static inline definitions below. */
+extern uintptr_t mcounteren_read(void);
+extern void mcounteren_set(uintptr_t mask);
+extern void mcounteren_clear(uintptr_t mask);
 #endif
 
 /* ===================================================================
@@ -164,28 +170,19 @@ static inline void henvcfg_clear(uintptr_t bits) {
 #endif
 
 /* ===================================================================
- * mcounteren / hcounteren helpers
+ * hcounteren helpers
+ *
+ * mcounteren_read/set/clear are provided by hyp_csr.c (declared as
+ * extern above). Local hcounteren_set/clear inline definitions are
+ * kept for RV32 compatibility (hyp_csr.c versions use CSR_HCOUNTEREN
+ * which targets the low 32-bit half on RV32).
  * =================================================================== */
-static inline uintptr_t mcounteren_read(void) {
-    uintptr_t v;
-    asm volatile("csrr %0, 0x306" : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void mcounteren_set(uintptr_t bits) {
-    asm volatile("csrs 0x306, %0" :: "r"(bits) : "memory");
-}
-
-static inline void mcounteren_clear(uintptr_t bits) {
-    asm volatile("csrc 0x306, %0" :: "r"(bits) : "memory");
-}
-
 static inline void hcounteren_set(uintptr_t bits) {
-    asm volatile("csrs 0x606, %0" :: "r"(bits) : "memory");
+    CSRS(CSR_HCOUNTEREN, bits);
 }
 
 static inline void hcounteren_clear(uintptr_t bits) {
-    asm volatile("csrc 0x606, %0" :: "r"(bits) : "memory");
+    CSRC(CSR_HCOUNTEREN, bits);
 }
 
 /* ===================================================================

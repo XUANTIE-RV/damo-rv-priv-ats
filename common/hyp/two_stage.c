@@ -49,13 +49,13 @@ void two_stage_enable(two_stage_ctx_t *ctx, unsigned vmid) {
      *   2. hgatp = new (activate G-stage)
      *   3. vsatp = new (activate VS-stage, if non-Bare)
      *   4. HFENCE.VVMA (flush stale VS-stage TLB entries) */
-    asm volatile ("csrw 0x280, zero" ::: "memory");  /* vsatp = 0 */
+    CSRW(CSR_VSATP, 0);
     gpt_enable(&ctx->g_ctx, vmid);
 
     if (ctx->vs_mode != SATP_MODE_BARE) {
         uintptr_t root_ppn = ((uintptr_t)ctx->vs_ctx.root_pt) >> PAGE_SHIFT;
         uintptr_t vsatp = MAKE_SATP(ctx->vs_ctx.mode, 0, root_ppn);
-        asm volatile ("csrw 0x280, %0" :: "r"(vsatp) : "memory");
+        CSRW(CSR_VSATP, vsatp);
         hfence_vvma_all();
     }
 }
@@ -78,7 +78,7 @@ uintptr_t two_stage_run_in_vu(two_stage_ctx_t *ctx,
 
 void two_stage_cleanup(two_stage_ctx_t *ctx) {
     gpt_disable();
-    asm volatile ("csrw 0x280, zero" ::: "memory");  /* vsatp = 0 */
+    CSRW(CSR_VSATP, 0);
     ctx->g_ctx.root_pt = NULL;
     if (ctx->vs_mode != SATP_MODE_BARE) {
         ctx->vs_ctx.root_pt = NULL;

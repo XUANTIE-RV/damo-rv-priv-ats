@@ -31,9 +31,10 @@
  *   bits [43:0]   PPN  (low 2 bits forced to 0 in Sv*x4 modes)
  * =================================================================== */
 #define MAKE_HGATP(mode, vmid, ppn) \
-    (((uintptr_t)(mode) << HGATP64_MODE_SHIFT) | \
-     (((uintptr_t)(vmid) & HGATP64_VMID_MASK) << HGATP64_VMID_SHIFT) | \
-     ((uintptr_t)(ppn)  & HGATP64_PPN_MASK))
+    ((uintptr_t)( \
+    (((uint64_t)(mode) << HGATP64_MODE_SHIFT) | \
+     (((uint64_t)(vmid) & HGATP64_VMID_MASK) << HGATP64_VMID_SHIFT) | \
+     ((uint64_t)(ppn)  & HGATP64_PPN_MASK))))
 
 /* Convenience masks for extracting hgatp fields (read-back). */
 #define HGATP_PPN_MASK   HGATP64_PPN_MASK
@@ -41,8 +42,8 @@
 #define HGATP_MODE_MASK  (0xFUL << HGATP64_MODE_SHIFT)
 
 #define HGATP_GET_PPN(v)   ((uintptr_t)(v) & HGATP_PPN_MASK)
-#define HGATP_GET_VMID(v)  (((uintptr_t)(v) >> HGATP64_VMID_SHIFT) & HGATP64_VMID_MASK)
-#define HGATP_GET_MODE(v)  (((uintptr_t)(v) >> HGATP64_MODE_SHIFT) & 0xFUL)
+#define HGATP_GET_VMID(v)  (((uint64_t)(v) >> HGATP64_VMID_SHIFT) & HGATP64_VMID_MASK)
+#define HGATP_GET_MODE(v)  (((uint64_t)(v) >> HGATP64_MODE_SHIFT) & 0xFUL)
 
 /* ===================================================================
  * G-stage root page table layout

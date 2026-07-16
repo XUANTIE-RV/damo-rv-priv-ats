@@ -157,27 +157,29 @@ void henvcfg_set_stce(bool enable);   /* vstimecmp enable */
  * hcounteren / htimedelta extended API
  * =================================================================== */
 
-void hcounteren_set(uint32_t mask);
-void hcounteren_clear(uint32_t mask);
+void hcounteren_set(uintptr_t mask);
+void hcounteren_clear(uintptr_t mask);
 uintptr_t hcounteren_read(void);
 void htimedelta_set(uint64_t delta);
 
 /* ===================================================================
- * mcounteren / scounteren wrappers
+ * mcounteren / scounteren
  *
- * Needed by shcounterenw tests that verify VS-mode counter access
- * chains: mcounteren -> hcounteren -> scounteren (in VS).
+ * Standard M/S-mode Counter Enable CSRs. Provided here alongside
+ * hcounteren for convenience; all H-extension test suites that
+ * need counter-access chain verification (mcounteren -> hcounteren
+ * -> scounteren) include hyp_csr.h.
  * =================================================================== */
 
 uintptr_t mcounteren_read(void);
 void      mcounteren_write(uintptr_t value);
-void      mcounteren_set(uint32_t mask);
-void      mcounteren_clear(uint32_t mask);
+void      mcounteren_set(uintptr_t mask);
+void      mcounteren_clear(uintptr_t mask);
 
 uintptr_t scounteren_read(void);
 void      scounteren_write(uintptr_t value);
-void      scounteren_set(uint32_t mask);
-void      scounteren_clear(uint32_t mask);
+void      scounteren_set(uintptr_t mask);
+void      scounteren_clear(uintptr_t mask);
 
 /* ===================================================================
  * vstvec (CSR 0x205) -- VS-mode trap vector
@@ -221,7 +223,6 @@ void      vsip_write(uintptr_t value);
 
 uintptr_t vsatp_read(void);
 void      vsatp_write(uintptr_t value);
-void      vsatp_write_raw(uintptr_t value);  /* no WARL masking */
 
 /* ===================================================================
  * satp (CSR 0x180) -- S-mode address translation

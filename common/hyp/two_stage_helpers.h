@@ -296,8 +296,8 @@ static inline int g_max_level(int g_mode) {
     ((lv) == PT_LEVEL_4K   ? PAGE_SIZE_4K   : \
      (lv) == PT_LEVEL_2M   ? PAGE_SIZE_2M   : \
      (lv) == PT_LEVEL_1G   ? PAGE_SIZE_1G   : \
-     (lv) == PT_LEVEL_512G ? (1UL << 39)    : \
-                             (1UL << 48))
+     (lv) == PT_LEVEL_512G ? (1ULL << 39)   : \
+                             (1ULL << 48))
 
 /* ===================================================================
  * henvcfg field control helpers

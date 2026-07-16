@@ -350,7 +350,7 @@ if (trap_was_triggered()) {
 trap_expect_end();
 ```
 
-> **Note:** These macros only clear MDT when `PLATFORM_DOUBLE_TRAP` is defined; otherwise they are no-ops.
+> **Note:** These macros only clear MDT when `SMDBLTRP_SUPPORTED` is defined; otherwise they are no-ops.
 
 #### Trap Query API
 

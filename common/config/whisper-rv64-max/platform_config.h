@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PLATFORM_WHISPER_H
-#define PLATFORM_WHISPER_H
+#ifndef PLATFORM_WHISPER_RV64_MAX_H
+#define PLATFORM_WHISPER_RV64_MAX_H
 
 /* ===== Whisper RISC-V simulator platform address map ===== */
 
@@ -18,8 +18,6 @@
 /* Select HTIF-based UART driver (see uart.c UART_TYPE_SAIL) */
 #define PLATFORM_UART_TYPE      1
 
-/* CLINT (Core Local Interruptor) */
-#define PLATFORM_CLINT_BASE     0x02000000UL
 
 /* Memory */
 #ifndef PLATFORM_MEM_BASE
@@ -31,4 +29,4 @@
 /* Platform name */
 #define CONFIG_NAME           "Whisper RV64 RISC-V simulator"
 
-#endif /* PLATFORM_WHISPER_H */
+#endif /* PLATFORM_WHISPER_RV64_MAX_H */

@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PMP_UART_H
-#define PMP_UART_H
+#ifndef COMMON_UART_H
+#define COMMON_UART_H
 
 #include "types.h"
 
@@ -20,4 +20,4 @@ void uart_puts(const char *s);
 /* Minimal printf implementation */
 void printf(const char *fmt, ...);
 
-#endif /* PMP_UART_H */
+#endif /* COMMON_UART_H */

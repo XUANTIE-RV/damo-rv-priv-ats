@@ -27,7 +27,6 @@
 
 extern unsigned current_priv;
 extern uintptr_t ecall_args[2];
-#define ECALL_GOTO_PRIV  1
 
 /* ===================================================================
  * Trampoline state
@@ -129,7 +128,7 @@ uintptr_t run_in_vu_mode(uintptr_t (*fn)(uintptr_t), uintptr_t arg) {
  * VS-mode.
  * =================================================================== */
 
-void goto_vs_mode(void) {
+void __attribute__((noreturn)) goto_vs_mode(void) {
     /* Ensure we are in M-mode first */
     extern void goto_priv(unsigned);
     if (current_priv != PRIV_M)
@@ -153,7 +152,7 @@ void goto_vs_mode(void) {
     );
 }
 
-void goto_vu_mode(void) {
+void __attribute__((noreturn)) goto_vu_mode(void) {
     /* Ensure we are in M-mode first */
     extern void goto_priv(unsigned);
     if (current_priv != PRIV_M)
