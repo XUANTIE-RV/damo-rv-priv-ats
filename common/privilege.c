@@ -8,18 +8,12 @@
 #include "uart.h"
 
 /* ===================================================================
- * Privilege mode definitions
+ * Privilege mode definitions are in encoding.h.
  * =================================================================== */
-#define PRIV_U  0
-#define PRIV_S  1
-#define PRIV_M  3
 
 #ifdef ENABLE_HYP
-/* Virtualized privilege levels (V=1).
- * Bit 2 marks V=1; low 2 bits hold the nominal privilege.
- * Must match definitions in common/test_framework.h. */
-#define PRIV_VU 4   /* V=1, nominal U-mode */
-#define PRIV_VS 5   /* V=1, nominal S-mode */
+/* Virtualized privilege levels (PRIV_VU/PRIV_VS) are in encoding.h.
+ * Bit 2 marks V=1; low 2 bits hold the nominal privilege. */
 
 /* Check if a privilege target requires V=1 (virtualized mode) */
 static inline bool is_virt_target(unsigned target) {
@@ -32,8 +26,6 @@ unsigned current_priv = PRIV_M;
 
 /* Ecall arguments (shared with trap.c) */
 extern uintptr_t ecall_args[2];
-#define ECALL_GOTO_PRIV  1
-
 /* ===================================================================
  * get_current_priv - return current tracked privilege level
  * =================================================================== */

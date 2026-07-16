@@ -50,59 +50,16 @@ This section lists all specification points (norm IDs) referenced in Groups 1-19
 | `norm:H_trap_xtinst_guestpage` | For guest-page faults, the trap instruction register is written with a special pseudoinstruction value if: (a) the fault is caused by an implicit memory access for VS-stage address translation, and (b) a nonzero value is written to `mtval2` or `htval`. If both conditions are met, zero is not allowed. |
 | `norm:H_trap_xtinst_guestpage_rw` | A write pseudoinstruction (0x00002020 or 0x00003020) is used for the case that the machine is attempting automatically to update bits A and/or D in VS-level page tables. All other implicit memory accesses for VS-stage address translation will be reads. |
 | `norm:H_trap_xtinst_interrupt` | On an interrupt, the value written to the trap instruction register is always zero. |
-| `norm:H_trap_xtinst_val` | The values that may be automatically written to the trap instruction register for each standard exception cause are enumerated in the specification table. |
-| `norm:H_virtinst_vs_sfence_sinval_satp_vtvm1` | In VS-mode, attempts to execute an SFENCE.VMA or SINVAL.VMA instruction or to access `satp`, when `hstatus`.VTVM=1. |
-| `norm:H_virtinst_vs_sret_vtsr1` | In VS-mode, attempts to execute SRET when `hstatus`.VTSR=1. |
-| `norm:H_virtinst_vu_nonhigh_supervisor_allowedhs_tvm0` | In VU-mode, attempts to access an implemented non-high-half supervisor CSR when the same access would be allowed in HS-mode, assuming `mstatus`.TVM=0. |
-| `norm:H_virtinst_vu_sret_sfence` | In VU-mode, attempts to execute a supervisor instruction (SRET or SFENCE). |
-| `norm:H_virtinst_vu_vs_hinst` | In VS-mode or VU-mode, attempts to execute a hypervisor instruction (HLV, HLVX, HSV, or HFENCE). |
-| `norm:H_virtinst_vu_vs_nonhigh_allowedhs_tvm0` | In VS-mode or VU-mode, attempts to access an implemented non-high-half hypervisor CSR or VS CSR when the same access would be allowed in HS-mode, assuming `mstatus`.TVM=0. |
-| `norm:H_virtinst_vu_wfi_tw0` | In VU-mode, attempts to execute WFI when `mstatus`.TW=0. |
-| `norm:H_virtinst_wfi_vtw1_tw0` | In VS-mode, attempts to execute WFI when `hstatus`.VTW=1 and `mstatus`.TW=0, unless the instruction completes within an implementation-specific, bounded time. |
-| `norm:H_virtinst_xtval` | On a virtual-instruction trap, `mtval` or `stval` is written the same as for an illegal-instruction trap. |
-| `norm:H_vscsrs_acc_m_hs` | The VS CSRs can be accessed as themselves only from M-mode or HS-mode. |
-| `norm:H_vscsrs_acc_u` | Attempts from U-mode cause an illegal-instruction exception as usual. |
-| `norm:H_vscsrs_acc_vs` | When V=1, an attempt to read or write a VS CSR directly by its own separate CSR address causes a virtual-instruction exception. |
-| `norm:H_vscsrs_sub` | When V=1, the VS CSRs substitute for the corresponding supervisor CSRs, taking over all functions of the usual supervisor CSRs except as specified otherwise. Instructions that normally read or modify a supervisor CSR shall instead access the corresponding VS CSR. |
-| `norm:H_vscsrs_v0` | When V=0, the VS CSRs do not ordinarily affect the behavior of the machine other than being readable and writable by CSR instructions. |
-| `norm:H_vscsrs_v1` | While V=1, the normal HS-level supervisor CSRs that are replaced by VS CSRs retain their values but do not affect the behavior of the machine unless specifically documented to do so. |
-| `norm:geilen` | The number of bits implemented in `hgeip` and `hgeie` for guest external interrupts is UNSPECIFIED and may be zero. This number is known as GEILEN. The least-significant bits are implemented first, apart from bit 0. Hence, if GEILEN is nonzero, bits GEILEN:1 shall be writable in `hgeie`, and all other bit positions shall be read-only zeros in both `hgeip` and `hgeie`. |
-| `norm:hedeleg_acc` | Each bit of `hedeleg` shall be either writable or read-only zero. Many bits of `hedeleg` are required specifically to be writable or zero, as enumerated in the table. Bit 0, corresponding to instruction address-misaligned exceptions, must be writable if IALIGN=32. |
-| `norm:hedeleg_op` | A synchronous trap that has been delegated to HS-mode (using `medeleg`) is further delegated to VS-mode if V=1 before the trap and the corresponding `hedeleg` bit is set. |
-| `norm:hedeleg_sz_acc` | Register `hedeleg` is a 64-bit read/write register. |
-| `norm:henvcfg_adue_op` | If the Svadu extension is implemented, the ADUE bit controls whether hardware updating of PTE A/D bits is enabled for VS-stage address translation. When ADUE=1, hardware updating is enabled. When ADUE=0, the implementation behaves as though Svade were implemented for VS-stage address translation. If Svadu is not implemented, ADUE is read-only zero. |
-| `norm:henvcfg_cbcfe` | The Zicbom extension adds the CBCFE field to `henvcfg`. When V=1, if CBO.CLEAN and CBO.FLUSH are HS-qualified and CBCFE=1, they are enabled; if CBCFE=0, they raise a virtual-instruction exception. When Zicbom is not implemented, CBCFE is read-only zero. |
-| `norm:henvcfg_cbie` | The Zicbom extension adds the CBIE WARL field to `henvcfg`. The CBIE field controls execution of CBO.INVAL in privilege modes VS and VU. The encoding `10b` is reserved. When Zicbom is not implemented, CBIE is read-only zero. |
-| `norm:henvcfg_cbze` | The Zicboz extension adds the CBZE field to `henvcfg`. When CBZE=1, CBO.ZERO is enabled for execution in VS/VU mode; when CBZE=0, it raises a virtual-instruction exception. When the Zicboz extension is not implemented, CBZE is read-only zero. |
-| `norm:henvcfg_dte_op` | The Ssdbltrp extension adds the double-trap-enable (DTE) field in `henvcfg`. When `henvcfg`.DTE is zero, the implementation behaves as though Ssdbltrp is not implemented for VS-mode and the `vsstatus`.SDT bit is read-only zero. |
-| `norm:henvcfg_fiom_op` | If bit FIOM is set to one in `henvcfg`, FENCE instructions executed when V=1 are modified so the requirement to order accesses to device I/O implies also the requirement to order main memory accesses. |
-| `norm:henvcfg_fiom_order` | Similarly, when FIOM=1 and V=1, if an atomic instruction that accesses a region ordered as device I/O has its _aq_ and/or _rl_ bit set, then that instruction is ordered as though it accesses both device I/O and memory. |
-| `norm:henvcfg_lpe_op` | The Zicfilp extension adds the LPE field in `henvcfg`. When LPE=1, the Zicfilp extension is enabled in VS-mode. When LPE=0, the hart does not update the ELP state and LPAD operates as a no-op. |
-| `norm:henvcfg_pbmte_op` | The PBMTE bit controls whether the Svpbmt extension is available for use in VS-stage address translation. When PBMTE=1, Svpbmt is available for VS-stage address translation. When PBMTE=0, the implementation behaves as though Svpbmt were not implemented for VS-stage address translation. If Svpbmt is not implemented, PBMTE is read-only zero. |
-| `norm:henvcfg_pmm_op` | If the Ssnpm extension is implemented, the PMM field enables or disables pointer masking for VS-mode. When not implemented, PMM is read-only zero. PMM is read-only zero for RV32. |
-| `norm:henvcfg_sse_op` | The Zicfiss extension adds the SSE field in `henvcfg`. If SSE=1, the Zicfiss extension is activated in VS-mode. When SSE=0, the extension remains inactive in VS-mode with specific behavior changes. |
-| `norm:henvcfg_stce` | The Sstc extension adds the STCE (STimecmp Enable) bit to `henvcfg` CSR. When the Sstc extension is not implemented, STCE is read-only zero. The STCE bit enables `vstimecmp` for VS-mode when set to one. When STCE is zero, an attempt to access `stimecmp` (really `vstimecmp`) when V=1 raises a virtual-instruction exception, and VSTIP in `hip` reverts to its defined behavior as if this extension is not implemented. |
-| `norm:henvcfg_sz_acc_op` | The `henvcfg` CSR is a 64-bit read/write register that controls certain characteristics of the execution environment when virtualization mode V=1. |
-| `norm:hgeie_op` | Register `hgeie` selects the subset of guest external interrupts that cause a supervisor-level (HS-level) guest external interrupt. The enable bits in `hgeie` do not affect the VS-level external interrupt signal selected from `hgeip` by `hstatus`.VGEIN. |
-| `norm:hgeie_sz_acc_op` | The `hgeie` register is an HSXLEN-bit read/write register that contains enable bits for the guest external interrupts at this hart. |
-| `norm:hgeip_hgeie_fields` | Guest external interrupt number _i_ corresponds with bit _i_ in both `hgeip` and `hgeie`. |
-| `norm:hgeip_sz_acc_op` | The `hgeip` register is an HSXLEN-bit read-only register that indicates pending guest external interrupts for this hart. |
-| `norm:hideleg_acc` | Among bits 15:0 of `hideleg`, bits 10, 6, and 2 (corresponding to the standard VS-level interrupts) are writable, and bits 12, 9, 5, and 1 (corresponding to the standard S-level interrupts) are read-only zeros. |
-| `norm:hideleg_hs` | An interrupt _i_ will trap to HS-mode whenever all of the following are true: (a) either the current operating mode is HS-mode and the SIE bit in the `sstatus` register is set, or the current operating mode has less privilege than HS-mode; (b) bit _i_ is set in both `sip` and `sie`, or in both `hip` and `hie`; and (c) bit _i_ is not set in `hideleg`. |
-| `norm:hideleg_op` | An interrupt that has been delegated to HS-mode (using `mideleg`) is further delegated to VS-mode if the corresponding `hideleg` bit is set. |
-| `norm:hideleg_sz_acc` | Register `hideleg` is an HSXLEN-bit read/write register. |
-| `norm:hideleg_trans` | When a virtual supervisor external interrupt (code 10) is delegated to VS-mode, it is automatically translated by the machine into a supervisor external interrupt (code 9) for VS-mode. Likewise, virtual supervisor timer interrupt (6) is translated into supervisor timer interrupt (5), and virtual supervisor software interrupt (2) into supervisor software interrupt (1). |
-| `norm:hie_op` | `hie` contains enable bits for the same interrupts. |
-| `norm:hip_hie_sz_acc` | Registers `hip` and `hie` are HSXLEN-bit read/write registers that supplement HS-level's `sip` and `sie` respectively. |
-| `norm:hip_op` | The `hip` register indicates pending VS-level and hypervisor-specific interrupts. |
-| `norm:hip_vseip_vseie_op` | Bits `hip`.VSEIP and `hie`.VSEIE are the interrupt-pending and interrupt-enable bits for VS-level external interrupts. VSEIP is read-only in `hip`, and is the logical-OR of: bit VSEIP of `hvip`; the bit of `hgeip` selected by `hstatus`.VGEIN; and any other platform-specific external interrupt signal directed to VS-level. |
-| `norm:hip_vssip_vssie_op` | Bits `hip`.VSSIP and `hie`.VSSIE are the interrupt-pending and interrupt-enable bits for VS-level software interrupts. VSSIP in `hip` is an alias (writable) of the same bit in `hvip`. |
-| `norm:hip_vstip_clear` | If the result of this comparison changes, it is guaranteed to be reflected in VSTIP eventually, but not necessarily immediately. The interrupt remains posted until `vstimecmp` becomes greater than (`time` + `htimedelta`), typically as a result of writing `vstimecmp`. |
-| `norm:hip_vstip_enable` | The interrupt will be taken based on the standard interrupt enable and delegation rules while V=1. |
-| `norm:hip_vstip_op` | A virtual supervisor timer interrupt becomes pending, as reflected in the VSTIP bit in the `hip` register, whenever (`time` + `htimedelta`), truncated to 64 bits, contains a value greater than or equal to `vstimecmp`, treating the values as unsigned integers. |
-| `norm:hip_vstip_vstie_acc_op` | Bits `hip`.VSTIP and `hie`.VSTIE are the interrupt-pending and interrupt-enable bits for VS-level timer interrupts. VSTIP is read-only in `hip`, and is the logical-OR of `hvip`.VSTIP and, when the Sstc extension is implemented, the timer interrupt signal resulting from `vstimecmp`. |
-| `norm:hsint_priority` | Multiple simultaneous interrupts destined for HS-mode are handled in the following decreasing priority order: SEI, SSI, STI, SGEI, VSEI, VSSI, VSTI, LCOFI. |
-| `norm:hstatus_gva_op` | Field GVA (Guest Virtual Address) is written by the implementation whenever a trap is taken into HS-mode. For any trap that writes a guest virtual address to `stval`, GVA is set to 1. For any other trap into HS-mode, GVA is set to 0. |
+| `norm:hcounteren_sz_acc_op` | The `hcounteren` CSR is a 32-bit read/write register that controls availability of performance monitoring counters to VS-mode and VU-mode. |
+| `norm:hedeleg_sz_acc_op` | The `hedeleg` register is an HSXLEN-bit read/write register that allows traps to be delegated from HS-mode to VS-mode. |
+| `norm:henvcfg_sz_acc_op` | The `henvcfg` CSR is an HSXLEN-bit read/write register that controls environment configuration for VS-mode and VU-mode. |
+| `norm:hgeie_sz_acc_op` | The `hgeie` register is an HSXLEN-bit read/write register that enables guest external interrupts. |
+| `norm:hgeip_sz_acc_op` | The `hgeip` register is an HSXLEN-bit read-only register that indicates pending guest external interrupts. |
+| `norm:hgatp_sz_acc_op` | The `hgatp` CSR is an HSXLEN-bit read/write register that controls G-stage address translation. |
+| `norm:hideleg_sz_acc_op` | The `hideleg` register is an HSXLEN-bit read/write register that allows interrupts to be delegated from HS-mode to VS-mode. |
+| `norm:hie_sz_acc_op` | The `hie` register is an HSXLEN-bit read/write register that enables hypervisor interrupts. |
+| `norm:hip_sz_acc_op` | The `hip` register is an HSXLEN-bit read/write register that indicates pending hypervisor interrupts. |
+| `norm:hstatus_gva_op` | Field GVA is written by the implementation whenever a trap is taken into HS-mode. For any trap that writes a guest virtual address to `htval`, GVA is set to 1. For any other trap into HS-mode, GVA is set to 0. |
 | `norm:hstatus_hu_op` | The HU field controls whether virtual-machine load/store instructions (HLV, HLVX, HSV) may also be executed in U-mode. When HU=1, these instructions may be executed in U-mode the same as in HS-mode. When HU=0, all hypervisor instructions cause an illegal-instruction exception in U-mode. |
 | `norm:hstatus_spv_op` | The SPV bit (Supervisor Previous Virtualization mode) is written by the implementation whenever a trap is taken into HS-mode. Just as the SPP bit in `sstatus` is set to the (nominal) privilege mode at the time of the trap, the SPV bit in `hstatus` is set to the value of the virtualization mode V at the time of the trap. |
 | `norm:hstatus_spv_sret` | When an SRET instruction is executed when V=0, V is set to SPV. |
@@ -331,9 +288,6 @@ This section lists all specification points (norm IDs) referenced in Groups 1-19
 | HGEI-03 | hgeie bit 0 read-only zero | Write hgeie bit 0 = 1 | bit 0 reads back 0 |
 | HGEI-04 | hgeip AND hgeie non-zero triggers SGEIP | If GEILEN>0, configure hgeie to enable corresponding bit, trigger guest external interrupt | hip.SGEIP=1 |
 | HGEI-05 | hgeie/hgeip all zero when GEILEN=0 | If GEILEN=0, read hgeie/hgeip | All zero |
-
----
-
 ## Group 6. henvcfg Register
 
 **Specification References**:
@@ -429,9 +383,8 @@ This section lists all specification points (norm IDs) referenced in Groups 1-19
 - `norm:vsip_vsie_sei`: When hideleg[10]=0, vsip.SEIP/vsie.SEIE are read-only zero; otherwise they are aliases of hip.VSEIP/hie.VSEIE
 - `norm:vsip_vsie_sti`: When hideleg[6]=0, vsip.STIP/vsie.STIE are read-only zero; otherwise they are aliases of hip.VSTIP/hie.VSTIE
 - `norm:vsip_vsie_ssi`: When hideleg[2]=0, vsip.SSIP/vsie.SSIE are read-only zero; otherwise they are aliases of hip.VSSIP/hie.VSSIE
-- `norm:vsip_vsie_lcofi`: Shlcofideleg extension, hideleg[13] controls vsip.LCOFIP/vsie.LCOFIE alias
 
-**Test Responsibilities**: Verify the substitution mechanism, alias relationships, read-only zero WARL, write masking, direct CSR read/write of vsip/vsie, and the LCOFI extension.
+**Test Responsibilities**: Verify the substitution mechanism and alias relationships of vsip/vsie.
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
@@ -445,18 +398,6 @@ This section lists all specification points (norm IDs) referenced in Groups 1-19
 | VSIE-08 | vsie.SEIE alias verification | hideleg[10]=1, VS-mode writes sie.SEIE=1, HS-mode reads hie.VSEIE | hie.VSEIE=1 |
 | VSIE-09 | vsie.STIE alias verification | hideleg[6]=1, VS-mode writes sie.STIE=1, HS-mode reads hie.VSTIE | hie.VSTIE=1 |
 | VSIE-10 | vsie.SSIE alias verification | hideleg[2]=1, VS-mode writes sie.SSIE=1, HS-mode reads hie.VSSIE | hie.VSSIE=1 |
-| VSIE-11 | vsie.SEIE read-only zero when hideleg[10]=0 | Set hie.VSEIE=1, hideleg[10]=0, VS-mode reads sie.SEIE | Reads 0 |
-| VSIE-12 | vsie.STIE read-only zero when hideleg[6]=0 | Set hie.VSTIE=1, hideleg[6]=0, VS-mode reads sie.STIE | Reads 0 |
-| VSIE-13 | vsie.SSIE read-only zero when hideleg[2]=0 | Set hie.VSSIE=1, hideleg[2]=0, VS-mode reads sie.SSIE | Reads 0 |
-| VSIE-14 | VS write to sie.SEIE has no effect when hideleg[10]=0 | hideleg[10]=0, VS-mode writes sie.SEIE=1, read hie.VSEIE | hie.VSEIE=0 (write ineffective) |
-| VSIE-15 | VS write to sie.STIE has no effect when hideleg[6]=0 | hideleg[6]=0, VS-mode writes sie.STIE=1, read hie.VSTIE | hie.VSTIE=0 (write ineffective) |
-| VSIE-16 | VS write to sie.SSIE has no effect when hideleg[2]=0 | hideleg[2]=0, VS-mode writes sie.SSIE=1, read hie.VSSIE | hie.VSSIE=0 (write ineffective) |
-| VSIE-17 | vsie direct CSR read/write verification | M-mode writes vsie(0x204) SEIE\|STIE\|SSIE, reads back | Read-back matches written value |
-| VSIE-18 | vsip.SSIP M-mode writable verification | hideleg[2]=1, M-mode writes vsip(0x244) SSIP=1, reads back | vsip.SSIP=1 |
-| VSIE-19 | vsip alias chain M-mode perspective verification (VSSI) | hideleg[2]=1, hvip.VSSIP=1, M-mode reads vsip | vsip.SSIP=1 |
-| VSIE-20 | vsip alias chain M-mode perspective verification (VSEI) | hideleg[10]=1, hvip.VSEIP=1, M-mode reads vsip | vsip.SEIP=1 (bit 9) |
-| VSIE-21 | hideleg[13] writability probe (Shlcofideleg) | Write hideleg[13]=1, read back | Bit sticky indicates extension is implemented |
-| VSIE-22 | vsip/vsie LCOFI read-only zero when hideleg[13]=0 | hideleg[13]=0, read vsip.LCOFIP and vsie.LCOFIE | Both are 0 |
 
 ---
 
@@ -482,7 +423,6 @@ This section lists all specification points (norm IDs) referenced in Groups 1-19
 | VSTC-07 | htimedelta affects vstimecmp comparison | Set htimedelta=N, vstimecmp=time+N | Immediately triggers VSTIP |
 
 ---
-
 ## Group 11. vsscratch / vsepc / vscause / vstval Registers
 
 **Specification References**:
@@ -524,51 +464,31 @@ This section lists all specification points (norm IDs) referenced in Groups 1-19
 **Test Responsibilities**: Systematically cover all scenarios that trigger virtual-instruction exception and verify distinction from illegal-instruction.
 
 | Test ID | Test Name | Test Description | Expected Result |
-|---------|-----------|------------------|------------------|
+|---------|-----------|------------------|-----------------|
 | VINST-01 | VS-mode executes HLV | VS-mode executes HLV.W | virtual-instruction exception (cause=22) |
 | VINST-02 | VS-mode executes HSV | VS-mode executes HSV.W | virtual-instruction exception (cause=22) |
 | VINST-03 | VS-mode executes HLVX | VS-mode executes HLVX.WU | virtual-instruction exception (cause=22) |
 | VINST-04 | VS-mode executes HFENCE.VVMA | VS-mode executes HFENCE.VVMA | virtual-instruction exception (cause=22) |
 | VINST-05 | VS-mode executes HFENCE.GVMA | VS-mode executes HFENCE.GVMA | virtual-instruction exception (cause=22) |
 | VINST-06 | VU-mode executes HLV | VU-mode executes HLV.W | virtual-instruction exception (cause=22) |
-| VINST-07 | VS-mode accesses hstatus | VS-mode csrr hstatus | virtual-instruction exception (cause=22) |
-| VINST-08 | VS-mode accesses hedeleg | VS-mode csrr hedeleg | virtual-instruction exception (cause=22) |
-| VINST-09 | VS-mode accesses hgatp | VS-mode csrr hgatp | virtual-instruction exception (cause=22) |
-| VINST-10 | VS-mode accesses vsstatus (direct address) | VS-mode uses the CSR address of vsstatus (0x200) to access it directly | virtual-instruction exception (cause=22) |
-| VINST-11 | VU-mode executes WFI (TW=0) | mstatus.TW=0, VU-mode executes WFI | virtual-instruction exception (cause=22) |
-| VINST-12 | VU-mode executes SRET | VU-mode executes SRET | virtual-instruction exception (cause=22) |
-| VINST-13 | VU-mode executes SFENCE.VMA | VU-mode executes SFENCE.VMA | virtual-instruction exception (cause=22) |
-| VINST-14 | VU-mode accesses sstatus | VU-mode csrr sstatus | virtual-instruction exception (cause=22) |
-| VINST-15 | VU-mode accesses scause | VU-mode csrr scause | virtual-instruction exception (cause=22) |
-| VINST-16 | VS-mode WFI + VTW=1 + TW=0 | hstatus.VTW=1, mstatus.TW=0, VS-mode WFI | virtual-instruction exception (cause=22) |
-| VINST-17 | VS-mode SRET + VTSR=1 | hstatus.VTSR=1, VS-mode SRET | virtual-instruction exception (cause=22) |
-| VINST-18 | VS-mode SFENCE.VMA + VTVM=1 | hstatus.VTVM=1, VS-mode SFENCE.VMA | virtual-instruction exception (cause=22) |
-| VINST-19 | VS-mode accesses satp + VTVM=1 | hstatus.VTVM=1, VS-mode csrr satp | virtual-instruction exception (cause=22) |
-| VINST-20 | VS-mode SINVAL.VMA + VTVM=1 | hstatus.VTVM=1, VS-mode SINVAL.VMA | virtual-instruction exception (cause=22) |
-| VINST-21 | FS=0 causes illegal not virtual | V=1, sstatus.FS=0 or vsstatus.FS=0, VS-mode executes FP | illegal-instruction exception (cause=2), not cause=22 |
-| VINST-22 | VS=0 causes illegal not virtual | V=1, sstatus.VS=0 or vsstatus.VS=0, VS-mode executes Vector | illegal-instruction exception (cause=2), not cause=22 |
+| VINST-07 | VU-mode executes HSV | VU-mode executes HSV.W | virtual-instruction exception (cause=22) |
+| VINST-08 | VU-mode executes HLVX | VU-mode executes HLVX.WU | virtual-instruction exception (cause=22) |
+| VINST-09 | VU-mode executes HFENCE.VVMA | VU-mode executes HFENCE.VVMA | virtual-instruction exception (cause=22) |
+| VINST-10 | VU-mode executes HFENCE.GVMA | VU-mode executes HFENCE.GVMA | virtual-instruction exception (cause=22) |
+| VINST-11 | VS-mode accesses hstatus | VS-mode csrr hstatus | virtual-instruction exception (cause=22) |
+| VINST-12 | VS-mode accesses hideleg | VS-mode csrr hideleg | virtual-instruction exception (cause=22) |
+| VINST-13 | VS-mode accesses hie | VS-mode csrr hie | virtual-instruction exception (cause=22) |
+| VINST-14 | VS-mode accesses hgeie | VS-mode csrr hgeie | virtual-instruction exception (cause=22) |
+| VINST-15 | VS-mode accesses hcounteren | VS-mode csrr hcounteren | virtual-instruction exception (cause=22) |
+| VINST-16 | VS-mode accesses htval | VS-mode csrr htval | virtual-instruction exception (cause=22) |
+| VINST-17 | VS-mode accesses hip | VS-mode csrr hip | virtual-instruction exception (cause=22) |
+| VINST-18 | VS-mode accesses hvip | VS-mode csrr hvip | virtual-instruction exception (cause=22) |
+| VINST-19 | VS-mode accesses htinst | VS-mode csrr htinst | virtual-instruction exception (cause=22) |
+| VINST-20 | VS-mode accesses hgatp | VS-mode csrr hgatp | virtual-instruction exception (cause=22) |
+| VINST-21 | VU-mode accesses S CSR | VU-mode csrr sstatus | virtual-instruction exception (cause=22) |
+| VINST-22 | Vector extension disabled in VS-mode | mstatus.VS=0 or vsstatus.VS=0, VS-mode executes Vector | illegal-instruction exception (cause=2), not cause=22 |
 | VINST-23 | stval correct on virtual-instruction trap | VS-mode triggers virtual-instruction exception | stval same as illegal-instruction trap encoding |
 | VINST-24 | mstatus.TW=1 overrides VTW (illegal not virtual) | mstatus.TW=1, VS-mode WFI | illegal-instruction exception (cause=2) |
-| VINST-25 | VS-mode accesses hideleg | VS-mode csrr hideleg | virtual-instruction exception (cause=22) |
-| VINST-26 | VS-mode accesses hcounteren | VS-mode csrr hcounteren | virtual-instruction exception (cause=22) |
-| VINST-27 | VS-mode accesses htimedelta | VS-mode csrr htimedelta | virtual-instruction exception (cause=22) |
-| VINST-28 | VS-mode accesses hip | VS-mode csrr hip | virtual-instruction exception (cause=22) |
-| VINST-29 | VS-mode accesses hie | VS-mode csrr hie | virtual-instruction exception (cause=22) |
-| VINST-30 | VS-mode accesses hvip | VS-mode csrr hvip | virtual-instruction exception (cause=22) |
-| VINST-31 | VS-mode accesses henvcfg | VS-mode csrr henvcfg | virtual-instruction exception (cause=22) |
-| VINST-32 | VS-mode writes hstatus | VS-mode csrw hstatus | virtual-instruction exception (cause=22) |
-| VINST-33 | VU-mode accesses sie | VU-mode csrr sie | virtual-instruction exception (cause=22) |
-| VINST-34 | VU-mode accesses sip | VU-mode csrr sip | virtual-instruction exception (cause=22) |
-| VINST-35 | VU-mode accesses stvec | VU-mode csrr stvec | virtual-instruction exception (cause=22) |
-| VINST-36 | VU-mode accesses sepc | VU-mode csrr sepc | virtual-instruction exception (cause=22) |
-| VINST-37 | VS-mode writes satp + VTVM=1 | hstatus.VTVM=1, VS-mode csrw satp | virtual-instruction exception (cause=22) |
-| VINST-38 | VS-mode executes HLV.B | VS-mode executes HLV.B | virtual-instruction exception (cause=22) |
-| VINST-39 | VS-mode executes HLV.H | VS-mode executes HLV.H | virtual-instruction exception (cause=22) |
-| VINST-40 | VS-mode executes HLV.D | VS-mode executes HLV.D | virtual-instruction exception (cause=22) |
-| VINST-41 | VS-mode executes HSV.B | VS-mode executes HSV.B | virtual-instruction exception (cause=22) |
-| VINST-42 | VS-mode executes HSV.H | VS-mode executes HSV.H | virtual-instruction exception (cause=22) |
-| VINST-43 | VS-mode executes HSV.D | VS-mode executes HSV.D | virtual-instruction exception (cause=22) |
-| VINST-44 | mstatus.TSR=1 does not affect VS-mode SRET | mstatus.TSR=1, hstatus.VTSR=1, VS-mode SRET. TSR only affects HS-mode (norm:mstatus_modes), VS-mode SRET is only controlled by VTSR | virtual-instruction exception (cause=22) |
 
 ---
 

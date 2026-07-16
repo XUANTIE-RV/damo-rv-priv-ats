@@ -179,6 +179,14 @@ uintptr_t vm_run_in_umode(pt_context_t *ctx,
  * =================================================================== */
 
 /**
+ * pt_dump - Print page table entries for debugging
+ * @ctx: Page table context
+ *
+ * Walks and prints all valid PTEs in the page table hierarchy.
+ */
+void pt_dump(pt_context_t *ctx);
+
+/**
  * pt_get_pte - Get pointer to a PTE at a specific level
  * @ctx:   Page table context
  * @va:    Virtual address

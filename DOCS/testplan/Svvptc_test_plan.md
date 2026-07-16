@@ -38,7 +38,7 @@ Svvptc 扩展放宽了**一种特定方向**的同步要求：
 | `common/vm/vm.h` | 全文 | `pt_init` / `pt_map_page` / `pt_get_pte` / `vm_run_in_smode` / `vm_sfence_vma` 等 VM API |
 | `common/vm/page_table.c` | 第 324–339 行 | `pt_get_pte(ctx, va, level)` 实际语义：`level` 是 page table 层级（Sv39 中 `PT_LEVEL_4K=0`/`PT_LEVEL_2M=1`/`PT_LEVEL_1G=2`），返回该层 PT page 中 VPN 索引对应的 PTE 槽位指针 |
 | `common/encoding.h` | 全文 | `PTE_V` / `PTE_R` / `PTE_W` / `PTE_X` / `PTE_A` / `PTE_D` / `CAUSE_*` 等宏 |
-| `common/platform/{qemu_virt,spike,sail}/platform.h` | — | `PLATFORM_MEM_BASE = 0x80000000`、`PLATFORM_MEM_SIZE = 0x10000000`（256 MiB），三个平台均一致 |
+| `common/platform/{qemu_virt,spike,sail}platfrom_config.h` | — | `PLATFORM_MEM_BASE = 0x80000000`、`PLATFORM_MEM_SIZE = 0x10000000`（256 MiB），三个平台均一致 |
 | `svadu/main.c`、`svadu/Makefile`、`svadu/kernel.ld` | — | 子目录组织模板（main.c 入口、TARGET、SPIKE_ISA_EXT、Makefile.common 包含方式、`__vm_test_region_start` / `__vm_test_region_2m_start` 由各子目录 `kernel.ld` 自行 PROVIDE） |
 | `svpbmt/tests/test_nonleaf_pbmt.c` | 第 31、190 行 | 现成范例：`pt_get_pte(&ctx, va, PT_LEVEL_2M)` 取 L1 非叶 PTE（指向 L0 的指针）、`pt_get_pte(&ctx, va, PT_LEVEL_1G)` 取 L2 root 非叶 PTE（指向 L1 的指针） |
 

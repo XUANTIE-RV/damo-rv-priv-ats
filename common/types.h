@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PMP_TYPES_H
-#define PMP_TYPES_H
+#ifndef COMMON_TYPES_H
+#define COMMON_TYPES_H
 
 #ifndef __ASSEMBLER__
 
@@ -45,14 +45,21 @@ typedef int                intptr_t;
 #define NULL ((void *)0)
 #endif
 
-/* ===== Bit manipulation helpers ===== */
-#define BIT(n)              (1ULL << (n))
-#define BIT_MASK(off, len)  (((1ULL << (len)) - 1) << (off))
+/* ===== Bit manipulation helpers =====
+ *
+ * All macros cast to uintptr_t so results are XLEN-width:
+ *   - On RV64, uintptr_t is 64-bit: full value preserved.
+ *   - On RV32, uintptr_t is 32-bit: high bits truncate to 0,
+ *     which is correct for single-CSR access (high-half bits
+ *     are accessed via separate mstatush/envcfgh etc.).
+ */
+#define BIT(n)              ((uintptr_t)(1ULL << (n)))
+#define BIT_MASK(off, len)  ((uintptr_t)(((1ULL << (len)) - 1) << (off)))
 #define EXTRACT_FIELD(val, off, len) \
-    (((val) >> (off)) & ((1ULL << (len)) - 1))
+    (((uintptr_t)(val) >> (off)) & ((uintptr_t)(1ULL << (len)) - 1))
 #define INSERT_FIELD(val, off, len, field) \
-    (((val) & ~BIT_MASK(off, len)) | (((uint64_t)(field) << (off)) & BIT_MASK(off, len)))
+    (((uintptr_t)(val) & ~BIT_MASK(off, len)) | (((uintptr_t)(field) << (off)) & BIT_MASK(off, len)))
 
 #endif /* __ASSEMBLER__ */
 
-#endif /* PMP_TYPES_H */
+#endif /* COMMON_TYPES_H */

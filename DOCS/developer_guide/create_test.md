@@ -592,12 +592,12 @@ EXTENSIONS = pmp smepmp spmp ... iopmp
 
 ```
 common/config/my_board/
-├── platform.h         # 平台硬件定义
+├──platfrom_config.h         # 平台硬件定义
 ├── rvmodel_macros.h   # 平台模型参数
 └── platform.mk        # 平台构建配置
 ```
 
-### 4.2 创建 `platform.h`
+### 4.2 创建 platfrom_config.h`
 
 ```c
 #define PLATFORM_UART0_BASE  0x10000000UL
@@ -623,11 +623,11 @@ make CONFIG=my_board XLEN=64 CROSS_COMPILER=riscv64-unknown-elf-
 
 每个平台配置包含三个关键文件：
 
-- **platform.h**：硬件特定定义（UART 基地址、内存布局、平台特定功能）
+- *platfrom_config.h**：硬件特定定义（UART 基地址、内存布局、平台特定功能）
 - **platform.mk**：构建配置（交叉编译器路径、内存基址、模拟器选项）
 - **rvmodel_macros.h**：平台模型参数
 
-这些文件通过 GCC 的 `-include` 标志自动包含，因此无需在源代码中添加 `#include "platform.h"`。构建系统会透明地处理这一切。
+这些文件通过 GCC 的 `-include` 标志自动包含，因此无需在源代码中添加 `#include platfrom_config.h"`。构建系统会透明地处理这一切。
 
 #### 平台间的关键差异
 

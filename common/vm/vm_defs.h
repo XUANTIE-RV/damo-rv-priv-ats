@@ -15,13 +15,23 @@
 #include "types.h"
 
 /* ===================================================================
- * satp MODE field values (bits [63:60] for RV64)
+ * satp MODE field values and MAKE_SATP are defined in ss_defs.h
+ * (included via encoding.h). They are not redefined here to avoid
+ * duplication.
+ *
+ * SATP_MODE_SHIFT / SATP_ASID_SHIFT / SATP_PPN_MASK below are
+ * alternative names (without the "64" prefix) used by some test
+ * code. They are kept here with #ifndef guards so that projects
+ * needing RV32-specific values (e.g. Svbare) can override them.
  * =================================================================== */
-#ifndef SATP_MODE_BARE
-#define SATP_MODE_BARE  0
-#define SATP_MODE_SV39  8
-#define SATP_MODE_SV48  9
-#define SATP_MODE_SV57  10
+#ifndef SATP_MODE_SHIFT
+#define SATP_MODE_SHIFT     60
+#endif
+#ifndef SATP_ASID_SHIFT
+#define SATP_ASID_SHIFT     44
+#endif
+#ifndef SATP_PPN_MASK
+#define SATP_PPN_MASK       ((1ULL << 44) - 1)
 #endif
 
 /* ===================================================================
@@ -29,10 +39,12 @@
  * =================================================================== */
 #define PAGE_SHIFT_4K   12
 #define PAGE_SHIFT_2M   21
+#define PAGE_SHIFT_4M   22      /* Sv32 megapage (RV32 only) */
 #define PAGE_SHIFT_1G   30
 
 #define PAGE_SIZE_4K    (1UL << PAGE_SHIFT_4K)   /* 4 KB   = 0x1000     */
 #define PAGE_SIZE_2M    (1UL << PAGE_SHIFT_2M)   /* 2 MB   = 0x200000   */
+#define PAGE_SIZE_4M    (1UL << PAGE_SHIFT_4M)   /* 4 MB   = 0x400000   (Sv32 megapage) */
 #define PAGE_SIZE_1G    (1UL << PAGE_SHIFT_1G)   /* 1 GB   = 0x40000000 */
 
 #define PAGE_SIZE       PAGE_SIZE_4K
@@ -103,7 +115,7 @@
 #define PTE_FLAGS(pte)      ((pte) & PTE_FLAGS_MASK)
 
 /* 44-bit PPN mask (bits 53:10 of PTE, after right-shift by 10 = bits 43:0) */
-#define PTE_PPN_MASK    ((1UL << 44) - 1)
+#define PTE_PPN_MASK    ((1ULL << 44) - 1)
 
 /* Extract PPN from a PTE (physical page number) */
 #define PTE_PPN(pte)        ((((pte) >> PTE_PPN_SHIFT)) & PTE_PPN_MASK)
@@ -112,7 +124,7 @@
 #define PA_TO_PTE(pa)       (((uintptr_t)(pa) >> PAGE_SHIFT) << PTE_PPN_SHIFT)
 
 /* Convert PTE PPN field back to physical address */
-#define PTE_TO_PA(pte)      ((PTE_PPN(pte)) << PAGE_SHIFT)
+#define PTE_TO_PA(pte)      ((uintptr_t)((PTE_PPN(pte)) << PAGE_SHIFT))
 
 /* Check if PTE is a leaf (has R, W, or X set) */
 #define PTE_IS_LEAF(pte)    (((pte) & (PTE_R | PTE_W | PTE_X)) != 0)
@@ -136,31 +148,6 @@
 
 /* Extract VPN at a given level */
 #define VA_VPN(va, level)   (((uintptr_t)(va) >> (12 + 9 * (level))) & VA_VPN_MASK)
-
-/* ===================================================================
- * satp register construction
- *
- * RV64 satp layout:
- *   [63:60] MODE  (4 bits)
- *   [59:44] ASID  (16 bits)
- *   [43:0]  PPN   (44 bits)
- * =================================================================== */
-#ifndef SATP_MODE_SHIFT
-#define SATP_MODE_SHIFT     60
-#endif
-#ifndef SATP_ASID_SHIFT
-#define SATP_ASID_SHIFT     44
-#endif
-#ifndef SATP_PPN_MASK
-#define SATP_PPN_MASK       ((1UL << 44) - 1)
-#endif
-
-#ifndef MAKE_SATP
-#define MAKE_SATP(mode, asid, ppn) \
-    (((uintptr_t)(mode) << SATP_MODE_SHIFT) | \
-     ((uintptr_t)(asid) << SATP_ASID_SHIFT) | \
-     ((uintptr_t)(ppn) & SATP_PPN_MASK))
-#endif
 
 /* ===================================================================
  * Page table pool configuration

@@ -17,22 +17,33 @@
 #
 # =====================================================================
 
-# Default configuration
-XLEN     ?= 64
+# Default configuration (CONFIG must be resolved before including platform.mk)
 CONFIG ?= qemu-rv64-max
 LOG_LEVEL ?= 3
 
 COMMON_DIR = ../common
+SCRIPTS_DIR = ../scripts
 
 # Configuration directory
 CONFIG_DIR = $(COMMON_DIR)/config/$(CONFIG)
 
-# Include configuration-specific build rules
+# Include configuration-specific build rules (platform.mk may override
+# defaults such as XLEN, CROSS_COMPILER, QEMU_CPU, etc.)
 include $(CONFIG_DIR)/platform.mk
 
+# Framework fallback defaults (only apply if platform.mk did not set them)
+XLEN     ?= 64
+
 # Configuration headers (included via -include in CFLAGS/ASFLAGS)
-CONFIG_HEADER       = $(CONFIG_DIR)/platform.h
-CONFIG_MODEL_HEADER = $(CONFIG_DIR)/rvmodel_macros.h
+CONFIG_PLATFORM_HEADER = $(CONFIG_DIR)/platform_config.h
+CONFIG_RVTEST_HEADER   = $(CONFIG_DIR)/rvtest_config.h
+CONFIG_MODEL_HEADER     = $(CONFIG_DIR)/rvmodel_macros.h
+
+# All three configuration headers are mandatory for each platform.
+# If any is missing, abort with a clear error message.
+$(if $(wildcard $(CONFIG_PLATFORM_HEADER)),,$(error Missing required config header: $(CONFIG_PLATFORM_HEADER)))
+$(if $(wildcard $(CONFIG_RVTEST_HEADER)),,$(error Missing required config header: $(CONFIG_RVTEST_HEADER)))
+$(if $(wildcard $(CONFIG_MODEL_HEADER)),,$(error Missing required config header: $(CONFIG_MODEL_HEADER)))
 
 # ABI selection
 ifeq ($(XLEN),32)
@@ -101,7 +112,6 @@ MARCH := rv32imach_zicsr_zifencei
 else
 MARCH := rv64imach_zicsr_zifencei
 endif
-SPIKE_ISA_EXT := $(SPIKE_ISA_EXT)
 endif
 
 # PM (Pointer Masking) support (conditional, set ENABLE_PM=1 in extension Makefile)
@@ -111,12 +121,18 @@ PM_OBJS = $(PM_DIR)/pm_cfg.o
 COMMON_OBJS += $(PM_OBJS)
 endif
 
+# IOPMP support (conditional, set ENABLE_IOPMP=1 in extension Makefile)
+ifdef ENABLE_IOPMP
+IOPMP_DIR = $(COMMON_DIR)/iopmp
+IOPMP_OBJS = $(IOPMP_DIR)/iopmp_cfg.o $(IOPMP_DIR)/iopmp_init.o
+COMMON_OBJS += $(IOPMP_OBJS)
+endif
+
 # N-Trace (Nexus-based Trace) support (conditional, set ENABLE_NTRACE=1 in extension Makefile)
 ifdef ENABLE_NTRACE
 NTRACE_DIR = $(COMMON_DIR)/trace
 NTRACE_OBJS = $(NTRACE_DIR)/trace_ctrl.o $(NTRACE_DIR)/ntrace_decoder.o
 COMMON_OBJS += $(NTRACE_OBJS)
-CFLAGS += -DENABLE_NTRACE -I$(NTRACE_DIR)
 endif
 
 # Compiler flags
@@ -124,9 +140,12 @@ CFLAGS  = -Wall -O0 -g -fno-omit-frame-pointer -ggdb
 CFLAGS += -march=$(MARCH) -mabi=$(ABI) -mcmodel=medany
 CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS += -I$(COMMON_DIR) -I.
-CFLAGS += -include $(CONFIG_HEADER)
+CFLAGS += -include $(CONFIG_PLATFORM_HEADER)
+CFLAGS += -include $(CONFIG_RVTEST_HEADER)
+CFLAGS += -include $(CONFIG_MODEL_HEADER)
 CFLAGS += -D LOG_LEVEL=$(LOG_LEVEL)
 CFLAGS += -D MEM_BASE=$(MEM_BASE)
+CFLAGS += -MMD -MP
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
 # Disable PIE
@@ -149,19 +168,50 @@ ifdef ENABLE_PM
 CFLAGS += -DENABLE_PM -I$(PM_DIR)/..
 endif
 
+# Conditional CFLAGS for IOPMP support
+ifdef ENABLE_IOPMP
+CFLAGS += -DENABLE_IOPMP -I$(IOPMP_DIR)
+endif
+
+# Conditional CFLAGS for N-Trace support
+ifdef ENABLE_NTRACE
+CFLAGS += -DENABLE_NTRACE -I$(NTRACE_DIR)
+endif
+
 # Extra CFLAGS from command line (e.g., make qemu EXTRA_CFLAGS='-DTEST_FILTER="VS-10"')
 CFLAGS += $(EXTRA_CFLAGS)
 
 # Assembler flags
 ASFLAGS  = -march=$(MARCH) -mabi=$(ABI)
 ASFLAGS += -I$(COMMON_DIR) -I.
-ASFLAGS += -include $(CONFIG_HEADER)
+ASFLAGS += -include $(CONFIG_PLATFORM_HEADER)
+ASFLAGS += -include $(CONFIG_RVTEST_HEADER)
 ASFLAGS += -include $(CONFIG_MODEL_HEADER)
 ASFLAGS += -D MEM_BASE=$(MEM_BASE)
+
+# Conditional ASFLAGS for PMP support
+ifdef ENABLE_PMP
+ASFLAGS += -DENABLE_PMP -I$(PMP_DIR_COMMON)
+endif
 
 # Conditional ASFLAGS for Hypervisor support
 ifdef ENABLE_HYP
 ASFLAGS += -DENABLE_HYP -I$(HYP_DIR)
+endif
+
+# Conditional ASFLAGS for PM support
+ifdef ENABLE_PM
+ASFLAGS += -DENABLE_PM -I$(PM_DIR)/..
+endif
+
+# Conditional ASFLAGS for IOPMP support
+ifdef ENABLE_IOPMP
+ASFLAGS += -DENABLE_IOPMP -I$(IOPMP_DIR)
+endif
+
+# Conditional ASFLAGS for N-Trace support
+ifdef ENABLE_NTRACE
+ASFLAGS += -DENABLE_NTRACE -I$(NTRACE_DIR)
 endif
 
 # Linker flags
@@ -231,11 +281,11 @@ $(foreach target,$(TARGETS),$(eval $(call MULTI_TARGET_RULE,$(target))))
 _ALL_EXT_OBJS = $(sort $(foreach t,$(TARGETS),$($(call _varname,$(basename $(t)))_OBJS)))
 
 clean:
-	rm -f $(_ALL_EXT_OBJS)
+	rm -f $(_ALL_EXT_OBJS) $(_ALL_EXT_OBJS:.o=.d)
 	rm -f $(TARGETS)
 	rm -f $(foreach t,$(TARGETS),$(basename $(t)).asm $(basename $(t)).sym)
 	rm -f $(foreach t,$(TARGETS),$(basename $(t)).trace $(basename $(t)).rvvi)
-	find $(COMMON_DIR) -name "*.o" -type f -delete
+	find $(COMMON_DIR) \( -name "*.o" -o -name "*.d" \) -type f -delete
 
 else
 # =================================================================
@@ -257,12 +307,22 @@ $(TARGET): $(ALL_OBJS) kernel.ld
 	$(OBJDUMP) -t $(TARGET) | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(TARGET_BASE).sym
 
 clean:
-	rm -f $(ALL_OBJS)
+	rm -f $(ALL_OBJS) $(ALL_OBJS:.o=.d)
 	rm -f $(TARGET) $(TARGET_BASE).asm $(TARGET_BASE).sym
 	rm -f $(TARGET_BASE).trace $(TARGET_BASE).rvvi
-	find $(COMMON_DIR) -name "*.o" -type f -delete
+	find $(COMMON_DIR) \( -name "*.o" -o -name "*.d" \) -type f -delete
 
 endif # ifdef TARGETS
+
+# =====================================================================
+# Header dependency tracking (-MMD -MP generates .d files alongside .o)
+# =====================================================================
+-include $(COMMON_OBJS:.o=.d)
+ifdef TARGETS
+-include $(_ALL_EXT_OBJS:.o=.d)
+else
+-include $(EXT_OBJS:.o=.d)
+endif
 
 # =====================================================================
 # Simulator targets
@@ -271,9 +331,20 @@ endif # ifdef TARGETS
 # --- QEMU ---
 .PHONY: qemu
 
+ifdef TARGETS
 qemu:
 	$(MAKE) CONFIG=qemu-rv64-max
+	@for elf in $(TARGETS); do \
+		echo "========== QEMU: $$elf =========="; \
+		$(QEMU) -machine $(QEMU_MCH) -cpu $(QEMU_CPU) -bios none \
+			-kernel $$elf -m $(QEMU_MEM) -smp $(QEMU_SMP) \
+			-semihosting -nographic || exit 1; \
+	done
+else
+qemu:
+	$(MAKE) CONFIG=$(CONFIG)
 	$(QEMU) $(QEMU_OPTS)
+endif
 
 # --- Sail ---
 SAIL ?= sail_riscv_sim
@@ -303,13 +374,13 @@ trace:
 		base=$$(basename $$elf .elf); \
 		echo "========== Trace: $$elf =========="; \
 		$(SAIL) --trace --trace-output $$base.trace $$elf || exit 1; \
-		$(COMMON_DIR)/scripts/sail_to_rvvi.py $$base.trace; \
+		$(SCRIPTS_DIR)/sail_to_rvvi.py $$base.trace; \
 	done
 else
 trace:
 	$(MAKE) CONFIG=sail-rv64-max
 	$(SAIL) --trace --trace-output $(basename $(TARGET)).trace $(TARGET)
-	$(COMMON_DIR)/scripts/sail_to_rvvi.py $(basename $(TARGET)).trace
+	$(SCRIPTS_DIR)/sail_to_rvvi.py $(basename $(TARGET)).trace
 endif
 
 # --- Spike ---

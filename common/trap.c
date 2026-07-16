@@ -15,11 +15,8 @@
  * — define here directly when re-enabling. */
 
 /* ===================================================================
- * Privilege mode definitions (shared with privilege.c)
+ * Privilege mode definitions are in encoding.h.
  * =================================================================== */
-#define PRIV_U  0
-#define PRIV_S  1
-#define PRIV_M  3
 
 /* ===================================================================
  * Trap record - captures exception information for test assertions
@@ -77,8 +74,6 @@ unsigned long _diag_arm_last_clear_cause  = 0;
  * a0 = ECALL_GOTO_PRIV (1)
  * a1 = target privilege level
  * =================================================================== */
-#define ECALL_GOTO_PRIV  1
-
 /* Ecall argument storage (set by caller before ecall instruction) */
 uintptr_t ecall_args[2];
 
@@ -112,6 +107,10 @@ static bool is_inst_fault(uintptr_t cause) {
  * Helper: is this cause an ecall?
  * =================================================================== */
 static bool is_ecall(uintptr_t cause) {
+    /* In CLIC mode, mcause has extended fields (mpp, mpie, mpil)
+     * in the high bits. Mask to exccode only (bits 11:0) before
+     * comparing with standard cause codes. */
+    cause &= 0xFFF;
     return (cause == CAUSE_ECALL_FROM_U ||
             cause == CAUSE_ECALL_FROM_S ||
             cause == CAUSE_ECALL_FROM_M
@@ -159,7 +158,7 @@ static uintptr_t normalize_qemu_tvm_cause(uintptr_t cause, uintptr_t epc) {
 
     uintptr_t ms  = CSRR(mstatus);
     unsigned  mpp = (unsigned)((ms >> MSTATUS_MPP_OFF) & 0x3UL);
-    unsigned  mpv = (unsigned)((ms >> 39) & 0x1UL);
+    unsigned  mpv = (unsigned)(((uint64_t)ms >> 39) & 0x1UL);
     unsigned  tvm = (unsigned)((ms >> 20) & 0x1UL);
     if (!(mpp == PRIV_S && mpv == 0 && tvm == 1))
         return cause;
@@ -191,18 +190,18 @@ static uintptr_t normalize_qemu_tvm_cause(uintptr_t cause, uintptr_t epc) {
 static inline void hyp_capture_m(void) {
     /* mtval2: contains the faulting guest physical address >> 2
      * (only valid for guest-page-faults; reads as 0 otherwise). */
-    asm volatile ("csrr %0, 0x34B" : "=r"(trap_record.htval) :: "memory");
-    asm volatile ("csrr %0, 0x34A" : "=r"(trap_record.htinst) :: "memory");
+    trap_record.htval  = CSRR(CSR_MTVAL2);
+    trap_record.htinst = CSRR(CSR_MTINST);
     /* mstatus.GVA = bit 38 (RV64 only) */
     uintptr_t ms = CSRR(mstatus);
-    trap_record.gva = ((ms >> 38) & 0x1UL) != 0;
+    trap_record.gva = (((uint64_t)ms >> 38) & 0x1UL) != 0;
 }
 
 /* Capture htval/htinst (HS-side) when trap is taken in HS-mode. */
 static inline void hyp_capture_s(void) {
-    asm volatile ("csrr %0, 0x643" : "=r"(trap_record.htval) :: "memory");
-    asm volatile ("csrr %0, 0x64A" : "=r"(trap_record.htinst) :: "memory");
-    uintptr_t hs = CSRR(0x600);   /* hstatus */
+    trap_record.htval  = CSRR(CSR_HTVAL);
+    trap_record.htinst = CSRR(CSR_HTINST);
+    uintptr_t hs = CSRR(CSR_HSTATUS);
     trap_record.gva = ((hs >> 6) & 0x1UL) != 0;  /* HSTATUS_GVA bit 6 */
 }
 #endif /* ENABLE_HYP */
@@ -268,19 +267,15 @@ unsigned m_trap_handler(void) {
             /* Clear LCOFIP to prevent infinite interrupt loop */
             CSRC(mip, MIP_LCOFIP);
         }
-        if (irq == 5) {
+        if (irq == IRQ_S_TIMER) {
             /* S-mode timer interrupt: write stimecmp to max value
              * to clear the interrupt source and prevent re-entry */
-            asm volatile("csrw 0x14D, %0" :: "r"((uintptr_t)-1) : "memory");
+            CSRW(CSR_STIMECMP, (uintptr_t)-1);
         }
-        if (irq == 7) {
+        if (irq == IRQ_M_TIMER) {
             /* M-mode timer interrupt (ACLINT MTIMER): write MTIMECMP[0]
              * to max value to clear the interrupt source */
-            #ifdef CLINT_BASE_ADDRESS
             uintptr_t mtimecmp_addr = CLINT_BASE_ADDRESS + 0x4000UL;
-            #else
-            uintptr_t mtimecmp_addr = 0x02004000UL;
-            #endif
             asm volatile(
                 "li t0, -1\n\t"
                 "sw t0, 0(%0)\n\t"
@@ -289,26 +284,22 @@ unsigned m_trap_handler(void) {
                 :: "r"(mtimecmp_addr) : "t0", "memory"
             );
         }
-        if (irq == 3) {
+        if (irq == IRQ_M_SOFTWARE) {
             /* M-mode software interrupt (ACLINT MSWI): write MSIP[0]
              * to 0 to clear the interrupt source */
-            #ifdef CLINT_BASE_ADDRESS
             uintptr_t msip_addr = CLINT_BASE_ADDRESS + 0x0000UL;
-            #else
-            uintptr_t msip_addr = 0x02000000UL;
-            #endif
             asm volatile(
                 "sw zero, 0(%0)\n\t"
                 "fence\n\t"
                 :: "r"(msip_addr) : "memory"
             );
         }
-        if (irq == 1) {
+        if (irq == IRQ_S_SOFTWARE) {
             /* S-mode software interrupt (SSIP): clear mip.SSIP to
              * prevent infinite re-entry. SSIP is software-writable. */
             CSRC(mip, (1UL << 1));
         }
-        if (irq == 9) {
+        if (irq == IRQ_S_EXTERNAL) {
             /* S-mode external interrupt (SEIP): clear mip.SEIP software
              * bit to prevent infinite re-entry. */
             CSRC(mip, (1UL << 9));
@@ -354,7 +345,7 @@ unsigned m_trap_handler(void) {
         /* Snapshot mstatus.MPV/MPP before handler consumes them via mret. */
         {
             uintptr_t _ms = CSRR(mstatus);
-            _m_trap_mpv_snap = ((_ms >> 39) & 0x1UL) != 0;
+            _m_trap_mpv_snap = (((uint64_t)_ms >> 39) & 0x1UL) != 0;
             _m_trap_mpp_snap = (_ms >> MSTATUS_MPP_OFF) & 0x3UL;
         }
 #endif
@@ -463,10 +454,10 @@ unsigned s_trap_handler(void) {
             /* Clear LCOFIP to prevent infinite interrupt loop */
             CSRC(sip, MIP_LCOFIP);
         }
-        if (irq == 5) {
+        if (irq == IRQ_S_TIMER) {
             /* S-mode timer interrupt: write stimecmp to max value
              * to clear the interrupt source and prevent re-entry */
-            asm volatile("csrw 0x14D, %0" :: "r"((uintptr_t)-1) : "memory");
+            CSRW(CSR_STIMECMP, (uintptr_t)-1);
         }
         /* Record interrupt in trap_record if armed */
         if (trap_record.armed) {
@@ -558,6 +549,31 @@ void trap_expect_end(void) {
     trap_record.armed = false;
 #ifdef ENABLE_TRAP_ARM_DIAG
     _diag_arm_end_count++;
+#endif
+    __sync_synchronize();
+}
+
+/* ===================================================================
+ * trap_clear_record - Clear all trap record fields and disarm.
+ *
+ * Unlike trap_expect_end() which only sets armed=false, this function
+ * also clears triggered, cause, epc, tval, and all other fields.
+ * Used by reset_state() to ensure a clean slate between tests.
+ * =================================================================== */
+void trap_clear_record(void) {
+    __sync_synchronize();
+    trap_record.armed       = false;
+    trap_record.triggered   = false;
+    trap_record.priv_level  = 0;
+    trap_record.cause       = 0;
+    trap_record.epc         = 0;
+    trap_record.tval        = 0;
+    trap_record.status_snap = 0;
+    trap_record.return_addr = 0;
+#ifdef ENABLE_HYP
+    trap_record.htval       = 0;
+    trap_record.htinst      = 0;
+    trap_record.gva         = false;
 #endif
     __sync_synchronize();
 }

@@ -100,8 +100,8 @@ static uintptr_t page_size_for_level(int level) {
     case PT_LEVEL_4K:    return PAGE_SIZE_4K;
     case PT_LEVEL_2M:    return PAGE_SIZE_2M;
     case PT_LEVEL_1G:    return PAGE_SIZE_1G;
-    case PT_LEVEL_512G:  return (1UL << 39);
-    case PT_LEVEL_256T:  return (1UL << 48);
+    case PT_LEVEL_512G:  return (uintptr_t)(1ULL << 39);
+    case PT_LEVEL_256T:  return (uintptr_t)(1ULL << 48);
     default:             return PAGE_SIZE_4K;
     }
 }

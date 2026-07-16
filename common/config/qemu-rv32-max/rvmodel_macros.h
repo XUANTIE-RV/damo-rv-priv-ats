@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-# rvmodel_macros.h
-# DUT-specific macro definitions for Qemu
-# Jordan Carlin jcarlin@hmc.edu Feb 2026
-# SPDX-License-Identifier: BSD-3-Clause
+// rvmodel_macros.h
+// DUT-specific macro definitions for Qemu
+// Jordan Carlin jcarlin@hmc.edu Feb 2026
+// SPDX-License-Identifier: BSD-3-Clause
 
 #ifndef _RVMODEL_MACROS_H
 #define _RVMODEL_MACROS_H
@@ -15,11 +15,11 @@
 
 #define STANDARD_SM_SUPPORTED
 
-##### STARTUP #####
+// ===== STARTUP =====
 
-# Perform boot operations. Can be empty or left undefined unless needed for
-# DUT-specific behavior such as turning on a memory controller or
-# initializing custom state.
+// Perform boot operations. Can be empty or left undefined unless needed for
+// DUT-specific behavior such as turning on a memory controller or
+// initializing custom state.
 //#define RVMODEL_BOOT
 
 // Custom RVMODEL_BOOT_TO_MMODE overrides default RVTEST_BOOT_TO_MMODE
@@ -31,21 +31,21 @@
 //#define RVMODEL_BOOT_TO_MMODE
 
 
-##### TERMINATION #####
+// ===== TERMINATION =====
 
-# QEMU uses semihosting to terminate the simulation.
-# Semihosting triggers commands by using a special sequence of three instructions.
-# See https://docs.riscv.org/reference/platform-software/semihosting/_attachments/riscv-semihosting.pdf
-# for details. Note: QEMU semihosting sequences cannot cross page boundaries.
-# The semihosting codes used here are described below. The subsequent link has more details on all semihosting codes.
-# On RV64, SYS_EXIT expects a1 = pointer to {reason, subcode} parameter block.
-# On RV32, SYS_EXIT expects a1 = reason value directly.
-# 0x20026 = ADP_Stopped_ApplicationExit (exit code 0)
-# 0x20023 = ADP_Stopped_InternalError (exit code 1)
-# https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst
+// QEMU uses semihosting to terminate the simulation.
+// Semihosting triggers commands by using a special sequence of three instructions.
+// See https://docs.riscv.org/reference/platform-software/semihosting/_attachments/riscv-semihosting.pdf
+// for details. Note: QEMU semihosting sequences cannot cross page boundaries.
+// The semihosting codes used here are described below. The subsequent link has more details on all semihosting codes.
+// On RV64, SYS_EXIT expects a1 = pointer to {reason, subcode} parameter block.
+// On RV32, SYS_EXIT expects a1 = reason value directly.
+// 0x20026 = ADP_Stopped_ApplicationExit (exit code 0)
+// 0x20023 = ADP_Stopped_InternalError (exit code 1)
+// https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst
 
-# Terminate test with a pass indication.
-# When the test is run in simulation, this should end the simulation.
+// Terminate test with a pass indication.
+// When the test is run in simulation, this should end the simulation.
 #define RVMODEL_HALT_PASS     \
   .option push               ;\
   .option norvc              ;\
@@ -60,8 +60,8 @@
   srai x0, x0, 7             ;\
   .option pop
 
-# Terminate test with a fail indication.
-# When the test is run in simulation, this should end the simulation.
+// Terminate test with a fail indication.
+// When the test is run in simulation, this should end the simulation.
 #define RVMODEL_HALT_FAIL     \
   .option push               ;\
   .option norvc              ;\
@@ -76,30 +76,32 @@
   srai x0, x0, 7             ;\
   .option pop
 
-##### IO #####
+// ===== IO =====
 
-# Example UART implementation.
-# Expects a PC16550-compatible UART.
-# Change these addresses to match your memory map
+// Example UART implementation.
+// Expects a PC16550-compatible UART.
+// Change these addresses to match your memory map
+#ifdef __ASSEMBLER__
 .EQU UART_BASE_ADDR, 0x10000000
 .EQU UART_THR, (UART_BASE_ADDR + 0)
 .EQU UART_LCR, (UART_BASE_ADDR + 3)
 .EQU UART_LSR, (UART_BASE_ADDR + 5)
+#endif
 
-# Initialization steps needed prior to writing to the console
-# _R1, _R2, and _R3 can be used as temporary registers if needed.
-# Do not modify any other registers (or make sure to restore them).
-# Can be empty or left undefined if no initialization is needed.
+// Initialization steps needed prior to writing to the console
+// _R1, _R2, and _R3 can be used as temporary registers if needed.
+// Do not modify any other registers (or make sure to restore them).
+// Can be empty or left undefined if no initialization is needed.
 #define RVMODEL_IO_INIT(_R1, _R2, _R3) \
   uart_init:                ;\
     li _R1, UART_LCR         ; /* Load address of UART LCR */    \
     li _R2, 3                ; /* 8-bit characters, 1 stop bit, no parity */ \
     sb _R2, 0(_R1)           ; \
 
-# Prints a null-terminated string using a DUT specific mechanism.
-# A pointer to the string is passed in _STR_PTR.
-# _R1, _R2, and _R3 can be used as temporary registers if needed.
-# Do not modify any other registers (or make sure to restore them).
+// Prints a null-terminated string using a DUT specific mechanism.
+// A pointer to the string is passed in _STR_PTR.
+// _R1, _R2, and _R3 can be used as temporary registers if needed.
+// Do not modify any other registers (or make sure to restore them).
 #define RVMODEL_IO_WRITE_STR(_R1, _R2, _R3, _STR_PTR)               \
 1:                           ;                       \
   lbu _R1, 0(_STR_PTR)        ;/* Load byte */        \
@@ -118,17 +120,17 @@
 3:
 
 
-##### Access Fault #####
+// ===== Access Fault =====
 
 #define RVMODEL_ACCESS_FAULT_ADDRESS 0x00000100
 
-##### Machine Timer #####
+// ===== Machine Timer =====
 
 #define RVMODEL_MTIME_ADDRESS  0x0200BFF8  /* Address of mtime CSR */
 
 #define RVMODEL_MTIMECMP_ADDRESS 0x02004000 /* Address of mtimecmp CSR */
 
-##### Machine Interrupts #####
+// ===== Machine Interrupts =====
 
 #define RVMODEL_INTERRUPT_LATENCY 10
 
@@ -196,7 +198,7 @@
   li _R2, RVMODEL_MSIP_ADDRESS; \
   sw zero, 0(_R2);
 
-##### Supervisor Interrupts #####
+// ===== Supervisor Interrupts =====
 
 #define RVMODEL_SET_SEXT_INT(_R1, _R2)          \
   li _R1, 7;                                     \

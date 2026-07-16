@@ -1,6 +1,8 @@
 # T-SBI Adaptation Plan (Virtualization Tests First)
 
-> **规范来源**: [ACT4 abstraction.adoc § Test Supervisor Binary Interface](https://github.com/riscv/riscv-arch-test/blob/act4/docs/ctp/src/abstraction.adoc#test-supervisor-binary-interface-t-sbi)
+> **规范来源**: [ACT4 abstraction.adoc Test Supervisor Binary Interface](https://github.com/riscv/riscv-arch-test/blob/act4/docs/ctp/src/abstraction.adoc#test-supervisor-binary-interface-t-sbi)
+
+> **实施决策（2026）**：采用 **目标 B（RVA23 认证兼容）**——对齐 custom M-mode + T-SBI 认证模型；GOTO 编码 **采用 0x1~0x5**（对齐 ACT4 参考实现 rvtest_trap_handler.h，但**不引入其 x3==0 legacy flag**，dispatch 纯由 a0 范围判定）；CSR_ACCESS 错误处理采用 **策略 A**。详见 §5 改造路径。
 
 ## 1. 背景与目标
 
@@ -74,11 +76,11 @@ ecall
 
 | 操作码 (a0) | 符号名 | 目标特权级 |
 |-------------|--------|-----------|
-| `0x00000101` | GOTO_MMODE | M-mode（需 STANDARD_SM_SUPPORTED） |
-| `0x00000102` | GOTO_SMODE | S/HS-mode |
-| `0x00000103` | GOTO_UMODE | U-mode |
-| `0x00000104` | GOTO_VSMODE | VS-mode (V=1) |
-| `0x00000105` | GOTO_VUMODE | VU-mode (V=1) |
+| `0x00000001` | GOTO_MMODE | M-mode（需 STANDARD_SM_SUPPORTED） |
+| `0x00000002` | GOTO_SMODE | S/HS-mode |
+| `0x00000003` | GOTO_UMODE | U-mode |
+| `0x00000004` | GOTO_VSMODE | VS-mode (V=1) |
+| `0x00000005` | GOTO_VUMODE | VU-mode (V=1) |
 
 **行为语义**：
 - Handler 接到 ecall 后，根据 a0 确定目标特权级
@@ -86,7 +88,7 @@ ecall
 - `mepc` 设为 ecall 的下一条指令（ecall+4）
 - 切换完成后，执行流在目标特权级从 ecall 下一条指令继续
 
-> **注意**：这些操作码 bits[6:0] ≠ 0x73，不会与 ECALL_TEST / CSR_ACCESS 冲突。
+> **注意**：这些操作码为小整数 1~5，bits[6:0] ≠ 0x73，不会与 ECALL_TEST / CSR_ACCESS 冲突；且 a0=0 不属于合法 GOTO（走 armed-trap），我们不采用参考实现的 x3==0 legacy 机制。
 
 #### 2.2.3 原始 ecall 测试（Raw Ecall as Test Stimulus）
 
@@ -128,7 +130,7 @@ ecall trapped to handler (M-mode / HS-mode):
 ├─ if (_skip_tsbi_dispatch == true)
 │   └─ 走 armed-trap 路径（trap_record 记录）
 │
-├─ if (a0 >= 0x101 && a0 <= 0x105)
+├─ if (a0 >= 0x1 && a0 <= 0x5)
 │   ├─ 本层能处理 → 配置 xPP/xPV + xret
 │   └─ 本层不能处理 → ecall 转发上层
 │
@@ -151,9 +153,9 @@ ecall trapped to handler (M-mode / HS-mode):
 | 维度 | 当前实现 | T-SBI 规范要求 |
 |------|---------|---------------|
 | 参数传递 | 全局变量 `ecall_args[2]` | 寄存器 a0/a1 |
-| 操作码 | 单一 `ECALL_GOTO_PRIV=1`，a1 传 target | a0 直接编码目标（0x101-0x105） |
+| 操作码 | 单一 `ECALL_GOTO_PRIV=1`，a1 传 target | a0 直接编码目标（0x1-0x5） |
 | ECALL_TEST | 无 | a0=0x73，返回 xEPC |
-| VS/VU 编码 | `PRIV_VS=5, PRIV_VU=4`（bit2=V） | `GOTO_VSMODE=0x104, VUMODE=0x105` |
+| VS/VU 编码 | `PRIV_VS=5, PRIV_VU=4`（bit2=V） | `GOTO_VSMODE=0x4, VUMODE=0x5` |
 | CSR 代理 | 无（依赖 M-mode 直接 CSRR/CSRW） | CSR_ACCESS 动态指令注入 |
 | 原始 ecall | `ecall_args[0]=0` 手动重置 | 框架级标志位 API |
 | 汇编入口 | 不保存 a0/a1 到专用字段 | 需在 context save 阶段捕获 a0/a1 |
@@ -202,11 +204,11 @@ ecall trapped to handler (M-mode / HS-mode):
 #define TSBI_ECALL_TEST   0x00000073  /* a0=ecall opcode, returns xEPC */
 
 /* --- Privilege Mode Transition (ACT extension) --- */
-#define TSBI_GOTO_MMODE   0x00000101  /* Switch to M-mode */
-#define TSBI_GOTO_SMODE   0x00000102  /* Switch to S-mode / HS-mode */
-#define TSBI_GOTO_UMODE   0x00000103  /* Switch to U-mode */
-#define TSBI_GOTO_VSMODE  0x00000104  /* Switch to VS-mode (V=1) */
-#define TSBI_GOTO_VUMODE  0x00000105  /* Switch to VU-mode (V=1) */
+#define TSBI_GOTO_MMODE   0x00000001  /* Switch to M-mode */
+#define TSBI_GOTO_SMODE   0x00000002  /* Switch to S-mode / HS-mode */
+#define TSBI_GOTO_UMODE   0x00000003  /* Switch to U-mode */
+#define TSBI_GOTO_VSMODE  0x00000004  /* Switch to VS-mode (V=1) */
+#define TSBI_GOTO_VUMODE  0x00000005  /* Switch to VU-mode (V=1) */
 
 /* --- CSR_ACCESS encoding ---
  * a0 = complete RISC-V CSR instruction encoding
@@ -220,7 +222,7 @@ ecall trapped to handler (M-mode / HS-mode):
 #define TSBI_CSR_READ_ENCODE(csr)   (((uint32_t)(csr) << 20) | 0x02573)  /* csrrs a0, csr, x0 */
 
 /* --- Protocol detection helpers --- */
-#define TSBI_IS_GOTO_MODE(a0)   ((a0) >= 0x101 && (a0) <= 0x105)
+#define TSBI_IS_GOTO_MODE(a0)   ((a0) >= 0x1 && (a0) <= 0x5)
 #define TSBI_IS_SYSTEM_OP(a0)   (((a0) & 0x7F) == 0x73)
 #define TSBI_IS_ECALL_TEST(a0)  ((a0) == 0x73)
 #define TSBI_IS_CSR_ACCESS(a0)  (TSBI_IS_SYSTEM_OP(a0) && (((a0) >> 12) & 7) != 0)
@@ -274,7 +276,7 @@ unsigned m_trap_handler(void) {
             goto armed_trap_path;
         }
 
-        /* 2) 特权模式切换 (0x101-0x105) */
+        /* 2) 特权模式切换 (0x1-0x5) */
         if (TSBI_IS_GOTO_MODE(a0)) {
             unsigned target = tsbi_op_to_priv(a0);
             CSRW(mepc, epc + 4);
@@ -364,29 +366,39 @@ armed_trap_path:
 
 ### 4.5 CSR_ACCESS 动态指令注入引擎
 
+> **关键设计**：规范明确 a0 本身就是完整的 RISC-V CSR 指令编码（含正确的 rd/rs1/funct3），
+> handler 应**直接将 a0 写入可执行区域并执行**，不需要拆解重组。
+>
+> 各操作的 rd/rs1 已由调用者正确编码：
+> - CSR_WRITE: `csrrw x0, csr, a1` (rd=x0, rs1=a1 → 只写不读)
+> - CSR_SET:   `csrrs x0, csr, a1` (rd=x0, rs1=a1 → 设置位)
+> - CSR_CLEAR: `csrrc x0, csr, a1` (rd=x0, rs1=a1 → 清除位)
+> - CSR_READ:  `csrrs a0, csr, x0` (rd=a0, rs1=x0 → 只读不改)
+
 ```c
 /* 可执行 buffer（需 RWX 属性，通过 linker script 配置） */
 static uint32_t __attribute__((aligned(16), section(".trampoline")))
     csr_trampoline[2];
 
 uintptr_t csr_access_dispatch(uint32_t encoded_a0, uintptr_t rs1_val) {
-    uint32_t csr    = (encoded_a0 >> 20) & 0xFFF;
-    uint32_t funct3 = (encoded_a0 >> 12) & 0x7;
-
-    /* 组装指令：csrXXX a0, csr, a1
-     * rd = a0 (x10 = 10), rs1 = a1 (x11 = 11)
-     * 指令编码: csr[31:20] | rs1[19:15] | funct3[14:12] | rd[11:7] | opcode[6:0]
+    /*
+     * encoded_a0 就是完整的 CSR 指令，直接写入 trampoline 执行。
+     * 不做拆解重组 — 规范保证 rd/rs1/funct3 已由调用者正确编码。
+     *
+     * 参考 abstraction.adoc:
+     *   "the trap handler to write this value to memory, perform fence.i
+     *    to synchronize the instruction stream, execute the instruction"
      */
-    uint32_t rd  = 10;  /* a0 */
-    uint32_t rs1 = 11;  /* a1 */
-    uint32_t inst = (csr << 20) | (rs1 << 15) | (funct3 << 12) | (rd << 7) | 0x73;
-
-    csr_trampoline[0] = inst;
+    csr_trampoline[0] = encoded_a0;
     csr_trampoline[1] = 0x00008067;  /* ret (jalr x0, x1, 0) */
 
     asm volatile("fence.i" ::: "memory");
 
-    /* 调用 trampoline，a1 传入 rs1_val，a0 返回结果 */
+    /* 调用 trampoline，a1 传入 rs1_val（供 CSR_WRITE/SET/CLEAR 使用），
+     * a0 接收返回值（供 CSR_READ 使用）。
+     * 对于 WRITE/SET/CLEAR，指令的 rd=x0，a0 不被修改，返回值无意义。
+     * 对于 READ，指令的 rd=a0，结果直接写入 a0。
+     */
     register uintptr_t _a1 asm("a1") = rs1_val;
     register uintptr_t _a0 asm("a0");
     asm volatile(
@@ -421,44 +433,87 @@ static inline bool is_m_mode_csr(uint32_t csr_addr) {
 }
 ```
 
+### 4.7 CSR_ACCESS 错误处理（策略 A：错误标志位 + recovery）
+
+> **决策**：采用策略 A。CSR_ACCESS 注入执行前 arm 一条 `csr_access_record`；若被注入的 CSR 指令自身触发嵌套 trap（如访问不存在的 CSR、权限不足），M-mode handler 捕获该嵌套异常，置错误标志并借助 `_exec_return_addr` 恢复到 trampoline 之后，最终把错误指示带回调用者，避免嵌套 trap 打断测试流。
+
+```c
+typedef volatile struct {
+    bool      armed;    /* CSR 注入执行期间置 1 */
+    bool      faulted;  /* 注入指令触发了嵌套 trap */
+    uintptr_t cause;    /* 嵌套 trap 的 cause */
+    uintptr_t recover;  /* trampoline 之后的恢复 PC */
+} csr_access_record_t;
+
+extern csr_access_record_t csr_access_record;
+
+uintptr_t csr_access_dispatch(uint32_t encoded_a0, uintptr_t rs1_val) {
+    csr_trampoline[0] = encoded_a0;
+    csr_trampoline[1] = 0x00008067;  /* ret */
+    asm volatile("fence.i" ::: "memory");
+
+    csr_access_record.armed   = true;
+    csr_access_record.faulted = false;
+    csr_access_record.recover = (uintptr_t)&&csr_done;
+
+    register uintptr_t _a1 asm("a1") = rs1_val;
+    register uintptr_t _a0 asm("a0");
+    asm volatile("jalr ra, %2" : "=r"(_a0) : "r"(_a1), "r"(csr_trampoline)
+                 : "ra", "memory");
+csr_done:
+    csr_access_record.armed = false;
+    if (csr_access_record.faulted)
+        return (uintptr_t)-1;   /* 策略 A 约定的错误返回 */
+    return _a0;
+}
+```
+
+在 `m_trap_handler` 的异常路径中 **最优先** 判定 `csr_access_record.armed`：命中则说明是注入指令引发的嵌套 trap → 记录 cause、置 `faulted`、把 xEPC 设为 `recover` 后返回，不进入 `trap_record` 断言路径。
+
 ---
 
-## 5. 改造路径（分阶段）
+## 5. 改造路径（走 B：RVA23 认证兼容）
 
-### Phase 1 — 寄存器约定 + 基础 dispatch
+> **决策基线**：走 **目标 B**。GOTO 操作码 **采用 0x1~0x5**（对齐参考实现，不引入 x3 flag）；CSR_ACCESS 错误处理采用 **策略 A**（见 §4.7）。Phase 1 已完成，Phase 2~4 为走 B 的补齐工作。
+
+### Phase 1 — 寄存器约定 + 基础 GOTO dispatch ✅ 已完成
+
+| 改造项 | 文件 | 状态 |
+|--------|------|------|
+| 新增 `tsbi.h`（编码/映射/检测宏） | `common/tsbi.h` | ✅ |
+| ecall 发起改寄存器约定 | `common/privilege.c`、`common/hyp/hyp_priv.c` | ✅ |
+| 汇编入口保存 a0/a1 到 frame | `common/trap_asm.S` | ✅ |
+| M/S handler GOTO dispatch（0x1~0x5） | `common/trap.c` | ✅ |
+| 删除旧协议 `ecall_args[2]` | 多文件 | ✅ |
+
+### Phase 2 — 核心 T-SBI 服务补齐（M-mode 内） ⬜ 待做
 
 | 改造项 | 文件 | 说明 |
 |--------|------|------|
-| 新增 `tsbi.h` | `common/tsbi.h` | 协议常量 + 内联包装 + 检测宏 |
-| 改造 ecall 发起 | `common/privilege.c` | `do_ecall()` → `tsbi_ecall()` |
-| 改造 ecall 发起 | `common/hyp/hyp_priv.c` | `_v_trampoline` / `return_to_hs_mode` |
-| 汇编入口保存 a0/a1 | `common/trap_asm.S` | 在 context save 阶段捕获 |
-| 改造 M-mode dispatch | `common/trap.c` | 0x101-0x105 + ECALL_TEST + CSR_ACCESS |
-| 删除旧协议 | 多文件 | 删除 `ecall_args[2]` + `ECALL_GOTO_PRIV` |
+| ECALL_TEST(0x73) | `common/trap.c` | 返回 xEPC 到 frame[a0]，mepc+=4 |
+| CSR_ACCESS 注入引擎 | `common/csr_access_proxy.c`（新增） | 动态指令注入 + fence.i + jalr（见 §4.5） |
+| `.trampoline` RWX 段 | linker script | 供注入指令执行 |
+| 策略 A 错误处理 | `common/trap.c` | `csr_access_record` + recovery（见 §4.7） |
+| M-mode dispatch 三分支 | `common/trap.c` | GOTO / ECALL_TEST / CSR_ACCESS |
+| 测试侧 wrapper | `common/tsbi.h` | `tsbi_csr_read/write/set/clear`、`tsbi_ecall_test` |
 
-### Phase 2 — HS-mode Handler + 链式转发
-
-| 改造项 | 文件 | 说明 |
-|--------|------|------|
-| HS-mode dispatch | `common/trap.c` | S-mode handler 新增 T-SBI 分支 |
-| 转发机制 | `common/trap.c` | `ecall_forward_to_m()` 实现 |
-| CSR 权限判断 | `common/tsbi.h` | `is_m_mode_csr()` 辅助函数 |
-
-### Phase 3 — CSR_ACCESS 引擎
+### Phase 3 — HS/VS handler 链式转发 ⬜ 待做
 
 | 改造项 | 文件 | 说明 |
 |--------|------|------|
-| 新增注入引擎 | `common/csr_access_proxy.c` | 动态指令生成 + fence.i + jalr |
-| linker script | `common/kernel_common.ld` | 增加 `.trampoline` 段（RWX） |
-| handler 集成 | `common/trap.c` | M + HS handler 调用注入引擎 |
-| 测试侧 wrapper | `common/tsbi.h` | `tsbi_csr_read/write/set/clear` |
+| S/HS handler 对称 dispatch | `common/trap.c` | 本级可处理（S-mode CSR、GOTO_S/U/VS/VU）→ 本地；否则转发 |
+| 转发机制 | `common/trap.c` | `ecall_forward_to_m()`：参数不变，ecall 上传 M |
+| CSR 权限判断 | `common/tsbi.h` | `is_m_mode_csr()`（0x3xx/0x7xx/0xBxx/0xFxx→M） |
+| VS handler | `common/hyp/*` | GOTO_MMODE / M-mode CSR 转发至 HS→M |
 
-### Phase 4 — 测试代码迁移
+### Phase 4 — 委托模型 + 委托/不委托双跑 ⬜ 待做
 
 | 改造项 | 文件 | 说明 |
 |--------|------|------|
-| 新增 raw-ecall API | `common/tsbi.h` + `trap.c` | `tsbi_arm_raw_ecall()` |
-| 迁移 3 处显式用法 | `Hypervisor/tests/*`, `Shtvala/tests/*` | `ecall_args[0]=0` → `tsbi_arm_raw_ecall(true)` |
+| medeleg/mideleg 可配置 | `common/test_framework.c` | 由固定 0 改为按用例配置；**ecall-from-S 恒不委托** |
+| M-mode handler 四步职责 | `common/trap.c` | ①T-SBI 判定 ②invisible trap ③undelegated trap-to-M 签名 ④填 sstatus/sepc/scause/stval 委托回 S |
+| 委托双跑框架支持 | 测试框架 | 每个 cause 支持委托/不委托两种模式运行 |
+| SBI 代理 M-mode CSR 覆盖 | 测试用例 | mstatus(TSR/TW/TVM)、mcounteren、mip、mie、menvcfg、mseccfg、mstateen 等 |
 
 ---
 
@@ -489,11 +544,12 @@ aia_vs、aia_ipi_iommu
 
 ---
 
-## 7. 待确认事项（等待详细 T-SBI 文档）
+## 7. 已决策事项
 
-1. ~~**S-mode T-SBI handler**~~：✅ 已确认。规范明确 S/HS-mode handler 也需实现 T-SBI dispatch，不能处理的请求通过 ecall 向上转发。
-2. ~~**操作码扩展**~~：✅ 已确认。GOTO 操作码为 0x101-0x105，预留空间充足（0x106+ 未定义）。
-3. **CSR_ACCESS 错误处理**：代理执行 CSR 指令触发异常时（如访问不存在的 CSR），错误如何传递给调用者？（规范未明确）
-4. **向后兼容**：是否需要保留对旧 ecall 协议的兼容？（过渡期双协议并存）
-5. **ECALL_TEST 与 raw-ecall 的关系**：ECALL_TEST (a0=0x73) 返回 xEPC 是规范行为，而 raw-ecall（armed trap）是我们框架的扩展。两者是否需要互斥？
-6. **CSR_ACCESS 的 CSRxI 变体**：规范表格仅列出 CSR_WRITE/SET/CLEAR/READ（对应 rs1=a1 或 rs1=x0），是否需要支持 CSRRWI/CSRRSI/CSRRCI（a1 作为 5-bit uimm）？当前实现按 a0 编码的完整指令执行，自动支持。
+1. ✅ **目标定位**：走 **目标 B**（RVA23 认证兼容）。
+2. ✅ **GOTO 编码**：采用 **0x1~0x5**（对齐 ACT4 参考实现 rvtest_trap_handler.h）；**不引入 x3==0 legacy flag**，dispatch 纯由 a0 范围（1~5）判定；a0=0 非法走 armed-trap。
+3. ✅ **S/HS/VS handler**：需实现对称 T-SBI dispatch + 链式转发（Phase 3）。
+4. ✅ **CSR_ACCESS 错误处理**：采用 **策略 A**（错误标志位 + recovery，见 §4.7）。
+5. ✅ **委托模型**：medeleg/mideleg 改为可配置，支持委托/不委托双跑；**ecall-from-S 恒不委托**（Phase 4）。
+6. ✅ **CSRxI 变体**：a0 直接是完整指令编码，CSRRWI/SI/CI 自动支持，无需额外分支。
+7. ⬜ **向后兼容**：旧 `ecall_args` 协议已移除，不保留双协议。

@@ -35,10 +35,10 @@ extern void reset_state(void);   /* base reset in test_framework.c */
  * =================================================================== */
 static void hyp_pmp_open_all(void) {
     uintptr_t napot_all = ~(uintptr_t)0 >> 10; /* (1<<54)-1 — full NAPOT */
-    asm volatile ("csrw 0x3B0, %0" :: "r"(napot_all) : "memory"); /* pmpaddr0 */
+    CSRW(CSR_PMPADDR0, napot_all);
     /* R=1, W=1, X=1, A=NAPOT(3) → byte = 0x1F. Place in entry 0. */
     uintptr_t cfg = 0x1FUL;
-    asm volatile ("csrw 0x3A0, %0" :: "r"(cfg) : "memory");       /* pmpcfg0  */
+    CSRW(CSR_PMPCFG0, cfg);
 }
 
 void hyp_reset_state(void) {
@@ -50,9 +50,9 @@ void hyp_reset_state(void) {
     hedeleg_write(0);
     hideleg_write(0);
     /* hie / hip / hvip / hgeie are interrupt-related — clear hvip + hie. */
-    asm volatile ("csrw 0x604, zero" ::: "memory");  /* hie       */
-    asm volatile ("csrw 0x645, zero" ::: "memory");  /* hvip      */
-    asm volatile ("csrw 0x607, zero" ::: "memory");  /* hgeie     */
+    CSRW(CSR_HIE, 0);
+    CSRW(CSR_HVIP, 0);
+    CSRW(CSR_HGEIE, 0);
 
     /* hstatus: clear VTSR/VTW/VTVM/HU/SPV/SPVP/GVA. Preserve VSXL
      * (it is WARL on RV64; writing 0 may be ignored, but is fine). */
@@ -94,19 +94,19 @@ void hyp_reset_state(void) {
 
     /* htval / htinst are read-only side-effects of traps; clearing
      * them is not strictly required, but keeps the trap_record clean. */
-    asm volatile ("csrw 0x643, zero" ::: "memory");  /* htval  */
-    asm volatile ("csrw 0x64A, zero" ::: "memory");  /* htinst */
+    CSRW(CSR_HTVAL, 0);
+    CSRW(CSR_HTINST, 0);
 
     /* ----- VS-level CSRs ----- */
-    asm volatile ("csrw 0x200, zero" ::: "memory");  /* vsstatus  */
-    asm volatile ("csrw 0x204, zero" ::: "memory");  /* vsie      */
-    asm volatile ("csrw 0x205, zero" ::: "memory");  /* vstvec    */
-    asm volatile ("csrw 0x240, zero" ::: "memory");  /* vsscratch */
-    asm volatile ("csrw 0x241, zero" ::: "memory");  /* vsepc     */
-    asm volatile ("csrw 0x242, zero" ::: "memory");  /* vscause   */
-    asm volatile ("csrw 0x243, zero" ::: "memory");  /* vstval    */
-    asm volatile ("csrw 0x244, zero" ::: "memory");  /* vsip      */
-    asm volatile ("csrw 0x280, zero" ::: "memory");  /* vsatp     */
+    CSRW(CSR_VSSTATUS, 0);
+    CSRW(CSR_VSIE, 0);
+    CSRW(CSR_VSTVEC, 0);
+    CSRW(CSR_VSSCRATCH, 0);
+    CSRW(CSR_VSEPC, 0);
+    CSRW(CSR_VSCAUSE, 0);
+    CSRW(CSR_VSTVAL, 0);
+    CSRW(CSR_VSIP, 0);
+    CSRW(CSR_VSATP, 0);
 
     /* Final TLB flush in case any G-stage entries linger. */
     hfence_gvma_all();

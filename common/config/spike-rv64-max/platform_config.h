@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PLATFORM_SAIL_H
-#define PLATFORM_SAIL_H
+#ifndef PLATFORM_SPIKE_RV64_MAX_H
+#define PLATFORM_SPIKE_RV64_MAX_H
 
-/* ===== Sail RISC-V model platform address map ===== */
+/* ===== Spike RISC-V ISA simulator platform address map ===== */
 
-/* UART: SAIL does not have an MMIO UART device.
+/* UART: Spike does not have an MMIO UART device.
  * Terminal output uses HTIF (Host-Target Interface) via tohost/fromhost.
  * PLATFORM_UART0_BASE is retained as a placeholder because other code
  * (e.g. page_table.c, smepmp) references it; the HTIF UART driver in
@@ -25,13 +25,10 @@
 
 #define PLATFORM_MEM_SIZE       0x10000000UL    /* 256 MB */
 
-/* Sail uses tohost/fromhost for termination (no test device) */
+/* Spike uses tohost/fromhost for termination (no test device) */
 
 /* Platform name */
-#define CONFIG_NAME           "Sail RV64 RISC-V model"
+#define CONFIG_NAME           "Spike RV64 RISC-V ISA simulator"
 
-/* Sail currently dose not support sdtrig extension
- Skip any breakpoint tests */
-#define SKIP_BREAKPOINT_TESTS  1
 
-#endif /* PLATFORM_SAIL_H */
+#endif /* PLATFORM_SPIKE_RV64_MAX_H */

@@ -294,4 +294,4 @@ Svinval test cases follow the pattern below:
 - `common/vm/vm.h` -- VM API declarations
 - `common/vm/vm_defs.h` -- Constants and macro definitions
 - `common/pmp/pmp_cfg.h` -- PMP configuration API
-- `common/platform/qemu_virt/platform.h` -- QEMU virt platform definitions (`PLATFORM_MEM_BASE`, etc.)
+- `common/platform/qemu_virtplatfrom_config.h` -- QEMU virt platform definitions (`PLATFORM_MEM_BASE`, etc.)

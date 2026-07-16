@@ -349,7 +349,7 @@ if (trap_was_triggered()) {
 trap_expect_end();
 ```
 
-> **注意：** 这些宏仅在定义了 `PLATFORM_DOUBLE_TRAP` 时才会清除 MDT，否则为 no-op。
+> **注意：** 这些宏仅在定义了 `SMDBLTRP_SUPPORTED` 时才会清除 MDT，否则为 no-op。
 
 #### Trap 查询 API
 

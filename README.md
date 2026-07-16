@@ -109,10 +109,11 @@ make qemu-pmp EXTRA_CFLAGS='-DTEST_FILTER="PMP"' CROSS_COMPILER=/path/to/riscv64
 
 每个配置位于 `common/config/<CONFIG>/`，包含：
 - **platform.mk** — 构建设置（交叉编译器、内存基址、模拟器选项）
-- **platform.h** — 硬件定义（UART 基地址、内存布局、平台标志）
+- **platform_config.h** — 平台层配置（UART 基地址、AIA BASE 地址、TRACE base 地址等硬件定义）
+- **rvtest_config.h** — Core 支持的扩展定义及 ISA parameters（由 riscv-unified-db 自动生成）
 - **rvmodel_macros.h** — 模型参数
 
-平台头文件在编译时通过 GCC `-include` 注入，因此测试源代码无需直接包含平台特定的头文件。
+平台头文件和扩展配置在编译时通过 GCC `-include` 注入，因此测试源代码无需直接包含平台特定的头文件。
 
 ### 在 HAPS 硬件上运行
 
@@ -131,7 +132,7 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 
 2. **不同平台有不同的内存布局** — QEMU 使用 `MEM_BASE=0x80000000`，HAPS 平台使用 `MEM_BASE=0x60000000`。为一个平台编译的二进制不能在另一个平台上运行。
 
-3. **平台特定的测试排除** — 部分平台定义了 `SKIP_BREAKPOINT_TESTS` 或 `PLATFORM_CLEAR_MAEE` 等标志来改变测试行为。请查阅 `platform.h` 了解平台特定约束。
+3. **平台特定的测试排除** — 部分平台定义了 `SKIP_BREAKPOINT_TESTS` 或 `PLATFORM_CLEAR_MAEE` 等标志来改变测试行为。请查阅 `platform_config.h` 了解平台特定约束。
 
 4. **RV32 与 RV64** — 使用 `CONFIG=qemu-rv32-max` 配合 `XLEN=32` 进行 RV32 构建。并非所有扩展都支持 RV32。
 
@@ -231,7 +232,7 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 1. **零耦合** — `common/` 不包含任何扩展头文件的 `#include`。扩展通过弱符号和链接时组合注入行为。
 2. **独立裸机二进制** — 每个扩展是完全自包含的 ELF，可直接被 QEMU、Sail 或 Spike 加载。
 3. **弱符号钩子** — `entry.S` 调用 `_platform_init`（弱符号，默认为空操作）。扩展可提供强定义来执行自定义初始化。
-4. **通过 `-include` 实现平台抽象** — 平台头文件在编译时注入，避免在源文件中硬编码 `#include "platform.h"`。
+4. **通过 `-include` 实现平台抽象** — 平台头文件（`platform_config.h` 和 `rvtest_config.h`）在编译时注入，避免在源文件中硬编码 `#include "platform_config.h"`。
 5. **RV32/RV64 双架构支持** — 所有汇编使用从 `__riscv_xlen` 派生的条件编译宏。
 6. **确定性 Trap 处理** — 所有内存操作使用非压缩指令（`.option norvc`），使 trap handler 可以可靠地通过 `mepc += 4` 跳过故障指令。
 7. **条件编译公共库** — 扩展通过在 Makefile 中设置 `ENABLE_PMP=1`、`ENABLE_VM=1`、`ENABLE_HYP=1` 或 `ENABLE_PM=1` 按需链接。

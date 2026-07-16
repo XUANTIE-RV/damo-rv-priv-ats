@@ -262,6 +262,7 @@ static inline bool _test_end_record(void) {
 /* Forward declarations from trap.c */
 extern void trap_expect_begin(void);
 extern void trap_expect_end(void);
+extern void trap_clear_record(void);
 extern bool trap_was_triggered(void);
 extern uintptr_t trap_get_cause(void);
 extern uintptr_t trap_get_epc(void);
@@ -285,7 +286,7 @@ extern uintptr_t trap_get_status_snap(void);
  * runs in M-mode and may raise a synchronous exception.
  * =================================================================== */
 
-#ifdef PLATFORM_DOUBLE_TRAP
+#ifdef SMDBLTRP_SUPPORTED
 #if __riscv_xlen == 64
 #define MSTATUS_MDT_BIT  (1UL << 42)
 static inline void clear_mdt(void) {
@@ -297,7 +298,7 @@ static inline void clear_mdt(void) {
  * bit 42 = mstatush bit (42-32) = bit 10. */
 #define MSTATUSH_MDT_BIT  (1UL << 10)
 static inline void clear_mdt(void) {
-    CSRC(mstatush, MSTATUSH_MDT_BIT);
+    CSRC(CSR_MSTATUSH, MSTATUSH_MDT_BIT);
 }
 #endif
 #else
@@ -451,19 +452,9 @@ static inline void clear_mdt(void) { /* no-op */ }
 
 /* ===================================================================
  * Privilege Level Definitions and API
+ *
+ * PRIV_U/S/M/VU/VS are defined in encoding.h.
  * =================================================================== */
-
-#define PRIV_U  0
-#define PRIV_S  1
-#define PRIV_M  3
-
-/* Virtualized privilege levels (V=1) — used by hypervisor (H ext) tests.
- * The high bit (bit 2) marks V=1; low 2 bits hold the nominal privilege.
- *   PRIV_VU = V=1, nominal U  (4)
- *   PRIV_VS = V=1, nominal S  (5)
- */
-#define PRIV_VU 4
-#define PRIV_VS 5
 
 extern void goto_priv(unsigned target);
 extern unsigned get_current_priv(void);

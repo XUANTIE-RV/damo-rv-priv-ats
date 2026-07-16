@@ -1,5 +1,16 @@
 #include "encoding.h"
 
+/*
+ * Platform model macros (RVMODEL_BOOT, RVMODEL_HALT_PASS,
+ * RVMODEL_HALT_FAIL, RVMODEL_DATA_SECTION) are injected via
+ * ASFLAGS -include $(CONFIG_MODEL_HEADER) in Makefile.common.
+ * If compiling outside the build system, ensure rvmodel_macros.h
+ * from the target platform config directory is included first.
+ */
+#ifndef RVMODEL_HALT_PASS
+#error "RVMODEL_* macros not defined. Include rvmodel_macros.h via -include or ASFLAGS."
+#endif
+
 #if __riscv_xlen == 64
     #define REGSIZE 8
     #define LOAD    ld
@@ -20,7 +31,7 @@ rvtest_entry_point:
     /* ---- Set up stack pointer (use full stack for hart 0) ---- */
     la      sp, __stack_end
 
-#ifdef PLATFORM_DOUBLE_TRAP
+#ifdef SMDBLTRP_SUPPORTED
     /* ---- Smdbltrp: clear MDT immediately ----
      *
      * When Smdbltrp is enabled, Spike sets mstatus.MDT=1 at reset.

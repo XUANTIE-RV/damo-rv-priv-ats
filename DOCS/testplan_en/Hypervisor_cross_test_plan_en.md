@@ -45,7 +45,7 @@
 | `norm:svadu_hfence_gvma_sync` | `svadu.adoc` | After modifying `menvcfg.ADUE`, a `HFENCE.GVMA(x0,x0)` is required to synchronize the change across all VMIDs. |
 | `norm:H_guest_page_fault` | `hypervisor.adoc` | On a guest-page fault, `mtval` or `stval` is written with the faulting guest virtual address. |
 | `norm:sstvala_stval_pc` | `sstvala.adoc` | When a page-fault is triggered by an instruction fetch, `stval` is written with the faulting virtual address (PC). |
-| `norm:ssccptr_memory_pte_reads` | `ssccptr.adoc` | If the Ssccptr extension is implemented, then main memory regions with both the cacheability and coherence PMAs must support hardware page-table reads. |
+| `norm:Ssccptr_cacheable_coherent_supports_pt_read` | `ssccptr.adoc` | If the Ssccptr extension is implemented, then main memory regions with both the cacheability and coherence PMAs must support hardware page-table reads. |
 | `norm:sscounterenw_hpmcounter_hcounteren` | `sscounterenw.adoc` | If the Sscounterenw extension is implemented, then for any `hpmcounter` that is not read-only zero, the corresponding bit in `scounteren` must be writable. |
 | `norm:hcounteren_vs_vu_control` | `hypervisor.adoc` | The `hcounteren` CSR controls availability of performance monitoring counters to VS-mode and VU-mode. |
 | `norm:Svinval_hinval_vvma_gvma` | `svinval.adoc` | HINVAL.VVMA and HINVAL.GVMA have the same semantics as SINVAL.VMA, except that they combine with SFENCE.W.INVAL and SFENCE.INVAL.IR to replace HFENCE.VVMA and HFENCE.GVMA, respectively. |
@@ -95,13 +95,12 @@
 | HCROSS-SVADU-01 | henvcfg.ADUE writability verification | HS-mode writes henvcfg.ADUE=1 and reads back; then writes ADUE=0 and reads back | If Svadu is implemented, ADUE is writable and reads back consistently; if Svadu is not implemented, ADUE is read-only zero |
 | HCROSS-SVADU-02 | HLV instruction interaction with Svadu (ADUE=1) | henvcfg.ADUE=1, VS-stage PTE A=0, HS-mode executes HLV.D to read the GPA | Access succeeds, VS-stage PTE A bit is automatically set to 1 by hardware (implicit accesses triggered by HLV also follow ADUE control) |
 | HCROSS-SVADU-03 | HSV instruction interaction with Svadu (ADUE=1) | henvcfg.ADUE=1, VS-stage PTE A=1,D=0, HS-mode executes HSV.D to write the GPA | Access succeeds, VS-stage PTE D bit is automatically set to 1 by hardware |
-| HCROSS-SVADU-04 | HLV instruction interaction with Svade (ADUE=0) | henvcfg.ADUE=0, VS-stage PTE A=0, HS-mode executes HLV.D to read the GPA | page-fault (cause=13), hardware does not automatically update A bit (behaves as Svade). Note: VS-stage translation exceptions produce page-fault (cause=13), not guest-page-fault (cause=21). Guest-page-fault is only used for G-stage translation exceptions (norm:H_vm_gpatrans) |
+| HCROSS-SVADU-04 | HLV instruction interaction with Svade (ADUE=0) | henvcfg.ADUE=0, VS-stage PTE A=0, HS-mode executes HLV.D to read the GPA | guest-page-fault (cause=21), hardware does not automatically update A bit (behaves as Svade) |
 | HCROSS-SVADU-05 | HFENCE.GVMA synchronization after menvcfg.ADUE modification | Change menvcfg.ADUE from 0 to 1, without executing HFENCE.GVMA, VS-mode accesses a page with A=0; then execute HFENCE.GVMA(x0,x0) and repeat the access | First access may follow old behavior (implementation-dependent); after HFENCE.GVMA, behavior must follow new ADUE value (A bit updated by hardware) |
 | HCROSS-SVADU-06 | VMID-specific synchronization after menvcfg.ADUE modification | Change menvcfg.ADUE from 1 to 0, execute HFENCE.GVMA(vmid, x0) for a specific VMID only, verify behavior for that VMID and other VMIDs | The specified VMID must follow the new ADUE value; other VMIDs are implementation-dependent (may still follow the old value) |
 
 > [!NOTE]
 > - HCROSS-SVADU-02~04 require executing HLV/HSV instructions in HS-mode to verify that implicit access (page table walk) A/D updating behavior is also controlled by `henvcfg.ADUE`.
-> - HCROSS-SVADU-04~07: VS-stage translation exceptions (A=0 + Svade) produce **page-fault (cause=13)**, not guest-page-fault (cause=21). Per norm:H_vm_gpatrans, guest-page-fault is only used for **G-stage** translation exceptions; VS-stage translation exceptions use the regular page-fault cause code.
 > - HCROSS-SVADU-05~06 verify synchronization semantics after `menvcfg.ADUE` changes. `HFENCE.GVMA(x0,x0)` flushes all VMIDs, `HFENCE.GVMA(vmid,x0)` flushes only a specific VMID.
 > - If the platform does not implement the Svadu extension, HCROSS-SVADU-01 should verify ADUE is read-only zero, and HCROSS-SVADU-02~06 should TEST_SKIP.
 
@@ -121,15 +120,15 @@
 | HCROSS-SSTVALA-01 | Precise stval on instruction guest-page-fault (cause=20) | VS-mode jumps to execute an address with unmapped GPA in G-stage, triggering inst guest-page-fault trap to HS-mode | scause=20, stval == faulting GVA (i.e., the jump target address), not 0 or other value |
 | HCROSS-SSTVALA-02 | Precise stval on store guest-page-fault (cause=23) | VS-mode performs a store to an address with unmapped GPA in G-stage, triggering store guest-page-fault trap to HS-mode | scause=23, stval == faulting GVA (i.e., the store target address), not 0 |
 | HCROSS-SSTVALA-03 | Precise stval on AMO guest-page-fault (cause=23) | VS-mode performs an AMO (e.g., AMOADD.W) on an address with unmapped GPA in G-stage, triggering guest-page-fault trap to HS-mode | scause=23, stval == faulting GVA (i.e., the AMO target address) |
-| HCROSS-SSTVALA-04 | Precise vstval on VS-stage inst page-fault (cause=12) delegated to VS-mode | Enable VS-stage translation (SV39), configure medeleg+hedeleg to delegate inst page-fault (cause=12) to VS-mode. VS-mode jumps to execute an unmapped address in VS-stage, triggering inst page-fault delegated to VS-mode handler | vscause=12, vstval == faulting VA (jump target virtual address) |
-| HCROSS-SSTVALA-05 | Precise vstval on VS-stage load page-fault (cause=13) delegated to VS-mode | Enable VS-stage translation (SV39), configure medeleg+hedeleg to delegate load page-fault (cause=13) to VS-mode. VS-mode loads an unmapped address in VS-stage, triggering load page-fault delegated to VS-mode handler | vscause=13, vstval == faulting VA (load target virtual address) |
+| HCROSS-SSTVALA-04 | Precise vstval on instruction guest-page-fault (delegated to VS-mode) | Configure hedeleg to delegate inst guest-page-fault to VS-mode, VS-mode jumps to execute an unmapped address | vscause=20, vstval == faulting GVA |
+| HCROSS-SSTVALA-05 | Precise vstval on store guest-page-fault (delegated to VS-mode) | Configure hedeleg to delegate store guest-page-fault to VS-mode, VS-mode stores to an unmapped address | vscause=23, vstval == faulting GVA |
 | HCROSS-SSTVALA-06 | Precise stval on virtual-instruction exception: VS-mode reads hstatus | VS-mode executes `csrrs x5, hstatus, x0` (encoding 0x600022F3), triggering virtual-instruction (cause=22) | scause=22, stval == 0x600022F3 (faulting instruction encoding) |
 | HCROSS-SSTVALA-07 | Precise stval on virtual-instruction exception: VS-mode writes hgatp | VS-mode executes `csrrw x0, hgatp, x0` (encoding 0x68001073), triggering virtual-instruction (cause=22) | scause=22, stval == 0x68001073 (faulting instruction encoding) |
 | HCROSS-SSTVALA-08 | Precise stval on virtual-instruction exception: VS-mode reads hideleg | VS-mode executes `csrrs x5, hideleg, x0` (encoding 0x603022F3), triggering virtual-instruction (cause=22) | scause=22, stval == 0x603022F3 (faulting instruction encoding) |
 
 > [!NOTE]
 > - The core semantics of Sstvala guarantee that `stval` is written with the faulting address (rather than 0). The base H extension specification allows `stval` to be 0 in certain scenarios, while the Sstvala extension mandates writing the precise address.
-> - HCROSS-SSTVALA-01~03 verify `stval` precision when guest-page-fault (G-stage fault) traps to HS-mode; HCROSS-SSTVALA-04~05 verify `vstval` precision when VS-stage page-fault is delegated to VS-mode via medeleg+hedeleg. Tests 04/05 use VS-stage page-fault (cause 12/13) rather than guest-page-fault (cause 20/23), because the RISC-V SPEC mandates that guest-page-fault cannot be delegated to VS-mode via hedeleg (hedeleg bits 20/21/23 are read-only zero; see `Hypervisor_test_plan.md` DELEG-15/16).
+> - HCROSS-SSTVALA-01~03 verify `stval` precision when trapping to HS-mode; HCROSS-SSTVALA-04~05 verify `vstval` precision when delegated to VS-mode.
 > - Difference from the GFAULT series in `Hypervisor_gstage_test_plan.md`: The GFAULT series primarily verifies fault triggering and htval encoding; this group focuses on precise stval/vstval value assertions.
 > - HCROSS-SSTVALA-06~08 verify Sstvala precision requirements for **instruction-type exceptions**: on virtual-instruction exception (cause=22), `stval` must contain the encoding of the faulting instruction (zero-extended to XLEN). This differs from guest-page-fault (address-type exception) stval semantics, which require writing the faulting virtual address. Instruction encoding derivation: `csrrs x5, 0x600, x0` = `[31:20]=0x600 [19:15]=00000 [14:12]=010 [11:7]=00101 [6:0]=1110011` = `0x600022F3`.
 > - HCROSS-SSTVALA-06~08 are migrated from `sstvala_test_plan.md` Group 6 (TVAL-VI-01~03). Requires H extension (`ENABLE_HYP=1`).
@@ -139,7 +138,7 @@
 ## Group 3. Hypervisor x Ssccptr Cross Tests
 
 **Specification References**:
-- `norm:ssccptr_memory_pte_reads`: Main memory regions with both cacheability and coherence PMAs must support hardware page table reads
+- `norm:Ssccptr_cacheable_coherent_supports_pt_read`: Main memory regions with both cacheability and coherence PMAs must support hardware page table reads
 
 **Test Responsibility**: Verify that in Hypervisor two-stage translation scenarios, VS-stage and G-stage page table walks complete correctly in main memory regions satisfying PMA conditions.
 
@@ -197,14 +196,12 @@
 | HCROSS-SINVAL-12 | VU-mode execution of SFENCE.INVAL.IR triggers virtual-instruction | VU-mode executes SFENCE.INVAL.IR | virtual-instruction exception (cause=22) |
 | HCROSS-SINVAL-13 | VS-mode execution of SFENCE.W.INVAL succeeds (VTVM=0) | hstatus.VTVM=0, VS-mode executes SFENCE.W.INVAL | Executes normally, no exception (SFENCE.W.INVAL is not gated by VTVM) |
 | HCROSS-SINVAL-14 | VS-mode execution of SFENCE.INVAL.IR succeeds (VTVM=0) | hstatus.VTVM=0, VS-mode executes SFENCE.INVAL.IR | Executes normally, no exception |
-| HCROSS-SINVAL-15 | VU-mode execution of SINVAL.VMA triggers virtual-instruction | VU-mode executes SINVAL.VMA | virtual-instruction exception (cause=22) |
 
 > [!NOTE]
 > - HINVAL.VVMA/GVMA are fine-grained TLB flush instructions provided by the Svinval extension for Hypervisor scenarios, functionally equivalent to HFENCE.VVMA/GVMA but supporting batch flush optimization.
 > - HCROSS-SINVAL-05~06 verify HINVAL.GVMA VMID semantics: when VMID is nonzero, only the specific VMID's TLB is flushed; when VMID=0, all VMIDs are flushed. This is consistent with HFENCE.GVMA semantics.
 > - HCROSS-SINVAL-07~12 verify virtual-instruction exception triggering when VS/VU-mode executes HINVAL and SFENCE.W.INVAL/SFENCE.INVAL.IR, which is a key guarantee for Hypervisor security isolation.
-> - HCROSS-SINVAL-15 verifies that VU-mode executing SINVAL.VMA triggers a virtual-instruction exception, consistent with the exception behavior of HINVAL.VVMA/GVMA in VU-mode, fully covering the `norm:Svinval_virtual_instruction_vu_vs` specification.
-> - Difference from `Hypervisor_2_stage_test_plan.md` Group 22: Group 22 only covered exception triggering for SINVAL.VMA with VTVM=1 and HINVAL.GVMA with TVM=1 (2 test cases); this group adds HINVAL instruction functionality, VMID semantics, and complete VS/VU-mode virtual-instruction coverage (15 test cases).
+> - Difference from `Hypervisor_2_stage_test_plan.md` Group 22: Group 22 only covered exception triggering for SINVAL.VMA with VTVM=1 and HINVAL.GVMA with TVM=1 (2 test cases); this group adds HINVAL instruction functionality, VMID semantics, and complete VS/VU-mode virtual-instruction coverage (14 test cases).
 
 ---
 
@@ -470,7 +467,7 @@
 |---------|-----------|------------------|-----------------|----------------|
 | HCROSS-SSTC-09 | vstimecmp triggers VSTIP | Set vstimecmp to a past value (relative to time + htimedelta), check hip.VSTIP | VSTIP = 1 | `norm:hip_vstip_vstie_acc_op` |
 | HCROSS-SSTC-10 | vstimecmp clears VSTIP | Set vstimecmp to maximum value, check hip.VSTIP (assuming hvip.VSTIP=0) | VSTIP = 0 | `norm:hip_vstip_vstie_acc_op` |
-| HCROSS-SSTC-11 | VSTIP = hvip.VSTIP OR vstimecmp signal | When STCE=1, verify vstimecmp signal three-state transition: vstimecmp=MAX->VSTIP=0, vstimecmp=expired->VSTIP=1, vstimecmp=MAX->VSTIP=0 | Each state's hip.VSTIP matches expectations | `norm:hip_vstip_vstie_acc_op` |
+| HCROSS-SSTC-11 | VSTIP = hvip.VSTIP OR vstimecmp signal | hvip.VSTIP=1, vstimecmp set to maximum, check hip.VSTIP | VSTIP = 1 (contributed by hvip.VSTIP) | `norm:hip_vstip_vstie_acc_op` |
 | HCROSS-SSTC-12 | VSTIP reverts to legacy behavior when henvcfg.STCE=0 | menvcfg.STCE=1, henvcfg.STCE=0, set vstimecmp to a past value, check hip.VSTIP | VSTIP determined solely by hvip.VSTIP (vstimecmp signal is inactive) | `norm:henvcfg_stce` |
 
 #### 9.5 VS-mode Timer Functionality
@@ -486,7 +483,7 @@
 > - HCROSS-SSTC-01~02 are migrated from `sstc_test_plan.md` Group 1, verifying `henvcfg.STCE` writability and the constraint relationship with `menvcfg.STCE`.
 > - HCROSS-SSTC-03~05 are migrated from `sstc_test_plan.md` Group 3, verifying multi-layer access control for VS-mode access to `stimecmp` (actually `vstimecmp`): when either `henvcfg.STCE` or `hcounteren.TM` is 0, a virtual-instruction exception (cause=22) is triggered.
 > - HCROSS-SSTC-06~15 are migrated entirely from `sstc_test_plan.md` Group 6, verifying `vstimecmp` CSR read/write, VSTIP synthesis logic (`hip.VSTIP = hvip.VSTIP OR vstimecmp_signal`), the effect of `htimedelta` on comparison, and VS-mode timer interrupt delivery.
-> - HCROSS-SSTC-11 verifies VSTIP OR logic: when `henvcfg.STCE=1`, verify the vstimecmp signal three-state transition (vstimecmp=MAX->VSTIP=0, vstimecmp=expired->VSTIP=1, vstimecmp=MAX->VSTIP=0). When `henvcfg.STCE=0`, the vstimecmp signal is inactive and `hvip.VSTIP` reverts to software-writable and affects `hip.VSTIP`.
+> - HCROSS-SSTC-11 verifies VSTIP OR logic: when `henvcfg.STCE=0`, the vstimecmp signal is inactive and `hvip.VSTIP` reverts to software-writable and affects `hip.VSTIP`.
 > - HCROSS-SSTC-13 verifies hardware transparent remapping: VS-mode writing `stimecmp` (CSR 0x14D) actually writes `vstimecmp` (CSR 0x24D), verifiable by M-mode reading back `vstimecmp`.
 > - HCROSS-SSTC-15 verifies the complete VS-mode timer interrupt path: VSTIP is delegated to VS-mode via `hideleg`, and the VS-mode trap handler catches cause = `interrupt | 5`.
 
@@ -496,23 +493,14 @@
 
 **Specification References**:
 - `norm:sscsrind_csrs_access_control`: If Smstateen and Smcsrind are both implemented, `mstateen0[60]` (CSRIND) controls access to `siselect`, `sireg*`, `vsiselect`, `vsireg*`. When `mstateen0[60]=0`, access to these CSRs from privilege levels below M-mode triggers an illegal-instruction exception.
-- `norm:hypervisor_impl_csrs_access_control`: If the Hypervisor extension is implemented, `hstateen0[60]` is also defined, but only controls VS/VU-mode access to `siselect`/`sireg*` (actually `vsiselect`/`vsireg*`). When `hstateen0[60]=0` and `mstateen0[60]=1`, VS/VU-mode access to `siselect`/`sireg*` triggers a virtual-instruction exception (not illegal-instruction).
 
-**Test Scope**: Verify Smcsrind extension CSRIND access control in Hypervisor scenarios:
-- Part A (01-08): `mstateen0[60]` control over S-mode (HS-mode) access to `vsiselect`/`vsireg*`. M-mode access is not gated by state-enable.
-- Part B (09-11): `hstateen0[60]` control over VS-mode access to `siselect`/`sireg*` (actually `vsiselect`/`vsireg*`). When `hstateen0[60]=0` and `mstateen0[60]=1`, a virtual-instruction exception is triggered.
-
-Note: vsiselect/vsireg* are CSRs introduced by the H extension and are only available when the H extension is present.
+**Test Scope**: Verify Smcsrind extension behavior in Hypervisor scenarios, specifically `mstateen0[60]` (CSRIND) control over S-mode (HS-mode) access to `vsiselect`/`vsireg*`. Note: vsiselect/vsireg* are CSRs introduced by the H extension and are only available when the H extension is present.
 
 > **Note**: This test group is extracted from `Smcsrind_test_plan.md` Group 4, specifically targeting test cases that depend on the H extension. The H extension, Smcsrind extension, and Smstateen extension must all be available simultaneously.
 >
 > **Prerequisite**: M-mode must pre-set `mstateen0[60]` to the desired value to control HS-mode access to vsiselect/vsireg*.
->
-> **Prerequisite (Part B)**: M-mode must pre-set `mstateen0[60]` and `mstateen0[63]` (SE0) to 1 to permit HS-mode access to hstateen0 and the state controlled by CSRIND.
 
 ### Test ID Mapping Table
-
-#### Part A: mstateen0[60] Controls S-mode (HS-mode) Access
 
 | Original ID | New ID | Test Name |
 |-------------|--------|-----------|
@@ -525,48 +513,26 @@ Note: vsiselect/vsireg* are CSRs introduced by the H extension and are only avai
 | MCSRIND-STA-07 (supplement) | HCROSS-SMCSRIND-07 | mstateen0[60]=0 does not affect M-mode access to vsiselect |
 | MCSRIND-STA-08 (supplement) | HCROSS-SMCSRIND-08 | mstateen0[60]=0 does not affect M-mode access to vsireg* |
 
-#### Part B: hstateen0[60] Controls VS-mode Access
-
-| Original ID | New ID | Test Name |
-|-------------|--------|-----------|
-| HCROSS-SMCSRIND-09 (supplement) | HCROSS-SMCSRIND-09 | hstateen0[60]=0 blocks VS-mode read of siselect |
-| HCROSS-SMCSRIND-10 (supplement) | HCROSS-SMCSRIND-10 | hstateen0[60]=0 blocks VS-mode read of sireg |
-| HCROSS-SMCSRIND-11 (supplement) | HCROSS-SMCSRIND-11 | hstateen0[60]=1 allows VS-mode access to siselect/sireg |
-
 ### Test Case List
-
-#### Part A: mstateen0[60] Controls S-mode (HS-mode) Access
 
 | Test ID | Test Name | Test Description | Expected Result | Norm Reference |
 |---------|-----------|------------------|-----------------|----------------|
 | HCROSS-SMCSRIND-01 | mstateen0[60]=0 blocks S-mode read of vsiselect | mstateen0[60]=0, S-mode (HS-mode) reads vsiselect (0x250) | Triggers illegal-instruction exception (cause=2) | `norm:sscsrind_csrs_access_control` |
 | HCROSS-SMCSRIND-02 | mstateen0[60]=0 blocks S-mode write of vsiselect | mstateen0[60]=0, S-mode writes vsiselect | Triggers illegal-instruction exception (cause=2) | `norm:sscsrind_csrs_access_control` |
 | HCROSS-SMCSRIND-03 | mstateen0[60]=0 blocks S-mode read of vsireg | mstateen0[60]=0, S-mode reads vsireg (0x251) | Triggers illegal-instruction exception (cause=2) | `norm:sscsrind_csrs_access_control` |
-| HCROSS-SMCSRIND-04 | mstateen0[60]=0 blocks S-mode read/write of vsireg2~vsireg6 | mstateen0[60]=0, S-mode reads/writes vsireg2~vsireg6 one by one | Each triggers illegal-instruction exception (cause=2) | `norm:sscsrind_csrs_access_control` |
+| HCROSS-SMCSRIND-04 | mstateen0[60]=0 blocks S-mode read of vsireg2~vsireg6 | mstateen0[60]=0, S-mode reads vsireg2~vsireg6 one by one | Each triggers illegal-instruction exception (cause=2) | `norm:sscsrind_csrs_access_control` |
 | HCROSS-SMCSRIND-05 | mstateen0[60]=1 allows S-mode access to vsiselect | mstateen0[60]=1, S-mode reads/writes vsiselect | Access succeeds, no exception | `norm:sscsrind_csrs_access_control` |
-| HCROSS-SMCSRIND-06 | mstateen0[60]=1 allows S-mode access to vsireg* | mstateen0[60]=1, S-mode reads/writes vsireg~vsireg6 | Access not blocked by mstateen0 (vsireg2-6 may trigger illegal-instruction due to optional implementation) | `norm:sscsrind_csrs_access_control` |
+| HCROSS-SMCSRIND-06 | mstateen0[60]=1 allows S-mode access to vsireg* | mstateen0[60]=1, S-mode reads/writes vsireg~vsireg6 | Access succeeds, no exception (specific vsireg_i behavior depends on vsiselect value) | `norm:sscsrind_csrs_access_control` |
 | HCROSS-SMCSRIND-07 | mstateen0[60]=0 does not affect M-mode access to vsiselect | mstateen0[60]=0, M-mode reads/writes vsiselect | Access succeeds, no exception (state-enable does not control M-mode) | `norm:sscsrind_csrs_access_control` |
 | HCROSS-SMCSRIND-08 | mstateen0[60]=0 does not affect M-mode access to vsireg* | mstateen0[60]=0, M-mode reads/writes vsireg~vsireg6 | Access succeeds, no exception | `norm:sscsrind_csrs_access_control` |
 
-#### Part B: hstateen0[60] Controls VS-mode Access
-
-| Test ID | Test Name | Test Description | Expected Result | Norm Reference |
-|---------|-----------|------------------|-----------------|----------------|
-| HCROSS-SMCSRIND-09 | hstateen0[60]=0 blocks VS-mode read of siselect | mstateen0[60]=1, hstateen0[60]=0, VS-mode reads siselect (0x150, actually vsiselect) | Triggers virtual-instruction exception (cause=22) | `norm:hypervisor_impl_csrs_access_control` |
-| HCROSS-SMCSRIND-10 | hstateen0[60]=0 blocks VS-mode read of sireg | mstateen0[60]=1, hstateen0[60]=0, VS-mode reads sireg (0x151, actually vsireg) | Triggers virtual-instruction exception (cause=22) | `norm:hypervisor_impl_csrs_access_control` |
-| HCROSS-SMCSRIND-11 | hstateen0[60]=1 allows VS-mode access to siselect/sireg | mstateen0[60]=1, hstateen0[60]=1, VS-mode writes siselect, reads sireg | siselect access succeeds; sireg not blocked by hstateen0 | `norm:hypervisor_impl_csrs_access_control` |
-
 > [!NOTE]
-> - **Part A** validates Smcsrind extension `mstateen0[60]` access control in Hypervisor scenarios. vsiselect/vsireg* are CSRs introduced by the H extension (vsiselect=0x250, vsireg=0x251, vsireg2=0x252, vsireg3=0x253, vsireg4=0x255, vsireg5=0x256, vsireg6=0x257), available only when the H extension is present.
-> - HCROSS-SMCSRIND-01~04 verify that when `mstateen0[60]=0`, S-mode (HS-mode, V=0) access to vsiselect/vsireg* triggers an illegal-instruction exception (cause=2). Test 04 covers both read and write operations. This is symmetric to S-mode access to siselect/sireg* (covered in `Smcsrind_test_plan.md` Group 4).
-> - HCROSS-SMCSRIND-05~06 verify that when `mstateen0[60]=1`, S-mode can access vsiselect/vsireg* normally. Note: vsireg2-6 are optionally implemented CSRs; when not supported, they may trigger illegal-instruction (SPEC allows this); tests output trap cause diagnostically.
+> - This test group validates the Smcsrind extension `mstateen0[60]` access control in Hypervisor scenarios. vsiselect/vsireg* are CSRs introduced by the H extension (vsiselect=0x250, vsireg=0x251, vsireg2=0x252, vsireg3=0x253, vsireg4=0x255, vsireg5=0x256, vsireg6=0x257), available only when the H extension is present.
+> - HCROSS-SMCSRIND-01~04 verify that when `mstateen0[60]=0`, S-mode (HS-mode, V=0) access to vsiselect/vsireg* triggers an illegal-instruction exception (cause=2). This is symmetric to S-mode access to siselect/sireg* (covered in `Smcsrind_test_plan.md` Group 4).
+> - HCROSS-SMCSRIND-05~06 verify that when `mstateen0[60]=1`, S-mode can access vsiselect/vsireg* normally.
 > - HCROSS-SMCSRIND-07~08 verify that the state-enable CSR **does not affect** M-mode's own access. This is explicitly stated in the SPEC: state-enable CSRs only affect privilege levels below M-mode.
-> - **Part B** validates `hstateen0[60]` control over VS-mode access to siselect/sireg* (actually vsiselect/vsireg*). Distinction from Part A: Part A's `mstateen0[60]` controls HS-mode (V=0) access, triggering illegal-instruction (cause=2); Part B's `hstateen0[60]` controls VS-mode (V=1) access, triggering virtual-instruction (cause=22). These are different levels of control mechanisms, with norm references `norm:sscsrind_csrs_access_control` and `norm:hypervisor_impl_csrs_access_control` respectively.
-> - HCROSS-SMCSRIND-09~10 verify that when `hstateen0[60]=0` and `mstateen0[60]=1`, VS-mode access to siselect/sireg triggers a virtual-instruction exception. Note: the exception type is virtual-instruction, not illegal-instruction, because M-mode has permitted access (mstateen0=1) but HS-mode's hypervisor has chosen not to permit it (hstateen0=0).
-> - HCROSS-SMCSRIND-11 verifies that when `hstateen0[60]=1`, VS-mode can access siselect/sireg. sireg access may trigger other exceptions depending on vsiselect value, but should not trigger virtual-instruction.
-> - Part B prerequisite: M-mode must set `mstateen0[63]` (SE0) to 1 to permit HS-mode access to hstateen0, and set `mstateen0[60]` (CSRIND) to 1 to permit the state controlled by CSRIND.
-> - Relationship with Group 8.4 (HCROSS-SSSTA-27~29): both verify the same `hstateen0[60]` control behavior, but Group 8.4 verifies from the Smstateen perspective, while this group's Part B verifies from the Smcsrind perspective. Implementations should cross-reference.
-> - All tests must detect H extension, Smcsrind extension, and Smstateen extension availability at runtime; TEST_SKIP if any is unavailable. Part B must also detect `hstateen0.CSRIND` writability.
+> - Distinction from Group 8.4 (HCROSS-SSSTA-27~29): Group 8.4 verifies `hstateen0[60]` control over **VS-mode** access to vsiselect/vsireg* (triggering virtual-instruction), while this group verifies `mstateen0[60]` control over **S-mode (HS-mode)** access to vsiselect/vsireg* (triggering illegal-instruction). These are different levels of control mechanisms.
+> - All tests must detect H extension, Smcsrind extension, and Smstateen extension availability at runtime; TEST_SKIP if any is unavailable.
 
 ---
 
@@ -1071,7 +1037,7 @@ Note: vsiselect/vsireg* are CSRs introduced by the H extension and are only avai
 
 | Priority | Test Group | Covered Test IDs | Rationale |
 |----------|------------|------------------|-----------|
-| P0 (Required) | Group 5 (Svinval) | HCROSS-SINVAL-01~15 | HINVAL instruction functionality and virtual-instruction exceptions are core to Hypervisor security isolation; existing plan coverage is severely insufficient |
+| P0 (Required) | Group 5 (Svinval) | HCROSS-SINVAL-01~14 | HINVAL instruction functionality and virtual-instruction exceptions are core to Hypervisor security isolation; existing plan coverage is severely insufficient |
 | P0 (Required) | Group 11.2 (Virtual-inst) | HCROSS-SSCSRIND-11~21 | Virtual-instruction exceptions are the core guarantee of virtualization security isolation |
 | P0 (Required) | Group 12.2 (vsstatus.SDT) | HCROSS-SSDBLTRP-07~12 | VS-mode double-trap is a key security mechanism in virtualization scenarios |
 | P1 (Important) | Group 1 (Svadu) | HCROSS-SVADU-01~06 | henvcfg.ADUE writability and HLV/HSV interaction are key behaviors for Svadu in virtualization scenarios |

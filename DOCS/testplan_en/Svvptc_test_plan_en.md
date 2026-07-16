@@ -38,7 +38,7 @@ This test plan focuses on the behavior of the specification in a **single hart, 
 | `common/vm/vm.h` | Full text | `pt_init` / `pt_map_page` / `pt_get_pte` / `vm_run_in_smode` / `vm_sfence_vma` and other VM APIs |
 | `common/vm/page_table.c` | Lines 324–339 | `pt_get_pte(ctx, va, level)` actual semantics: `level` is the page table level (in Sv39: `PT_LEVEL_4K=0`/`PT_LEVEL_2M=1`/`PT_LEVEL_1G=2`), returning the PTE slot pointer corresponding to the VPN index at that level's PT page |
 | `common/encoding.h` | Full text | `PTE_V` / `PTE_R` / `PTE_W` / `PTE_X` / `PTE_A` / `PTE_D` / `CAUSE_*` and other macros |
-| `common/platform/{qemu_virt,spike,sail}/platform.h` | — | `PLATFORM_MEM_BASE = 0x80000000`, `PLATFORM_MEM_SIZE = 0x10000000` (256 MiB), consistent across all three platforms |
+| `common/platform/{qemu_virt,spike,sail}platfrom_config.h` | — | `PLATFORM_MEM_BASE = 0x80000000`, `PLATFORM_MEM_SIZE = 0x10000000` (256 MiB), consistent across all three platforms |
 | `svadu/main.c`, `svadu/Makefile`, `svadu/kernel.ld` | — | Subdirectory organization template (main.c entry point, TARGET, SPIKE_ISA_EXT, Makefile.common inclusion pattern, `__vm_test_region_start` / `__vm_test_region_2m_start` provided by each subdirectory's own `kernel.ld`) |
 | `svpbmt/tests/test_nonleaf_pbmt.c` | Lines 31, 190 | Existing example: `pt_get_pte(&ctx, va, PT_LEVEL_2M)` to obtain the L1 non-leaf PTE (pointer to L0), `pt_get_pte(&ctx, va, PT_LEVEL_1G)` to obtain the L2 root non-leaf PTE (pointer to L1) |
 

@@ -70,11 +70,6 @@ void vs_trap_setup(vs_trap_config_t *cfg);
  */
 void vs_trap_setup_direct(uintptr_t handler_addr);
 
-/**
- * vs_trap_setup_vectored - Shorthand: configure Vectored mode handler.
- */
-void vs_trap_setup_vectored(uintptr_t handler_base, int num_entries);
-
 /* ===================================================================
  * VS-mode trap record access
  * =================================================================== */
@@ -96,50 +91,6 @@ void vs_trap_clear(void);
  * vs_trap_was_triggered - Check if a VS trap was captured.
  */
 bool vs_trap_was_triggered(void);
-
-/* ===================================================================
- * VS-mode vectored table generator
- *
- * Generates a minimal vectored trap table in memory:
- *   entry[i] = j handler_common + record(i)
- *
- * Each entry is a 4-byte aligned jump instruction that records the
- * entry index and branches to a common handler.
- *
- * The table must reside in memory accessible to VS-mode (identity
- * mapped through G-stage if using two-stage translation).
- * =================================================================== */
-
-/**
- * vs_vectored_table_init - Generate a vectored trap table at base.
- *
- * @base:        GPA of the table (must be at least 4*num_entries aligned)
- * @num_entries: number of entries to generate (typically 32 or 48)
- *
- * NOTE: The memory at [base, base + num_entries*4) must be writable
- *       and executable from VS-mode perspective.
- */
-void vs_vectored_table_init(uintptr_t base, int num_entries);
-
-/* ===================================================================
- * Delegation helpers for VS trap testing
- * =================================================================== */
-
-/**
- * vs_delegate_exceptions - Delegate exceptions to VS-mode.
- *
- * Configures medeleg/mideleg -> hedeleg/hideleg to route specified
- * exception causes to VS-mode trap handler.
- *
- * @exc_mask: bitmask of exception causes to delegate
- * @int_mask: bitmask of interrupt causes to delegate
- */
-void vs_delegate_exceptions(uintptr_t exc_mask, uintptr_t int_mask);
-
-/**
- * vs_undelegate_all - Clear all VS-mode delegation.
- */
-void vs_undelegate_all(void);
 
 /* ===================================================================
  * VS-mode trap verification support (shvstvecd specific)

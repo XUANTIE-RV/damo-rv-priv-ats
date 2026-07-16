@@ -45,7 +45,15 @@ _hs_trap_entry:
     addi sp, sp, -HS_CONTEXT_SIZE
 
     /* Save s0-s6: VS-mode test code uses these; s7-s11 are unused by
-     * VS test payloads AND preserved by hs_trap_handler (C callee-saved). */
+     * VS test payloads AND preserved by hs_trap_handler (C callee-saved).
+     *
+     * WARNING: s7-s11 are NOT saved/restored here. If any VS-mode test
+     * code uses s7-s11, their values will be corrupted by the C handler.
+     * All VS-mode test trampolines in this framework only use s0-s6.
+     * If you add new VS-mode code that uses s7-s11, you MUST either:
+     *   1. Increase HS_CONTEXT_SIZE and save/restore them here, OR
+     *   2. Ensure the C handler does not clobber them (not guaranteed).
+     * Current context size: 23 registers (ra + t0-t6 + a0-a7 + s0-s6). */
     STORE ra,   0*REGSIZE(sp)
     STORE t0,   1*REGSIZE(sp)
     STORE t1,   2*REGSIZE(sp)

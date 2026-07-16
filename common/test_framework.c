@@ -5,6 +5,10 @@
 
 #include "test_framework.h"
 
+/* Runtime CSR access (defined in csr_accessors.c) */
+extern uintptr_t csr_read(uint16_t csr);
+extern void csr_write(uint16_t csr, uintptr_t val);
+
 /* ===================================================================
  * Test result tracking (global)
  * =================================================================== */
@@ -30,13 +34,36 @@ test_result_t test_results = {
  * Only performs common resets. Extension-specific resets
  * (e.g., pmp_reset, smepmp_reset) should be called separately.
  * =================================================================== */
+
+#ifdef ENABLE_PM
+/* ===================================================================
+ * _safe_csr_clear_field - trap-protected CSR field clearing
+ *
+ * Reads a CSR by runtime address, clears the bits specified by
+ * @mask, and writes back.  The read is trap-protected so that
+ * accessing a non-existent CSR is safe (the write is skipped).
+ * Reusable for any extension that needs conditional CSR cleanup
+ * in reset paths.
+ * =================================================================== */
+static void _safe_csr_clear_field(uint16_t csr, uintptr_t mask) {
+    trap_expect_begin();
+    uintptr_t val = csr_read(csr);
+    if (!trap_was_triggered()) {
+        csr_write(csr, val & ~mask);
+    }
+    trap_expect_end();
+}
+#endif /* ENABLE_PM */
+
 void reset_state(void) {
     /* Ensure we're in M-mode */
     if (get_current_priv() != PRIV_M)
         goto_priv(PRIV_M);
 
-    /* Reset trap state */
-    trap_expect_end();
+    /* Reset trap state — clear ALL fields, not just armed.
+     * This prevents stale trap_was_triggered()/trap_get_cause() results
+     * from a previous test leaking into the next one. */
+    trap_clear_record();
 
     /* Set up trap vectors */
     extern void m_trap_entry(void);
@@ -51,42 +78,57 @@ void reset_state(void) {
     /* Ensure interrupts are disabled */
     CSRC(mstatus, MSTATUS_MIE_BIT | MSTATUS_SIE_BIT);
 
-    /* Clear MPRV to avoid M-mode using translated addresses */
-    CSRC(mstatus, MSTATUS_MPRV_BIT);
+    /* Clear interrupt enable registers to prevent residual enable bits
+     * from triggering unexpected traps when a later test re-enables MIE.
+     * mstatus.MIE/SIE only gates the global interrupt; individual enables
+     * in mie/sie persist across tests and can fire immediately if mip
+     * has pending bits (e.g., after mret restores MIE=MPIE). */
+    CSRW(mie, 0);
+    CSRW(sie, 0);
 
-    /* Clear MXR to avoid PM interaction side effects */
-    CSRC(mstatus, MSTATUS_MXR_BIT);
+    /* Clear software-writable pending interrupt bits in mip.
+     * Read-only bits (MTIP, MEIP, STIP) are unaffected by writes.
+     * Writable bits: SSIP (1), MSIP (3), SEIP (9), LCOFIP (13). */
+    CSRW(mip, 0);
 
-    /* Clear Pointer Masking (PM) state.
-     * senvcfg.PMM [33:32], menvcfg.PMM [33:32], mseccfg.PMM [33:32].
-     * Each access is trap-protected in case the CSR does not exist. */
-    {
-        /* Clear senvcfg.PMM (Ssnpm: U-mode PM) */
-        trap_expect_begin();
-        uintptr_t senvcfg_val = CSRR(CSR_SENVCFG);
-        if (!trap_was_triggered()) {
-            CSRW(CSR_SENVCFG, senvcfg_val & ~SENVCFG_PMM_MASK);
-        }
-        trap_expect_end();
+    /* Clear mstatus bits that could affect subsequent tests:
+     * - MPRV (bit 17): M-mode using translated addresses
+     * - SUM  (bit 18): S-mode accessing U=1 pages without explicit intent
+     * - MXR  (bit 19): may alter load access permissions
+     * - TVM  (bit 20): S-mode satp/hgatp access restriction
+     * - TSR  (bit 22): S-mode sret restriction */
+    CSRC(mstatus, MSTATUS_MPRV_BIT | MSTATUS_SUM_BIT |
+                  MSTATUS_MXR_BIT  | MSTATUS_TVM_BIT |
+                  MSTATUS_TSR_BIT);
 
-        /* Clear menvcfg.PMM (Smnpm: S-mode PM) */
-        trap_expect_begin();
-        uintptr_t menvcfg_val = CSRR(CSR_MENVCFG);
-        if (!trap_was_triggered()) {
-            CSRW(CSR_MENVCFG, menvcfg_val & ~MENVCFG_PMM_MASK);
-        }
-        trap_expect_end();
+    /* Clear Smdbltrp MDT if supported (no-op otherwise).
+     * MDT is set by hardware on M-mode trap entry; if left set,
+     * the next EXPECT_TRAP in M-mode triggers a fatal double trap. */
+    clear_mdt();
 
-        /* Clear mseccfg.PMM (Smmpm: M-mode PM).
-         * Note: mseccfg.PMM may be sticky on some implementations;
-         * the write may silently fail, which is acceptable. */
-        trap_expect_begin();
-        uintptr_t mseccfg_val = CSRR(CSR_MSECCFG);
-        if (!trap_was_triggered()) {
-            CSRW(CSR_MSECCFG, mseccfg_val & ~MSECCFG_PMM_MASK);
-        }
-        trap_expect_end();
-    }
+#ifdef ENABLE_HYP
+    /* Clear mstatus.MPV to prevent stale virtualization state.
+     * If a previous test entered VS/VU mode and left MPV=1,
+     * subsequent mret could unintentionally enter V=1 mode. */
+    CSRC(mstatus, MSTATUS_MPV);
+#endif
+
+    /* Disable address translation (satp = bare mode).
+     * Prevents a previous test's page table from remaining active
+     * when a subsequent test enters S-mode. */
+    CSRW(satp, 0);
+
+#ifdef ENABLE_PM
+    /* Clear Pointer Masking (PM) state via the generic helper.
+     * senvcfg.PMM [33:32] (Ssnpm), menvcfg.PMM [33:32] (Smnpm),
+     * mseccfg.PMM [33:32] (Smmpm).
+     * Only needed when PM extension is enabled. */
+    _safe_csr_clear_field(CSR_SENVCFG, SENVCFG_PMM_MASK);
+    _safe_csr_clear_field(CSR_MENVCFG, MENVCFG_PMM_MASK);
+    /* mseccfg.PMM may be sticky on some implementations;
+     * the write may silently fail, which is acceptable. */
+    _safe_csr_clear_field(CSR_MSECCFG, MSECCFG_PMM_MASK);
+#endif /* ENABLE_PM */
 }
 
 /* ===================================================================

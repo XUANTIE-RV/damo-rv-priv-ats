@@ -122,8 +122,8 @@ static uintptr_t page_size_for_level(int level) {
     case PT_LEVEL_4K:   return PAGE_SIZE_4K;
     case PT_LEVEL_2M:   return PAGE_SIZE_2M;
     case PT_LEVEL_1G:   return PAGE_SIZE_1G;
-    case PT_LEVEL_512G: return (1UL << 39);
-    case PT_LEVEL_256T: return (1UL << 48);
+    case PT_LEVEL_512G: return (uintptr_t)(1ULL << 39);
+    case PT_LEVEL_256T: return (uintptr_t)(1ULL << 48);
     default:            return PAGE_SIZE_4K;
     }
 }
@@ -305,8 +305,8 @@ int pt_setup_identity_mapping(pt_context_t *ctx, uintptr_t base,
     /*
      * Map CLINT region if defined (for timer access in S-mode).
      */
-#ifdef PLATFORM_CLINT_BASE
-    uintptr_t clint_base = PLATFORM_CLINT_BASE;
+#ifdef CLINT_BASE_ADDRESS
+    uintptr_t clint_base = CLINT_BASE_ADDRESS;
     if (clint_base < aligned_base || clint_base >= end) {
         /* Map 64KB for CLINT (covers all CLINT registers) */
         uintptr_t clint_flags = PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;

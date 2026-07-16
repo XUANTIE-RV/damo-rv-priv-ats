@@ -35,12 +35,7 @@
  */
 void hfence_vvma(uintptr_t vaddr, uintptr_t asid);
 
-/**
- * hfence_vvma_all - Flush all VS-stage TLB entries
- *
- * Equivalent to hfence.vvma x0, x0.
- */
-void hfence_vvma_all(void);
+/* hfence_vvma_all() is provided as a static inline in hyp_csr.h. */
 
 /**
  * hfence_gvma - Flush G-stage TLB entries
@@ -53,12 +48,6 @@ void hfence_vvma_all(void);
  */
 void hfence_gvma(uintptr_t gpa_shifted, uintptr_t vmid);
 
-/**
- * hfence_gvma_all - Flush all G-stage TLB entries
- *
- * Equivalent to hfence.gvma x0, x0.
- * NOTE: Also available as inline in hyp_csr.h for backward compat.
- */
-void hfence_gvma_all(void);
+/* hfence_gvma_all() is provided as a static inline in hyp_csr.h. */
 
 #endif /* HYP_FENCE_H */

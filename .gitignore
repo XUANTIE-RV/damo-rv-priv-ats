@@ -1,4 +1,5 @@
 *.o
+*.d
 *.asm
 *.sym
 *.elf
@@ -7,3 +8,5 @@
 *.rvvi
 *.trace
 ideas
+**/__pycache__
+tmp
