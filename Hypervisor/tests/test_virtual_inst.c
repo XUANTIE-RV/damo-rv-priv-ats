@@ -629,14 +629,42 @@ bool vinst_30_vs_hvip(void)
 /* ===================================================================
  * VINST-31: VS accesses henvcfg
  *
- * Verify that VS-mode access to henvcfg triggers virtual-instruction exception.
+ * Verify that VS-mode access to henvcfg triggers virtual-instruction
+ * exception (cause=22).
+ *
+ * When Smstateen is implemented, mstateen0.ENVCFG (bit 62) gates
+ * henvcfg access from HS-mode. If ENVCFG=0, henvcfg is not
+ * HS-qualified, and VS-mode access returns illegal-instruction
+ * (cause=2) instead of virtual-instruction (cause=22). Enable
+ * ENVCFG to ensure henvcfg is HS-qualified for this test.
  * =================================================================== */
 TEST_REGISTER(vinst_31_vs_henvcfg);
 bool vinst_31_vs_henvcfg(void)
 {
     TEST_BEGIN("VINST-31: VS accesses henvcfg");
 
+    /* Detect Smstateen and enable ENVCFG if present. */
+    uintptr_t orig_mstateen0 = 0;
+    bool smstateen_present = false;
+
+    trap_expect_begin();
+    asm volatile ("csrr %0, 0x30C" : "=r"(orig_mstateen0) :: "memory");
+    bool mstateen_trapped = trap_was_triggered();
+    trap_expect_end();
+
+    if (!mstateen_trapped) {
+        smstateen_present = true;
+        /* Set ENVCFG (bit 62) so henvcfg is accessible in HS-mode,
+         * making it HS-qualified for VS-mode virtual-inst testing. */
+        asm volatile ("csrs 0x30C, %0" :: "r"(1ULL << 62) : "memory");
+    }
+
     EXPECT_VIRTUAL_INST(run_in_vs_mode(vs_read_henvcfg, 0));
+
+    /* Restore mstateen0 if modified. */
+    if (smstateen_present) {
+        asm volatile ("csrw 0x30C, %0" :: "r"(orig_mstateen0) : "memory");
+    }
 
     HYP_TEST_END();
 }
