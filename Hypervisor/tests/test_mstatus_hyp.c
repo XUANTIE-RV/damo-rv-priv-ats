@@ -162,6 +162,13 @@ bool mstatus_mret_mpp3_v_zero(void) {
 
 /* ------------------------------------------------------------------
  * MSTAT-05: M-mode GVA correctness
+ *
+ * Per norm:mstatus_gva_op: GVA is set to 1 when a guest-page-fault
+ * trap writes a GVA to mtval, and set to 0 for any other trap into
+ * M-mode. Because fire_vs_load_fault returns to M-mode via an ecall
+ * from VS-mode (which clears GVA to 0), the test must use
+ * trap_get_gva() — which returns the GVA captured at GPF trap entry
+ * time — rather than reading mstatus directly.
  * ------------------------------------------------------------------ */
 TEST_REGISTER(mstatus_gva_m_mode);
 bool mstatus_gva_m_mode(void) {
@@ -169,17 +176,21 @@ bool mstatus_gva_m_mode(void) {
 
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
-    /* Fire a VS load fault to trigger GPF trap to M-mode. */
+    /* Fire a VS load fault to trigger GPF trap to M-mode.
+     * Clear PTE_R so the G-stage leaf is non-readable, causing a
+     * load guest-page-fault (cause=21) when VS-mode loads from it. */
     uintptr_t victim_gpa = (uintptr_t)test_fault_page;
-    uintptr_t flags = G_FLAGS_RWXU_AD | PTE_R;
-    fire_vs_load_fault(victim_gpa, flags);
+    uintptr_t flags = G_FLAGS_RWXU_AD & ~PTE_R;
+    bool fired = fire_vs_load_fault(victim_gpa, flags);
+    TEST_ASSERT("load guest-page-fault triggered", fired);
 
     /* Per norm:mstatus_gva_op: guest-page-fault writes a GVA to mtval,
-     * so GVA must be set to 1. */
-    uintptr_t ms;
-    asm volatile("csrr %0, mstatus" : "=r"(ms));
-    uintptr_t gva = (ms >> 38) & 1;
-    TEST_ASSERT_EQ("GVA=1 on guest page fault", gva, (uintptr_t)1);
+     * so GVA must be set to 1. Use trap_get_gva() which returns the
+     * value captured at trap entry, before the ecall return clears it. */
+    if (fired) {
+        bool gva = trap_get_gva();
+        TEST_ASSERT("GVA=1 on guest page fault", gva);
+    }
 
     HYP_TEST_END();
 }

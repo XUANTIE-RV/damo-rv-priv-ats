@@ -650,6 +650,18 @@ bool test_vcsr_15(void)
  * HS-mode) can read/write senvcfg directly — it accesses the real
  * HS-level senvcfg, not a VS substitute. Hypervisor software is
  * expected to manually swap senvcfg during context switches.
+ *
+ * Per norm:menvcfg_fiom_rdonly0_ok, FIOM may be read-only zero
+ * when the Smenvcfg extension is not enabled. Similarly, CBIE/CBCFE
+ * require Zicbom, CBZE requires Zicboz. The test probes for any
+ * writable field before asserting read/write behavior.
+ *
+ * When the Smstateen extension is implemented, mstateen0.ENVCFG
+ * (bit 62) and hstateen0.ENVCFG (bit 62) gate senvcfg access from
+ * HS-mode and VS-mode respectively. These bits may reset to 0 on
+ * some platforms (e.g. Sail default). The test enables them before
+ * testing VS-mode access so that norm:H_scsrs_nomatch behavior is
+ * properly exercised.
  * =================================================================== */
 TEST_REGISTER(test_vcsr_16);
 bool test_vcsr_16(void)
@@ -660,20 +672,100 @@ bool test_vcsr_16(void)
     uintptr_t orig_senvcfg;
     asm volatile ("csrr %0, 0x10A" : "=r"(orig_senvcfg));
 
-    /* Part A: M-mode can access senvcfg directly. */
-    uintptr_t test_val = 0x01;  /* FIOM bit */
-    asm volatile ("csrw 0x10A, %0" :: "r"(test_val));
-    uintptr_t m_read;
-    asm volatile ("csrr %0, 0x10A" : "=r"(m_read));
-    TEST_ASSERT_EQ("M-mode senvcfg read/write",
-                   m_read & 0x01, test_val & 0x01);
+    /* --- Smstateen handling ---
+     * If Smstateen is implemented, mstateen0.ENVCFG and
+     * hstateen0.ENVCFG must be set to allow senvcfg access from
+     * HS-mode and VS-mode. Without this, VS-mode senvcfg access
+     * traps as a virtual-instruction exception, which is
+     * SPEC-compliant but prevents testing norm:H_scsrs_nomatch. */
+#define STATEEN0_ENVCFG_BIT  (1ULL << 62)
+#define STATEEN0_SE0_BIT     (1ULL << 63)
+    uintptr_t orig_mstateen0 = 0;
+    uintptr_t orig_hstateen0 = 0;
+    bool smstateen_present = false;
+    bool hstateen0_saved = false;
+
+    /* Detect Smstateen by probing mstateen0 (CSR 0x30C). */
+    trap_expect_begin();
+    asm volatile ("csrr %0, 0x30C" : "=r"(orig_mstateen0) :: "memory");
+    bool mstateen_trapped = trap_was_triggered();
+    trap_expect_end();
+
+    if (!mstateen_trapped) {
+        smstateen_present = true;
+        /* Enable ENVCFG (for HS-mode senvcfg access) and SE0
+         * (for hstateen0 access) in mstateen0. */
+        asm volatile ("csrs 0x30C, %0" :: "r"(STATEEN0_ENVCFG_BIT | STATEEN0_SE0_BIT) : "memory");
+
+        /* Enable ENVCFG in hstateen0 for VS-mode senvcfg access. */
+        trap_expect_begin();
+        asm volatile ("csrr %0, 0x60C" : "=r"(orig_hstateen0) :: "memory");
+        bool hstateen_trapped = trap_was_triggered();
+        trap_expect_end();
+
+        if (!hstateen_trapped) {
+            hstateen0_saved = true;
+            asm volatile ("csrs 0x60C, %0" :: "r"(STATEEN0_ENVCFG_BIT) : "memory");
+        }
+    }
+#undef STATEEN0_ENVCFG_BIT
+#undef STATEEN0_SE0_BIT
+
+    /* Probe for a writable field in senvcfg.
+     * FIOM (bit 0) may be read-only zero per norm:menvcfg_fiom_rdonly0_ok
+     * when Smenvcfg is not in the ISA string. CBIE (bits [5:4]) requires
+     * Zicbom, CBCFE (bit 6) requires Zicbom, CBZE (bit 7) requires Zicboz.
+     * Try each known field to find one that is writable. */
+    struct {
+        uintptr_t val;   /* value to write */
+        uintptr_t mask;  /* field mask to check */
+        const char *name;
+    } probe_fields[] = {
+        { 0x01, 0x01, "FIOM" },              /* bit 0 */
+        { 0x10, 0x30, "CBIE" },              /* bits [5:4], encoding 01=flush */
+        { 0x40, 0x40, "CBCFE" },             /* bit 6 */
+        { 0x80, 0x80, "CBZE" },              /* bit 7 */
+    };
+
+    uintptr_t test_val = 0;
+    uintptr_t test_mask = 0;
+    bool found_writable = false;
+
+    for (int i = 0; i < 4; i++) {
+        /* Clear senvcfg first, then write the probe value. */
+        asm volatile ("csrw 0x10A, zero");
+        asm volatile ("csrw 0x10A, %0" :: "r"(probe_fields[i].val));
+        uintptr_t rd;
+        asm volatile ("csrr %0, 0x10A" : "=r"(rd));
+        if ((rd & probe_fields[i].mask) ==
+            (probe_fields[i].val & probe_fields[i].mask)) {
+            test_val = probe_fields[i].val;
+            test_mask = probe_fields[i].mask;
+            found_writable = true;
+            break;
+        }
+    }
+
+    /* Part A: M-mode can access senvcfg directly.
+     * If a writable field was found, verify M-mode read/write.
+     * If no writable field (all read-only zero), skip the assertion
+     * but continue to Part B (VS-mode access test). */
+    if (found_writable) {
+        asm volatile ("csrw 0x10A, %0" :: "r"(test_val));
+        uintptr_t m_read;
+        asm volatile ("csrr %0, 0x10A" : "=r"(m_read));
+        TEST_ASSERT_EQ("M-mode senvcfg read/write",
+                       m_read & test_mask, test_val & test_mask);
+    } else {
+        printf("  [INFO] senvcfg has no writable fields (all read-only zero)\n");
+    }
 
     /* Part B: VS-mode reads senvcfg — should succeed (no trap).
      * senvcfg has no VS counterpart, so VS-mode accesses the real
      * HS-level senvcfg directly. Per norm:H_scsrs_nomatch, this CSR
      * retains its usual accessibility when V=1.
-     * Note: Some implementations (e.g. QEMU) incorrectly trap VS-mode
-     * senvcfg access. This test correctly expects no trap per SPEC. */
+     * When Smstateen is implemented, mstateen0/hstateen0 ENVCFG bits
+     * have been enabled above to allow this access. */
     trap_expect_begin();
     run_in_vs_mode(vs_read_senvcfg, 0);
     bool senvcfg_readable = !trap_was_triggered();
@@ -681,25 +773,37 @@ bool test_vcsr_16(void)
     TEST_ASSERT("VS-mode senvcfg read (no trap per norm:H_scsrs_nomatch)",
                 senvcfg_readable);
 
-    /* Part C: VS-mode writes senvcfg — only if read succeeded.
-     * Verify the write landed on the real senvcfg by reading back
-     * from M-mode. */
-    if (senvcfg_readable) {
-        test_val = 0x02;  /* CBIE bit */
+    /* Part C: VS-mode writes senvcfg — only if read succeeded AND
+     * a writable field exists. Clear senvcfg from M-mode first, then
+     * have VS-mode write the test value, then verify from M-mode that
+     * the write landed on the real HS-level senvcfg. */
+    if (senvcfg_readable && found_writable) {
+        /* Clear senvcfg to zero from M-mode. */
+        asm volatile ("csrw 0x10A, zero");
+
         trap_expect_begin();
         run_in_vs_mode(vs_write_senvcfg, test_val);
         bool senvcfg_writable = !trap_was_triggered();
         trap_expect_end();
         TEST_ASSERT("VS-mode senvcfg write (no trap)", senvcfg_writable);
         if (senvcfg_writable) {
+            uintptr_t m_read;
             asm volatile ("csrr %0, 0x10A" : "=r"(m_read));
             TEST_ASSERT_EQ("VS-mode senvcfg write reflected in M-mode read",
-                           m_read & 0x02, test_val & 0x02);
+                           m_read & test_mask, test_val & test_mask);
         }
     }
 
     /* Restore original senvcfg. */
     asm volatile ("csrw 0x10A, %0" :: "r"(orig_senvcfg));
+
+    /* Restore mstateen0/hstateen0 if modified. */
+    if (smstateen_present) {
+        if (hstateen0_saved) {
+            asm volatile ("csrw 0x60C, %0" :: "r"(orig_hstateen0) : "memory");
+        }
+        asm volatile ("csrw 0x30C, %0" :: "r"(orig_mstateen0) : "memory");
+    }
 
     HYP_TEST_END();
 }
