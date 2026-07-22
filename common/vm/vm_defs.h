@@ -74,6 +74,9 @@
 /* Extract PBMT field from a PTE */
 #define PTE_PBMT(pte)   (((pte) & PTE_PBMT_MASK) >> PTE_PBMT_SHIFT)
 
+/* Shadow Stack page encoding: R=0, W=1, X=0 (xwr=010) per Zicfiss */
+#define PTE_SS      (PTE_V | PTE_W)
+
 /* Common permission combinations */
 #define PTE_RWX     (PTE_R | PTE_W | PTE_X)
 #define PTE_RWXU    (PTE_R | PTE_W | PTE_X | PTE_U)

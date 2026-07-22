@@ -41,7 +41,29 @@ static uintptr_t   _v_run_result;
  * MPP back to M-mode and clears MPV, so mret returns here in M-mode.
  * Then `ret` jumps to ra, which we set to a label in the caller. */
 static void __attribute__((used)) _v_trampoline(void) {
-    _v_run_result = _v_run_fn(_v_run_arg);
+    /* Invoke the test function via an indirect call with rs1=x7 (t2).
+     * Per Zicfilp (norm:zicflip_lpad_expected), a JALR with rs1=x1/x5/x7
+     * does not set ELP to LP_EXPECTED, so this framework-internal call
+     * stays transparent to landing-pad enforcement when a test enables
+     * xLPE in VS/VU-mode. The test's own indirect jumps still exercise
+     * the LP_EXPECTED path. A compiler-generated call could use any
+     * scratch register (e.g. a5=x15) and would spuriously fault.
+     *
+     * rs1=x7 (not x5) is chosen deliberately: with Zicfiss enabled, a
+     * JALR with rd=x1 and rs1=x5 is a coroutine swap (sspopchk x5 +
+     * sspush x1) which would fault on the shadow stack, whereas
+     * rd=x1 with rs1 outside {x1,x5} remains a plain call (sspush x1),
+     * matching the original compiler-generated behavior. */
+    asm volatile (
+        "ld   a0, %[arg]\n\t"
+        "ld   t2, %[fn]\n\t"
+        "jalr ra, t2, 0\n\t"
+        "sd   a0, %[res]\n\t"
+        :
+        : [fn] "m"(_v_run_fn), [arg] "m"(_v_run_arg),
+          [res] "m"(_v_run_result)
+        : "a0", "t2", "ra", "memory"
+    );
     ecall_args[0] = ECALL_GOTO_PRIV;
     ecall_args[1] = PRIV_M;
     asm volatile ("ecall" ::: "memory");

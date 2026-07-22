@@ -166,7 +166,7 @@ static uintptr_t smode_exec_addr(uintptr_t arg) {
  * =================================================================== */
 static void ensure_smode_pmp(void) {
     pmp_clear_all();
-    pmp_entry_t pmp_all = PMP_ENTRY_NAPOT(0x0, 0x100000000UL, PMP_RWX);
+    pmp_entry_t pmp_all = PMP_ENTRY_FULL(PMP_RWX);
     pmp_set_entry(0, &pmp_all);
 }
 

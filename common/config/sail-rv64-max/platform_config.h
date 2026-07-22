@@ -6,6 +6,9 @@
 #ifndef PLATFORM_SAIL_RV64_MAX_H
 #define PLATFORM_SAIL_RV64_MAX_H
 
+/* This header is included via CFLAGS -include for C code only.
+ * Assembly-only constants are in rvmodel_macros.h (included via ASFLAGS). */
+
 /* ===== Sail RISC-V model platform address map ===== */
 
 /* UART: SAIL does not have an MMIO UART device.
@@ -33,5 +36,13 @@
 /* Sail currently dose not support sdtrig extension
  Skip any breakpoint tests */
 #define SKIP_BREAKPOINT_TESTS  1
+
+/* ===== CLINT / Machine Timer addresses (for C code) =====
+ * These mirror the values in rvmodel_macros.h for C code use.
+ * Assembly code uses the originals in rvmodel_macros.h. */
+#define PLATFORM_CLINT_BASE       0x02000000UL
+#define PLATFORM_MSIP_ADDR        PLATFORM_CLINT_BASE
+#define PLATFORM_MTIMECMP_ADDR    (PLATFORM_CLINT_BASE + 0x4000UL)
+#define PLATFORM_MTIME_ADDR       (PLATFORM_CLINT_BASE + 0xBFF8UL)
 
 #endif /* PLATFORM_SAIL_RV64_MAX_H */

@@ -61,6 +61,45 @@ unsigned pm_get_mmode(void) {
 }
 
 /* ===================================================================
+ * VS-mode PM control (via henvcfg.PMM, Ssnpm + H extension)
+ *
+ * Only meaningful when the hypervisor extension is implemented.
+ * Compiled unconditionally: callers must gate on H availability.
+ * =================================================================== */
+
+void pm_set_vsmode(unsigned pmm) {
+    uintptr_t val = CSRR(CSR_HENVCFG);
+    val &= ~HENVCFG_PMM_MASK;
+    val |= ((uintptr_t)(pmm & 0x3) << HENVCFG_PMM_OFF);
+    CSRW(CSR_HENVCFG, val);
+}
+
+unsigned pm_get_vsmode(void) {
+    uintptr_t val = CSRR(CSR_HENVCFG);
+    return (unsigned)((val >> HENVCFG_PMM_OFF) & 0x3);
+}
+
+/* ===================================================================
+ * HUPMM control (via hstatus.HUPMM, Ssnpm + H extension)
+ *
+ * hstatus.HUPMM controls pointer masking for HLV/HSV instructions
+ * executed in U-mode when their explicit memory access is performed
+ * as though in VU-mode.
+ * =================================================================== */
+
+void pm_set_hupmm(unsigned pmm) {
+    uintptr_t val = CSRR(CSR_HSTATUS);
+    val &= ~HSTATUS_HUPMM_MASK;
+    val |= ((uintptr_t)(pmm & 0x3) << HSTATUS_HUPMM_OFF);
+    CSRW(CSR_HSTATUS, val);
+}
+
+unsigned pm_get_hupmm(void) {
+    uintptr_t val = CSRR(CSR_HSTATUS);
+    return (unsigned)((val >> HSTATUS_HUPMM_OFF) & 0x3);
+}
+
+/* ===================================================================
  * Extension detection
  *
  * Strategy: probe PMM field by trying PMLEN7 (PMM=0b10) first,
@@ -154,6 +193,42 @@ bool detect_smmpm(void) {
     trap_expect_end();
 
     return pmlen7 || pmlen16;
+}
+
+/*
+ * Detect Ssnpm hypervisor-side controls: henvcfg.PMM (VS-mode PM)
+ * and hstatus.HUPMM (PM for HLV/HSV in U-mode as VU).  Both fields
+ * exist iff Ssnpm is implemented (read-only zero otherwise, and
+ * read-only zero on RV32).
+ *
+ * Returns true if BOTH fields are writable.  Uses trap_expect to
+ * survive missing CSRs (no H extension -> illegal instruction).
+ */
+bool detect_ssnpm_hyp(void) {
+    trap_expect_begin();
+
+    unsigned saved_pmm   = pm_get_vsmode();
+    unsigned saved_hupmm = pm_get_hupmm();
+    if (trap_was_triggered()) {
+        trap_expect_end();
+        return false;
+    }
+
+    pm_set_vsmode(PMM_PMLEN7);
+    bool pmm7 = (pm_get_vsmode() == PMM_PMLEN7);
+    pm_set_vsmode(PMM_PMLEN16);
+    bool pmm16 = (pm_get_vsmode() == PMM_PMLEN16);
+
+    pm_set_hupmm(PMM_PMLEN7);
+    bool hu7 = (pm_get_hupmm() == PMM_PMLEN7);
+    pm_set_hupmm(PMM_PMLEN16);
+    bool hu16 = (pm_get_hupmm() == PMM_PMLEN16);
+
+    pm_set_vsmode(saved_pmm);
+    pm_set_hupmm(saved_hupmm);
+    trap_expect_end();
+
+    return (pmm7 || pmm16) && (hu7 || hu16);
 }
 
 /* ===================================================================

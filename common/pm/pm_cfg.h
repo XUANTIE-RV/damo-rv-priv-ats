@@ -39,6 +39,14 @@ unsigned pm_get_smode(void);
 void     pm_set_mmode(unsigned pmm);
 unsigned pm_get_mmode(void);
 
+/* henvcfg.PMM -> controls VS-mode PM (Ssnpm, requires H ext) */
+void     pm_set_vsmode(unsigned pmm);
+unsigned pm_get_vsmode(void);
+
+/* hstatus.HUPMM -> controls PM for HLV/HSV in U-mode as VU (Ssnpm, H ext) */
+void     pm_set_hupmm(unsigned pmm);
+unsigned pm_get_hupmm(void);
+
 /* ===================================================================
  * Extension detection
  *
@@ -51,6 +59,7 @@ unsigned pm_get_mmode(void);
 bool detect_ssnpm(void);   /* senvcfg.PMM writable? */
 bool detect_smnpm(void);   /* menvcfg.PMM writable? */
 bool detect_smmpm(void);   /* mseccfg.PMM writable? */
+bool detect_ssnpm_hyp(void); /* henvcfg.PMM + hstatus.HUPMM writable? (H ext) */
 
 /* ===================================================================
  * PMLEN helpers

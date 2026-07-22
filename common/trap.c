@@ -7,6 +7,10 @@
 #include "encoding.h"
 #include "uart.h"
 
+/* Halt the machine with a fail status via RVMODEL_HALT_FAIL (entry.S).
+ * On QEMU/Spike/Sail this terminates the simulation; on HW it spins. */
+extern void _halt_fail(void) __attribute__((noreturn));
+
 /* Build with -DENABLE_TRAP_ARM_DIAG (or temporarily #define here) to
  * enable trap-arm state-trace counters that print on UNEXPECTED TRAP.
  * Default-off: zero overhead in normal builds. Used during the
@@ -34,6 +38,7 @@ typedef volatile struct {
     uintptr_t htval;        /* mtval2 (M-mode) / htval (S-mode) >> 2 */
     uintptr_t htinst;       /* mtinst / htinst */
     bool      gva;          /* hstatus.GVA captured at trap time */
+    bool      spv;          /* hstatus.SPV captured at trap time */
 #endif
 } trap_record_t;
 
@@ -46,6 +51,18 @@ trap_record_t trap_record;
 static volatile bool      _m_trap_mpv_snap;
 static volatile uintptr_t _m_trap_mpp_snap;
 #endif
+
+/* CFI (Zicfilp) PELP control flags for Hypervisor_Zicfilp tests.
+ * Default 0 preserves existing behavior (clear MPELP/SPELP on
+ * software-check trap). Tests set these to verify hardware xRET
+ * xpelp handling:
+ * - g_trap_preserve_pelp=1: skip clearing MPELP/SPELP so xRET
+ *   restores ELP (LP-16/19).
+ * - g_trap_force_pelp=1: force MPELP/SPELP=1 before xRET to verify
+ *   hardware clears xpelp on xRET (LP-17/20).
+ * Default 0 = no impact on existing suites (cfi.Zicfilp, etc.). */
+bool g_trap_preserve_pelp = 0;
+bool g_trap_force_pelp = 0;
 
 /* Bridge to _exec_return_addr (weak symbol, default=0) */
 uintptr_t _exec_return_addr __attribute__((weak)) = 0;
@@ -275,7 +292,7 @@ unsigned m_trap_handler(void) {
         if (irq == IRQ_M_TIMER) {
             /* M-mode timer interrupt (ACLINT MTIMER): write MTIMECMP[0]
              * to max value to clear the interrupt source */
-            uintptr_t mtimecmp_addr = CLINT_BASE_ADDRESS + 0x4000UL;
+            uintptr_t mtimecmp_addr = PLATFORM_CLINT_BASE + 0x4000UL;
             asm volatile(
                 "li t0, -1\n\t"
                 "sw t0, 0(%0)\n\t"
@@ -287,7 +304,7 @@ unsigned m_trap_handler(void) {
         if (irq == IRQ_M_SOFTWARE) {
             /* M-mode software interrupt (ACLINT MSWI): write MSIP[0]
              * to 0 to clear the interrupt source */
-            uintptr_t msip_addr = CLINT_BASE_ADDRESS + 0x0000UL;
+            uintptr_t msip_addr = PLATFORM_CLINT_BASE + 0x0000UL;
             asm volatile(
                 "sw zero, 0(%0)\n\t"
                 "fence\n\t"
@@ -342,6 +359,10 @@ unsigned m_trap_handler(void) {
             trap_record.htinst = 0;
             trap_record.gva    = false;
         }
+        /* Snapshot hstatus.SPV for tests that need to verify trap
+         * came from VS-mode (LP-36/40). sret/mret clears SPV, so
+         * capture it at trap entry. */
+        trap_record.spv = (CSRR(CSR_HSTATUS) & HSTATUS_SPV) ? true : false;
         /* Snapshot mstatus.MPV/MPP before handler consumes them via mret. */
         {
             uintptr_t _ms = CSRR(mstatus);
@@ -362,16 +383,19 @@ unsigned m_trap_handler(void) {
          * the very next memory operation after mret. */
         CSRC(mstatus, MSTATUS_MPRV_BIT);
 
-        /* CFI (Zicfilp): When a software-check exception (cause 18)
-         * is taken due to a Landing Pad Fault, the hardware saves
-         * ELP=LP_EXPECTED into mstatus.MPELP.  If we don't clear it
-         * before mret, the restored ELP=LP_EXPECTED will cause the
-         * next non-LPAD instruction at the recovery PC to fault again
-         * (with armed=false → UNEXPECTED TRAP).  Clear both MPELP and
-         * SPELP to ensure clean recovery.
-         * Note: MPELP(bit 41) and SPELP(bit 33) only exist on RV64. */
+        /* CFI (Zicfilp): Any synchronous exception taken while
+         * ELP=LP_EXPECTED saves ELP into mstatus.MPELP (trap to M).
+         * If we don't clear it before mret, the restored ELP=LP_EXPECTED
+         * will cause the next non-LPAD instruction at the recovery PC
+         * to fault again (with armed=false → UNEXPECTED TRAP).  This
+         * applies to ALL sync exceptions, not just software-check —
+         * e.g. instruction access-fault / page-fault during a JALR to
+         * an unmapped address also saves ELP to MPELP (LP-29).
+         * Note: MPELP(bit 41) and SPELP(bit 33) only exist on RV64.
+         * g_trap_preserve_pelp=1 skips clearing so tests can verify
+         * hardware xRET restores ELP (LP-16/19). */
 #if __riscv_xlen > 32
-        if (cause == CAUSE_SOFTWARE_CHECK) {
+        if (!g_trap_preserve_pelp) {
             uintptr_t pelp_bits = MSTATUS_MPELP_BIT | MSTATUS_SPELP_BIT;
             CSRC(mstatus, pelp_bits);
         }
@@ -399,6 +423,15 @@ unsigned m_trap_handler(void) {
             CSRW(mepc, next_instruction(epc));
         }
 
+        /* CFI (Zicfilp) test hook: force MPELP/SPELP=1 before mret so
+         * tests can verify hardware clears xpelp on mret (LP-20).
+         * No-op unless g_trap_force_pelp is set by the test. */
+#if __riscv_xlen > 32
+        if (g_trap_force_pelp) {
+            CSRS(mstatus, MSTATUS_MPELP_BIT | MSTATUS_SPELP_BIT);
+        }
+#endif
+
         /* Always return PRIV_M so _trap_return uses mret.
          * mret uses mstatus.MPP (set by hardware on trap entry) to
          * return to the correct privilege level (S or U mode).
@@ -422,9 +455,8 @@ unsigned m_trap_handler(void) {
     printf("  armed   = %d  current_priv = %u\n",
            (int)trap_record.armed, current_priv);
 
-    /* Halt */
-    while (1)
-        asm volatile("wfi");
+    /* Halt with fail status */
+    _halt_fail();
 
     return PRIV_M; /* unreachable */
 }
@@ -489,8 +521,27 @@ unsigned s_trap_handler(void) {
             trap_record.htinst = 0;
             trap_record.gva    = false;
         }
+        /* Snapshot hstatus.SPV for tests that need to verify trap
+         * came from VS-mode (LP-36/40). sret clears SPV, so capture
+         * it at trap entry. */
+        trap_record.spv = (CSRR(CSR_HSTATUS) & HSTATUS_SPV) ? true : false;
 #endif
         trap_record.armed      = false;
+
+        /* CFI (Zicfilp): clear SPELP on any synchronous exception for
+         * clean recovery, same logic as m_trap_handler. Any sync trap
+         * taken while ELP=LP_EXPECTED saves ELP into SPELP (trap to S).
+         * Without clearing, sret restores ELP=LP_EXPECTED and the next
+         * non-LPAD instruction faults again (LP-15/29).
+         * g_trap_preserve_pelp=1 skips clearing so tests can verify
+         * hardware xRET restores ELP (LP-16/19).
+         * Note: SPELP(bit 23) only exists on RV64. Use sstatus (not
+         * mstatus) because this is the S-mode handler. */
+#if __riscv_xlen > 32
+        if (!g_trap_preserve_pelp) {
+            CSRC(sstatus, MSTATUS_SPELP_BIT);
+        }
+#endif
 
         /* Recovery: if exec_at() set a recovery address, always use it. */
         if (_exec_return_addr != 0) {
@@ -508,6 +559,16 @@ unsigned s_trap_handler(void) {
             CSRW(sepc, next_instruction(epc));
         }
 
+        /* CFI (Zicfilp) test hook: force SPELP=1 before sret so tests
+         * can verify hardware clears xpelp on sret (LP-17).
+         * No-op unless g_trap_force_pelp is set by the test.
+         * Use sstatus (not mstatus) because this is the S-mode handler. */
+#if __riscv_xlen > 32
+        if (g_trap_force_pelp) {
+            CSRS(sstatus, MSTATUS_SPELP_BIT);
+        }
+#endif
+
         /* Return PRIV_S so _trap_return uses sret, which returns to
          * the correct privilege level using sstatus.SPP (set by hardware). */
         return PRIV_S;
@@ -519,8 +580,8 @@ unsigned s_trap_handler(void) {
     printf("  sepc   = 0x%lx\n", (unsigned long)epc);
     printf("  stval  = 0x%lx\n", (unsigned long)tval);
 
-    while (1)
-        asm volatile("wfi");
+    /* Halt with fail status */
+    _halt_fail();
 
     return PRIV_S; /* unreachable */
 }
@@ -574,6 +635,7 @@ void trap_clear_record(void) {
     trap_record.htval       = 0;
     trap_record.htinst      = 0;
     trap_record.gva         = false;
+    trap_record.spv         = false;
 #endif
     __sync_synchronize();
 }
@@ -617,5 +679,12 @@ bool trap_get_mpv(void) {
 
 uintptr_t trap_get_mpp(void) {
     return _m_trap_mpp_snap;
+}
+
+/* hstatus.SPV snapshot captured at trap entry (M or S mode).
+ * Used by trap_get_spv() when the trap went through s_trap_handler
+ * or m_trap_handler instead of hs_trap_handler. */
+bool trap_get_spv_snap(void) {
+    return trap_record.spv;
 }
 #endif

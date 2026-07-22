@@ -270,11 +270,13 @@ bool tret_14_sret_sepc(void) {
 
     TEST_ASSERT_EQ("sepc readback == written value", read_val, test_val);
 
-    /* Verify vsepc is readable/writable (in V=1, maps to sepc). */
-    test_val = 0x87654321UL;
-    asm volatile ("csrw 0x242, %0" :: "r"(test_val));  /* vsepc */
+    /* Verify vsepc is readable/writable.
+     * vsepc (CSR 0x241) is WARL: bit 0 must be 0 (instruction alignment).
+     * Use an even-aligned test value. Note: 0x242 is vscause, NOT vsepc. */
+    test_val = 0x87654320UL;  /* even-aligned for WARL */
+    asm volatile ("csrw 0x241, %0" :: "r"(test_val));  /* vsepc */
 
-    asm volatile ("csrr %0, 0x242" : "=r"(read_val));  /* vsepc */
+    asm volatile ("csrr %0, 0x241" : "=r"(read_val));  /* vsepc */
 
     TEST_ASSERT_EQ("vsepc readback == written value", read_val, test_val);
 

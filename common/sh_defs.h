@@ -64,6 +64,8 @@
 #define HSTATUS_VTSR       (1UL << 22)
 #define HSTATUS_VSXL_SHIFT 32
 #define HSTATUS_VSXL_MASK  (3UL << HSTATUS_VSXL_SHIFT)
+#define HSTATUS_HUPMM_OFF  48             /* HUPMM field offset in hstatus (RV64) */
+#define HSTATUS_HUPMM_MASK (3UL << 48)   /* HUPMM field mask [49:48] (Ssnpm) */
 
 #define HSTATUS_WRITABLE_MASK ( \
     HSTATUS_VSBE | HSTATUS_GVA | HSTATUS_SPV | HSTATUS_SPVP | \
@@ -118,8 +120,24 @@
 
 /* ===================================================================
  * HENVCFG field bits
+ *
+ * henvcfg mirrors menvcfg for the fields that affect VS-mode.
+ * LPE and SSE have the same bit positions as in menvcfg.
  * =================================================================== */
-#define HENVCFG_STCE    (1ULL << 63)
+#define HENVCFG_PBMTE   (1ULL << 62)   /* Svpbmt for VS-stage */
+#define HENVCFG_ADUE    (1ULL << 61)   /* Hardware A/D update for VS-stage */
+#define HENVCFG_STCE    (1ULL << 63)   /* vstimecmp enable */
+#define HENVCFG_LPE     (1ULL << 2)    /* Landing Pad Enable for VS-mode (Zicfilp) */
+#define HENVCFG_SSE     (1ULL << 3)    /* Shadow Stack Enable for VS-mode (Zicfiss) */
+#define HENVCFG_PMM_OFF  32             /* PMM field offset in henvcfg */
+#define HENVCFG_PMM_MASK (3ULL << 32)   /* PMM field mask [33:32] (Ssnpm, VS-mode) */
+
+/* ===================================================================
+ * vsstatus field bits (VS-mode version of sstatus)
+ *
+ * SPELP mirrors sstatus.SPELP (bit 23) for VS-mode trap save/restore.
+ * =================================================================== */
+#define VSSTATUS_SPELP_BIT  BIT(23)    /* VS-mode Previous ELP (Zicfilp) */
 
 /* ===================================================================
  * Sstc Extension: VS-mode / Hypervisor field definitions

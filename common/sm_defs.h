@@ -41,6 +41,10 @@
 #define MENVCFG_PMM_OFF  32             /* PMM field offset in menvcfg */
 #define MENVCFG_PMM_MASK (3ULL << 32)   /* PMM field mask [33:32] (Smnpm) */
 #define MENVCFG_STCE    (1ULL << 63)    /* Sstc enable */
+#define MENVCFG_CBIE_SHIFT  4            /* CBIE field offset (Zicbom) */
+#define MENVCFG_CBIE_MASK   (3ULL << 4)  /* CBIE field mask [5:4] (Zicbom) */
+#define MENVCFG_CBCFE   (1ULL << 6)     /* Cache-Block Clean/Flush Enable (Zicbom) */
+#define MENVCFG_CBZE    (1ULL << 7)     /* Cache-Block Zero Enable (Zicboz) */
 
 /* ----- Machine Security Configuration ----- */
 #define CSR_MSECCFG     0x747
@@ -70,7 +74,7 @@
 #define MSTATUS_TVM_BIT     BIT(20)
 #define MSTATUS_TW_BIT      BIT(21)
 #define MSTATUS_TSR_BIT     BIT(22)
-#define MSTATUS_SPELP_BIT   BIT(33)    /* S-mode Previous ELP (Zicfilp) */
+#define MSTATUS_SPELP_BIT   BIT(23)    /* S-mode Previous ELP (Zicfilp) */
 #define MSTATUS_MPELP_BIT   BIT(41)    /* M-mode Previous ELP (Zicfilp) */
 
 /* Legacy alias for MSTATUS_TVM_BIT (used by Hypervisor test code) */

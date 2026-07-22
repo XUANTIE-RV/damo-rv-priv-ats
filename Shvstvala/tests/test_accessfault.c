@@ -32,7 +32,7 @@ bool test_shvstvala_laf_01(void) {
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(PMP_RESTRICTED_PA, 0x1000, 0);
     pmp_set_entry(0, &e0);
     /* Entry 1: full address space catch-all RWX */
-    pmp_entry_t e1 = PMP_ENTRY_NAPOT(0x0, 0x100000000UL, PMP_RWX);
+    pmp_entry_t e1 = PMP_ENTRY_FULL(PMP_RWX);
     pmp_set_entry(1, &e1);
 
     g_shvstvala_vstval = 0;
@@ -88,7 +88,7 @@ bool test_shvstvala_saf_01(void) {
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(PMP_RESTRICTED_PA, 0x1000, PMP_R);
     pmp_set_entry(0, &e0);
     /* Entry 1: catch-all RWX */
-    pmp_entry_t e1 = PMP_ENTRY_NAPOT(0x0, 0x100000000UL, PMP_RWX);
+    pmp_entry_t e1 = PMP_ENTRY_FULL(PMP_RWX);
     pmp_set_entry(1, &e1);
 
     g_shvstvala_vstval = 0;
@@ -142,7 +142,7 @@ bool test_shvstvala_iaf_01(void) {
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(PMP_RESTRICTED_PA, 0x1000, PMP_RW);
     pmp_set_entry(0, &e0);
     /* Entry 1: catch-all RWX */
-    pmp_entry_t e1 = PMP_ENTRY_NAPOT(0x0, 0x100000000UL, PMP_RWX);
+    pmp_entry_t e1 = PMP_ENTRY_FULL(PMP_RWX);
     pmp_set_entry(1, &e1);
 
     g_shvstvala_vstval = 0;

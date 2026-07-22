@@ -5,6 +5,9 @@
 #ifndef PLATFORM_QEMU_RV32_MAX_H
 #define PLATFORM_QEMU_RV32_MAX_H
 
+/* This header is included via CFLAGS -include for C code only.
+ * Assembly-only constants are in rvmodel_macros.h (included via ASFLAGS). */
+
 /* ===== QEMU virt platform address map ===== */
 
 /* UART (NS16550 compatible) */
@@ -27,5 +30,12 @@
 /* Some Case will crash qemu, mark those test as SKIP */
 #define QEMU_SKIP_TESTS  1
 
+/* ===== CLINT / Machine Timer addresses (for C code) =====
+ * These mirror the values in rvmodel_macros.h for C code use.
+ * Assembly code uses the originals in rvmodel_macros.h. */
+#define PLATFORM_CLINT_BASE       0x02000000UL
+#define PLATFORM_MSIP_ADDR        PLATFORM_CLINT_BASE
+#define PLATFORM_MTIMECMP_ADDR    (PLATFORM_CLINT_BASE + 0x4000UL)
+#define PLATFORM_MTIME_ADDR       (PLATFORM_CLINT_BASE + 0xBFF8UL)
 
 #endif /* PLATFORM_QEMU_RV32_MAX_H */

@@ -40,6 +40,10 @@ CONFIG_RVTEST_HEADER   = $(CONFIG_DIR)/rvtest_config.h
 CONFIG_MODEL_HEADER     = $(CONFIG_DIR)/rvmodel_macros.h
 
 # All three configuration headers are mandatory for each platform.
+# Header roles:
+#   platform_config.h  -> C only    (injected via CFLAGS -include)
+#   rvmodel_macros.h   -> C + Assembly (injected via both CFLAGS and ASFLAGS)
+#   rvtest_config.h    -> Shared C + Assembly (injected via both)
 # If any is missing, abort with a clear error message.
 $(if $(wildcard $(CONFIG_PLATFORM_HEADER)),,$(error Missing required config header: $(CONFIG_PLATFORM_HEADER)))
 $(if $(wildcard $(CONFIG_RVTEST_HEADER)),,$(error Missing required config header: $(CONFIG_RVTEST_HEADER)))
@@ -135,14 +139,20 @@ NTRACE_OBJS = $(NTRACE_DIR)/trace_ctrl.o $(NTRACE_DIR)/ntrace_decoder.o
 COMMON_OBJS += $(NTRACE_OBJS)
 endif
 
+# CMO (Cache Management Operations) support (conditional, set ENABLE_CMO=1 in extension Makefile)
+ifdef ENABLE_CMO
+CMO_DIR = $(COMMON_DIR)/cmo
+endif
+
 # Compiler flags
 CFLAGS  = -Wall -O0 -g -fno-omit-frame-pointer -ggdb
 CFLAGS += -march=$(MARCH) -mabi=$(ABI) -mcmodel=medany
 CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS += -I$(COMMON_DIR) -I.
+# CFLAGS: platform_config.h (C-only) + rvmodel_macros.h (C + Assembly) + rvtest_config.h (shared)
 CFLAGS += -include $(CONFIG_PLATFORM_HEADER)
-CFLAGS += -include $(CONFIG_RVTEST_HEADER)
 CFLAGS += -include $(CONFIG_MODEL_HEADER)
+CFLAGS += -include $(CONFIG_RVTEST_HEADER)
 CFLAGS += -D LOG_LEVEL=$(LOG_LEVEL)
 CFLAGS += -D MEM_BASE=$(MEM_BASE)
 CFLAGS += -MMD -MP
@@ -178,15 +188,21 @@ ifdef ENABLE_NTRACE
 CFLAGS += -DENABLE_NTRACE -I$(NTRACE_DIR)
 endif
 
+# Conditional CFLAGS for CMO support
+ifdef ENABLE_CMO
+CFLAGS += -DENABLE_CMO -I$(CMO_DIR)
+endif
+
 # Extra CFLAGS from command line (e.g., make qemu EXTRA_CFLAGS='-DTEST_FILTER="VS-10"')
 CFLAGS += $(EXTRA_CFLAGS)
 
 # Assembler flags
 ASFLAGS  = -march=$(MARCH) -mabi=$(ABI)
 ASFLAGS += -I$(COMMON_DIR) -I.
-ASFLAGS += -include $(CONFIG_PLATFORM_HEADER)
-ASFLAGS += -include $(CONFIG_RVTEST_HEADER)
+# ASFLAGS: rvmodel_macros.h (assembly-only) + rvtest_config.h (shared)
+# platform_config.h is NOT included in ASFLAGS (C-only)
 ASFLAGS += -include $(CONFIG_MODEL_HEADER)
+ASFLAGS += -include $(CONFIG_RVTEST_HEADER)
 ASFLAGS += -D MEM_BASE=$(MEM_BASE)
 
 # Conditional ASFLAGS for PMP support
@@ -212,6 +228,11 @@ endif
 # Conditional ASFLAGS for N-Trace support
 ifdef ENABLE_NTRACE
 ASFLAGS += -DENABLE_NTRACE -I$(NTRACE_DIR)
+endif
+
+# Conditional ASFLAGS for CMO support
+ifdef ENABLE_CMO
+ASFLAGS += -DENABLE_CMO -I$(CMO_DIR)
 endif
 
 # Linker flags

@@ -305,8 +305,8 @@ int pt_setup_identity_mapping(pt_context_t *ctx, uintptr_t base,
     /*
      * Map CLINT region if defined (for timer access in S-mode).
      */
-#ifdef CLINT_BASE_ADDRESS
-    uintptr_t clint_base = CLINT_BASE_ADDRESS;
+#ifdef PLATFORM_CLINT_BASE
+    uintptr_t clint_base = PLATFORM_CLINT_BASE;
     if (clint_base < aligned_base || clint_base >= end) {
         /* Map 64KB for CLINT (covers all CLINT registers) */
         uintptr_t clint_flags = PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;

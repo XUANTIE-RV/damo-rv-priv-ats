@@ -269,6 +269,12 @@ extern uintptr_t trap_get_epc(void);
 extern uintptr_t trap_get_tval(void);
 extern uintptr_t trap_get_status_snap(void);
 
+/* CFI (Zicfilp) PELP control flags (defined in trap.c).
+ * Default 0 = no impact on existing suites. Tests set these to
+ * verify hardware xRET xpelp handling. See trap.c for details. */
+extern bool g_trap_preserve_pelp;
+extern bool g_trap_force_pelp;
+
 /* ===================================================================
  * Double Trap (Smdbltrp) Support
  *
@@ -466,6 +472,17 @@ extern uintptr_t run_in_priv(unsigned priv, uintptr_t (*fn)(uintptr_t), uintptr_
 extern uintptr_t trap_get_htval(void);
 extern uintptr_t trap_get_htinst(void);
 extern bool      trap_get_gva(void);
+
+/* mstatus.MPV/MPP snapshots captured at M-mode trap entry, before
+ * the handler modifies them. Used to verify hardware auto-writes on
+ * trap entry (e.g. HCFI-LP-41 trap from VS-mode). */
+extern bool      trap_get_mpv(void);
+extern uintptr_t trap_get_mpp(void);
+
+/* hstatus.SPV snapshot captured at trap entry (M or S mode handler).
+ * Used by trap_get_spv() as a fallback when the trap did not go
+ * through hs_trap_handler (e.g. LP-36/40 via s_trap_handler). */
+extern bool      trap_get_spv_snap(void);
 #endif
 
 /* ===================================================================

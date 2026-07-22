@@ -152,10 +152,11 @@ bool test_pbmt_io_2mb_megapage(void) {
  * =================================================================== */
 
 /* Pick a 1GB-aligned VA that does NOT overlap the code region.
- * Sv39 supports a 39-bit VA space (max ~256 GB usable per half).
- * 4 GB (0x100000000) is safely above any practical code/data
- * placement and is naturally 1 GB aligned. */
-#define PBMT_TEST_GIGAPAGE_VA  0x100000000UL
+ * Compute the next 1GB region after PLATFORM_MEM_BASE to guarantee
+ * no conflict with the code/data identity mapping.
+ * For QEMU (MEM_BASE=0x80000000): gives 0xC0000000. */
+#define PBMT_TEST_GIGAPAGE_VA \
+    ((PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1)) + PAGE_SIZE_1G)
 
 static void run_1gb_gigapage_pbmt_test(uintptr_t pbmt_attr) {
     pt_context_t ctx;

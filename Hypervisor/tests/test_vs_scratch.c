@@ -344,14 +344,29 @@ bool vscr_06_v0_trap_uses_sepc(void)
 {
     TEST_BEGIN("VSCR-06: V=0 trap uses sepc/scause/stval, not VS CSRs");
 
-    /* Preset VS CSRs with distinctive canary values */
+    /* Preset VS CSRs with distinctive canary values.
+     * vscause is WLRL: only valid cause codes are accepted, so use
+     * cause=12 (instruction page fault) instead of an arbitrary value.
+     * vsepc is WARL: bit 0 must be 0 (instruction alignment). */
     uintptr_t canary_epc   = 0xCCCC0000UL;
-    uintptr_t canary_cause = 0xDDDD0000UL;
+    uintptr_t canary_cause = 12;            /* valid cause: instruction page fault */
     uintptr_t canary_tval  = 0xEEEE0000UL;
 
     asm volatile ("csrw 0x241, %0" :: "r"(canary_epc));    /* vsepc */
     asm volatile ("csrw 0x242, %0" :: "r"(canary_cause));   /* vscause */
     asm volatile ("csrw 0x243, %0" :: "r"(canary_tval));    /* vstval */
+
+    /* Read back canary values to confirm they were actually stored.
+     * WLRL/WARL fields may reject or mask illegal writes; comparing
+     * against the confirmed stored value (not the written value) makes
+     * the test robust across all SPEC-compliant implementations. */
+    uintptr_t stored_epc, stored_cause, stored_tval;
+    asm volatile ("csrr %0, 0x241" : "=r"(stored_epc));
+    asm volatile ("csrr %0, 0x242" : "=r"(stored_cause));
+    asm volatile ("csrr %0, 0x243" : "=r"(stored_tval));
+    TEST_ASSERT_EQ("vsepc canary stored", stored_epc, canary_epc);
+    TEST_ASSERT_EQ("vscause canary stored", stored_cause, canary_cause);
+    TEST_ASSERT_EQ("vstval canary stored", stored_tval, canary_tval);
 
     /* Ensure no delegation: traps go to M-mode where the
      * framework's trap handler captures them. */
@@ -386,11 +401,11 @@ bool vscr_06_v0_trap_uses_sepc(void)
     asm volatile ("csrr %0, 0x243" : "=r"(vstval_after));
 
     TEST_ASSERT_EQ("vsepc unchanged by V=0 trap",
-                   vsepc_after, canary_epc);
+                   vsepc_after, stored_epc);
     TEST_ASSERT_EQ("vscause unchanged by V=0 trap",
-                   vscause_after, canary_cause);
+                   vscause_after, stored_cause);
     TEST_ASSERT_EQ("vstval unchanged by V=0 trap",
-                   vstval_after, canary_tval);
+                   vstval_after, stored_tval);
 
     HYP_TEST_END();
 }
