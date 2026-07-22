@@ -32,22 +32,20 @@
     .section .text
     .global _platform_hw_init
 _platform_hw_init:
+    /* This is a non-leaf function (calls platform_clear_maee), so we
+     * must save/restore ra around the call. Without this, the 'call'
+     * instruction (jal ra, ...) clobbers ra, and 'ret' at the end
+     * jumps back to itself in an infinite loop. */
+    addi    sp, sp, -REGSIZE
+    STORE   ra, 0(sp)
 
-#ifdef PLATFORM_CLEAR_MAEE
-    /*
-     * T-Head C908/C910: clear MAEE (mxstatus bit 21) so PTE uses
-     * standard RISC-V format. When MAEE=0, PTE[63:59] are reserved
-     * and DDR uses default cacheable attribute, ensuring AMO/LR/SC
-     * work correctly via local monitor without explicit PTE cache bits.
-     * Ref: C908 User Manual Section 6.2.3, 7.3.3, Appendix C.
-     */
-    csrr    t1, 0x7C0
-    li      t2, (1 << 21)
-    not     t2, t2
-    and     t1, t1, t2
-    csrw    0x7C0, t1
-#endif
+    /* Clear T-Head MAEE bit if needed (PLATFORM_CLEAR_MAEE is checked
+     * at C compile time in platform_clear_maee via platform_config.h).
+     * Called from C because platform_config.h is no longer in ASFLAGS. */
+    call    platform_clear_maee
 
+    LOAD    ra, 0(sp)
+    addi    sp, sp, REGSIZE
     ret
 
 /* ===================================================================

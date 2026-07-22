@@ -19,9 +19,10 @@
  */
 
 /* 1GB-aligned VA for the PBMT=NC data gigapage, must not overlap
- * the code identity mapping. 0x100000000 (4 GB) works for all
- * Sv39/Sv48/Sv57 modes. */
-#define PBMT_TEST_GIGAPAGE_VA  0x100000000UL
+ * the code identity mapping. Compute the next 1GB region after
+ * PLATFORM_MEM_BASE to guarantee no conflict on all platforms. */
+#define PBMT_TEST_GIGAPAGE_VA \
+    ((PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1)) + PAGE_SIZE_1G)
 
 /* ===================================================================
  * MODE-01: Sv39 + PBMT=NC

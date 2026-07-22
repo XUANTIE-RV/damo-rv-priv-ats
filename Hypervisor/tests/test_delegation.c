@@ -348,6 +348,10 @@ bool hedeleg_breakpoint_deleg(void)
 {
     TEST_BEGIN("DELEG-06: Delegate breakpoint to VS (vscause=3)");
 
+#ifdef SKIP_BREAKPOINT_TESTS
+    TEST_SKIP("platform does not support breakpoint (SKIP_BREAKPOINT_TESTS)");
+#endif
+
     setup_vs_exc_test(1UL << 3);
 
     run_in_vs_mode(vs_exec_ebreak, 0);

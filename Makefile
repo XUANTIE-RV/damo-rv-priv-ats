@@ -103,10 +103,16 @@ $(EXTENSIONS):
 
 clean:
 	@for ext in $(EXTENSIONS); do \
-		$(MAKE) -C $$ext clean $(MAKE_VARS); \
+		if [ -d $$ext ]; then \
+			$(MAKE) -C $$ext clean $(MAKE_VARS); \
+		else \
+			echo "Skipping $$ext (directory not found)"; \
+		fi; \
 	done
 	find common -name "*.o" -type f -delete
 	# Clean residual build artifacts in directories not listed in EXTENSIONS
+	find . -name "*.o" -not -path "./.git/*" -type f -delete
+	find . -name "*.d" -not -path "./.git/*" -type f -delete
 	find . -name "*.asm" -not -path "./.git/*" -type f -delete
 	find . -name "*.sym" -not -path "./.git/*" -type f -delete
 	find . -name "*.trace" -not -path "./.git/*" -type f -delete

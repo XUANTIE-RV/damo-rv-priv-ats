@@ -31,6 +31,10 @@
 
 #define SENVCFG_LPE     (1ULL << 2)    /* Landing Pad Enable for U-mode (Zicfilp) */
 #define SENVCFG_SSE     (1ULL << 3)    /* Shadow Stack Enable for U-mode (Zicfiss) */
+#define SENVCFG_CBIE_SHIFT  4            /* CBIE field offset (Zicbom) */
+#define SENVCFG_CBIE_MASK   (3ULL << 4)  /* CBIE field mask [5:4] (Zicbom) */
+#define SENVCFG_CBCFE   (1ULL << 6)     /* Cache-Block Clean/Flush Enable (Zicbom) */
+#define SENVCFG_CBZE    (1ULL << 7)     /* Cache-Block Zero Enable (Zicboz) */
 #define SENVCFG_PMM_OFF  32             /* PMM field offset in senvcfg */
 #define SENVCFG_PMM_MASK (3ULL << 32)   /* PMM field mask [33:32] (Ssnpm) */
 

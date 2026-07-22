@@ -378,3 +378,25 @@ uintptr_t run_in_priv(unsigned priv, uintptr_t (*fn)(uintptr_t), uintptr_t arg) 
 
     return _run_result;
 }
+
+/* ===================================================================
+ * platform_clear_maee - Clear T-Head MAEE bit if platform requires it
+ *
+ * Called from _platform_hw_init in platform_init.S during early boot.
+ * PLATFORM_CLEAR_MAEE is defined in platform_config.h (CFLAGS only),
+ * so this check happens at C compile time. Assembly code does not
+ * need to know about PLATFORM_CLEAR_MAEE.
+ * =================================================================== */
+void platform_clear_maee(void) {
+#ifdef PLATFORM_CLEAR_MAEE
+    /* T-Head C908/C910: clear MAEE (mxstatus bit 21) so PTE uses
+     * standard RISC-V format. When MAEE=0, PTE[63:59] are reserved
+     * and DDR uses default cacheable attribute, ensuring AMO/LR/SC
+     * work correctly via local monitor without explicit PTE cache bits.
+     * Ref: C908 User Manual Section 6.2.3, 7.3.3, Appendix C. */
+    uintptr_t mxstatus;
+    asm volatile("csrr %0, 0x7C0" : "=r"(mxstatus));
+    mxstatus &= ~(1UL << 21);
+    asm volatile("csrw 0x7C0, %0" :: "r"(mxstatus));
+#endif
+}

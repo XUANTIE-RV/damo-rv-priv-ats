@@ -51,6 +51,23 @@ bool test_sv48_satp03(void) {
                 PTE_V | PTE_R | PTE_W | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
+    /*
+     * Probe satp.MODE support by writing Sv48 and reading back.
+     *
+     * Per RISC-V privileged spec (norm:satp_mode_op_unsupported):
+     * If an implementation does not support Sv48, the write has no
+     * effect and all satp fields retain their previous values.
+     *
+     * This check is essential: without it, a Bare-mode identity
+     * mapping would still allow read/write to succeed, masking the
+     * fact that Sv48 was never actually activated by the hardware.
+     */
+    vm_enable(&ctx, 0);
+    uintptr_t satp_val = CSRR(satp);
+    uintptr_t mode = SATP_GET_MODE(satp_val);
+    TEST_ASSERT("satp.MODE is Sv48 after write", mode == SATP_MODE_SV48);
+    vm_disable();
+
     /* Enable VM and verify it works */
     uintptr_t result = vm_run_in_smode(&ctx, test_smode_read_write,
                                         (uintptr_t)test_data_area);

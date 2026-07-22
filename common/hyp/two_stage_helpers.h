@@ -65,6 +65,10 @@ extern uint8_t test_exec_target[];
  * U=0 because VS-mode is the "supervisor of the guest". */
 #define VS_FLAGS_RWX_S_AD   (PTE_V|PTE_R|PTE_W|PTE_X|PTE_A|PTE_D)
 
+/* VS-stage S-level leaf PTE without execute permission (X=0):
+ * instruction fetch from such a page raises an instruction page fault. */
+#define VS_FLAGS_RW_S_AD    (PTE_V|PTE_R|PTE_W|PTE_A|PTE_D)
+
 /* VS-stage default leaf PTE for a U-level (VU-mode) access. */
 #define VS_FLAGS_RWXU_AD    (PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D)
 

@@ -98,6 +98,16 @@ unsigned hs_trap_handler(void) {
         break;
     }
 
+    /* CFI (Zicfilp) test hook: force SPELP=1 before sret so tests
+     * can verify hardware clears xpelp on sret (LP-17).
+     * No-op unless g_trap_force_pelp is set by the test.
+     * Use sstatus (not mstatus) because this is the HS-mode handler. */
+#if __riscv_xlen > 32
+    if (g_trap_force_pelp) {
+        CSRS(sstatus, MSTATUS_SPELP_BIT);
+    }
+#endif
+
     /* Return to whatever mode was interrupted (sret uses sstatus.SPP
      * and hstatus.SPV to determine the target). */
     return PRIV_S; /* nominal S = HS-mode handler level */
@@ -108,5 +118,11 @@ unsigned hs_trap_handler(void) {
  * =================================================================== */
 
 bool trap_get_spv(void) {
-    return _hs_trap_record.spv;
+    /* Prefer the HS-mode trap record (set by hs_trap_handler) when
+     * available. Fall back to the snapshot captured by s_trap_handler
+     * or m_trap_handler (trap_record.spv) for traps that went through
+     * the common S/M handler path (e.g. LP-36/40 via medeleg). */
+    if (_hs_trap_record.triggered)
+        return _hs_trap_record.spv;
+    return trap_get_spv_snap();
 }

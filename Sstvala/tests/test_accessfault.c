@@ -42,12 +42,12 @@ bool test_sstvala_laf_01(void) {
     uintptr_t target_addr = (uintptr_t)test_data_area;
 
     /* Set up PMP:
-     * entry 0: target_addr NAPOT 4KiB, W-only (no R, no X)
-     * entry 1: full address space NAPOT, RWX (baseline) */
+     * entry 0: target_addr NAPOT 4KiB, Inaccessible (R=0,W=0,X=0)
+     * entry 1: full address space, RWX (baseline) */
     pmp_clear_all();
-    pmp_entry_t e0 = PMP_ENTRY_NAPOT(target_addr, 0x1000, PMP_W);
+    pmp_entry_t e0 = PMP_ENTRY_NAPOT(target_addr, 0x1000, 0);
     pmp_set_entry(0, &e0);
-    pmp_entry_t e1 = PMP_ENTRY_NAPOT(0x0, 0x100000000UL, PMP_RWX);
+    pmp_entry_t e1 = PMP_ENTRY_FULL(PMP_RWX);
     pmp_set_entry(1, &e1);
 
     /* Switch to S-mode and attempt a load */
@@ -76,9 +76,9 @@ bool test_sstvala_laf_02(void) {
     uintptr_t target_addr = (uintptr_t)test_fault_page;
 
     pmp_clear_all();
-    pmp_entry_t e0 = PMP_ENTRY_NAPOT(target_addr, 0x1000, PMP_W);
+    pmp_entry_t e0 = PMP_ENTRY_NAPOT(target_addr, 0x1000, 0); /* Inaccessible */
     pmp_set_entry(0, &e0);
-    pmp_entry_t e1 = PMP_ENTRY_NAPOT(0x0, 0x100000000UL, PMP_RWX);
+    pmp_entry_t e1 = PMP_ENTRY_FULL(PMP_RWX);
     pmp_set_entry(1, &e1);
 
     goto_priv(PRIV_S);
@@ -106,7 +106,7 @@ bool test_sstvala_saf_01(void) {
     pmp_clear_all();
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(target_addr, 0x1000, PMP_R);
     pmp_set_entry(0, &e0);
-    pmp_entry_t e1 = PMP_ENTRY_NAPOT(0x0, 0x100000000UL, PMP_RWX);
+    pmp_entry_t e1 = PMP_ENTRY_FULL(PMP_RWX);
     pmp_set_entry(1, &e1);
 
     goto_priv(PRIV_S);
@@ -136,7 +136,7 @@ bool test_sstvala_iaf_01(void) {
     pmp_clear_all();
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(target_addr, 0x1000, PMP_RW);
     pmp_set_entry(0, &e0);
-    pmp_entry_t e1 = PMP_ENTRY_NAPOT(0x0, 0x100000000UL, PMP_RWX);
+    pmp_entry_t e1 = PMP_ENTRY_FULL(PMP_RWX);
     pmp_set_entry(1, &e1);
 
     goto_priv(PRIV_S);

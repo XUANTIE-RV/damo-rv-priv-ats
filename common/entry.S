@@ -81,6 +81,7 @@ _halt:
     bnez    a0, _halt_fail
     RVMODEL_HALT_PASS
     j       _halt_loop
+.global _halt_fail
 _halt_fail:
     RVMODEL_HALT_FAIL
 _halt_loop:

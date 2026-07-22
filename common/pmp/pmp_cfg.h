@@ -192,10 +192,16 @@ bool smepmp_is_supported(void);
     (pmp_entry_t){ .cfg = PMP_A_NAPOT | (rwx_flags), \
                    .addr = (base), .size = (sz) }
 
-/* 4 GiB NAPOT entry covering the whole RV32 address space.
- * On RV64 this only covers the low 4 GiB, not the full 64-bit space. */
+/* NAPOT entry covering the entire physical address space.
+ * RV64: 2^56 bytes (full Sv39/Sv48/Sv57 physical address width).
+ * RV32: 2^32 bytes (full 4 GiB address space). */
+#if __riscv_xlen == 64
+#define PMP_ENTRY_FULL(rwx_flags) \
+    PMP_ENTRY_NAPOT(0x0, (1ULL << 56), (rwx_flags))
+#else
 #define PMP_ENTRY_FULL(rwx_flags) \
     PMP_ENTRY_NAPOT(0x0, 0x100000000ULL, (rwx_flags))
+#endif
 
 #define PMP_ENTRY_TOR(top_addr, rwx_flags) \
     (pmp_entry_t){ .cfg = PMP_A_TOR | (rwx_flags), \
