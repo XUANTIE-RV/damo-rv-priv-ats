@@ -118,6 +118,35 @@ static void vs_int_handler(void)
 /* vs_nop_fn is defined in test_helpers.c (shared helper). */
 
 /* ===================================================================
+ * HS-mode interrupt handler
+ *
+ * This handler is installed at stvec for tests that need to verify
+ * interrupts actually delivered to HS-mode (HINT-10, HINT-12).
+ * It records the first interrupt cause, clears pending sources to
+ * prevent re-entry, disables SIE+SPIE, and returns via sret.
+ * =================================================================== */
+
+static volatile uintptr_t g_hs_int_cause;
+static volatile bool g_hs_int_triggered;
+
+static void hs_int_handler(void) __attribute__((naked, aligned(4)));
+static void hs_int_handler(void)
+{
+    asm volatile (
+        "csrr   t0, scause\n\t"
+        "la     t1, g_hs_int_cause\n\t"
+        "sd     t0, 0(t1)\n\t"
+        "li     t0, 1\n\t"
+        "la     t1, g_hs_int_triggered\n\t"
+        "sb     t0, 0(t1)\n\t"
+        "li     t0, 0x22\n\t"
+        "csrc   sstatus, t0\n\t"
+        "csrw   sie, zero\n\t"
+        "sret\n\t"
+    );
+}
+
+/* ===================================================================
  * Helper: set up VS interrupt test infrastructure
  *
  * Configures delegation, vstvec, and vsstatus.SIE for VS-mode
@@ -266,85 +295,141 @@ bool hvip_vseip_injection(void)
 }
 
 /* ------------------------------------------------------------------
- * HINT-04: hip.VSSIP is hvip.VSSIP alias
+ * HINT-04: hip.VSSIP is bidirectional writable alias of hvip.VSSIP
+ *
+ * Per norm:hip_vssip_vssie_op: "VSSIP in hip is an alias (writable)
+ * of the same bit in hvip." This means:
+ *   - Read direction: hvip.VSSIP=1 -> hip.VSSIP reads 1
+ *   - Write direction: writing hip.VSSIP=1 -> hvip.VSSIP becomes 1
  * ------------------------------------------------------------------ */
 TEST_REGISTER(hip_vssp_is_alias);
 bool hip_vssp_is_alias(void)
 {
-    TEST_BEGIN("HINT-04: Verify hip.VSSIP is hvip.VSSIP alias");
+    TEST_BEGIN("HINT-04: Verify hip.VSSIP is bidirectional writable alias");
 
-    /* Set hvip.VSSIP (bit 2 = 0x4). */
+    /* --- Part A: Read direction (hvip -> hip) --- */
     hvip_set_vssi(1);
-    uintptr_t hvip_val = hvip_read();
-
-    /* Read hip and verify alias relationship (bit 2 = 0x4). */
     uintptr_t hip_val;
     asm volatile("csrr %0, 0x644" : "=r"(hip_val));
-    TEST_ASSERT_EQ("hip.VSSIP should alias hvip.VSSIP",
-                   (hip_val & VS_VSSIP), (hvip_val & VS_VSSIP));
+    TEST_ASSERT_EQ("hip.VSSIP=1 when hvip.VSSIP=1 (read direction)",
+                   hip_val & VS_VSSIP, VS_VSSIP);
 
-    /* Clear hvip.VSSIP and verify hip clears. */
     hvip_set_vssi(0);
     asm volatile("csrr %0, 0x644" : "=r"(hip_val));
-    TEST_ASSERT_EQ("Clearing hvip.VSSIP should clear hip.VSSIP",
+    TEST_ASSERT_EQ("hip.VSSIP=0 when hvip.VSSIP=0 (read direction)",
                    hip_val & VS_VSSIP, (uintptr_t)0);
+
+    /* --- Part B: Write direction (hip -> hvip) --- */
+    /* Ensure hvip.VSSIP starts at 0 */
+    hvip_set_vssi(0);
+    uintptr_t hvip_val = hvip_read();
+    TEST_ASSERT_EQ("hvip.VSSIP initially 0", hvip_val & VS_VSSIP, (uintptr_t)0);
+
+    /* Write hip.VSSIP=1 directly (bit 2 = 0x4) */
+    asm volatile("csrr %0, 0x644" : "=r"(hip_val));
+    asm volatile("csrw 0x644, %0" :: "r"(hip_val | VS_VSSIP) : "memory");
+
+    /* Verify hvip.VSSIP became 1 (writable alias) */
+    hvip_val = hvip_read();
+    TEST_ASSERT_EQ("hvip.VSSIP=1 after writing hip.VSSIP=1 (write direction)",
+                   hvip_val & VS_VSSIP, VS_VSSIP);
+
+    /* Write hip.VSSIP=0 directly */
+    asm volatile("csrr %0, 0x644" : "=r"(hip_val));
+    asm volatile("csrw 0x644, %0" :: "r"(hip_val & ~VS_VSSIP) : "memory");
+
+    /* Verify hvip.VSSIP became 0 */
+    hvip_val = hvip_read();
+    TEST_ASSERT_EQ("hvip.VSSIP=0 after writing hip.VSSIP=0 (write direction)",
+                   hvip_val & VS_VSSIP, (uintptr_t)0);
 
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
- * HINT-05: hip.VSEIP is read-only (alias of hvip.VSEIP)
+ * HINT-05: hip.VSEIP is read-only (multi-source OR)
+ *
+ * Per norm:hip_vseip_vseie_op: "VSEIP is read-only in hip, and is
+ * the logical-OR of: hvip.VSEIP, hgeip[VGEIN], platform signal."
+ * Verify with two combinations:
+ *   Combo 1: hvip.VSEIP=1, attempt to clear hip.VSEIP -> stays 1
+ *   Combo 2: hvip.VSEIP=0, attempt to set hip.VSEIP -> stays 0
  * ------------------------------------------------------------------ */
 TEST_REGISTER(hip_vseip_readonly);
 bool hip_vseip_readonly(void)
 {
-    TEST_BEGIN("HINT-05: Verify hip.VSEIP is read-only (alias of hvip.VSEIP)");
+    TEST_BEGIN("HINT-05: Verify hip.VSEIP is read-only (two combos)");
 
-    /* Set hvip.VSEIP (bit 10 = 0x400). */
+    /* --- Combo 1: hvip.VSEIP=1, try to write hip.VSEIP=0 --- */
     hvip_set_vsei(1);
-    uintptr_t hvip_val = hvip_read();
-
-    /* Try to write hip.VSEIP directly (bit 10 = 0x400).
-     * hip is mostly read-only; VS pending bits alias hvip. */
     uintptr_t hip_read;
     asm volatile("csrr %0, 0x644" : "=r"(hip_read));
+    TEST_ASSERT_EQ("hip.VSEIP=1 when hvip.VSEIP=1",
+                   hip_read & VS_VSEIP, VS_VSEIP);
+
+    /* Attempt to clear hip.VSEIP by writing 0 to bit 10 */
+    asm volatile("csrw 0x644, %0" :: "r"(hip_read & ~VS_VSEIP) : "memory");
+    asm volatile("csrr %0, 0x644" : "=r"(hip_read));
+    TEST_ASSERT_EQ("hip.VSEIP stays 1 after write-0 (read-only)",
+                   hip_read & VS_VSEIP, VS_VSEIP);
+
+    /* --- Combo 2: hvip.VSEIP=0, try to write hip.VSEIP=1 --- */
+    hvip_set_vsei(0);
+    asm volatile("csrr %0, 0x644" : "=r"(hip_read));
+    TEST_ASSERT_EQ("hip.VSEIP=0 when hvip.VSEIP=0",
+                   hip_read & VS_VSEIP, (uintptr_t)0);
+
+    /* Attempt to set hip.VSEIP by writing 1 to bit 10 */
     asm volatile("csrw 0x644, %0" :: "r"(hip_read | VS_VSEIP) : "memory");
     asm volatile("csrr %0, 0x644" : "=r"(hip_read));
-
-    /* Verify hip.VSEIP still reflects hvip.VSEIP, not the write. */
-    TEST_ASSERT_EQ("hip.VSEIP should remain alias of hvip.VSEIP",
-                   hip_read & VS_VSEIP, hvip_val & VS_VSEIP);
-
-    /* Cleanup */
-    hvip_set_vsei(0);
+    TEST_ASSERT_EQ("hip.VSEIP stays 0 after write-1 (read-only)",
+                   hip_read & VS_VSEIP, (uintptr_t)0);
 
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
  * HINT-06: hip.VSTIP is read-only
+ *
+ * Per norm:hip_vstip_vstie_acc_op: "VSTIP is read-only in hip, and
+ * is the logical-OR of hvip.VSTIP and vstimecmp trigger."
+ * Verify with two combinations:
+ *   Combo 1: hvip.VSTIP=1, attempt to clear hip.VSTIP -> stays 1
+ *   Combo 2: hvip.VSTIP=0, attempt to set hip.VSTIP -> stays 0
  * ------------------------------------------------------------------ */
 TEST_REGISTER(hip_vstip_readonly);
 bool hip_vstip_readonly(void)
 {
-    TEST_BEGIN("HINT-06: Verify hip.VSTIP is read-only (alias of hvip.VSTIP)");
+    TEST_BEGIN("HINT-06: Verify hip.VSTIP is read-only (two combos)");
 
-    /* Set hvip.VSTIP (bit 6 = 0x40). */
+    /* Prevent vstimecmp from interfering: set to max.
+     * vstimecmp is CSR 0x24D (not stimecmp 0x14D). */
+    asm volatile("csrw 0x24D, %0" :: "r"((uintptr_t)-1) : "memory");
+
+    /* --- Combo 1: hvip.VSTIP=1, try to write hip.VSTIP=0 --- */
     hvip_set_vsti(1);
-    uintptr_t hvip_val = hvip_read();
-
-    /* Try to write hip.VSTIP directly (bit 6 = 0x40). */
     uintptr_t hip_read;
     asm volatile("csrr %0, 0x644" : "=r"(hip_read));
+    TEST_ASSERT_EQ("hip.VSTIP=1 when hvip.VSTIP=1",
+                   hip_read & VS_VSTIP, VS_VSTIP);
+
+    /* Attempt to clear hip.VSTIP by writing 0 to bit 6 */
+    asm volatile("csrw 0x644, %0" :: "r"(hip_read & ~VS_VSTIP) : "memory");
+    asm volatile("csrr %0, 0x644" : "=r"(hip_read));
+    TEST_ASSERT_EQ("hip.VSTIP stays 1 after write-0 (read-only)",
+                   hip_read & VS_VSTIP, VS_VSTIP);
+
+    /* --- Combo 2: hvip.VSTIP=0, try to write hip.VSTIP=1 --- */
+    hvip_set_vsti(0);
+    asm volatile("csrr %0, 0x644" : "=r"(hip_read));
+    TEST_ASSERT_EQ("hip.VSTIP=0 when hvip.VSTIP=0",
+                   hip_read & VS_VSTIP, (uintptr_t)0);
+
+    /* Attempt to set hip.VSTIP by writing 1 to bit 6 */
     asm volatile("csrw 0x644, %0" :: "r"(hip_read | VS_VSTIP) : "memory");
     asm volatile("csrr %0, 0x644" : "=r"(hip_read));
-
-    /* Verify hip.VSTIP still reflects hvip.VSTIP, not the write. */
-    TEST_ASSERT_EQ("hip.VSTIP should remain alias of hvip.VSTIP",
-                   hip_read & VS_VSTIP, hvip_val & VS_VSTIP);
-
-    /* Cleanup */
-    hvip_set_vsti(0);
+    TEST_ASSERT_EQ("hip.VSTIP stays 0 after write-1 (read-only)",
+                   hip_read & VS_VSTIP, (uintptr_t)0);
 
     HYP_TEST_END();
 }
@@ -485,41 +570,85 @@ bool clear_hvip_vssp_clears_interrupt(void)
 }
 
 /* ------------------------------------------------------------------
- * HINT-10: hideleg=0 — interrupt not delivered to VS-mode
+ * HINT-10: hideleg=0 — interrupt traps to HS-mode
  *
- * When hideleg[2]=0, VSSIP is pending in hip but NOT visible to
- * VS-mode (vsip.SSIP reads zero). The interrupt traps to HS/M-mode
- * instead of VS-mode.
+ * When hideleg[2]=0, VSSIP is pending in hip and hie.VSSIE=1.
+ * Per norm:hideleg_hs, since current mode is HS and sstatus.SIE=1,
+ * and bit 2 is set in both hip and hie, and bit 2 is NOT set in
+ * hideleg, the interrupt traps to HS-mode (stvec).
  * ------------------------------------------------------------------ */
 TEST_REGISTER(hideleg_0_trap_to_hs);
 bool hideleg_0_trap_to_hs(void)
 {
-    TEST_BEGIN("HINT-10: hideleg[2]=0, VSSIP not delivered to VS-mode");
+    TEST_BEGIN("HINT-10: hideleg[2]=0, VSSIP traps to HS-mode");
+
+    /* Reset HS interrupt record */
+    g_hs_int_cause = 0;
+    g_hs_int_triggered = false;
+
+    /* Clear all interrupt sources */
+    asm volatile("csrw 0x604, zero" ::: "memory");   /* hie = 0 */
+    asm volatile("csrw 0x645, zero" ::: "memory");   /* hvip = 0 */
+    asm volatile("csrw mip, zero" ::: "memory");
 
     /* Do NOT delegate to VS (hideleg[2]=0) */
     hideleg_write(0);
 
-    /* Inject VSSIP */
+    /* Delegate S-level interrupts to HS-mode via mideleg.
+     * This ensures the interrupt routes to stvec (not mtvec). */
+    uintptr_t mideleg_val;
+    asm volatile("csrr %0, 0x303" : "=r"(mideleg_val));
+    mideleg_val |= VS_VSSIP;  /* bit 2 */
+    asm volatile("csrw 0x303, %0" :: "r"(mideleg_val) : "memory");
+
+    /* Install custom HS-mode interrupt handler at stvec */
+    uintptr_t saved_stvec;
+    asm volatile("csrr %0, stvec" : "=r"(saved_stvec));
+    asm volatile("csrw stvec, %0" :: "r"((uintptr_t)hs_int_handler) : "memory");
+
+    /* Enable VSSIE in hie (bit 2) */
+    asm volatile("csrs 0x604, %0" :: "r"(VS_VSSIP) : "memory");
+
+    /* Inject VSSIP via hvip */
     hvip_set_vssi(1);
 
     /* Verify VSSIP is pending in hip (HS-visible) */
     uintptr_t hip_val;
     asm volatile("csrr %0, 0x644" : "=r"(hip_val));
-    TEST_ASSERT_EQ("hip.VSSIP should be pending (HS-visible)",
+    TEST_ASSERT_EQ("hip.VSSIP should be pending",
                    hip_val & VS_VSSIP, VS_VSSIP);
 
-    /* VS-mode reads sip.SSIP — should be 0 (not delegated) */
-    uintptr_t sip_val = run_in_vs_mode(vs_read_sip, 0);
-    TEST_ASSERT_EQ("vsip.SSIP should be 0 when hideleg[2]=0",
-                   sip_val & HS_SSIP, (uintptr_t)0);
+    /* Verify hie.VSSIE is enabled */
+    uintptr_t hie_val;
+    asm volatile("csrr %0, 0x604" : "=r"(hie_val));
+    TEST_ASSERT_EQ("hie.VSSIE should be enabled",
+                   hie_val & VS_VSSIP, VS_VSSIP);
 
-    /* Verify hideleg state */
+    /* Verify hideleg[2]=0 (not delegated to VS) */
     uintptr_t hideleg_val = hideleg_read();
-    TEST_ASSERT_EQ("hideleg should not delegate VSSIP",
+    TEST_ASSERT_EQ("hideleg[2] should be 0",
                    hideleg_val & VS_VSSIP, (uintptr_t)0);
+
+    /* Per norm:hideleg_hs, with hip.VSSIP=1, hie.VSSIE=1, hideleg[2]=0,
+     * and sstatus.SIE=1 in HS-mode, the interrupt traps to HS-mode.
+     * Enter HS-mode then enable SIE to trigger the interrupt. */
+    goto_priv(PRIV_S);
+    /* Now in HS-mode (V=0) with SIE=0. Enable SIE to trigger interrupt. */
+    asm volatile("csrsi sstatus, 0x2" ::: "memory");  /* SIE=1 */
+    /* Interrupt should fire here; handler disables SIE and returns */
+    goto_priv(PRIV_M);
+
+    /* Verify HS-mode received the interrupt */
+    TEST_ASSERT("HS-mode interrupt was triggered", g_hs_int_triggered);
+    TEST_ASSERT_EQ("HS interrupt cause = VSSI (cause 2)",
+                   g_hs_int_cause, (uintptr_t)(CAUSE_INTERRUPT_BIT | 2));
 
     /* Cleanup */
     hvip_set_vssi(0);
+    asm volatile("csrw 0x604, zero" ::: "memory");
+    mideleg_val &= ~VS_VSSIP;
+    asm volatile("csrw 0x303, %0" :: "r"(mideleg_val) : "memory");
+    asm volatile("csrw stvec, %0" :: "r"(saved_stvec) : "memory");
 
     HYP_TEST_END();
 }
@@ -561,38 +690,75 @@ bool hideleg_1_trap_to_vs(void)
  * Per norm:hsint_priority, the HS-mode interrupt priority is:
  *   SEI > SSI > STI > SGEI > VSEI > VSSI > VSTI > LCOFI
  *
- * This test verifies that both SEI and SSI can be pending
- * simultaneously. Actual delivery-priority verification requires
- * a custom multi-interrupt handler (framework limitation).
+ * This test sets both SEI and SSI pending and enabled simultaneously,
+ * then enters HS-mode with SIE=1. The first interrupt delivered must
+ * be SEI (cause 9), proving higher priority than SSI (cause 1).
  * ------------------------------------------------------------------ */
 TEST_REGISTER(interrupt_priority_sei_ssi);
 bool interrupt_priority_sei_ssi(void)
 {
-    TEST_BEGIN("HINT-12: Verify SEI > SSI priority (CSR pending verification)");
+    TEST_BEGIN("HINT-12: Verify SEI > SSI priority (actual delivery)");
 
-    /* Clear any existing pending/enable bits */
-    asm volatile("csrw sip, zero" ::: "memory");
+    /* Reset HS interrupt record */
+    g_hs_int_cause = 0;
+    g_hs_int_triggered = false;
+
+    /* Clear all interrupt sources */
+    asm volatile("csrw mip, zero" ::: "memory");
     asm volatile("csrw sie, zero" ::: "memory");
+    asm volatile("csrw 0x604, zero" ::: "memory");   /* hie = 0 */
+    asm volatile("csrw 0x645, zero" ::: "memory");   /* hvip = 0 */
 
-    /* Set both SSIP and SEIP pending from M-mode (mip is writable in M-mode) */
-    uintptr_t mip_val;
-    asm volatile("csrr %0, mip" : "=r"(mip_val));
-    mip_val |= (HS_SSIP | HS_SEIP);
-    asm volatile("csrw mip, %0" :: "r"(mip_val) : "memory");
-    asm volatile("csrr %0, mip" : "=r"(mip_val));
+    /* Delegate S-level interrupts to HS-mode (mideleg bits 1,9) */
+    uintptr_t mideleg_val;
+    asm volatile("csrr %0, 0x303" : "=r"(mideleg_val));
+    mideleg_val |= (HS_SSIP | HS_SEIP);
+    asm volatile("csrw 0x303, %0" :: "r"(mideleg_val) : "memory");
+
+    /* Install custom HS-mode interrupt handler at stvec */
+    uintptr_t saved_stvec;
+    asm volatile("csrr %0, stvec" : "=r"(saved_stvec));
+    asm volatile("csrw stvec, %0" :: "r"((uintptr_t)hs_int_handler) : "memory");
+
+    /* Enable both SSIE and SEIE in sie */
+    asm volatile("csrs 0x104, %0" :: "r"(HS_SSIP | HS_SEIP) : "memory");
+
+    /* Set both SSIP and SEIP pending via mip (M-mode writable) */
+    asm volatile("csrs mip, %0" :: "r"(HS_SSIP | HS_SEIP) : "memory");
 
     /* Verify both are pending simultaneously */
+    uintptr_t mip_val;
+    asm volatile("csrr %0, mip" : "=r"(mip_val));
     TEST_ASSERT_EQ("mip.SSIP should be pending", mip_val & HS_SSIP, HS_SSIP);
     TEST_ASSERT_EQ("mip.SEIP should be pending", mip_val & HS_SEIP, HS_SEIP);
 
-    /* Per spec norm:hsint_priority, SEI (cause 9) has higher priority
-     * than SSI (cause 1). When both are pending and enabled, SEI is
-     * delivered first. Actual delivery verification requires a custom
-     * multi-interrupt trap handler to capture the first cause and
-     * clear pending bits to prevent re-entry. */
+    /* Verify both are enabled in sie */
+    uintptr_t sie_val;
+    asm volatile("csrr %0, 0x104" : "=r"(sie_val));
+    TEST_ASSERT_EQ("sie.SSIE should be enabled", sie_val & HS_SSIP, HS_SSIP);
+    TEST_ASSERT_EQ("sie.SEIE should be enabled", sie_val & HS_SEIP, HS_SEIP);
 
-    /* Cleanup: clear pending bits */
-    asm volatile("csrc mip, %0" :: "r"(HS_SSIP | HS_SEIP) : "memory");
+    /* Per norm:hsint_priority, when both SEI and SSI are pending and
+     * enabled, SEI (cause 9) must be delivered first. Enter HS-mode
+     * then enable SIE to trigger the interrupt. */
+    goto_priv(PRIV_S);
+    /* Now in HS-mode with SIE=0. Enable SIE to trigger interrupt. */
+    asm volatile("csrsi sstatus, 0x2" ::: "memory");  /* SIE=1 */
+    /* SEI fires first (higher priority); handler disables SIE */
+    goto_priv(PRIV_M);
+
+    /* Verify HS-mode received the interrupt */
+    TEST_ASSERT("HS-mode interrupt was triggered", g_hs_int_triggered);
+    TEST_ASSERT_EQ("First HS interrupt should be SEI (highest priority)",
+                   g_hs_int_cause,
+                   (uintptr_t)(CAUSE_INTERRUPT_BIT | IRQ_S_EXTERNAL));
+
+    /* Cleanup */
+    asm volatile("csrw mip, zero" ::: "memory");
+    asm volatile("csrw 0x104, zero" ::: "memory");
+    asm volatile("csrw stvec, %0" :: "r"(saved_stvec) : "memory");
+    mideleg_val &= ~(HS_SSIP | HS_SEIP);
+    asm volatile("csrw 0x303, %0" :: "r"(mideleg_val) : "memory");
 
     HYP_TEST_END();
 }
@@ -694,6 +860,227 @@ bool hip_hie_nonstandard_bits_readzero(void)
     HYP_TEST_END();
 }
 
+/* ------------------------------------------------------------------
+ * HINT-15: sstatus.SIE=0 masks interrupt in HS-mode
+ *
+ * Per norm:hideleg_hs condition (a): interrupt traps to HS-mode only
+ * when "the current operating mode is HS-mode and the SIE bit in the
+ * sstatus register is set". With SIE=0, the interrupt must NOT be
+ * delivered even if pending and enabled.
+ * ------------------------------------------------------------------ */
+TEST_REGISTER(sie_zero_masks_interrupt);
+bool sie_zero_masks_interrupt(void)
+{
+    TEST_BEGIN("HINT-15: SIE=0 masks interrupt in HS-mode");
+
+    /* Reset HS interrupt record */
+    g_hs_int_cause = 0;
+    g_hs_int_triggered = false;
+
+    /* Clear all interrupt sources */
+    asm volatile("csrw 0x604, zero" ::: "memory");   /* hie = 0 */
+    asm volatile("csrw 0x645, zero" ::: "memory");   /* hvip = 0 */
+
+    /* Setup: hideleg[2]=0, inject VSSIP, enable hie.VSSIE */
+    hideleg_write(0);
+    uintptr_t mideleg_val;
+    asm volatile("csrr %0, 0x303" : "=r"(mideleg_val));
+    mideleg_val |= VS_VSSIP;
+    asm volatile("csrw 0x303, %0" :: "r"(mideleg_val) : "memory");
+
+    uintptr_t saved_stvec;
+    asm volatile("csrr %0, stvec" : "=r"(saved_stvec));
+    asm volatile("csrw stvec, %0" :: "r"((uintptr_t)hs_int_handler) : "memory");
+
+    asm volatile("csrs 0x604, %0" :: "r"(VS_VSSIP) : "memory");
+    hvip_set_vssi(1);
+
+    /* --- Part A: Enter HS-mode with SIE=0 --- */
+    goto_priv(PRIV_S);
+    /* SIE=0 (default after goto_priv). Interrupt should NOT fire. */
+    asm volatile("nop" ::: "memory");
+    asm volatile("nop" ::: "memory");
+    goto_priv(PRIV_M);
+
+    TEST_ASSERT("SIE=0: interrupt NOT triggered", !g_hs_int_triggered);
+
+    /* --- Part B: Enter HS-mode, then set SIE=1 --- */
+    goto_priv(PRIV_S);
+    asm volatile("csrsi sstatus, 0x2" ::: "memory");  /* SIE=1 */
+    /* Interrupt fires immediately; handler records cause */
+    goto_priv(PRIV_M);
+
+    TEST_ASSERT("SIE=1: interrupt triggered", g_hs_int_triggered);
+    TEST_ASSERT_EQ("cause = VSSI (2)",
+                   g_hs_int_cause, (uintptr_t)(CAUSE_INTERRUPT_BIT | 2));
+
+    /* Cleanup */
+    hvip_set_vssi(0);
+    asm volatile("csrw 0x604, zero" ::: "memory");
+    asm volatile("csrw stvec, %0" :: "r"(saved_stvec) : "memory");
+    mideleg_val &= ~VS_VSSIP;
+    asm volatile("csrw 0x303, %0" :: "r"(mideleg_val) : "memory");
+
+    HYP_TEST_END();
+}
+
+/* ------------------------------------------------------------------
+ * HINT-16: hvip non-writable bits are read-only zeros
+ *
+ * Per norm:hvip_sz_op: "Bits of hvip that are not writable are
+ * read-only zeros." Per norm:hvip_acc: VSEIP (bit 10), VSTIP (bit 6),
+ * VSSIP (bit 2) are writable. With AIA, additional bits (13+) may
+ * be writable for virtual interrupts.
+ * ------------------------------------------------------------------ */
+TEST_REGISTER(hvip_nonwritable_readzero);
+bool hvip_nonwritable_readzero(void)
+{
+    TEST_BEGIN("HINT-16: Verify hvip non-writable bits are read-only zero");
+
+    /* Write all 1s to hvip */
+    hvip_write((uintptr_t)-1);
+    uintptr_t val = hvip_read();
+
+    /* Standard writable bits 2, 6, 10 must be set */
+    uintptr_t std_bits = VS_VSSIP | VS_VSTIP | VS_VSEIP;  /* 0x444 */
+    TEST_ASSERT_EQ("hvip standard bits 2/6/10 writable",
+                   val & std_bits, std_bits);
+
+    /* Bits 0, 1, 3, 4, 5, 7, 8, 9, 11, 12 have no standard interrupt
+     * and must be read-only zero (below AIA range). */
+    uintptr_t non_std_low = 0x1FFF & ~std_bits;  /* bits 12:0 except 2,6,10 */
+    TEST_ASSERT_EQ("hvip bits 12:0 non-standard are read-zero",
+                   val & non_std_low, (uintptr_t)0);
+
+    /* Bits above 12 depend on AIA extension (implementation-specific).
+     * Report for informational purposes. */
+    uintptr_t high_bits = val & ~0x1FFFUL;
+    if (high_bits != 0) {
+        printf("  [INFO] hvip has AIA/impl-specific writable bits: "
+               "0x%lx\n", (unsigned long)high_bits);
+    }
+
+    /* Cleanup */
+    hvip_write(0);
+
+    HYP_TEST_END();
+}
+
+/* ------------------------------------------------------------------
+ * HINT-17: hip.VSTIP remains defined while V=0
+ *
+ * Per norm:hip_vstip_vstie_acc_op: "The hip[vstip] bit remains
+ * defined while V=0 as well as V=1." This means hip.VSTIP must
+ * correctly reflect hvip.VSTIP when accessed from HS-mode (V=0).
+ * ------------------------------------------------------------------ */
+TEST_REGISTER(hip_vstip_defined_v0);
+bool hip_vstip_defined_v0(void)
+{
+    TEST_BEGIN("HINT-17: Verify hip.VSTIP defined at V=0");
+
+    /* Prevent vstimecmp from interfering (CSR 0x24D) */
+    asm volatile("csrw 0x24D, %0" :: "r"((uintptr_t)-1) : "memory");
+
+    /* Confirm we are in M-mode (V=0 context for hip access) */
+
+    /* Set hvip.VSTIP=1, verify hip.VSTIP=1 at V=0 */
+    hvip_set_vsti(1);
+    uintptr_t hip_val;
+    asm volatile("csrr %0, 0x644" : "=r"(hip_val));
+    TEST_ASSERT_EQ("hip.VSTIP=1 at V=0 when hvip.VSTIP=1",
+                   hip_val & VS_VSTIP, VS_VSTIP);
+
+    /* Clear hvip.VSTIP=0, verify hip.VSTIP=0 at V=0 */
+    hvip_set_vsti(0);
+    asm volatile("csrr %0, 0x644" : "=r"(hip_val));
+    TEST_ASSERT_EQ("hip.VSTIP=0 at V=0 when hvip.VSTIP=0",
+                   hip_val & VS_VSTIP, (uintptr_t)0);
+
+    HYP_TEST_END();
+}
+
+/* ------------------------------------------------------------------
+ * HINT-18: HS-mode interrupt priority SSI > STI
+ *
+ * Per norm:hsint_priority: SEI > SSI > STI > SGEI > VSEI > VSSI >
+ * VSTI > LCOFI. This test verifies SSI has higher priority than STI
+ * by setting both pending simultaneously and checking SSI is
+ * delivered first.
+ * ------------------------------------------------------------------ */
+TEST_REGISTER(interrupt_priority_ssi_sti);
+bool interrupt_priority_ssi_sti(void)
+{
+    TEST_BEGIN("HINT-18: Verify SSI > STI priority (actual delivery)");
+
+    /* Reset HS interrupt record */
+    g_hs_int_cause = 0;
+    g_hs_int_triggered = false;
+
+    /* Clear all interrupt sources */
+    asm volatile("csrw mip, zero" ::: "memory");
+    asm volatile("csrw 0x104, zero" ::: "memory");  /* sie = 0 */
+    asm volatile("csrw 0x604, zero" ::: "memory");  /* hie = 0 */
+    asm volatile("csrw 0x645, zero" ::: "memory");  /* hvip = 0 */
+
+    /* Delegate S-level interrupts to HS-mode */
+    uintptr_t mideleg_val;
+    asm volatile("csrr %0, 0x303" : "=r"(mideleg_val));
+    mideleg_val |= (HS_SSIP | HS_STIP);
+    asm volatile("csrw 0x303, %0" :: "r"(mideleg_val) : "memory");
+
+    /* Install HS-mode interrupt handler */
+    uintptr_t saved_stvec;
+    asm volatile("csrr %0, stvec" : "=r"(saved_stvec));
+    asm volatile("csrw stvec, %0" :: "r"((uintptr_t)hs_int_handler) : "memory");
+
+    /* Enable SSIE and STIE in sie */
+    asm volatile("csrs 0x104, %0" :: "r"(HS_SSIP | HS_STIP) : "memory");
+
+    /* Set SSIP pending (writable in mip) */
+    asm volatile("csrs mip, %0" :: "r"(HS_SSIP) : "memory");
+
+    /* Trigger STIP via stimecmp: set stimecmp=0 so time >= stimecmp.
+     * stimecmp is CSR 0x14D. Requires menvcfg.STCE=1 (Sstc). */
+    uintptr_t saved_stimecmp;
+    asm volatile("csrr %0, 0x14D" : "=r"(saved_stimecmp));
+    /* Enable STCE in menvcfg (bit 63) */
+    uintptr_t menvcfg_val;
+    asm volatile("csrr %0, 0x30A" : "=r"(menvcfg_val));
+    menvcfg_val |= (1UL << 63);
+    asm volatile("csrw 0x30A, %0" :: "r"(menvcfg_val) : "memory");
+    asm volatile("csrw 0x14D, zero" ::: "memory");
+
+    /* Verify both are pending */
+    uintptr_t mip_val;
+    asm volatile("csrr %0, mip" : "=r"(mip_val));
+    TEST_ASSERT("mip.SSIP pending", (mip_val & HS_SSIP) != 0);
+    TEST_ASSERT("mip.STIP pending (via stimecmp)", (mip_val & HS_STIP) != 0);
+
+    /* Enter HS-mode and enable SIE */
+    goto_priv(PRIV_S);
+    asm volatile("csrsi sstatus, 0x2" ::: "memory");  /* SIE=1 */
+    /* SSI fires first (higher priority than STI) */
+    goto_priv(PRIV_M);
+
+    /* Verify */
+    TEST_ASSERT("HS-mode interrupt was triggered", g_hs_int_triggered);
+    TEST_ASSERT_EQ("First interrupt = SSI (cause 1, priority > STI)",
+                   g_hs_int_cause,
+                   (uintptr_t)(CAUSE_INTERRUPT_BIT | IRQ_S_SOFTWARE));
+
+    /* Cleanup */
+    asm volatile("csrw mip, zero" ::: "memory");
+    asm volatile("csrw 0x104, zero" ::: "memory");
+    asm volatile("csrw 0x14D, %0" :: "r"(saved_stimecmp) : "memory");
+    menvcfg_val &= ~(1UL << 63);
+    asm volatile("csrw 0x30A, %0" :: "r"(menvcfg_val) : "memory");
+    asm volatile("csrw stvec, %0" :: "r"(saved_stvec) : "memory");
+    mideleg_val &= ~(HS_SSIP | HS_STIP);
+    asm volatile("csrw 0x303, %0" :: "r"(mideleg_val) : "memory");
+
+    HYP_TEST_END();
+}
+
 /* ===================================================================
  * Group 5: hgeip/hgeie guest external interrupts
  * =================================================================== */
@@ -721,19 +1108,41 @@ bool hgeip_readonly(void)
 
 /* ------------------------------------------------------------------
  * HGEI-02: hgeie writable bit range
+ *
+ * Per norm:geilen, if GEILEN is nonzero, bits GEILEN:1 shall be
+ * writable in hgeie, and all other bit positions shall be read-only
+ * zeros. This means the read-back value must be a contiguous mask
+ * of the form (1<<N)-2 (bits N:1 all ones, bit 0 and bits above N
+ * all zeros).
  * ------------------------------------------------------------------ */
 TEST_REGISTER(hgeie_writable_bit_range);
 bool hgeie_writable_bit_range(void)
 {
     TEST_BEGIN("HGEI-02: Verify hgeie writable bit range");
 
-    asm volatile("csrw 0x607, %0" :: "r"((uintptr_t)0xFFFFFFFF));
+    asm volatile("csrw 0x607, %0" :: "r"((uintptr_t)-1) : "memory");
     uintptr_t val;
     asm volatile("csrr %0, 0x607" : "=r"(val));
-    /* bit 0 must be zero, remaining bits depend on GEILEN */
+
+    /* bit 0 must be zero */
     TEST_ASSERT("hgeie bit 0 is read-zero", (val & 0x1) == 0);
-    /* writable bits should be contiguous starting from bit 1 up to GEILEN */
-    TEST_ASSERT("hgeie has valid writable range", val == (val & ~0x1UL));
+
+    /* Verify writable bits are contiguous from bit 1 to GEILEN.
+     * A valid mask has the form: bits[N:1] all 1, everything else 0.
+     * Equivalently: val | 1 == (1 << (N+1)) - 1 for some N >= 0,
+     * i.e., (val | 1) must be of the form (2^k - 1) for some k >= 1.
+     * Check: (val | 1) & ((val | 1) + 1) == 0 (power-of-2 minus 1). */
+    if (val != 0) {
+        uintptr_t mask_with_bit0 = val | 1;
+        TEST_ASSERT("hgeie writable bits are contiguous from bit 1",
+                    (mask_with_bit0 & (mask_with_bit0 + 1)) == 0);
+    } else {
+        /* GEILEN=0: no writable bits, valid */
+        TEST_ASSERT("hgeie all zero (GEILEN=0)", true);
+    }
+
+    /* Cleanup */
+    asm volatile("csrw 0x607, zero" ::: "memory");
 
     HYP_TEST_END();
 }
@@ -758,23 +1167,58 @@ bool hgeie_bit0_readzero(void)
 }
 
 /* ------------------------------------------------------------------
- * HGEI-04: hgeip AND hgeie triggers SGEIP (simplified verification)
+ * HGEI-04: hgeip AND hgeie triggers SGEIP
+ *
+ * Per norm:hip_sgeip_sgeie_acc_op, SGEIP in hip is 1 if and only if
+ * the bitwise logical-AND of hgeip and hgeie is nonzero in any bit.
+ *
+ * hgeip is read-only and depends on external interrupt controller
+ * (IMSIC guest interrupt files). This test verifies:
+ *   1. When hgeip & hgeie == 0, hip.SGEIP must be 0.
+ *   2. When hgeip & hgeie != 0 (if external source active),
+ *      hip.SGEIP must be 1.
  * ------------------------------------------------------------------ */
 TEST_REGISTER(hgeip_and_hgeie_triggers_sgeip);
 bool hgeip_and_hgeie_triggers_sgeip(void)
 {
     TEST_BEGIN("HGEI-04: Verify hgeip AND hgeie triggers SGEIP");
 
-    /* hgeip is read-only hardware, so we verify that when hgeie is set,
-     * the SGEIP mechanism is armed. Since hgeip depends on external interrupts,
-     * we verify: hgeie writable AND hgeip & hgeie == 0 when no external interrupt */
-    asm volatile("csrw 0x607, %0" :: "r"((uintptr_t)0xFFFFFFFE)); /* set all except bit 0 */
+    /* Enable all possible guest external interrupt bits in hgeie */
+    asm volatile("csrw 0x607, %0" :: "r"((uintptr_t)-1) : "memory");
     uintptr_t hgeie_val;
     asm volatile("csrr %0, 0x607" : "=r"(hgeie_val));
+
+    if (hgeie_val == 0) {
+        TEST_SKIP("GEILEN=0, guest external interrupts not implemented");
+    }
+
     uintptr_t hgeip_val;
     asm volatile("csrr %0, 0xE12" : "=r"(hgeip_val));
-    /* With no external interrupt sources, hgeip & hgeie should be 0 */
-    TEST_ASSERT("no spurious SGEIP", (hgeip_val & hgeie_val) == 0);
+
+    /* Read hip.SGEIP (bit 12) */
+    uintptr_t hip_val;
+    asm volatile("csrr %0, 0x644" : "=r"(hip_val));
+    uintptr_t sgeip = (hip_val >> 12) & 1;
+
+    if (hgeip_val & hgeie_val) {
+        /* External interrupt source is active: SGEIP must be 1 */
+        TEST_ASSERT_EQ("hip.SGEIP=1 when hgeip & hgeie != 0",
+                       sgeip, (uintptr_t)1);
+    } else {
+        /* No external interrupt source active: SGEIP must be 0 */
+        TEST_ASSERT_EQ("hip.SGEIP=0 when hgeip & hgeie == 0",
+                       sgeip, (uintptr_t)0);
+
+        /* Note: verifying SGEIP=1 requires an active external interrupt
+         * source (e.g., IMSIC guest interrupt file). On platforms without
+         * such a source, we can only verify the negative case. */
+        printf("  [INFO] hgeip=0x%lx: no external source, "
+               "SGEIP=1 path not testable\n",
+               (unsigned long)hgeip_val);
+    }
+
+    /* Cleanup */
+    asm volatile("csrw 0x607, zero" ::: "memory");
 
     HYP_TEST_END();
 }

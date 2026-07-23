@@ -256,9 +256,9 @@ This section lists all specification points (norm IDs) referenced in Groups 1-19
 | HINT-01 | hvip.VSSIP write injects VS software interrupt | HS-mode writes hvip.VSSIP=1, configure hideleg/hie/vsie | VS-mode receives VS software interrupt |
 | HINT-02 | hvip.VSTIP write injects VS timer interrupt | HS-mode writes hvip.VSTIP=1, configure hideleg/hie/vsie | VS-mode receives VS timer interrupt |
 | HINT-03 | hvip.VSEIP write injects VS external interrupt | HS-mode writes hvip.VSEIP=1, configure hideleg/hie/vsie | VS-mode receives VS external interrupt |
-| HINT-04 | hip.VSSIP is alias of hvip.VSSIP | Write hvip.VSSIP=1, read hip.VSSIP | hip.VSSIP=1 |
-| HINT-05 | hip.VSEIP read-only (multi-source OR) | Write hvip.VSEIP=1, read hip.VSEIP | hip.VSEIP=1 (read-only) |
-| HINT-06 | hip.VSTIP read-only | Attempt to directly write hip.VSTIP | Write ignored |
+| HINT-04 | hip.VSSIP is bidirectional writable alias of hvip.VSSIP | Read direction: write hvip.VSSIP=1, read hip.VSSIP=1; Write direction: clear hvip.VSSIP=0, then write hip.VSSIP=1 directly, read hvip.VSSIP | Bidirectional: writing hip.VSSIP is equivalent to writing hvip.VSSIP |
+| HINT-05 | hip.VSEIP read-only (multi-source OR) | Combo 1: hvip.VSEIP=1, write hip.VSEIP=0, hip.VSEIP remains 1; Combo 2: hvip.VSEIP=0, write hip.VSEIP=1, hip.VSEIP remains 0 | Write ignored in both combos; hip.VSEIP always reflects hvip.VSEIP |
+| HINT-06 | hip.VSTIP read-only | Combo 1: hvip.VSTIP=1, write hip.VSTIP=0, hip.VSTIP remains 1; Combo 2: hvip.VSTIP=0, write hip.VSTIP=1, hip.VSTIP remains 0 | Write ignored in both combos; hip.VSTIP always reflects hvip.VSTIP |
 | HINT-07 | hie VSEIE/VSTIE/VSSIE writable | Write hie VSEIE/VSTIE/VSSIE bits | Normal read/write |
 | HINT-08 | sie and hip/hie mutual exclusion | Check if writable bits in sie are read-only zero in hip/hie | Mutual exclusion relationship holds |
 | HINT-09 | Clearing hvip.VSSIP clears interrupt | Write hvip.VSSIP=0 | VS software interrupt cleared |
@@ -267,6 +267,10 @@ This section lists all specification points (norm IDs) referenced in Groups 1-19
 | HINT-12 | HS-mode interrupt priority SEI > SSI | SEI and SSI pending simultaneously | SEI handled first |
 | HINT-13 | HS-mode interrupt priority VSEI > VSSI > VSTI | Multiple VS interrupts pending simultaneously | In order VSEI > VSSI > VSTI |
 | HINT-14 | hip/hie non-standard bits read-only zero | Read reserved bits of hip/hie | All zero |
+| HINT-15 | sstatus.SIE=0 masks interrupt in HS-mode | hideleg[2]=0, inject VSSIP, hie.VSSIE=1, enter HS-mode with SIE=0 | Interrupt not delivered; then set SIE=1, interrupt fires immediately |
+| HINT-16 | hvip non-writable bits read-only zero | Write hvip all 1s, read back | Only bits 2/6/10 (VSSIP/VSTIP/VSEIP) are 1, all others are 0 |
+| HINT-17 | hip.VSTIP remains defined at V=0 | In V=0 (HS-mode), set/clear hvip.VSTIP, read hip.VSTIP | hip.VSTIP reflects hvip.VSTIP at V=0 (defined behavior) |
+| HINT-18 | HS-mode interrupt priority SSI > STI | Both SSI and STI pending and enabled, enter HS-mode | SSI (cause=1) delivered first, proving SSI > STI |
 
 ---
 

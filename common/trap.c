@@ -124,6 +124,12 @@ static bool is_inst_fault(uintptr_t cause) {
  * Helper: is this cause an ecall?
  * =================================================================== */
 static bool is_ecall(uintptr_t cause) {
+    /* Interrupts are never ecalls. Must check the interrupt bit
+     * BEFORE the CLIC-mode 0xFFF mask, because on RV32 the mask
+     * strips bit 31, causing SEI (0x80000009) to collide with
+     * CAUSE_ECALL_FROM_S (9) and MEI (0x8000000b) to collide
+     * with CAUSE_ECALL_FROM_M (11). */
+    if (cause & CAUSE_INTERRUPT_BIT) return false;
     /* In CLIC mode, mcause has extended fields (mpp, mpie, mpil)
      * in the high bits. Mask to exccode only (bits 11:0) before
      * comparing with standard cause codes. */

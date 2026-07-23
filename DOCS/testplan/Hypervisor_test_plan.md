@@ -301,9 +301,9 @@
 | HINT-01 | hvip.VSSIP 写入注入 VS 软件中断 | HS-mode 写 hvip.VSSIP=1，配置 hideleg/hie/vsie | VS-mode 收到 VS software interrupt |
 | HINT-02 | hvip.VSTIP 写入注入 VS 时钟中断 | HS-mode 写 hvip.VSTIP=1，配置 hideleg/hie/vsie | VS-mode 收到 VS timer interrupt |
 | HINT-03 | hvip.VSEIP 写入注入 VS 外部中断 | HS-mode 写 hvip.VSEIP=1，配置 hideleg/hie/vsie | VS-mode 收到 VS external interrupt |
-| HINT-04 | hip.VSSIP 是 hvip.VSSIP 的 alias | 写 hvip.VSSIP=1，读 hip.VSSIP | hip.VSSIP=1 |
-| HINT-05 | hip.VSEIP 只读（多源 OR） | 写 hvip.VSEIP=1，读 hip.VSEIP | hip.VSEIP=1（只读） |
-| HINT-06 | hip.VSTIP 只读 | 尝试直接写 hip.VSTIP | 写入被忽略 |
+| HINT-04 | hip.VSSIP 是 hvip.VSSIP 的双向可写 alias | 读方向：写 hvip.VSSIP=1，读 hip.VSSIP=1；写方向：清 hvip.VSSIP=0 后直接写 hip.VSSIP=1，读 hvip.VSSIP | 双向一致：写 hip.VSSIP 等价于写 hvip.VSSIP |
+| HINT-05 | hip.VSEIP 只读（多源 OR） | 组合1：hvip.VSEIP=1，写 hip.VSEIP=0，hip.VSEIP 仍为 1；组合2：hvip.VSEIP=0，写 hip.VSEIP=1，hip.VSEIP 仍为 0 | 两种组合下写入均被忽略，hip.VSEIP 始终反映 hvip.VSEIP |
+| HINT-06 | hip.VSTIP 只读 | 组合1：hvip.VSTIP=1，写 hip.VSTIP=0，hip.VSTIP 仍为 1；组合2：hvip.VSTIP=0，写 hip.VSTIP=1，hip.VSTIP 仍为 0 | 两种组合下写入均被忽略，hip.VSTIP 始终反映 hvip.VSTIP |
 | HINT-07 | hie VSEIE/VSTIE/VSSIE 可写 | 写 hie 的 VSEIE/VSTIE/VSSIE bits | 正常读写 |
 | HINT-08 | sie 与 hip/hie 互斥 | 检查 sie 可写 bit 在 hip/hie 中是否只读零 | 互斥关系成立 |
 | HINT-09 | 清除 hvip.VSSIP 清除中断 | 写 hvip.VSSIP=0 | VS software interrupt 被清除 |
@@ -312,6 +312,10 @@
 | HINT-12 | HS-mode 中断优先级 SEI > SSI | 同时 pending SEI 和 SSI | SEI 先被处理 |
 | HINT-13 | HS-mode 中断优先级 VSEI > VSSI > VSTI | 同时 pending 多个 VS 中断 | 按 VSEI > VSSI > VSTI 顺序 |
 | HINT-14 | hip/hie 非标准 bit 只读零 | 读 hip/hie 的保留 bit | 均为零 |
+| HINT-15 | sstatus.SIE=0 时中断不递送到 HS-mode | hideleg[2]=0，注入 VSSIP，hie.VSSIE=1，进入 HS-mode 但 SIE=0 | 中断不触发；随后设 SIE=1，中断立即触发 |
+| HINT-16 | hvip 不可写位只读零 | 写 hvip 全 1，读回 | 仅 bits 2/6/10 (VSSIP/VSTIP/VSEIP) 为 1，其余均为 0 |
+| HINT-17 | hip.VSTIP 在 V=0 时仍有效 | V=0（HS-mode）下设置/清除 hvip.VSTIP，读 hip.VSTIP | hip.VSTIP 在 V=0 时始终反映 hvip.VSTIP（已定义） |
+| HINT-18 | HS-mode 中断优先级 SSI > STI | 同时 pending SSI 和 STI，使能两者，进入 HS-mode | SSI (cause=1) 先被递送，证明 SSI > STI |
 
 ---
 
