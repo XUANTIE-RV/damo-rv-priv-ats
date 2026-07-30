@@ -25,3 +25,12 @@
 [submodule "SPEC/riscv-iopmp0p7"]
 	path = SPEC/riscv-iopmp0p7
 	url = https://github.com/riscv-non-isa/riscv-iopmp.git
+[submodule "SPEC/riscv-cbqri"]
+	path = SPEC/riscv-cbqri
+	url = https://github.com/riscv-non-isa/riscv-cbqri.git
+[submodule "SPEC/riscv-iommu"]
+	path = SPEC/riscv-iommu
+	url = https://github.com/riscv-non-isa/riscv-iommu.git
+[submodule "SPEC/riscv-sbi"]
+	path = SPEC/riscv-sbi
+	url = https://github.com/riscv-non-isa/riscv-sbi-doc.git

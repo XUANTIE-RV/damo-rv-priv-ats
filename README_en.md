@@ -1,8 +1,8 @@
-**[中文](README.md) | English**
+**[中文](README_cn.md) | English**
 
 # Damo RV Priv ATS
 
-Damo RV Priv ATS is a compliance test framework for validating RISC-V privilege extensions. It runs directly on hardware DUTs or simulators (QEMU / Sail / Spike) as bare-metal programs with no operating system dependency. The framework covers 70+ privilege extensions defined in the RISC-V Privileged Specification, with each extension compiled into a fully independent ELF binary. Platform abstraction enables the same test code to target QEMU, Sail, Spike, or FPGA/hardware by simply switching the build configuration, with zero coupling between the shared framework and extension-specific logic.
+Damo RV Priv ATS is a compliance test framework for validating RISC-V privilege extensions. It runs directly on hardware DUTs or simulators (QEMU / Sail / Spike) as bare-metal programs with no operating system dependency. The framework covers 90+ privilege extensions defined in the RISC-V Privileged Specification, with each extension compiled into a fully independent ELF binary. Platform abstraction enables the same test code to target QEMU, Sail, Spike, or FPGA/hardware by simply switching the build configuration, with zero coupling between the shared framework and extension-specific logic.
 
 ---
 
@@ -36,7 +36,7 @@ damo-priv-test/
 ├── Sv39/                  #
 ├── Hypervisor/            #
 ├── aia_aplic/             #
-└── ...                    #    (70+ extension directories total)
+└── ...                    #    (90+ extension directories total)
 ```
 
 Standard structure of each extension directory:
@@ -146,82 +146,105 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 
 ## Implemented Extensions
 
-| Category | Extension | Description |
-|----------|-----------|-------------|
-| **Memory Protection** | `pmp` | PMP Physical Memory Protection |
-| | `smepmp` | Smepmp (PMP M-mode enhancements) |
-| | `spmp` | SPMP (S-level Physical Memory Protection) |
-| **Virtual Memory** | `Sv39` | Sv39 (3-level page table) |
-| | `Sv48` | Sv48 (4-level page table) |
-| | `Sv57` | Sv57 (5-level page table) |
-| | `Svbare` | Svbare (satp.MODE=Bare) |
-| | `Svnapot` | NAPOT translation contiguity |
-| | `Svpbmt` | Page-based memory types |
-| | `Svinval` | Fine-grained TLB invalidation |
-| | `Svade` | Hardware A/D bit exceptions |
-| | `Svadu` | Hardware A/D bit auto-update |
-| | `Svvptc` | Virtualized page table cache |
-| | `Svrsw60t59b` | PTE reserved bit extension |
-| **PMP+VM Interaction** | `pmp_sv39` | PMP + Sv39 interaction |
-| | `pmp_sv48` | PMP + Sv48 interaction |
-| | `pmp_sv57` | PMP + Sv57 interaction |
-| **Hypervisor** | `Hypervisor` | Hypervisor base extension |
-| | `Sv39x4` | Sv39x4 G-stage translation |
-| | `Sv48x4` | Sv48x4 G-stage translation |
-| | `Sv57x4` | Sv57x4 G-stage translation |
-| | `Sv39x4_Sv39` | Two-stage: Sv39x4 + Sv39 |
-| | `Sv39x4_Sv48` | Two-stage: Sv39x4 + Sv48 |
-| | `Sv39x4_Sv57` | Two-stage: Sv39x4 + Sv57 |
-| | `Sv48x4_Sv39` | Two-stage: Sv48x4 + Sv39 |
-| | `Sv48x4_Sv48` | Two-stage: Sv48x4 + Sv48 |
-| | `Sv48x4_Sv57` | Two-stage: Sv48x4 + Sv57 |
-| | `Sv57x4_Sv39` | Two-stage: Sv57x4 + Sv39 |
-| | `Sv57x4_Sv48` | Two-stage: Sv57x4 + Sv48 |
-| | `Sv57x4_Sv57` | Two-stage: Sv57x4 + Sv57 |
-| **Hypervisor CSR** | `Sha` | Hypervisor address translation |
-| | `Shgatpa` | G-stage page table |
-| | `Shcounterenw` | Hypervisor counter enable |
-| | `Shlcofideleg` | Counter overflow delegation |
-| | `Shtvala` | Hypervisor trap value |
-| | `Shvsatpa` | VS-stage address translation |
-| | `Shvstvala` | VS-stage trap value |
-| | `Shvstvecd` | VS-stage trap vector |
-| **Hypervisor Combos** | `Hypervisor_Smcsrind` | Hyp + Smcsrind |
-| | `Hypervisor_Smstateen` | Hyp + Smstateen |
-| | `Hypervisor_Ssccptr` | Hyp + Ssccptr |
-| | `Hypervisor_Sscsrind` | Hyp + Sscsrind |
-| | `Hypervisor_Ssdbltrp` | Hyp + Ssdbltrp |
-| | `Hypervisor_Ssstateen` | Hyp + Ssstateen |
-| | `Hypervisor_Sstc` | Hyp + Sstc |
-| | `Hypervisor_Sstvala` | Hyp + Sstvala |
-| | `Hypervisor_Svadu` | Hyp + Svadu |
-| | `Hypervisor_Svinval` | Hyp + Svinval |
-| | `Hypervisor_Svnapot` | Hyp + Svnapot |
-| | `Hypervisor_Svpbmt` | Hyp + Svpbmt |
-| **Machine-mode (Sm*)** | `Smstateen` | State enable |
-| | `smrnmi` | Resumable NMI |
-| | `Smcdeleg` | Counter delegation |
-| | `Smcsrind` | Indirect CSR access |
-| | `smctr` | Counter trigger |
-| | `Smdbltrp` | Double trap |
-| **Supervisor (Ss*)** | `Ssccptr` | CBO cache operations |
-| | `Sscofpmf` | Counter overflow / mode filtering |
-| | `Sscounterenw` | Counter enable writability |
-| | `Ssstateen` | State enable |
-| | `Sstc` | S-mode timer compare |
-| | `Sstvala` | Trap value |
-| | `Sstvecd` | Trap vector |
-| | `Ssu64xl` | UXL field control |
-| | `Ssccfg` | Counter configuration |
-| | `Sscsrind` | Indirect CSR access |
-| | `ssctr` | Counter trigger |
-| | `Ssdbltrp` | Double trap |
-| **AIA (Interrupts)** | `aia_aplic` | APLIC |
-| | `aia_imsic` | IMSIC |
-| | `aia_smaia` | S-mode AIA |
-| | `aia_iommu` | IOMMU |
-| | `aia_hypervisor` | Hypervisor AIA |
-| **Other** | `zpm` | Pointer Masking |
+| Category | Extension | Description | Open-sourced |
+|----------|-----------|-------------|:------------:|
+| **Memory Protection** | `pmp` | PMP Physical Memory Protection | |
+| | `smepmp` | Smepmp (PMP M-mode enhancements) | |
+| | `spmp` | SPMP (S-level Physical Memory Protection) | |
+| **Virtual Memory** | `Sv39` | Sv39 (3-level page table) | ✓ |
+| | `Sv48` | Sv48 (4-level page table) | ✓ |
+| | `Sv57` | Sv57 (5-level page table) | ✓ |
+| | `Svbare` | Svbare (satp.MODE=Bare) | |
+| | `Svnapot` | NAPOT translation contiguity | ✓ |
+| | `Svpbmt` | Page-based memory types | ✓ |
+| | `Svinval` | Fine-grained TLB invalidation | ✓ |
+| | `Svade` | Hardware A/D bit exceptions | |
+| | `Svadu` | Hardware A/D bit auto-update | ✓ |
+| | `Svvptc` | Virtualized page table cache | |
+| | `Svrsw60t59b` | PTE reserved bit extension | |
+| **PMP+VM Interaction** | `pmp_sv39` | PMP + Sv39 interaction | |
+| | `pmp_sv48` | PMP + Sv48 interaction | |
+| | `pmp_sv57` | PMP + Sv57 interaction | |
+| **Hypervisor** | `Hypervisor` | Hypervisor base extension | ✓ |
+| | `Sv39x4` | Sv39x4 G-stage translation | ✓ |
+| | `Sv48x4` | Sv48x4 G-stage translation | ✓ |
+| | `Sv57x4` | Sv57x4 G-stage translation | ✓ |
+| | `Sv39x4_Sv39` | Two-stage: Sv39x4 + Sv39 | ✓ |
+| | `Sv39x4_Sv48` | Two-stage: Sv39x4 + Sv48 | ✓ |
+| | `Sv39x4_Sv57` | Two-stage: Sv39x4 + Sv57 | ✓ |
+| | `Sv48x4_Sv39` | Two-stage: Sv48x4 + Sv39 | ✓ |
+| | `Sv48x4_Sv48` | Two-stage: Sv48x4 + Sv48 | ✓ |
+| | `Sv48x4_Sv57` | Two-stage: Sv48x4 + Sv57 | ✓ |
+| | `Sv57x4_Sv39` | Two-stage: Sv57x4 + Sv39 | ✓ |
+| | `Sv57x4_Sv48` | Two-stage: Sv57x4 + Sv48 | ✓ |
+| | `Sv57x4_Sv57` | Two-stage: Sv57x4 + Sv57 | ✓ |
+| **Hypervisor CSR** | `Sha` | Hypervisor address translation | ✓ |
+| | `Shgatpa` | G-stage page table | ✓ |
+| | `Shcounterenw` | Hypervisor counter enable | ✓ |
+| | `Shlcofideleg` | Counter overflow delegation | ✓ |
+| | `Shtvala` | Hypervisor trap value | ✓ |
+| | `Shvsatpa` | VS-stage address translation | ✓ |
+| | `Shvstvala` | VS-stage trap value | ✓ |
+| | `Shvstvecd` | VS-stage trap vector | ✓ |
+| **Hypervisor Combos** | `Hypervisor_Smcsrind` | Hyp + Smcsrind | ✓ |
+| | `Hypervisor_Smmpm` | Hyp + Smmpm (M-mode Pointer Masking) | ✓ |
+| | `Hypervisor_Smnpm` | Hyp + Smnpm (Next-level Pointer Masking) | ✓ |
+| | `Hypervisor_Smstateen` | Hyp + Smstateen | ✓ |
+| | `Hypervisor_Ssccptr` | Hyp + Ssccptr | ✓ |
+| | `Hypervisor_Sscsrind` | Hyp + Sscsrind | ✓ |
+| | `Hypervisor_Ssdbltrp` | Hyp + Ssdbltrp | ✓ |
+| | `Hypervisor_Ssnpm` | Hyp + Ssnpm (S-mode Pointer Masking) | ✓ |
+| | `Hypervisor_Ssstateen` | Hyp + Ssstateen | ✓ |
+| | `Hypervisor_Sstc` | Hyp + Sstc | ✓ |
+| | `Hypervisor_Sstvala` | Hyp + Sstvala | ✓ |
+| | `Hypervisor_Svadu` | Hyp + Svadu | ✓ |
+| | `Hypervisor_Svinval` | Hyp + Svinval | ✓ |
+| | `Hypervisor_Svnapot` | Hyp + Svnapot | ✓ |
+| | `Hypervisor_Svpbmt` | Hyp + Svpbmt | ✓ |
+| | `Hypervisor_Zicbom` | Hyp + Zicbom (Cache Block Management) | ✓ |
+| | `Hypervisor_Zicbop` | Hyp + Zicbop (Cache Block Prefetch) | ✓ |
+| | `Hypervisor_Zicboz` | Hyp + Zicboz (Cache Block Zero) | ✓ |
+| | `Hypervisor_Zicfilp` | Hyp + Zicfilp (CFI Landing Pad) | ✓ |
+| | `Hypervisor_Zicfiss` | Hyp + Zicfiss (CFI Shadow Stack) | ✓ |
+| **Machine-mode (Sm*)** | `Smstateen` | State enable | ✓ |
+| | `smrnmi` | Resumable NMI | |
+| | `Smcdeleg` | Counter delegation | |
+| | `Smcsrind` | Indirect CSR access | ✓ |
+| | `smctr` | Counter trigger | |
+| | `Smdbltrp` | Double trap | |
+| **Supervisor (Ss*)** | `Ssccptr` | CBO cache operations | ✓ |
+| | `Sscofpmf` | Counter overflow / mode filtering | |
+| | `Sscounterenw` | Counter enable writability | |
+| | `Ssstateen` | State enable | ✓ |
+| | `Sstc` | S-mode timer compare | ✓ |
+| | `Sstvala` | Trap value | ✓ |
+| | `Sstvecd` | Trap vector | ✓ |
+| | `Ssu64xl` | UXL field control | |
+| | `Ssccfg` | Counter configuration | |
+| | `Sscsrind` | Indirect CSR access | ✓ |
+| | `ssctr` | Counter trigger | |
+| | `Ssdbltrp` | Double trap | ✓ |
+| **AIA (Interrupts)** | `aia_aplic` | APLIC | |
+| | `aia_imsic` | IMSIC | |
+| | `aia_smaia` | S-mode AIA | |
+| | `aia_iommu` | IOMMU | |
+| | `aia_hypervisor` | Hypervisor AIA | |
+| **CFI (Control Flow Integrity)** | `cfi.Zicfilp` | CFI Landing Pad | ✓ |
+| | `cfi.Zicfiss` | CFI Shadow Stack | ✓ |
+| **CMO (Cache Management)** | `cmo.base` | CMO base | |
+| | `cmo.Zicbom` | Cache Block Management | ✓ |
+| | `cmo.Zicbop` | Cache Block Prefetch | ✓ |
+| | `cmo.Zicboz` | Cache Block Zero | ✓ |
+| **Pointer Masking** | `zpm.Smmpm` | M-mode Pointer Masking | ✓ |
+| | `zpm.Smnpm` | Next-level Pointer Masking | ✓ |
+| | `zpm.Ssnpm` | S-mode Pointer Masking | ✓ |
+| **CLIC (Interrupts)** | `clic` | CLIC | |
+| | `aia_clic` | AIA + CLIC | |
+| **Other** | `aclint` | ACLINT | |
+| | `iopmp` | IOPMP | |
+| | `sbi` | SBI interface | |
+| | `ntrace` | Ntrace | |
+| | `raseri` | Raseri | |
 
 ---
 
