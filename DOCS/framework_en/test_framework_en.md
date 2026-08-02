@@ -35,7 +35,7 @@ This document describes the **common infrastructure** of the RISC-V privilege te
 ```
 common/
 ├── test_framework.h      # Core test framework header (macros, types, API declarations)
-├── test_framework.c      # Test result tracking, reset_state, test_print_summary
+├── test_framework.c      # Test result tracking, reset_state, test_print_banner, test_print_summary
 ├── trap.c                # Trap handling logic (arm/disarm, cause recording)
 ├── trap_asm.S            # Trap entry assembly (context save/restore)
 ├── privilege.c           # Privilege level switching (goto_priv, run_in_priv)
@@ -66,7 +66,7 @@ _entry (entry.S)
   │
   └── Jump to main()
         │
-        ├── Print test banner
+        ├── test_print_banner() → print test banner
         ├── Iterate through function pointers in .test_table section
         │     ├── test_fn_1() → TEST_BEGIN → test logic → TEST_END
         │     ├── test_fn_2() → ...
@@ -562,6 +562,28 @@ Automatically called in each `TEST_END()`, restoring hardware to a clean baselin
 7. Clean up Pointer Masking state (trap-protected)
 
 > Extension-specific resets (e.g., `pmp_clear_all()`) are called by each extension before `TEST_END` or in setup/teardown.
+
+#### test_print_banner — Print Test Banner
+
+```c
+void test_print_banner(const char *title);
+```
+
+Call at the start of `main()` to print a standardized test suite banner:
+
+```
+==============================================
+  RISC-V PMP Compliance Test
+==============================================
+  Platform:     QEMU RV64 MAX
+  XLEN:         64
+  Compiler:     GCC 16.1.0
+  MEM_BASE:     0x80000000
+  MEM_SIZE:     0x10000000
+==============================================
+```
+
+Extension-specific info (e.g., PMP entries, IMSIC base addresses) can be printed after calling `test_print_banner()`.
 
 #### test_print_summary — Print Test Summary
 

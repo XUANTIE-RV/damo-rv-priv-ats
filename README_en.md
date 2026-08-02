@@ -265,9 +265,9 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `Hypervisor_Zicboz` | Hyp + Zicboz (Cache Block Zero) | ✓ |
 | | `Hypervisor_Zicfilp` | Hyp + Zicfilp (CFI Landing Pad) | ✓ |
 | | `Hypervisor_Zicfiss` | Hyp + Zicfiss (CFI Shadow Stack) | ✓ |
-| | `Hypervisor_Smcntrpmf` | Hyp + Smcntrpmf | |
-| | `Hypervisor_Ssqosid` | Hyp + Ssqosid | |
-| | `Hypervisor_Zkr` | Hyp + Zkr | |
+| | `Hypervisor_Smcntrpmf` | Hyp + Smcntrpmf | ✓ |
+| | `Hypervisor_Ssqosid` | Hyp + Ssqosid | ✓ |
+| | `Hypervisor_Zkr` | Hyp + Zkr | ✓ |
 | **Machine-mode (Sm*)** | `Smstateen` | State enable | ✓ |
 | | `smrnmi` | Resumable NMI | |
 | | `Smcdeleg` | Counter delegation | |
@@ -276,7 +276,7 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `Smctr` | Control Transfer Records | |
 | | `Smdbltrp` | Double trap | |
 | **Supervisor (Ss*)** | `Ssccptr` | Main memory page-table reads | ✓ |
-| | `Sscofpmf` | Counter overflow / mode filtering | |
+| | `Sscofpmf` | Counter overflow / mode filtering | ✓ |
 | | `Sscounterenw` | Counter enable writability | |
 | | `Ssstateen` | State enable | ✓ |
 | | `Sstc` | Supervisor-mode timer interrupts | ✓ |
@@ -306,11 +306,11 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | **Other** | `aclint` | ACLINT | |
 | | `iopmp` | IOPMP | |
 | | `qos.cbqri` | QoS CBQRI | |
-| | `qos.Ssqosid` | QoS Ssqosid | |
+| | `qos.Ssqosid` | QoS Ssqosid | ✓ |
 | | `sbi` | SBI interface | |
 | | `ntrace` | Ntrace | |
 | | `raseri` | Raseri | |
-| | `Zkr` | Entropy source (Key Seed) | |
+| | `Zkr` | Entropy source (Key Seed) | ✓ |
 
 ---
 

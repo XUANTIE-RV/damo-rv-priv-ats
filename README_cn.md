@@ -265,13 +265,13 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `Hypervisor_Zicboz` | Hyp + Zicboz（Cache Block Zero） | ✓ |
 | | `Hypervisor_Zicfilp` | Hyp + Zicfilp（CFI Landing Pad） | ✓ |
 | | `Hypervisor_Zicfiss` | Hyp + Zicfiss（CFI Shadow Stack） | ✓ |
-| | `Hypervisor_Smcntrpmf` | Hyp + Smcntrpmf | |
-| | `Hypervisor_Ssqosid` | Hyp + Ssqosid | |
-| | `Hypervisor_Zkr` | Hyp + Zkr | |
+| | `Hypervisor_Smcntrpmf` | Hyp + Smcntrpmf | ✓ |
+| | `Hypervisor_Ssqosid` | Hyp + Ssqosid | ✓ |
+| | `Hypervisor_Zkr` | Hyp + Zkr | ✓ |
 | **Machine-mode (Sm*)** | `Smstateen` | 状态使能 | ✓ |
 | | `smrnmi` | 可恢复 NMI | |
 | | `Smcdeleg` | 计数器委托 | |
-| | `Smcntrpmf` | Cycle/Instret 特权模式过滤 | |
+| | `Smcntrpmf` | Cycle/Instret 特权模式过滤 | ✓ |
 | | `Smcsrind` | 间接 CSR 访问 | ✓ |
 | | `Smctr` | 控制流传输记录 | |
 | | `Smdbltrp` | 双重 trap | |
@@ -306,11 +306,11 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | **其他** | `aclint` | ACLINT | |
 | | `iopmp` | IOPMP | |
 | | `qos.cbqri` | QoS CBQRI | |
-| | `qos.Ssqosid` | QoS Ssqosid | |
+| | `qos.Ssqosid` | QoS Ssqosid | ✓ |
 | | `sbi` | SBI 接口 | |
 | | `ntrace` | Ntrace | |
 | | `raseri` | Raseri | |
-| | `Zkr` | 熵源（Key Seed） | |
+| | `Zkr` | 熵源（Key Seed） | ✓ |
 
 ---
 

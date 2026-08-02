@@ -182,7 +182,7 @@ static inline unsigned hist_branch_count(uint32_t hist)
  * =================================================================== */
 typedef struct {
     uint8_t  tcode;           /* Message type (TCODE) */
-    uint8_t  src;             /* SRC field (if present) */
+    uint16_t src;             /* SRC field (if present), up to 12 bits */
     uint8_t  sync;            /* SYNC field (for sync messages) */
     uint8_t  btype;           /* B-TYPE (for indirect branches) */
     uint8_t  etype;           /* ETYPE (for Error) */
