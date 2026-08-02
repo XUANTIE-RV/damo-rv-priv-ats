@@ -34,3 +34,6 @@
 [submodule "SPEC/riscv-sbi"]
 	path = SPEC/riscv-sbi
 	url = https://github.com/riscv-non-isa/riscv-sbi-doc.git
+[submodule "SPEC/riscv-ssqosid"]
+	path = SPEC/riscv-ssqosid
+	url = https://github.com/riscv/riscv-ssqosid.git

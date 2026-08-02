@@ -30,21 +30,12 @@ int main(void) {
 
     /* Delegate Sstvala-relevant exceptions to S-mode */
     sstvala_delegate_exceptions();
-
-    /* Print banner */
-    printf("\n");
-    printf("==============================================\n");
-    printf("  RISC-V Sstvala Extension Compliance Test\n");
-    printf("==============================================\n");
-    printf("  Platform:     %s\n", CONFIG_NAME);
-    printf("  XLEN:         %d\n", __riscv_xlen);
+    test_print_banner("RISC-V Sstvala Extension Compliance Test");
 
     unsigned int test_count = (unsigned int)(
         (uintptr_t)_test_table_end - (uintptr_t)_test_table
     ) / sizeof(test_func_t);
 
-    printf("  Test count:   %u\n", test_count);
-    printf("==============================================\n\n");
 
     for (unsigned int i = 0; i < test_count; i++) {
         _test_table[i]();

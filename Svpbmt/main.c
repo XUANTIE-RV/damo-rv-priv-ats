@@ -23,21 +23,12 @@ int main(void) {
     asm volatile("csrr %0, 0x30A" : "=r"(menvcfg));
     menvcfg |= MENVCFG_PBMTE;
     asm volatile("csrw 0x30A, %0" :: "r"(menvcfg) : "memory");
-
-    /* Print banner */
-    printf("\n");
-    printf("==============================================\n");
-    printf("  RISC-V Svpbmt Extension Compliance Test\n");
-    printf("==============================================\n");
-    printf("  Platform:     %s\n", CONFIG_NAME);
-    printf("  XLEN:         %d\n", __riscv_xlen);
+    test_print_banner("RISC-V Svpbmt Extension Compliance Test");
 
     unsigned int test_count = (unsigned int)(
         (uintptr_t)_test_table_end - (uintptr_t)_test_table
     ) / sizeof(test_func_t);
 
-    printf("  Test count:   %u\n", test_count);
-    printf("==============================================\n\n");
 
     for (unsigned int i = 0; i < test_count; i++) {
         _test_table[i]();

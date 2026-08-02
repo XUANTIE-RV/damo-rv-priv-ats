@@ -62,7 +62,8 @@ static void __attribute__((used)) _v_trampoline(void) {
         :
         : [fn] "m"(_v_run_fn), [arg] "m"(_v_run_arg),
           [res] "m"(_v_run_result)
-        : "a0", "t2", "ra", "memory"
+        : "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7",
+          "t0", "t1", "t2", "t3", "t4", "t5", "t6", "ra", "memory"
     );
     ecall_args[0] = ECALL_GOTO_PRIV;
     ecall_args[1] = PRIV_M;
@@ -115,14 +116,21 @@ static uintptr_t run_in_virt_priv(unsigned target,
     hd &= ~(1UL << 10);
     hedeleg_write(hd);
 
-    /* Enter VS/VU at _v_trampoline, return here via the ecall round-trip. */
+    /* Enter VS/VU at _v_trampoline, return here via the ecall round-trip.
+     *
+     * The ecall handler is a C function that clobbers all caller-saved
+     * registers (a0-a7, t0-t6).  The clobber list MUST include them all;
+     * otherwise the compiler may assume a register (e.g. a0) still holds
+     * a pre-mret value and generate a dereference like `ld a0, 0(a0)`
+     * after the round-trip, faulting on the handler's return value. */
     asm volatile (
         "la ra, 1f\n\t"
         "la t0, _v_trampoline\n\t"
         "csrw mepc, t0\n\t"
         "mret\n\t"
         "1:\n\t"
-        ::: "ra", "t0", "memory"
+        ::: "ra", "t0", "t1", "t2", "t3", "t4", "t5", "t6",
+            "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "memory"
     );
 
     /* On return current_priv has been reset to PRIV_M by the ecall handler. */

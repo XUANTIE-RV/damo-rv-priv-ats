@@ -50,6 +50,11 @@ sstvecd_trap_entry:
     la      t0, g_sstvecd_trap_cause
     sd      t1, 0(t0)
 
+    /* Record original sepc (faulting instruction) */
+    csrr    t1, sepc
+    la      t0, g_sstvecd_trap_sepc
+    sd      t1, 0(t0)
+
     /* If this is an interrupt (scause MSB set), clear sip.SSIP so we
      * don't re-enter the handler immediately after sret. We don't
      * inspect the cause-low further: SSIP is the only interrupt source
@@ -99,6 +104,8 @@ sstvecd_trap_scratch:
     .section .data
     .globl  g_sstvecd_trap_pc
     .globl  g_sstvecd_trap_cause
+    .globl  g_sstvecd_trap_sepc
     .align  3
 g_sstvecd_trap_pc:    .dword 0
 g_sstvecd_trap_cause: .dword 0
+g_sstvecd_trap_sepc:  .dword 0

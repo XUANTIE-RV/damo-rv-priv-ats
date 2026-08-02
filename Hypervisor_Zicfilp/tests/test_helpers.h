@@ -239,7 +239,7 @@ static uintptr_t vs_nop_fn(uintptr_t arg) {
  * =================================================================== */
 /* Address of the JALR instruction inside vs_jalr_to_target, recorded
  * at runtime so tests can compare it against vsepc/sepc after a trap. */
-static volatile uintptr_t g_jalr_addr;
+static volatile uintptr_t g_jalr_addr __attribute__((used));
 
 static uintptr_t vs_jalr_to_target(uintptr_t addr) {
     trap_expect_begin();
@@ -297,18 +297,19 @@ static volatile uintptr_t g_vu_fault_addr;
  * srets away to VU-mode), so a compiler-generated stack frame would
  * never be unwound and would corrupt the _v_trampoline epilogue's
  * stack-relative ra restore. */
-static uintptr_t vs_sret_to_vu(uintptr_t arg) __attribute__((naked));
-static uintptr_t vs_sret_to_vu(uintptr_t arg) {
-    (void)arg;
+static uintptr_t vs_sret_to_vu(uintptr_t addr) __attribute__((naked));
+static uintptr_t vs_sret_to_vu(uintptr_t addr __attribute__((unused))) {
+    /* Naked function: no parameter references allowed in asm operands.
+     * Per RISC-V calling convention, addr is in a0.  Use t1 for the
+     * sstatus mask constant to avoid conflicting with a0. */
     asm volatile(
         "la   t0, g_vu_fault_addr\n\t"
         "ld   t0, 0(t0)\n\t"
-        "csrw sepc, a0\n\t"
-        "csrc sstatus, %0\n\t"
+        "csrw sepc, a0\n\t"       /* a0 = target addr (calling convention) */
+        "li   t1, 0x100\n\t"      /* SSTATUS_SPP mask */
+        "csrc sstatus, t1\n\t"
         "sret\n\t"
-        :
-        : "r"(0x100)
-        : "t0", "memory");
+        ::: "t0", "t1", "memory");
 }
 
 /* Landing point (VS-mode, S-level page) where the VS-mode exception

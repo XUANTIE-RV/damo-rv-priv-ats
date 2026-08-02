@@ -92,8 +92,7 @@ uintptr_t test_vs_amo_to(uintptr_t arg) {
  * =================================================================== */
 
 uintptr_t test_vs_vi_read_hstatus(uintptr_t arg) __attribute__((naked));
-uintptr_t test_vs_vi_read_hstatus(uintptr_t arg) {
-    (void)arg;
+uintptr_t test_vs_vi_read_hstatus(uintptr_t) {
     asm volatile (
         ".option push\n\t"
         ".option norvc\n\t"
@@ -104,8 +103,7 @@ uintptr_t test_vs_vi_read_hstatus(uintptr_t arg) {
 }
 
 uintptr_t test_vs_vi_write_hgatp(uintptr_t arg) __attribute__((naked));
-uintptr_t test_vs_vi_write_hgatp(uintptr_t arg) {
-    (void)arg;
+uintptr_t test_vs_vi_write_hgatp(uintptr_t) {
     asm volatile (
         ".option push\n\t"
         ".option norvc\n\t"
@@ -116,8 +114,7 @@ uintptr_t test_vs_vi_write_hgatp(uintptr_t arg) {
 }
 
 uintptr_t test_vs_vi_read_hideleg(uintptr_t arg) __attribute__((naked));
-uintptr_t test_vs_vi_read_hideleg(uintptr_t arg) {
-    (void)arg;
+uintptr_t test_vs_vi_read_hideleg(uintptr_t) {
     asm volatile (
         ".option push\n\t"
         ".option norvc\n\t"

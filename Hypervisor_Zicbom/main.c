@@ -30,19 +30,12 @@ int main(void)
     uart_init();
     reset_state();
 
-    printf("\n");
-    printf("======================================================\n");
-    printf("  Hypervisor x Zicbom Cross Test\n");
-    printf("======================================================\n");
-    printf("  Platform:     %s\n", CONFIG_NAME);
-    printf("  XLEN:         %d\n", __riscv_xlen);
+    test_print_banner("Hypervisor x Zicbom Cross Test");
 
     unsigned int test_count = (unsigned int)(
         (uintptr_t)_test_table_end - (uintptr_t)_test_table
     ) / sizeof(test_func_t);
 
-    printf("  Test count:   %u\n", test_count);
-    printf("======================================================\n\n");
 
     /* Clean H-ext baseline before the first test. */
     hyp_reset_state();

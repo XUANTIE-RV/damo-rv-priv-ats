@@ -56,8 +56,8 @@ _platform_hw_init:
  * own strong _platform_init that calls _platform_hw_init first,
  * then performs project-specific setup.
  * =================================================================== */
-    .weak   _platform_init
     .global _platform_init
+    .weak   _platform_init
 _platform_init:
     addi    sp, sp, -REGSIZE
     STORE   ra, 0(sp)

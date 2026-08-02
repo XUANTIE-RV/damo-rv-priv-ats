@@ -43,6 +43,7 @@
  * =================================================================== */
 extern volatile uintptr_t g_sstvecd_trap_pc;
 extern volatile uintptr_t g_sstvecd_trap_cause;
+extern volatile uintptr_t g_sstvecd_trap_sepc;
 extern void               sstvecd_trap_entry(void);
 extern unsigned long      sstvecd_trap_scratch[];
 
@@ -90,6 +91,7 @@ static inline void stvec_write(uintptr_t v) {
 static inline void sstvecd_reset_trap_record(void) {
     g_sstvecd_trap_pc    = 0;
     g_sstvecd_trap_cause = 0;
+    g_sstvecd_trap_sepc  = 0;
     /* Re-arm sscratch so the asm trap entry can spill t0/t1. */
     asm volatile ("csrw sscratch, %0"
                   :: "r"(sstvecd_trap_scratch) : "memory");

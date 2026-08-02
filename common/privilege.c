@@ -294,7 +294,8 @@ uintptr_t run_in_priv(unsigned priv, uintptr_t (*fn)(uintptr_t), uintptr_t arg) 
                 "csrw mepc, t0\n\t"
                 "mret\n\t"
                 "1:\n\t"
-                ::: "ra", "t0", "memory"
+                ::: "ra", "t0", "t1", "t2", "t3", "t4", "t5", "t6",
+                    "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "memory"
             );
         } else if (current_priv == PRIV_S || current_priv == PRIV_VS) {
             if (is_virt_target(priv) && current_priv == PRIV_S) {
@@ -309,7 +310,8 @@ uintptr_t run_in_priv(unsigned priv, uintptr_t (*fn)(uintptr_t), uintptr_t arg) 
                     "csrw mepc, t0\n\t"
                     "mret\n\t"
                     "1:\n\t"
-                    ::: "ra", "t0", "memory"
+                    ::: "ra", "t0", "t1", "t2", "t3", "t4", "t5", "t6",
+                        "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "memory"
                 );
             } else {
                 current_priv = priv;
@@ -319,7 +321,8 @@ uintptr_t run_in_priv(unsigned priv, uintptr_t (*fn)(uintptr_t), uintptr_t arg) 
                     "csrw sepc, t0\n\t"
                     "sret\n\t"
                     "1:\n\t"
-                    ::: "ra", "t0", "memory"
+                    ::: "ra", "t0", "t1", "t2", "t3", "t4", "t5", "t6",
+                        "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "memory"
                 );
             }
         }
