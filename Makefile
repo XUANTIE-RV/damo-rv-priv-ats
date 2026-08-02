@@ -23,20 +23,21 @@ SV_GROUP  = Sv39 Sv48 Sv57 Svbare Svade Svadu Svnapot Svinval Svpbmt Svvptc Svrs
 SS_GROUP  = Ssccptr Sscofpmf Sscounterenw Ssstateen Sstc Sstvala Sstvecd Ssu64xl
 SM_GROUP  = Smstateen smrnmi Sm_CSR
 HYP_GROUP = Sv39x4 Sv48x4 Sv57x4 \
-            Sv39_Sv39x4 Sv39_Sv48x4 Sv39_Sv57x4 \
-            Sv48_Sv39x4 Sv48_Sv48x4 Sv48_Sv57x4 \
-            Sv57_Sv39x4 Sv57_Sv48x4 Sv57_Sv57x4 \
+            Sv39x4_Sv39 Sv39x4_Sv48 Sv39x4_Sv57 \
+            Sv48x4_Sv39 Sv48x4_Sv48 Sv48x4_Sv57 \
+            Sv57x4_Sv39 Sv57x4_Sv48 Sv57x4_Sv57 \
 			Shgatpa Shtvala Shcounterenw Shvstvecd Shvstvala Shvsatpa Shlcofideleg \
-			Hypervisor Sha Hypervisor_Sscounterenw Hypervisor_Svinval Hypervisor_Sstc
+			Hypervisor Sha Hypervisor_Svinval Hypervisor_Sstc
 INT_GROUP = aia_aplic aia_imsic aia_smaia aia_iommu aia_hypervisor aclint
 
 # All extensions (union of groups + ungrouped)
-EXTENSIONS = $(PMP_GROUP) $(SV_GROUP) $(SS_GROUP) $(SM_GROUP) $(HYP_GROUP) $(INT_GROUP) zpm
+EXTENSIONS = $(PMP_GROUP) $(SV_GROUP) $(SS_GROUP) $(SM_GROUP) $(HYP_GROUP) $(INT_GROUP) zpm.Smmpm zpm.Smnpm zpm.Ssnpm
 
 # Forward all variables to sub-makes
 MAKE_VARS = $(if $(XLEN),XLEN=$(XLEN)) \
             $(if $(CONFIG),CONFIG=$(CONFIG)) \
             $(if $(CROSS_COMPILER),CROSS_COMPILER=$(CROSS_COMPILER)) \
+            $(if $(TOOLCHAIN),TOOLCHAIN=$(TOOLCHAIN)) \
             $(if $(LOG_LEVEL),LOG_LEVEL=$(LOG_LEVEL)) \
             $(if $(SAIL),SAIL=$(SAIL)) \
             $(if $(SPIKE),SPIKE=$(SPIKE)) \
@@ -82,7 +83,8 @@ help:
 	@echo ""
 	@echo "  Options:"
 	@echo "    XLEN=32|64            Architecture (default: 64)"
-	@echo "    CROSS_COMPILER=...    Toolchain prefix"
+	@echo "    CROSS_COMPILER=...    Toolchain prefix (e.g., riscv64-unknown-elf-)"
+	@echo "    TOOLCHAIN=gcc|clang   Compiler backend (default: gcc)"
 	@echo "    CONFIG=...            Target configuration"
 	@echo "    LOG_LEVEL=1-6         Verbosity (default: 3)"
 	@echo ""

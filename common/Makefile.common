@@ -58,8 +58,16 @@ else
     MARCH = rv64imac_zicsr_zifencei
 endif
 
-# Toolchain
-CC      = $(CROSS_COMPILER)gcc
+# Toolchain selection: gcc (default) or clang (LLVM)
+# Both toolchains share the same binutils-compatible tool names (as, ld,
+# objcopy, objdump); only the compiler binary differs (gcc vs clang).
+TOOLCHAIN ?= gcc
+
+ifeq ($(TOOLCHAIN),clang)
+  CC = $(CROSS_COMPILER)clang
+else
+  CC = $(CROSS_COMPILER)gcc
+endif
 AS      = $(CROSS_COMPILER)as
 LD      = $(CROSS_COMPILER)ld
 OBJCOPY = $(CROSS_COMPILER)objcopy
@@ -74,7 +82,8 @@ COMMON_OBJS = \
     $(COMMON_DIR)/privilege.o \
     $(COMMON_DIR)/csr_accessors.o \
     $(COMMON_DIR)/uart.o \
-    $(COMMON_DIR)/test_framework.o
+    $(COMMON_DIR)/test_framework.o \
+    $(COMMON_DIR)/string.o
 
 # VM support (conditional, set ENABLE_VM=1 in extension Makefile)
 ifdef ENABLE_VM
@@ -159,8 +168,12 @@ CFLAGS += -MMD -MP
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
 # Disable PIE
-ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
-CFLAGS += -fno-pie -no-pie
+ifeq ($(TOOLCHAIN),clang)
+  CFLAGS += -fno-pie
+else
+  ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
+    CFLAGS += -fno-pie -no-pie
+  endif
 endif
 
 # Conditional CFLAGS for PMP support
@@ -239,9 +252,23 @@ endif
 LDFLAGS  = -z max-page-size=4096 -nostartfiles -nostdlib -nodefaultlibs
 LDFLAGS += -Wl,--defsym=__riscv_xlen=$(XLEN)
 LDFLAGS += -Wl,--defsym=MEM_BASE=$(MEM_BASE)
-LDFLAGS += -Wl,--no-warn-rwx-segments
+ifeq ($(TOOLCHAIN),clang)
+  LDFLAGS += -fuse-ld=lld
+  # LLD does not emit rwx-segment warnings, so --no-warn-rwx-segments is not needed
+else
+  LDFLAGS += -Wl,--no-warn-rwx-segments
+endif
 LDFLAGS += -L$(CONFIG_DIR)
 LDFLAGS += -march=$(MARCH) -mabi=$(ABI)
+
+# Linker script flag: for clang, pass -T via -Wl, so LLD processes --defsym
+# symbols BEFORE parsing the linker script (clang driver reorders -T ahead of
+# -Wl flags, causing LLD to evaluate __riscv_xlen as 0 in linker script expressions)
+ifeq ($(TOOLCHAIN),clang)
+  LINK_T = -Wl,-T,kernel.ld
+else
+  LINK_T = -T kernel.ld
+endif
 
 # =====================================================================
 # Compile rules (shared by both single and multi-target modes)
@@ -291,7 +318,7 @@ all: $(TARGETS)
 # Generate a link rule for each target
 define MULTI_TARGET_RULE
 $(1): $$($(call _varname,$(basename $(1)))_OBJS) $$(COMMON_OBJS) kernel.ld
-	$$(CC) $$(LDFLAGS) -T kernel.ld -o $(1) $$($(call _varname,$(basename $(1)))_OBJS) $$(COMMON_OBJS)
+	$$(CC) $$(LDFLAGS) $$(LINK_T) -o $(1) $$($(call _varname,$(basename $(1)))_OBJS) $$(COMMON_OBJS)
 	$$(OBJDUMP) -S $(1) > $(basename $(1)).asm
 	$$(OBJDUMP) -t $(1) | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$$$/ d' > $(basename $(1)).sym
 endef
@@ -323,7 +350,7 @@ all: $(TARGET)
 TARGET_BASE = $(basename $(TARGET))
 
 $(TARGET): $(ALL_OBJS) kernel.ld
-	$(CC) $(LDFLAGS) -T kernel.ld -o $(TARGET) $(ALL_OBJS)
+	$(CC) $(LDFLAGS) $(LINK_T) -o $(TARGET) $(ALL_OBJS)
 	$(OBJDUMP) -S $(TARGET) > $(TARGET_BASE).asm
 	$(OBJDUMP) -t $(TARGET) | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(TARGET_BASE).sym
 

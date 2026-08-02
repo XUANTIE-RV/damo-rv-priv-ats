@@ -15,27 +15,20 @@ int main(void) {
     uart_init();
     reset_state();
 
-    printf("\n");
-    printf("======================================================\n");
 #if SUITE_HGATP_MODE == HGATP_MODE_SV39X4
-    printf("  RISC-V Sv39x4 G-stage Translation Compliance Test\n");
+    test_print_banner("RISC-V Sv39x4 G-stage Translation Compliance Test");
 #elif SUITE_HGATP_MODE == HGATP_MODE_SV48X4
-    printf("  RISC-V Sv48x4 G-stage Translation Compliance Test\n");
+    test_print_banner("RISC-V Sv48x4 G-stage Translation Compliance Test");
 #elif SUITE_HGATP_MODE == HGATP_MODE_SV57X4
-    printf("  RISC-V Sv57x4 G-stage Translation Compliance Test\n");
+    test_print_banner("RISC-V Sv57x4 G-stage Translation Compliance Test");
 #else
-    printf("  RISC-V Sv*x4 G-stage Translation Compliance Test\n");
+    test_print_banner("RISC-V Sv*x4 G-stage Translation Compliance Test");
 #endif
-    printf("======================================================\n");
-    printf("  Platform:     %s\n", CONFIG_NAME);
-    printf("  XLEN:         %d\n", __riscv_xlen);
 
     unsigned int test_count = (unsigned int)(
         (uintptr_t)_test_table_end - (uintptr_t)_test_table
     ) / sizeof(test_func_t);
 
-    printf("  Test count:   %u\n", test_count);
-    printf("======================================================\n\n");
 
     /* Make sure all H-ext state is in a clean baseline before the
      * first test. */

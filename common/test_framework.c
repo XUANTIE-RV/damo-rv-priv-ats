@@ -132,6 +132,23 @@ void reset_state(void) {
 }
 
 /* ===================================================================
+ * test_print_banner - Print test suite banner
+ * =================================================================== */
+void test_print_banner(const char *title)
+{
+    printf("\n");
+    printf("==============================================\n");
+    printf("  %s\n", title);
+    printf("==============================================\n");
+    printf("  Platform:     %s\n", CONFIG_NAME);
+    printf("  XLEN:         %d\n", __riscv_xlen);
+    printf("  Compiler:     %s\n", COMPILER_INFO);
+    printf("  MEM_BASE:     0x%lx\n", (unsigned long)PLATFORM_MEM_BASE);
+    printf("  MEM_SIZE:     0x%lx\n", (unsigned long)PLATFORM_MEM_SIZE);
+    printf("==============================================\n\n");
+}
+
+/* ===================================================================
  * test_print_summary - Print final test results
  * =================================================================== */
 int test_print_summary(void) {

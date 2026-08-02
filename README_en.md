@@ -11,7 +11,7 @@ Damo RV Priv ATS is a compliance test framework for validating RISC-V privilege 
 ```
 damo-priv-test/
 ├── Makefile               # Top-level: builds all extensions
-├── README.md / README_zh.md
+├── README_en.md / README_cn.md
 │
 ├── common/                # Shared infrastructure (extension-independent)
 │   ├── pmp/               # PMP common library
@@ -55,7 +55,9 @@ Standard structure of each extension directory:
 
 ## Prerequisites
 
-- **RISC-V cross-compiler**: `riscv64-unknown-elf-gcc` (or `riscv32-unknown-elf-gcc` for RV32)
+- **RISC-V cross-compiler** (either one):
+  - GCC: `riscv64-unknown-elf-gcc` (or `riscv32-unknown-elf-gcc` for RV32)
+  - LLVM/Clang: `clang` + `ld.lld` + `llvm-objcopy` + `llvm-objdump`
 - **QEMU** (optional): `qemu-system-riscv64` / `qemu-system-riscv32`
 - **Sail** (optional): `sail_riscv_sim` for reference model verification
 - **Spike** (optional): `spike` for ISA simulation
@@ -80,13 +82,70 @@ make sail-pmp CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 make spike-pmp CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 
 # Build for RV32
-make XLEN=32 CROSS_COMPILER=/path/to/riscv32-unknown-elf-
+make pmp XLEN=32 CROSS_COMPILER=/path/to/riscv32-unknown-elf-
 ```
 
 Run specific tests using `TEST_FILTER`:
 
 ```bash
 make qemu-pmp EXTRA_CFLAGS='-DTEST_FILTER="PMP"' CROSS_COMPILER=/path/to/riscv64-unknown-elf-
+```
+
+---
+
+## Toolchain Selection
+
+The framework supports both **GCC** and **LLVM/Clang** toolchains, switched via the `TOOLCHAIN` variable. GCC is the default for full backward compatibility.
+
+### GCC (default)
+
+```bash
+# Default behavior, no extra parameters needed
+make pmp
+
+# Specify toolchain prefix manually
+make pmp CROSS_COMPILER=/path/to/riscv64-unknown-elf-
+
+# Build for RV32
+make pmp XLEN=32 CROSS_COMPILER=/path/to/riscv32-unknown-elf-
+```
+
+### LLVM/Clang
+
+When using the LLVM toolchain, the framework invokes the compiler via `$(CROSS_COMPILER)clang` (e.g., `riscv64-unknown-elf-clang`) and uses `ld.lld` as the linker. The `CROSS_COMPILER` prefix works the same way as in GCC mode.
+
+```bash
+# Switch to LLVM toolchain (default prefix: riscv64-unknown-elf-)
+make pmp TOOLCHAIN=clang
+
+# Run on simulators
+make qemu-pmp TOOLCHAIN=clang
+
+# Build all extensions
+make all TOOLCHAIN=clang
+
+# Build for RV32 (clang handles 32/64-bit via -march)
+make pmp TOOLCHAIN=clang XLEN=32
+
+# Specify toolchain prefix manually
+make pmp TOOLCHAIN=clang CROSS_COMPILER=/path/to/riscv64-unknown-elf-
+```
+
+Optional parameters:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TOOLCHAIN` | `gcc` | Compiler backend: `gcc` or `clang` |
+| `CROSS_COMPILER` | `riscv64-unknown-elf-` | Toolchain prefix (shared by GCC and Clang modes) |
+
+### Installing LLVM Toolchain
+
+```bash
+# Ubuntu/Debian
+sudo apt install llvm lld clang
+
+# Or build RISC-V LLVM from source
+# See: https://github.com/llvm/llvm-project
 ```
 
 ---
@@ -160,7 +219,7 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `Svinval` | Fine-grained TLB invalidation | ✓ |
 | | `Svade` | Hardware A/D bit exceptions | |
 | | `Svadu` | Hardware A/D bit auto-update | ✓ |
-| | `Svvptc` | Virtualized page table cache | |
+| | `Svvptc` | Obviating MM instructions after PTE valid | |
 | | `Svrsw60t59b` | PTE reserved bit extension | |
 | **PMP+VM Interaction** | `pmp_sv39` | PMP + Sv39 interaction | |
 | | `pmp_sv48` | PMP + Sv48 interaction | |
@@ -178,14 +237,14 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `Sv57x4_Sv39` | Two-stage: Sv57x4 + Sv39 | ✓ |
 | | `Sv57x4_Sv48` | Two-stage: Sv57x4 + Sv48 | ✓ |
 | | `Sv57x4_Sv57` | Two-stage: Sv57x4 + Sv57 | ✓ |
-| **Hypervisor CSR** | `Sha` | Hypervisor address translation | ✓ |
-| | `Shgatpa` | G-stage page table | ✓ |
-| | `Shcounterenw` | Hypervisor counter enable | ✓ |
+| **Hypervisor CSR** | `Sha` | Augmented Hypervisor extension | ✓ |
+| | `Shgatpa` | Translation mode support | ✓ |
+| | `Shcounterenw` | Counter-enable writability | ✓ |
 | | `Shlcofideleg` | Counter overflow delegation | ✓ |
-| | `Shtvala` | Hypervisor trap value | ✓ |
-| | `Shvsatpa` | VS-stage address translation | ✓ |
-| | `Shvstvala` | VS-stage trap value | ✓ |
-| | `Shvstvecd` | VS-stage trap vector | ✓ |
+| | `Shtvala` | Hypervisor trap value reporting | ✓ |
+| | `Shvsatpa` | VS-stage translation mode support | ✓ |
+| | `Shvstvala` | VS-stage trap value reporting | ✓ |
+| | `Shvstvecd` | VS-stage direct trap vectoring | ✓ |
 | **Hypervisor Combos** | `Hypervisor_Smcsrind` | Hyp + Smcsrind | ✓ |
 | | `Hypervisor_Smmpm` | Hyp + Smmpm (M-mode Pointer Masking) | ✓ |
 | | `Hypervisor_Smnpm` | Hyp + Smnpm (Next-level Pointer Masking) | ✓ |
@@ -206,28 +265,32 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `Hypervisor_Zicboz` | Hyp + Zicboz (Cache Block Zero) | ✓ |
 | | `Hypervisor_Zicfilp` | Hyp + Zicfilp (CFI Landing Pad) | ✓ |
 | | `Hypervisor_Zicfiss` | Hyp + Zicfiss (CFI Shadow Stack) | ✓ |
+| | `Hypervisor_Smcntrpmf` | Hyp + Smcntrpmf | |
+| | `Hypervisor_Ssqosid` | Hyp + Ssqosid | |
+| | `Hypervisor_Zkr` | Hyp + Zkr | |
 | **Machine-mode (Sm*)** | `Smstateen` | State enable | ✓ |
 | | `smrnmi` | Resumable NMI | |
 | | `Smcdeleg` | Counter delegation | |
+| | `Smcntrpmf` | Cycle/Instret privilege mode filtering | |
 | | `Smcsrind` | Indirect CSR access | ✓ |
-| | `smctr` | Counter trigger | |
+| | `Smctr` | Control Transfer Records | |
 | | `Smdbltrp` | Double trap | |
-| **Supervisor (Ss*)** | `Ssccptr` | CBO cache operations | ✓ |
+| **Supervisor (Ss*)** | `Ssccptr` | Main memory page-table reads | ✓ |
 | | `Sscofpmf` | Counter overflow / mode filtering | |
 | | `Sscounterenw` | Counter enable writability | |
 | | `Ssstateen` | State enable | ✓ |
-| | `Sstc` | S-mode timer compare | ✓ |
-| | `Sstvala` | Trap value | ✓ |
-| | `Sstvecd` | Trap vector | ✓ |
-| | `Ssu64xl` | UXL field control | |
-| | `Ssccfg` | Counter configuration | |
+| | `Sstc` | Supervisor-mode timer interrupts | ✓ |
+| | `Sstvala` | Trap value reporting | ✓ |
+| | `Sstvecd` | Direct trap vectoring | ✓ |
+| | `Ssu64xl` | UXLEN=64 support | |
+| | `Ssccfg` | S-mode counter delegation | |
 | | `Sscsrind` | Indirect CSR access | ✓ |
-| | `ssctr` | Counter trigger | |
+| | `Ssctr` | Control Transfer Records | |
 | | `Ssdbltrp` | Double trap | ✓ |
 | **AIA (Interrupts)** | `aia_aplic` | APLIC | |
-| | `aia_imsic` | IMSIC | |
-| | `aia_smaia` | S-mode AIA | |
-| | `aia_iommu` | IOMMU | |
+| | `aia_imsic` | AIA IMSIC | |
+| | `aia_smaia` | M-mode AIA | |
+| | `aia_iommu` | AIA + IOMMU | |
 | | `aia_hypervisor` | Hypervisor AIA | |
 | **CFI (Control Flow Integrity)** | `cfi.Zicfilp` | CFI Landing Pad | ✓ |
 | | `cfi.Zicfiss` | CFI Shadow Stack | ✓ |
@@ -242,9 +305,12 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `aia_clic` | AIA + CLIC | |
 | **Other** | `aclint` | ACLINT | |
 | | `iopmp` | IOPMP | |
+| | `qos.cbqri` | QoS CBQRI | |
+| | `qos.Ssqosid` | QoS Ssqosid | |
 | | `sbi` | SBI interface | |
 | | `ntrace` | Ntrace | |
 | | `raseri` | Raseri | |
+| | `Zkr` | Entropy source (Key Seed) | |
 
 ---
 
@@ -260,7 +326,7 @@ Key design principles:
 4. **Platform abstraction via `-include`** — Platform headers (`platform_config.h` and `rvtest_config.h`) are injected at compile time, avoiding hardcoded `#include "platform_config.h"` in source files.
 5. **RV32/RV64 dual support** — All assembly uses conditional macros derived from `__riscv_xlen`.
 6. **Deterministic trap handling** — All memory operations use non-compressed instructions (`.option norvc`) so the trap handler can reliably skip faulting instructions with `mepc += 4`.
-7. **Conditionally-linked common libraries** — Extensions opt-in via `ENABLE_PMP=1`, `ENABLE_VM=1`, `ENABLE_HYP=1`, or `ENABLE_PM=1` in their Makefile.
+7. **Conditionally-linked common libraries** — Extensions opt-in via `ENABLE_PMP=1`, `ENABLE_VM=1`, `ENABLE_HYP=1`, `ENABLE_PM=1`, `ENABLE_TWO_STAGE=1`, `ENABLE_IOPMP=1`, `ENABLE_NTRACE=1`, or `ENABLE_CMO=1` in their Makefile.
 
 ---
 

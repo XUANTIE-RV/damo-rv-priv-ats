@@ -12,6 +12,23 @@
 #include "mem_ops.h"
 
 /* ===================================================================
+ * Compiler Identification
+ *
+ * Detects the compiler (GCC or Clang) at compile time and exposes a
+ * concise version string for use in test banners.
+ * =================================================================== */
+#define _TF_STRINGIFY(x) #x
+#define _TF_STR(x) _TF_STRINGIFY(x)
+
+#ifdef __clang__
+    #define COMPILER_INFO "Clang " _TF_STR(__clang_major__) "." _TF_STR(__clang_minor__) "." _TF_STR(__clang_patchlevel__)
+#elif defined(__GNUC__)
+    #define COMPILER_INFO "GCC " _TF_STR(__GNUC__) "." _TF_STR(__GNUC_MINOR__) "." _TF_STR(__GNUC_PATCHLEVEL__)
+#else
+    #define COMPILER_INFO "Unknown"
+#endif
+
+/* ===================================================================
  * Test Function Type and Registration
  * =================================================================== */
 
@@ -495,6 +512,15 @@ extern bool      trap_get_spv_snap(void);
  * Clears all PMP entries, resets mseccfg, returns to M-mode.
  */
 void reset_state(void);
+
+/**
+ * test_print_banner - Print test suite banner
+ *
+ * Prints a standardized banner with platform info (Platform, XLEN,
+ * Compiler, MEM_BASE, MEM_SIZE). Call at the start of main() before
+ * running tests. Extension-specific info can be printed after this.
+ */
+void test_print_banner(const char *title);
 
 /**
  * test_print_summary - Print final test results

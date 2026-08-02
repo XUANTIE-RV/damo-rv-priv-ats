@@ -11,7 +11,7 @@ Damo RV Priv ATS 是一个用于验证 RISC-V 特权态扩展的的兼容性测�
 ```
 damo-priv-test/
 ├── Makefile               # 顶层：构建所有扩展
-├── README.md / README_zh.md
+├── README_en.md / README_cn.md
 │
 ├── common/                # 共享基础设施（与扩展无关）
 │   ├── pmp/               # PMP 公共库
@@ -55,7 +55,9 @@ damo-priv-test/
 
 ## 前置要求
 
-- **RISC-V 交叉编译器**：`riscv64-unknown-elf-gcc`（RV32 使用 `riscv32-unknown-elf-gcc`）
+- **RISC-V 交叉编译器**（以下任选其一）：
+  - GCC：`riscv64-unknown-elf-gcc`（RV32 使用 `riscv32-unknown-elf-gcc`）
+  - LLVM/Clang：`clang` + `ld.lld` + `llvm-objcopy` + `llvm-objdump`
 - **QEMU**（可选）：`qemu-system-riscv64` / `qemu-system-riscv32`
 - **Sail**（可选）：`sail_riscv_sim`，用于参考模型验证
 - **Spike**（可选）：`spike`，用于 ISA 模拟
@@ -80,13 +82,70 @@ make sail-pmp CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 make spike-pmp CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 
 # 构建 RV32 版本
-make XLEN=32 CROSS_COMPILER=/path/to/riscv32-unknown-elf-
+make pmp XLEN=32 CROSS_COMPILER=/path/to/riscv32-unknown-elf-
 ```
 
 使用 `TEST_FILTER` 运行特定测试：
 
 ```bash
 make qemu-pmp EXTRA_CFLAGS='-DTEST_FILTER="PMP"' CROSS_COMPILER=/path/to/riscv64-unknown-elf-
+```
+
+---
+
+## 工具链选择
+
+框架同时支持 **GCC** 和 **LLVM/Clang** 两种工具链，通过 `TOOLCHAIN` 变量切换。默认使用 GCC，保持完全向后兼容。
+
+### GCC（默认）
+
+```bash
+# 默认行为，无需额外参数
+make pmp
+
+# 手动指定工具链前缀
+make pmp CROSS_COMPILER=/path/to/riscv64-unknown-elf-
+
+# 构建 RV32
+make pmp XLEN=32 CROSS_COMPILER=/path/to/riscv32-unknown-elf-
+```
+
+### LLVM/Clang
+
+使用 LLVM 工具链时，框架通过 `$(CROSS_COMPILER)clang` 方式调用编译器（如 `riscv64-unknown-elf-clang`），链接器使用 `ld.lld`。与 GCC 模式一样，通过 `CROSS_COMPILER` 指定工具链前缀。
+
+```bash
+# 切换到 LLVM 工具链（使用默认前缀 riscv64-unknown-elf-）
+make pmp TOOLCHAIN=clang
+
+# 在模拟器上运行
+make qemu-pmp TOOLCHAIN=clang
+
+# 构建所有扩展
+make all TOOLCHAIN=clang
+
+# 构建 RV32（clang 通过 -march 自动处理 32/64 位）
+make pmp TOOLCHAIN=clang XLEN=32
+
+# 手动指定工具链前缀
+make pmp TOOLCHAIN=clang CROSS_COMPILER=/path/to/riscv64-unknown-elf-
+```
+
+可选参数：
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `TOOLCHAIN` | `gcc` | 工具链后端，可选 `gcc` 或 `clang` |
+| `CROSS_COMPILER` | `riscv64-unknown-elf-` | 工具链前缀（GCC 和 Clang 模式通用） |
+
+### 安装 LLVM 工具链
+
+```bash
+# Ubuntu/Debian
+sudo apt install llvm lld clang
+
+# 或从源码编译 RISC-V LLVM 工具链
+# 参考：https://github.com/llvm/llvm-project
 ```
 
 ---
@@ -160,7 +219,7 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `Svinval` | 细粒度 TLB 无效化 | ✓ |
 | | `Svade` | 硬件 A/D 位异常 | |
 | | `Svadu` | 硬件 A/D 位自动更新 | ✓ |
-| | `Svvptc` | 虚拟化页表缓存 | |
+| | `Svvptc` | PTE 置有效后省略内存管理指令 | |
 | | `Svrsw60t59b` | PTE reserved 位扩展 | |
 | **PMP+VM 交互** | `pmp_sv39` | PMP + Sv39 交互 | |
 | | `pmp_sv48` | PMP + Sv48 交互 | |
@@ -178,14 +237,14 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `Sv57x4_Sv39` | 两阶段：Sv57x4 + Sv39 | ✓ |
 | | `Sv57x4_Sv48` | 两阶段：Sv57x4 + Sv48 | ✓ |
 | | `Sv57x4_Sv57` | 两阶段：Sv57x4 + Sv57 | ✓ |
-| **Hypervisor CSR** | `Sha` | Hypervisor 地址翻译 | ✓ |
-| | `Shgatpa` | G-stage 页表 | ✓ |
-| | `Shcounterenw` | Hypervisor 计数器使能 | ✓ |
+| **Hypervisor CSR** | `Sha` | 增强 Hypervisor 扩展 | ✓ |
+| | `Shgatpa` | 翻译模式支持 | ✓ |
+| | `Shcounterenw` | 计数器使能可写性 | ✓ |
 | | `Shlcofideleg` | 计数器溢出委托 | ✓ |
-| | `Shtvala` | Hypervisor trap 值 | ✓ |
-| | `Shvsatpa` | VS-stage 地址翻译 | ✓ |
-| | `Shvstvala` | VS-stage trap 值 | ✓ |
-| | `Shvstvecd` | VS-stage trap 向量 | ✓ |
+| | `Shtvala` | Hypervisor trap 值报告 | ✓ |
+| | `Shvsatpa` | VS-stage 翻译模式支持 | ✓ |
+| | `Shvstvala` | VS-stage trap 值报告 | ✓ |
+| | `Shvstvecd` | VS-stage 直接 trap 向量 | ✓ |
 | **Hypervisor 组合** | `Hypervisor_Smcsrind` | Hyp + Smcsrind | ✓ |
 | | `Hypervisor_Smmpm` | Hyp + Smmpm（M-mode Pointer Masking） | ✓ |
 | | `Hypervisor_Smnpm` | Hyp + Smnpm（Next-level Pointer Masking） | ✓ |
@@ -206,27 +265,32 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `Hypervisor_Zicboz` | Hyp + Zicboz（Cache Block Zero） | ✓ |
 | | `Hypervisor_Zicfilp` | Hyp + Zicfilp（CFI Landing Pad） | ✓ |
 | | `Hypervisor_Zicfiss` | Hyp + Zicfiss（CFI Shadow Stack） | ✓ |
+| | `Hypervisor_Smcntrpmf` | Hyp + Smcntrpmf | |
+| | `Hypervisor_Ssqosid` | Hyp + Ssqosid | |
+| | `Hypervisor_Zkr` | Hyp + Zkr | |
 | **Machine-mode (Sm*)** | `Smstateen` | 状态使能 | ✓ |
 | | `smrnmi` | 可恢复 NMI | |
 | | `Smcdeleg` | 计数器委托 | |
+| | `Smcntrpmf` | Cycle/Instret 特权模式过滤 | |
 | | `Smcsrind` | 间接 CSR 访问 | ✓ |
+| | `Smctr` | 控制流传输记录 | |
 | | `Smdbltrp` | 双重 trap | |
-| **Supervisor (Ss*)** | `Ssccptr` | CBO 缓存操作 | ✓ |
+| **Supervisor (Ss*)** | `Ssccptr` | 主内存页表读取 | ✓ |
 | | `Sscofpmf` | 计数器溢出/模式过滤 | |
 | | `Sscounterenw` | 计数器使能可写性 | |
 | | `Ssstateen` | 状态使能 | ✓ |
-| | `Sstc` | S-mode 定时器比较 | ✓ |
-| | `Sstvala` | Trap 值 | ✓ |
-| | `Sstvecd` | Trap 向量 | ✓ |
-| | `Ssu64xl` | UXL 字段控制 | |
-| | `Ssccfg` | 计数器配置 | |
+| | `Sstc` | S-mode 定时器中断 | ✓ |
+| | `Sstvala` | Trap 值报告 | ✓ |
+| | `Sstvecd` | 直接 Trap 向量 | ✓ |
+| | `Ssu64xl` | UXLEN=64 支持 | |
+| | `Ssccfg` | S-mode 计数器委托 | |
 | | `Sscsrind` | 间接 CSR 访问 | ✓ |
-| | `ssctr` | 计数器触发 | |
+| | `Ssctr` | 控制流传输记录 | |
 | | `Ssdbltrp` | 双重 trap | ✓ |
 | **AIA（中断）** | `aia_aplic` | APLIC | |
-| | `aia_imsic` | IMSIC | |
-| | `aia_smaia` | S-mode AIA | |
-| | `aia_iommu` | IOMMU | |
+| | `aia_imsic` | AIA IMSIC | |
+| | `aia_smaia` | M-mode AIA | |
+| | `aia_iommu` | AIA + IOMMU | |
 | | `aia_hypervisor` | Hypervisor AIA | |
 | **CFI（控制流完整性）** | `cfi.Zicfilp` | CFI Landing Pad | ✓ |
 | | `cfi.Zicfiss` | CFI Shadow Stack | ✓ |
@@ -241,9 +305,12 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `aia_clic` | AIA + CLIC | |
 | **其他** | `aclint` | ACLINT | |
 | | `iopmp` | IOPMP | |
+| | `qos.cbqri` | QoS CBQRI | |
+| | `qos.Ssqosid` | QoS Ssqosid | |
 | | `sbi` | SBI 接口 | |
 | | `ntrace` | Ntrace | |
 | | `raseri` | Raseri | |
+| | `Zkr` | 熵源（Key Seed） | |
 
 ---
 
@@ -259,7 +326,7 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 4. **通过 `-include` 实现平台抽象** — 平台头文件（`platform_config.h` 和 `rvtest_config.h`）在编译时注入，避免在源文件中硬编码 `#include "platform_config.h"`。
 5. **RV32/RV64 双架构支持** — 所有汇编使用从 `__riscv_xlen` 派生的条件编译宏。
 6. **确定性 Trap 处理** — 所有内存操作使用非压缩指令（`.option norvc`），使 trap handler 可以可靠地通过 `mepc += 4` 跳过故障指令。
-7. **条件编译公共库** — 扩展通过在 Makefile 中设置 `ENABLE_PMP=1`、`ENABLE_VM=1`、`ENABLE_HYP=1` 或 `ENABLE_PM=1` 按需链接。
+7. **条件编译公共库** — 扩展通过在 Makefile 中设置 `ENABLE_PMP=1`、`ENABLE_VM=1`、`ENABLE_HYP=1`、`ENABLE_PM=1`、`ENABLE_TWO_STAGE=1`、`ENABLE_IOPMP=1`、`ENABLE_NTRACE=1` 或 `ENABLE_CMO=1` 按需链接。
 
 ---
 

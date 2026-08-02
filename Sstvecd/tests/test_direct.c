@@ -68,7 +68,12 @@ static uintptr_t smode_do_illegal(uintptr_t arg) {
 static uintptr_t smode_do_unmapped_load(uintptr_t addr) {
     register uintptr_t a asm("a0") = addr;
     register uintptr_t v asm("a1");
-    asm volatile ("ld %0, 0(%1)" : "=r"(v) : "r"(a) : "memory");
+    asm volatile (
+        ".option push\n\t"
+        ".option norvc\n\t"
+        "ld %0, 0(%1)\n\t"
+        ".option pop\n\t"
+        : "=r"(v) : "r"(a) : "memory");
     (void)v;
     return 0;
 }
@@ -177,8 +182,8 @@ bool test_sstvecd_dir_03_load_pagefault(void) {
                 g_sstvecd_trap_pc == entry);
     TEST_ASSERT("scause is sync exception",
                 !scause_is_interrupt(g_sstvecd_trap_cause));
-    TEST_ASSERT("scause == 13 (load page-fault)",
-                scause_code(g_sstvecd_trap_cause) == 13);
+    TEST_ASSERT_EQ("scause == 13 (load page-fault)",
+                scause_code(g_sstvecd_trap_cause), 13);
 
     pt_pool_reset();
     STVEC_RESTORE();
