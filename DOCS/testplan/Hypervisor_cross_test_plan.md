@@ -26,6 +26,9 @@
 - **Hypervisor × Ssdbltrp**：`henvcfg.DTE` 对 VS-mode 的使能/禁用控制、`vsstatus.SDT` 字段行为与 SDT/SIE 互斥、SRET 对 `vsstatus.SDT` 的清除、MRET/SRET/MNRET 在 Hypervisor 场景下对 SDT/vsstatus.SDT 的跨模式清除
 - **Hypervisor × Smctr**：`hstateen0.CTR` 对 VS-mode CTR 状态访问的控制、`mstateen0.CTR=0` 对 `vsctrctl` 的阻止、MTE 外部陷阱在 VS/VU-mode 到 M-mode 的录制行为
 - **Hypervisor × Ssctr**：`vsctrctl` CSR 基本功能与字段验证、VS/VU-mode 外部陷阱录制（STE/vsSTE）、虚拟化模式转换配置来源、VS-mode Freeze 行为（vsctrctl 控制）、VS-mode 对 sctrdepth/SCTRCLR 的访问限制、hstateen0.CTR 对 VS-mode CTR 访问的控制
+- **Hypervisor × Ssqosid**：V=1 时 VS/VU-mode 访问 `srmcfg` 触发 virtual-instruction exception、mstateen0[55] 门控与 V=1 规则的优先级、virtual-instruction trap 时 stval/htinst 值
+- **Hypervisor × Smcntrpmf**：`mcyclecfg`/`minstretcfg` 的 VSINH/VUINH 位对 VS/VU-mode cycle/instret 计数的抑制、未实现 H 扩展时 VSINH/VUINH 只读零、`hcounteren` 与计数抑制的正交性
+- **Hypervisor × Zkr**：`mseccfg.SSEED` 对 VS/VU-mode 访问 `seed` CSR 的控制、VS/VU-mode 下 virtual-instruction 与 illegal-instruction 异常类型区分、HS-mode 访问 seed 的 SSEED 控制、只读访问异常优先于 virtual-instruction
 
 ### 不在本文档范围
 
@@ -80,6 +83,13 @@
 | `norm:vstimecmp_exist` | `sstc.adoc` | Sstc adds a new VS-level vstimecmp CSR. | Sstc 新增 VS-level vstimecmp CSR。 |
 | `norm:sstc_vs_facility` | `sstc.adoc` | Sstc provides a similar timer mechanism for VS-mode via the Hypervisor extension. | Sstc 为 Hypervisor 扩展的 VS-mode 提供类似的定时器机制。 |
 | `norm:hip_vstip_vstie_acc_op` | `hypervisor.adoc` | VSTIP = hvip.VSTIP OR vstimecmp timer signal. | VSTIP = hvip.VSTIP OR vstimecmp 定时器信号。 |
+| `norm:unimplemented_mode_bits` | `smcntrpmf.adoc` | For each bit in 61:58, if the associated privilege mode is not implemented, the bit is read-only zero. | `mcyclecfg`/`minstretcfg` 的 61:58 位中，若对应特权模式未实现，该位为只读零。 |
+| `norm:counter_inhibited_behavior` | `smcntrpmf.adoc` | The fundamental behavior of cycle and instret is modified in that counting does not occur while executing in an inhibited privilege mode. | cycle 和 instret 的基本行为被修改：在被抑制的特权模式下执行时不发生计数。 |
+| `norm:hcounteren_vs_vu_control` | `hypervisor.adoc` | The `hcounteren` CSR controls availability of performance monitoring counters to VS-mode and VU-mode. | `hcounteren` CSR 控制 VS 和 VU 模式下性能监控计数器的可用性。 |
+| `norm:mseccfg_sseed_VSorVU-mode_op` | `zk.adoc` | When the H extension is also implemented, access to the seed CSR from an HS-qualified instruction leads to a virtual-instruction exception in VS and VU modes; all other types of accesses raise an illegal-instruction exception. | 实现 H 扩展时，VS/VU 模式下 HS 限定指令访问 seed 引发虚拟指令异常；其他访问类型引发非法指令异常。 |
+| `norm:mseccfg_sseed_SorHS-mode_op` | `zk.adoc` | When SSEED is 0, access to the seed CSR from S-/HS-mode raises an illegal-instruction exception. When SSEED is 1, read-write access to the seed CSR from S-/HS-mode is allowed; all other types of accesses raise an illegal-instruction exception. | SSEED=0 时 S/HS 模式访问 seed 引发非法指令异常；SSEED=1 时允许读写访问，其他访问类型仍引发非法指令异常。 |
+| `norm:mseccfg_sseed_useed_op_tbl` | `zk.adoc` | Entropy Source Access Control table: M always available; U controlled by USEED; S/HS controlled by SSEED; VS/VU controlled by SSEED with virtual-instruction exception for HS-qualified read-write. | 熵源访问控制表：M 模式始终可用；U 模式由 USEED 控制；S/HS 由 SSEED 控制；VS/VU 由 SSEED 控制且 HS 限定的读写引发虚拟指令异常。 |
+| `norm:seed_ro_illegal` | `zk.adoc` | Attempts to access the seed CSR using a read-only CSR-access instruction (csrrs/csrrc with rs1=x0 or csrrsi/csrrci with uimm=0) raise an illegal-instruction exception; any other CSR-access instruction may be used to access seed. | 使用只读 CSR 访问指令访问 seed 引发非法指令异常；其他 CSR 访问指令可用于访问 seed。 |
 
 ---
 
@@ -231,114 +241,6 @@
 > - HCROSS-SVNAPOT-02 验证 G-stage NAPOT PTE 使用保留编码（ppn[0] 低 4 位非 `1000` 且 N=1）时，硬件应触发 guest-page-fault。这与 VS-stage 中的保留编码行为一致（参见 `svnapot_test_plan.md` Group 3）。
 > - HCROSS-SVNAPOT-03 验证两阶段翻译中 VS-stage 和 G-stage 同时使用 NAPOT PTE 的场景：VS-stage 将 GVA→GPA 使用 NAPOT 映射，G-stage 将 GPA→SPA 也使用 NAPOT 映射，最终 GVA→SPA 翻译应正确。
 
-```c
-/* HCROSS-SVNAPOT-01 示例：G-stage 64 KiB NAPOT 基本翻译 */
-TEST_REGISTER(test_hcross_svnapot_01);
-bool test_hcross_svnapot_01(void) {
-    TEST_BEGIN("HCROSS-SVNAPOT-01: G-stage 64 KiB NAPOT basic translation");
-
-    if (!check_h_extension()) TEST_SKIP("H extension not available");
-    if (!check_svnapot_extension()) TEST_SKIP("Svnapot not available");
-
-    two_stage_ctx_t ctx;
-    pt_pool_reset();
-    gpt_pool_reset();
-
-    /* VS-stage: Bare mode (identity GVA→GPA) */
-    two_stage_init(&ctx, /*vs=Bare*/0, HGATP_MODE_SV39X4);
-
-    /* G-stage: 64 KiB NAPOT mapping for GPA→SPA */
-    uintptr_t test_gpa = TEST_REGION_BASE;  /* 64 KiB aligned */
-    uintptr_t test_spa = test_gpa;
-    uintptr_t napot_gpte = napot_make_pte(test_gpa, test_spa,
-                                           PTE_V | PTE_R | PTE_W | PTE_U |
-                                           PTE_A | PTE_D,
-                                           NAPOT_64K);
-    gstage_napot_install_pte(&ctx.g_ctx, test_gpa, napot_gpte);
-
-    /* VS-mode 写入并读回验证 */
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_read_write,
-                                           test_gpa);
-    TEST_ASSERT("G-stage NAPOT GPA→SPA translation correct", result == 0);
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-
-/* HCROSS-SVNAPOT-02 示例：G-stage NAPOT 保留编码 fault */
-TEST_REGISTER(test_hcross_svnapot_02);
-bool test_hcross_svnapot_02(void) {
-    TEST_BEGIN("HCROSS-SVNAPOT-02: G-stage NAPOT reserved encoding fault");
-
-    if (!check_h_extension()) TEST_SKIP("H extension not available");
-    if (!check_svnapot_extension()) TEST_SKIP("Svnapot not available");
-
-    two_stage_ctx_t ctx;
-    pt_pool_reset();
-    gpt_pool_reset();
-    two_stage_init(&ctx, /*vs=Bare*/0, HGATP_MODE_SV39X4);
-
-    /* G-stage: NAPOT PTE with reserved encoding (ppn[0] low 4 bits = 0001) */
-    uintptr_t test_gpa = TEST_REGION_BASE;
-    uintptr_t test_spa = test_gpa;
-    uintptr_t reserved_gpte = napot_make_reserved_pte(test_gpa, test_spa,
-                                                       PTE_V | PTE_R | PTE_W |
-                                                       PTE_U | PTE_A | PTE_D,
-                                                       0x1);
-    gstage_napot_install_pte(&ctx.g_ctx, test_gpa, reserved_gpte);
-
-    /* VS-mode 访问应触发 guest-page-fault */
-    trap_expect_begin();
-    two_stage_run_in_vs(&ctx, test_vs_load, test_gpa);
-    TEST_ASSERT("guest-page-fault triggered", trap_was_triggered());
-    TEST_ASSERT_EQ("cause is load guest-page-fault",
-                   trap_get_cause(), CAUSE_LOAD_GUEST_PAGE_FAULT);
-    trap_expect_end();
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-
-/* HCROSS-SVNAPOT-03 示例：G-stage 与 VS-stage 同时使用 NAPOT */
-TEST_REGISTER(test_hcross_svnapot_03);
-bool test_hcross_svnapot_03(void) {
-    TEST_BEGIN("HCROSS-SVNAPOT-03: VS-stage and G-stage both use NAPOT");
-
-    if (!check_h_extension()) TEST_SKIP("H extension not available");
-    if (!check_svnapot_extension()) TEST_SKIP("Svnapot not available");
-
-    two_stage_ctx_t ctx;
-    pt_pool_reset();
-    gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
-
-    uintptr_t test_gva = TEST_REGION_BASE;   /* 64 KiB aligned */
-    uintptr_t test_gpa = test_gva;
-    uintptr_t test_spa = test_gpa;
-
-    /* VS-stage: 64 KiB NAPOT mapping GVA→GPA */
-    uintptr_t vs_napot_pte = napot_make_pte(test_gva, test_gpa,
-                                             PTE_V | PTE_R | PTE_W |
-                                             PTE_A | PTE_D,
-                                             NAPOT_64K);
-    vstage_napot_install_pte(&ctx, test_gva, vs_napot_pte);
-
-    /* G-stage: 64 KiB NAPOT mapping GPA→SPA */
-    uintptr_t gs_napot_gpte = napot_make_pte(test_gpa, test_spa,
-                                              PTE_V | PTE_R | PTE_W | PTE_U |
-                                              PTE_A | PTE_D,
-                                              NAPOT_64K);
-    gstage_napot_install_pte(&ctx.g_ctx, test_gpa, gs_napot_gpte);
-
-    /* VS-mode 写入并读回验证两阶段 NAPOT 翻译 */
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_read_write,
-                                           test_gva);
-    TEST_ASSERT("Two-stage NAPOT translation correct", result == 0);
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
 
 ---
 
@@ -366,143 +268,6 @@ bool test_hcross_svnapot_03(void) {
 > - HCROSS-SVPBMT-03 验证两阶段 PBMT 均非零时的叠加行为：G-stage PBMT=NC 产生 intermediate=NC，VS-stage PBMT=IO 覆盖 intermediate 产生 final=IO。VS-stage 的覆盖优先级高于 G-stage。
 > - HCROSS-SVPBMT-04 验证 `hgatp.MODE=0`（Bare）时 G-stage 不生效，PBMT 覆盖链从 VS-stage 开始：intermediate=PMA，VS-stage PBMT=NC 覆盖产生 final=NC。
 
-```c
-/* HCROSS-SVPBMT-01 示例：G-stage PBMT=NC 覆盖 PMA */
-TEST_REGISTER(test_hcross_svpbmt_01);
-bool test_hcross_svpbmt_01(void) {
-    TEST_BEGIN("HCROSS-SVPBMT-01: G-stage PBMT=NC overrides PMA");
-
-    if (!check_h_extension()) TEST_SKIP("H extension not available");
-    if (!check_svpbmt_extension()) TEST_SKIP("Svpbmt not available");
-
-    two_stage_ctx_t ctx;
-    pt_pool_reset();
-    gpt_pool_reset();
-
-    /* VS-stage: Bare mode (no VS-stage translation) */
-    two_stage_init(&ctx, /*vs=Bare*/0, HGATP_MODE_SV39X4);
-
-    /* G-stage: map with PBMT=NC */
-    uintptr_t test_gpa = TEST_REGION_BASE;
-    uintptr_t test_spa = test_gpa;
-    gpt_map_page(&ctx.g_ctx, test_gpa, test_spa,
-                 PTE_V | PTE_R | PTE_W | PTE_U | PTE_A | PTE_D | PBMT_NC,
-                 PT_LEVEL_4K);
-
-    /* VS-mode access: G-stage PBMT=NC overrides PMA → final=NC */
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_read_write,
-                                           test_gpa);
-    TEST_ASSERT("G-stage PBMT=NC override: access succeeds with NC attributes",
-                result == 0);
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-
-/* HCROSS-SVPBMT-02 示例：VS-stage PBMT=IO 覆盖中间属性 */
-TEST_REGISTER(test_hcross_svpbmt_02);
-bool test_hcross_svpbmt_02(void) {
-    TEST_BEGIN("HCROSS-SVPBMT-02: VS-stage PBMT=IO overrides intermediate");
-
-    if (!check_h_extension()) TEST_SKIP("H extension not available");
-    if (!check_svpbmt_extension()) TEST_SKIP("Svpbmt not available");
-
-    two_stage_ctx_t ctx;
-    pt_pool_reset();
-    gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
-
-    uintptr_t test_gva = TEST_REGION_BASE;
-    uintptr_t test_gpa = test_gva;
-    uintptr_t test_spa = test_gpa;
-
-    /* G-stage: PBMT=0 (no override, intermediate=PMA) */
-    gpt_map_page(&ctx.g_ctx, test_gpa, test_spa,
-                 PTE_V | PTE_R | PTE_W | PTE_U | PTE_A | PTE_D | PBMT_PMA,
-                 PT_LEVEL_4K);
-
-    /* VS-stage: PBMT=IO overrides intermediate → final=IO */
-    vstage_map_page(&ctx, test_gva, test_gpa,
-                    PTE_V | PTE_R | PTE_W | PTE_A | PTE_D | PBMT_IO,
-                    PT_LEVEL_4K);
-
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_read_write,
-                                           test_gva);
-    TEST_ASSERT("VS-stage PBMT=IO override: access succeeds with IO attributes",
-                result == 0);
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-
-/* HCROSS-SVPBMT-03 示例：两阶段均非零叠加 */
-TEST_REGISTER(test_hcross_svpbmt_03);
-bool test_hcross_svpbmt_03(void) {
-    TEST_BEGIN("HCROSS-SVPBMT-03: Both stages nonzero PBMT override");
-
-    if (!check_h_extension()) TEST_SKIP("H extension not available");
-    if (!check_svpbmt_extension()) TEST_SKIP("Svpbmt not available");
-
-    two_stage_ctx_t ctx;
-    pt_pool_reset();
-    gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
-
-    uintptr_t test_gva = TEST_REGION_BASE;
-    uintptr_t test_gpa = test_gva;
-    uintptr_t test_spa = test_gpa;
-
-    /* G-stage: PBMT=NC → intermediate=NC */
-    gpt_map_page(&ctx.g_ctx, test_gpa, test_spa,
-                 PTE_V | PTE_R | PTE_W | PTE_U | PTE_A | PTE_D | PBMT_NC,
-                 PT_LEVEL_4K);
-
-    /* VS-stage: PBMT=IO overrides intermediate=NC → final=IO */
-    vstage_map_page(&ctx, test_gva, test_gpa,
-                    PTE_V | PTE_R | PTE_W | PTE_A | PTE_D | PBMT_IO,
-                    PT_LEVEL_4K);
-
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_read_write,
-                                           test_gva);
-    TEST_ASSERT("Two-stage PBMT override: VS-stage IO wins, final=IO",
-                result == 0);
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-
-/* HCROSS-SVPBMT-04 示例：hgatp.MODE=0 跳过 G-stage */
-TEST_REGISTER(test_hcross_svpbmt_04);
-bool test_hcross_svpbmt_04(void) {
-    TEST_BEGIN("HCROSS-SVPBMT-04: hgatp.MODE=0 skips G-stage override");
-
-    if (!check_h_extension()) TEST_SKIP("H extension not available");
-    if (!check_svpbmt_extension()) TEST_SKIP("Svpbmt not available");
-
-    two_stage_ctx_t ctx;
-    pt_pool_reset();
-    gpt_pool_reset();
-
-    /* hgatp.MODE=0 (Bare): G-stage disabled */
-    two_stage_init(&ctx, SATP_MODE_SV39, /*hgatp=Bare*/0);
-
-    uintptr_t test_gva = TEST_REGION_BASE;
-    uintptr_t test_gpa = test_gva;
-
-    /* VS-stage: PBMT=NC, intermediate=PMA (no G-stage) → final=NC */
-    vstage_map_page(&ctx, test_gva, test_gpa,
-                    PTE_V | PTE_R | PTE_W | PTE_A | PTE_D | PBMT_NC,
-                    PT_LEVEL_4K);
-
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_read_write,
-                                           test_gva);
-    TEST_ASSERT("hgatp.MODE=0: VS-stage PBMT=NC overrides PMA → final=NC",
-                result == 0);
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
 
 ---
 
@@ -730,137 +495,6 @@ bool test_hcross_svpbmt_04(void) {
 | HCROSS-SSTC-14 | htimedelta 对 vstimecmp 比较的影响 | 设置 htimedelta 为较大正值，设 vstimecmp 使得 (time+htimedelta) >= vstimecmp，检查 VSTIP | VSTIP = 1 | `norm:hip_vstip_vstie_acc_op` |
 | HCROSS-SSTC-15 | VS-mode timer interrupt 捕获 | henvcfg.STCE=1, 使能 VSTIE, 设 vstimecmp 为过去值, VS-mode 应收到 timer interrupt | VS-mode trap handler 捕获 cause = interrupt \| 5 | `norm:sstc_vs_facility` |
 
-### 代码示例
-
-```c
-/* HCROSS-SSTC-01: henvcfg.STCE read-write round-trip */
-TEST_REGISTER(test_hcross_sstc_01);
-bool test_hcross_sstc_01(void) {
-    TEST_BEGIN("HCROSS-SSTC-01: henvcfg.STCE read-write round-trip");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-
-    uintptr_t orig_m = menvcfg_read();
-    uintptr_t orig_h = henvcfg_read();
-
-    /* menvcfg.STCE must be 1 for henvcfg.STCE to be writable */
-    menvcfg_set(MENVCFG_STCE);
-
-    /* Write henvcfg.STCE=1 */
-    henvcfg_set(HENVCFG_STCE);
-    uintptr_t val = henvcfg_read();
-    TEST_ASSERT("henvcfg.STCE set to 1", (val & HENVCFG_STCE) != 0);
-
-    /* Write henvcfg.STCE=0 */
-    henvcfg_clear(HENVCFG_STCE);
-    val = henvcfg_read();
-    TEST_ASSERT("henvcfg.STCE cleared to 0", (val & HENVCFG_STCE) == 0);
-
-    /* Restore */
-    henvcfg_write(orig_h);
-    menvcfg_write(orig_m);
-    HYP_TEST_END();
-}
-
-/* HCROSS-SSTC-03: henvcfg.STCE=0, VS-mode access -> virtual-inst */
-TEST_REGISTER(test_hcross_sstc_03);
-bool test_hcross_sstc_03(void) {
-    TEST_BEGIN("HCROSS-SSTC-03: henvcfg.STCE=0, VS-mode -> virtual-inst");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-
-    menvcfg_set(MENVCFG_STCE);
-    mcounteren_set(MCOUNTEREN_TM);
-    henvcfg_clear(HENVCFG_STCE);
-    hcounteren_set(HCOUNTEREN_TM);
-    stimecmp_write((uintptr_t)-1);
-
-    trap_expect_begin();
-    run_in_vs_mode(_vs_stimecmp_read, 0);
-    TEST_ASSERT("trap triggered", trap_was_triggered());
-    if (trap_was_triggered()) {
-        TEST_ASSERT_EQ("virtual-instruction on VS stimecmp read",
-                       trap_get_cause(), (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
-    }
-    trap_expect_end();
-
-    stimecmp_write((uintptr_t)-1);
-    HYP_TEST_END();
-}
-
-/* HCROSS-SSTC-09: vstimecmp triggers VSTIP */
-TEST_REGISTER(test_hcross_sstc_09);
-bool test_hcross_sstc_09(void) {
-    TEST_BEGIN("HCROSS-SSTC-09: vstimecmp triggers VSTIP");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-
-    menvcfg_set(MENVCFG_STCE);
-    henvcfg_set(HENVCFG_STCE);
-
-    /* Clear hvip.VSTIP to isolate vstimecmp signal */
-    hvip_clear(HVIP_VSTIP);
-
-    /* Clear: vstimecmp = MAX */
-    vstimecmp_write((uintptr_t)-1);
-    DELAY_LOOP(HCROSS_SSTC_DELAY);
-
-    /* Read time + htimedelta */
-    uintptr_t htd = htimedelta_read();
-    uintptr_t now = time_read();
-    uintptr_t vtime = now + htd;
-
-    /* Set vstimecmp to a past value */
-    vstimecmp_write(vtime > 0 ? vtime - 1 : 0);
-    DELAY_LOOP(HCROSS_SSTC_DELAY);
-
-    uintptr_t hip_val = hip_read();
-    TEST_ASSERT("VSTIP is set", (hip_val & HIP_VSTIP) != 0);
-
-    vstimecmp_write((uintptr_t)-1);
-    HYP_TEST_END();
-}
-
-/* HCROSS-SSTC-15: VS-mode timer interrupt capture */
-TEST_REGISTER(test_hcross_sstc_15);
-bool test_hcross_sstc_15(void) {
-    TEST_BEGIN("HCROSS-SSTC-15: VS-mode timer interrupt capture");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-
-    menvcfg_set(MENVCFG_STCE);
-    mcounteren_set(MCOUNTEREN_TM);
-    henvcfg_set(HENVCFG_STCE);
-    hcounteren_set(HCOUNTEREN_TM);
-    hvip_clear(HVIP_VSTIP);
-    vstimecmp_write((uintptr_t)-1);
-
-    /* Delegate VSTIP to VS-mode: hideleg bit 6 = VSTIP */
-    CSRS(0x603, HIP_VSTIP);  /* hideleg */
-
-    /* Enable VSTIE in vsie (bit 5 in vsie = STIE from VS perspective) */
-    CSRS(0x204, SIE_STIE);  /* vsie */
-
-    /* Install VS-mode trap handler */
-    g_sstc_trap_cause = 0;
-    CSRW(0x240, (uintptr_t)sstc_trap_scratch); /* vsscratch */
-    CSRW(0x205, (uintptr_t)sstc_trap_entry);   /* vstvec */
-
-    /* Execute VS-mode timer interrupt test */
-    run_in_vs_mode(_vs_timer_interrupt_test, 0);
-
-    /* Check VS trap handler recorded the cause */
-    uintptr_t expected = CAUSE_INTERRUPT_BIT | CAUSE_S_TIMER_INTERRUPT;
-    TEST_ASSERT_EQ("VS-mode caught timer interrupt",
-                    g_sstc_trap_cause, expected);
-
-    /* Cleanup */
-    vstimecmp_write((uintptr_t)-1);
-    CSRC(0x603, HIP_VSTIP);  /* hideleg */
-    CSRC(0x204, SIE_STIE);   /* vsie */
-    HYP_TEST_END();
-}
-```
 
 > [!NOTE]
 > - 本组测试验证 Sstc 扩展在 Hypervisor 场景下的行为。所有测试必须在运行时通过 `HAS_H_EXT()` 检测 H 扩展的可用性，不可用时 TEST_SKIP。
@@ -937,139 +571,6 @@ bool test_hcross_sstc_15(void) {
 | HCROSS-SMCSRIND-10 | hstateen0[60]=0 阻止 VS-mode 读 sireg | mstateen0[60]=1, hstateen0[60]=0，VS-mode 读 sireg (0x151, 实为 vsireg) | 触发 virtual-instruction 异常 (cause=22) | `norm:hypervisor_impl_csrs_access_control` |
 | HCROSS-SMCSRIND-11 | hstateen0[60]=1 允许 VS-mode 访问 siselect/sireg | mstateen0[60]=1, hstateen0[60]=1，VS-mode 写 siselect、读 sireg | siselect 访问正常；sireg 不因 hstateen0 被阻止 | `norm:hypervisor_impl_csrs_access_control` |
 
-### 代码示例
-
-```c
-/* HCROSS-SMCSRIND-01: mstateen0[60]=0 blocks S-mode vsiselect read */
-TEST_REGISTER(test_hcross_smcsrind_01);
-bool test_hcross_smcsrind_01(void) {
-    TEST_BEGIN("HCROSS-SMCSRIND-01: mstateen0[60]=0 blocks S-mode vsiselect read");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-    if (!platform_has_smcsrind()) TEST_SKIP("Smcsrind not available");
-    if (!platform_has_smstateen()) TEST_SKIP("Smstateen not available");
-
-    /* Save original mstateen0 */
-    uintptr_t orig = CSRR(0x30C);  /* mstateen0 */
-
-    /* Clear CSRIND bit (bit 60) */
-    uintptr_t val = orig & ~(1ULL << 60);
-    CSRW(0x30C, val);
-
-    /* Switch to S-mode (acts as HS-mode when H ext present, V=0)
-     * and try to read vsiselect (0x250) */
-    goto_priv(PRIV_S);
-    PRIV_DO(CSRR(0x250));  /* vsiselect */
-    goto_priv(PRIV_M);
-    CHECK_TRAP("illegal-instruction on S-mode vsiselect read",
-               CAUSE_ILLEGAL_INST);
-
-    /* Restore mstateen0 */
-    CSRW(0x30C, orig);
-    HYP_TEST_END();
-}
-
-/* HCROSS-SMCSRIND-05: mstateen0[60]=1 allows S-mode vsiselect access */
-TEST_REGISTER(test_hcross_smcsrind_05);
-bool test_hcross_smcsrind_05(void) {
-    TEST_BEGIN("HCROSS-SMCSRIND-05: mstateen0[60]=1 allows S-mode vsiselect");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-    if (!platform_has_smcsrind()) TEST_SKIP("Smcsrind not available");
-    if (!platform_has_smstateen()) TEST_SKIP("Smstateen not available");
-
-    /* Save original mstateen0 */
-    uintptr_t orig = CSRR(0x30C);  /* mstateen0 */
-
-    /* Set CSRIND bit (bit 60) */
-    uintptr_t val = orig | (1ULL << 60);
-    CSRW(0x30C, val);
-
-    /* Switch to S-mode and access vsiselect */
-    trap_expect_begin();
-    goto_priv(PRIV_S);
-    PRIV_DO(CSRW(0x250, 0x30));  /* vsiselect = 0x30 */
-    PRIV_DO(CSRR(0x250));          /* readback */
-    goto_priv(PRIV_M);
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-
-    TEST_ASSERT("S-mode vsiselect access: no exception when CSRIND=1",
-                !trapped);
-
-    /* Restore mstateen0 */
-    CSRW(0x30C, orig);
-    HYP_TEST_END();
-}
-
-/* HCROSS-SMCSRIND-07: mstateen0[60]=0 does NOT affect M-mode vsiselect */
-TEST_REGISTER(test_hcross_smcsrind_07);
-bool test_hcross_smcsrind_07(void) {
-    TEST_BEGIN("HCROSS-SMCSRIND-07: mstateen0[60]=0 does not block M-mode vsiselect");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-    if (!platform_has_smcsrind()) TEST_SKIP("Smcsrind not available");
-    if (!platform_has_smstateen()) TEST_SKIP("Smstateen not available");
-
-    /* Save original mstateen0 */
-    uintptr_t orig = CSRR(0x30C);  /* mstateen0 */
-
-    /* Clear CSRIND bit (bit 60) */
-    uintptr_t val = orig & ~(1ULL << 60);
-    CSRW(0x30C, val);
-
-    /* M-mode access to vsiselect should still work */
-    trap_expect_begin();
-    CSRW(0x250, 0x42);  /* vsiselect = 0x42 */
-    uintptr_t readback = CSRR(0x250);
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-
-    TEST_ASSERT("M-mode vsiselect access: no exception when CSRIND=0",
-                !trapped);
-
-    /* Restore mstateen0 */
-    CSRW(0x30C, orig);
-    HYP_TEST_END();
-}
-```
-
-```c
-/* HCROSS-SMCSRIND-09: hstateen0[60]=0 blocks VS-mode read siselect */
-TEST_REGISTER(test_hcross_smcsrind_09);
-bool test_hcross_smcsrind_09(void) {
-    TEST_BEGIN("HCROSS-SMCSRIND-09: hstateen0[60]=0 blocks VS siselect");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-    if (!platform_has_smcsrind()) TEST_SKIP("Smcsrind not available");
-    if (!platform_has_smstateen()) TEST_SKIP("Smstateen not available");
-
-    uintptr_t orig_m = CSRR(0x30C);  /* mstateen0 */
-    uintptr_t orig_h = CSRR(0x60C);  /* hstateen0 */
-
-    /* Enable mstateen0.SE0 + mstateen0.CSRIND */
-    CSRW(0x30C, orig_m | (1ULL << 63) | (1ULL << 60));
-
-    /* Verify hstateen0.CSRIND is writable (Sscsrind support) */
-    uintptr_t test_h = CSRR(0x60C);
-    CSRW(0x60C, test_h | (1UL << 60));
-    if (!(CSRR(0x60C) & (1UL << 60))) {
-        CSRW(0x30C, orig_m);
-        TEST_SKIP("hstateen0.CSRIND not writable");
-    }
-
-    /* Set hstateen0.CSRIND=0 to block VS-mode access */
-    CSRW(0x60C, CSRR(0x60C) & ~(1UL << 60));
-
-    /* VS-mode read siselect (0x150) should trigger
-     * virtual-instruction exception */
-    EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_read_siselect, 0));
-
-    CSRW(0x60C, orig_h);
-    CSRW(0x30C, orig_m);
-    HYP_TEST_END();
-}
-```
 
 > [!NOTE]
 > - **Part A** 验证 Smcsrind 扩展在 Hypervisor 场景下的 `mstateen0[60]` 访问控制。vsiselect/vsireg* 是 H 扩展引入的 CSR（vsiselect=0x250, vsireg=0x251, vsireg2=0x252, vsireg3=0x253, vsireg4=0x255, vsireg5=0x256, vsireg6=0x257），仅在 H 扩展存在时可用。
@@ -1341,99 +842,6 @@ bool test_hcross_smcsrind_09(void) {
 | HCROSS-SSDBLTRP-23 | M-mode SRET 到 VU 清除 sstatus.SDT 和 vsstatus.SDT | M-mode 设 SDT=1, vsstatus.SDT=1, MPP=0, SPV=1, 执行 SRET | sstatus.SDT=0 且 vsstatus.SDT=0 | `norm:sstatus_sdt_clr_mret_sret` `norm:vsstatus_sdt_clr_mret_sret` |
 | HCROSS-SSDBLTRP-24 | MNRET 到 VU 清除 sstatus.SDT 和 vsstatus.SDT | 设 SDT=1, vsstatus.SDT=1, MNPP=0(U), MNPV=1, 执行 MNRET | sstatus.SDT=0 且 vsstatus.SDT=0 | `norm:vsstatus_sdt_clr_mnret` |
 
-### 代码示例
-
-```c
-/* HCROSS-SSDBLTRP-01: henvcfg.DTE read-write round-trip */
-TEST_REGISTER(test_hcross_ssdbltrp_01);
-bool test_hcross_ssdbltrp_01(void) {
-    TEST_BEGIN("HCROSS-SSDBLTRP-01: henvcfg.DTE read-write");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-    if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
-
-    uintptr_t orig_m = menvcfg_read();
-    uintptr_t orig_h = henvcfg_read();
-
-    /* menvcfg.DTE must be 1 for henvcfg.DTE to be writable */
-    menvcfg_set(MENVCFG_DTE);
-
-    /* Write henvcfg.DTE=1 */
-    henvcfg_set(HENVCFG_DTE);
-    uintptr_t val = henvcfg_read();
-    TEST_ASSERT("henvcfg.DTE set to 1", (val & HENVCFG_DTE) != 0);
-
-    /* Write henvcfg.DTE=0 */
-    henvcfg_clear(HENVCFG_DTE);
-    val = henvcfg_read();
-    TEST_ASSERT("henvcfg.DTE cleared to 0", (val & HENVCFG_DTE) == 0);
-
-    /* Restore */
-    henvcfg_write(orig_h);
-    menvcfg_write(orig_m);
-    HYP_TEST_END();
-}
-
-/* HCROSS-SSDBLTRP-10: VS-mode trap sets vsstatus.SDT */
-TEST_REGISTER(test_hcross_ssdbltrp_10);
-bool test_hcross_ssdbltrp_10(void) {
-    TEST_BEGIN("HCROSS-SSDBLTRP-10: VS-mode trap sets vsstatus.SDT=1");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-    if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
-
-    menvcfg_set(MENVCFG_DTE);
-    henvcfg_set(HENVCFG_DTE);
-
-    /* Clear vsstatus.SDT */
-    vsstatus_clear(VSSTATUS_SDT);
-
-    /* Delegate ecall-from-VU to VS-mode */
-    medeleg_set(1UL << 8);  /* ecall-from-VU */
-    hedeleg_set(1UL << 8);
-
-    /* Run VU-mode ecall -> trap to VS-mode */
-    run_in_vu_mode(_vu_ecall_wrapper);
-
-    /* Check vsstatus.SDT was set by hardware */
-    uintptr_t vs_sdt = (vsstatus_read() & VSSTATUS_SDT) != 0;
-    TEST_ASSERT("vsstatus.SDT=1 after VS-mode trap", vs_sdt);
-
-    /* Cleanup */
-    medeleg_clear(1UL << 8);
-    hedeleg_clear(1UL << 8);
-    HYP_TEST_END();
-}
-
-/* HCROSS-SSDBLTRP-13: HS-mode SRET to VU clears vsstatus.SDT */
-TEST_REGISTER(test_hcross_ssdbltrp_13);
-bool test_hcross_ssdbltrp_13(void) {
-    TEST_BEGIN("HCROSS-SSDBLTRP-13: HS-mode SRET to VU clears vsstatus.SDT");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-    if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
-
-    menvcfg_set(MENVCFG_DTE);
-    henvcfg_set(HENVCFG_DTE);
-
-    /* Set vsstatus.SDT=1 */
-    vsstatus_set(VSSTATUS_SDT);
-
-    /* Configure SRET to return to VU-mode: SPV=1, SPP=0(U) */
-    hstatus_set(HSTATUS_SPV);
-    sstatus_clear(SSTATUS_SPP);
-
-    /* Execute SRET from HS-mode */
-    asm volatile("sret");
-
-    /* Now in VU-mode, trap back to HS-mode via ecall */
-    /* Check vsstatus.SDT was cleared */
-    uintptr_t vs_sdt = (vsstatus_read() & VSSTATUS_SDT) != 0;
-    TEST_ASSERT("vsstatus.SDT=0 after HS-mode SRET to VU", !vs_sdt);
-
-    HYP_TEST_END();
-}
-```
 
 > [!NOTE]
 > - 本组测试验证 Ssdbltrp 扩展在 Hypervisor 场景下的行为。所有测试必须在运行时通过 `HAS_H_EXT()` 检测 H 扩展的可用性，不可用时 TEST_SKIP。
@@ -1513,73 +921,6 @@ bool test_hcross_ssdbltrp_13(void) {
 | HCROSS-SMCTR-11 | MTE 外部陷阱录制（VU→M，需 MTE+STE+vsSTE） | mctrctl.M=0，MTE=1，sctrctl.STE=1，vsctrctl.STE=1，VU-mode 触发陷阱到 M-mode | 外部陷阱被录制（需所有三个 TE 位置位） | `norm:exttrap_vum` |
 | HCROSS-SMCTR-12 | 外部陷阱 VU→M 缺少 vsSTE 时不录制 | mctrctl.M=0，MTE=1，STE=1，vsctrctl.STE=0，VU-mode 触发陷阱到 M-mode | 外部陷阱不被录制（vsctrctl.STE 未置位） | `norm:exttrap_vum` |
 
-### 代码示例
-
-```c
-/* HCROSS-SMCTR-04: hstateen0.CTR=0 blocks VS-mode sctrctl access */
-TEST_REGISTER(test_hcross_smctr_04);
-bool test_hcross_smctr_04(void) {
-    TEST_BEGIN("HCROSS-SMCTR-04: hstateen0.CTR=0 blocks VS-mode sctrctl");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-    if (!platform_has_smctr()) TEST_SKIP("Smctr not available");
-    if (!platform_has_smstateen()) TEST_SKIP("Smstateen not available");
-
-    /* Enable mstateen0.CTR so hstateen0.CTR is writable */
-    mstateen0_set(MSTATEEN0_CTR);
-
-    /* Set hstateen0.CTR=0 to block VS-mode */
-    hstateen0_clear(HSTATEEN0_CTR);
-
-    /* Switch to VS-mode and try to read sctrctl (actually vsctrctl) */
-    trap_expect_begin();
-    run_in_vs_mode(_vs_read_sctrctl);
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-
-    TEST_ASSERT("VS-mode sctrctl access blocked: trap triggered", trapped);
-    if (trapped) {
-        TEST_ASSERT_EQ("virtual-instruction exception",
-                       trap_get_cause(), CAUSE_VIRTUAL_INSTRUCTION);
-    }
-
-    HYP_TEST_END();
-}
-
-/* HCROSS-SMCTR-10: MTE external trap recording VS->M */
-TEST_REGISTER(test_hcross_smctr_10);
-bool test_hcross_smctr_10(void) {
-    TEST_BEGIN("HCROSS-SMCTR-10: MTE external trap VS->M recorded");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-    if (!platform_has_smctr()) TEST_SKIP("Smctr not available");
-
-    /* Configure: M=0 (no M-mode recording), MTE=1, STE=1 */
-    mctrctl_write(MCTRCTL_MTE | MCTRCTL_STE);
-
-    /* Enable S-mode recording for external trap path */
-    sctrctl_write(SCTRCTL_S);
-
-    /* Clear CTR entries */
-    sctrclr();
-
-    /* VS-mode triggers trap to M-mode (e.g., ecall not delegated) */
-    medeleg_clear(1UL << 10);  /* ecall-from-VS not delegated */
-    run_in_vs_mode(_vs_ecall_wrapper);
-
-    /* Check entry 0: external trap should be recorded */
-    uintptr_t ctrdata0 = read_entry_ctrdata(0);
-    TEST_ASSERT("external trap VS->M recorded",
-                (ctrdata0 & CTRDATA_TYPE_MASK) != 0);
-
-    /* ctrtarget.PC should be 0 for external traps */
-    uintptr_t ctrtarget0 = read_entry_ctrtarget(0);
-    TEST_ASSERT_EQ("ctrtarget.PC = 0 for external trap",
-                   ctrtarget0 & CTARGET_PC_MASK, 0);
-
-    HYP_TEST_END();
-}
-```
 
 > [!NOTE]
 > - 本组测试验证 Smctr 扩展在 Hypervisor 场景下的行为。所有测试必须在运行时通过 `HAS_H_EXT()` 检测 H 扩展的可用性，不可用时 TEST_SKIP。
@@ -1726,84 +1067,6 @@ bool test_hcross_smctr_10(void) {
 | HCROSS-SSCTR-31 | hstateen0.CTR=0 时 VS-mode sctrstatus 访问 | hstateen0.CTR=0，VS-mode 访问 sctrstatus | 触发 virtual-instruction | `norm:hstateen_vs` |
 | HCROSS-SSCTR-32 | hstateen0.CTR=0 时 VS-mode SCTRCLR 执行 | hstateen0.CTR=0，VS-mode 执行 SCTRCLR | 触发 virtual-instruction | `norm:hstateen_vs` |
 
-### 代码示例
-
-```c
-/* HCROSS-SSCTR-02: V=1 sctrctl substitutes for vsctrctl */
-TEST_REGISTER(test_hcross_ssctr_02);
-bool test_hcross_ssctr_02(void) {
-    TEST_BEGIN("HCROSS-SSCTR-02: V=1 sctrctl accesses vsctrctl");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-    if (!check_ssctr_extension()) TEST_SKIP("Ssctr not available");
-
-    /* HS-mode: write a specific value to vsctrctl */
-    uintptr_t test_val = VSCTRCTL_S | VSCTRCTL_U;
-    CSRW(vsctrctl, test_val);
-
-    /* Switch to VS-mode and read sctrctl */
-    uintptr_t vs_val = 0;
-    run_in_vs_mode(_vs_read_sctrctl, &vs_val);
-
-    TEST_ASSERT("VS-mode sctrctl reads vsctrctl value",
-                vs_val == test_val);
-
-    HYP_TEST_END();
-}
-
-/* HCROSS-SSCTR-17: VU->VS external trap requires vsctrctl.STE */
-TEST_REGISTER(test_hcross_ssctr_17);
-bool test_hcross_ssctr_17(void) {
-    TEST_BEGIN("HCROSS-SSCTR-17: VU->VS ext trap needs vsctrctl.STE");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-    if (!check_ssctr_extension()) TEST_SKIP("Ssctr not available");
-
-    /* Configure: vsctrctl.S=0 (VS disabled), vsctrctl.U=1 (VU enabled)
-     * vsctrctl.STE=1 (enable external trap recording to VS-mode) */
-    CSRW(vsctrctl, VSCTRCTL_U | VSCTRCTL_STE);
-
-    /* Clear CTR entries */
-    sctrclr();
-
-    /* VU-mode triggers trap to VS-mode (ecall delegated to VS) */
-    hedeleg_set(1UL << 8);  /* delegate ecall-from-VU to VS */
-    run_in_vu_mode(_vu_ecall_wrapper);
-
-    /* Check entry 0: external trap should be recorded */
-    uintptr_t ctrsource0 = read_entry_ctrsource(0);
-    TEST_ASSERT("external trap VU->VS recorded",
-                (ctrsource0 & CTRSOURCE_V) != 0);
-
-    HYP_TEST_END();
-}
-
-/* HCROSS-SSCTR-21: VS-mode BPFRZ controlled by vsctrctl */
-TEST_REGISTER(test_hcross_ssctr_21);
-bool test_hcross_ssctr_21(void) {
-    TEST_BEGIN("HCROSS-SSCTR-21: VS-mode BPFRZ from vsctrctl");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-    if (!check_ssctr_extension()) TEST_SKIP("Ssctr not available");
-
-    /* Set vsctrctl.BPFRZ=1 */
-    CSRS(vsctrctl, VSCTRCTL_BPFRZ);
-
-    /* Clear FROZEN first */
-    CSRC(sctrstatus, SCTRSTATUS_FROZEN);
-
-    /* VS-mode executes EBREAK, traps to VS-mode */
-    run_in_vs_mode(_vs_ebreak_wrapper);
-
-    /* Check sctrstatus.FROZEN was set */
-    uintptr_t status = CSRR(sctrstatus);
-    TEST_ASSERT("sctrstatus.FROZEN=1 after VS-mode breakpoint",
-                (status & SCTRSTATUS_FROZEN) != 0);
-
-    HYP_TEST_END();
-}
-```
-
 > [!NOTE]
 > - 本组测试验证 Ssctr 扩展在 Hypervisor 场景下的行为。所有测试必须在运行时通过 `HAS_H_EXT()` 检测 H 扩展的可用性，不可用时 TEST_SKIP。
 > - HCROSS-SSCTR-01~10 从 `Ssctr_test_plan.md` Group 2 迁移而来，验证 `vsctrctl` CSR 的基本功能。`vsctrctl` 是 H 扩展引入的 CSR，V=1 时替代 `sctrctl`，V=0 时不影响行为。
@@ -1851,221 +1114,100 @@ bool test_hcross_ssctr_21(void) {
 
 ---
 
-## 测试实现说明
+## Group 15. Hypervisor × Ssqosid 交叉测试
 
-### 文件组织
+本组测试验证 Ssqosid 扩展在 Hypervisor 场景下的行为，即 V=1 时 VS/VU-mode 访问 `srmcfg` CSR 的异常行为。这些测试从 `Ssqosid_test_plan.md` 迁移而来，专门针对依赖 H 扩展的用例。
 
-```
-damo-priv-test/
-├── hypervisor_cross/
-│   ├── Makefile
-│   ├── kernel.ld
-│   ├── main.c
-│   └── tests/
-│       ├── test_hcross_svadu.c      # Group 1: Hypervisor × Svadu
-│       ├── test_hcross_sstvala.c    # Group 2: Hypervisor × Sstvala
-│       ├── test_hcross_ssccptr.c    # Group 3: Hypervisor × Ssccptr
-│       ├── test_hcross_sscounterenw.c # Group 4: Hypervisor × Sscounterenw
-│       ├── test_hcross_svinval.c    # Group 5: Hypervisor × Svinval
-│       ├── test_hcross_svnapot.c    # Group 6: Hypervisor × Svnapot
-│       ├── test_hcross_svpbmt.c     # Group 7: Hypervisor × Svpbmt
-│       ├── test_hcross_ssdbltrp.c   # Group 12: Hypervisor × Ssdbltrp
-│       ├── test_hcross_smctr.c      # Group 13: Hypervisor × Smctr
-│       └── test_hcross_ssctr.c      # Group 14: Hypervisor × Ssctr
-│
-├── Hypervisor_Smstateen/            # Group 8: Hypervisor × Smstateen (独立项目)
-│   ├── Makefile
-│   ├── kernel.ld
-│   ├── main.c
-│   └── tests/
-│       ├── test_helpers.h
-│       ├── test_register.c
-│       ├── test_hcross_smstateen_init.c
-│       ├── test_hcross_smstateen_prop.c
-│       ├── test_hcross_smstateen_bit63.c
-│       ├── test_hcross_smstateen_func_bits.c
-│       └── test_hcross_smstateen_exception.c
-│
-├── Hypervisor_Sstc/                  # Group 9: Hypervisor × Sstc (独立项目)
-│   ├── Makefile
-│   ├── kernel.ld
-│   ├── main.c
-│   └── tests/
-│       ├── test_helpers.h
-│       ├── test_register.c
-│       ├── sstc_strap.S
-│       ├── test_hcross_sstc_stce.c   # 9.1: henvcfg.STCE 字段控制
-│       ├── test_hcross_sstc_acc.c    # 9.2: VS-mode 访问控制
-│       ├── test_hcross_sstc_vs.c     # 9.3-9.5: vstimecmp / VSTIP / VS-mode 定时器
-│
-├── Hypervisor_Sscsrind/              # Group 11: Hypervisor × Sscsrind (独立项目)
-│   ├── Makefile
-│   ├── kernel.ld
-│   ├── main.c
-│   └── tests/
-│       ├── test_helpers.h
-│       ├── test_register.c
-│       ├── test_hcross_sscsrind_vscsr.c     # 11.1: VS-level CSR 基本功能 (HCROSS-SSCSRIND-01~10)
-│       ├── test_hcross_sscsrind_vi.c        # 11.2: Virtual-Instruction 异常 (HCROSS-SSCSRIND-11~21)
-│       ├── test_hcross_sscsrind_stateen.c   # 11.3: State-Enable 访问控制 (HCROSS-SSCSRIND-22~27)
-│       └── test_hcross_sscsrind_hyp.c       # 11.4: Hypervisor 交叉测试 (HCROSS-SSCSRIND-28~33)
-│
-├── hypervisor_cross/                 # Group 10: Hypervisor × Smcsrind (可合并到主 hypervisor_cross 项目)
-│   └── tests/
-│       └── test_hcross_smcsrind.c    # 10: mstateen0[60] 对 vsiselect/vsireg* 的控制
-│
-└── common/hyp/                      # 复用现有 Hypervisor 测试框架
-```
+**规范依据**：
+- `norm:ssqosid_virtinst`：若 mstateen0[55]=1 或未实现 Smstateen，V=1 时尝试访问 srmcfg 引发 virtual-instruction exception
+- `norm:ssqosid_smstateen_bit55_0`：若 mstateen0[55]=0，低于 M 模式的特权级访问 srmcfg 引发 illegal-instruction exception
 
-### 运行时检测
+**测试职责**：验证虚拟化模式下 srmcfg 的访问异常行为。
 
-所有测试应在启动时检测所需扩展的可用性：
+| 测试 ID | 测试名称 | 测试描述 | 预期结果 |
+|---------|----------|----------|----------|
+| SRMCFG-19 | V=1 VS-mode 读 srmcfg 触发 virtual-instruction exception | 未实现 Smstateen 或 mstateen0[55]=1，VS-mode 执行 csrr srmcfg | virtual-instruction exception (cause=22) |
+| SRMCFG-20 | V=1 VS-mode 写 srmcfg 触发 virtual-instruction exception | 未实现 Smstateen 或 mstateen0[55]=1，VS-mode 执行 csrw srmcfg | virtual-instruction exception (cause=22) |
+| SRMCFG-21 | V=1 VU-mode 访问 srmcfg 触发异常 | VU-mode 尝试访问 srmcfg（CSR 0x181 为 S 级 CSR） | illegal-instruction (cause=2) 或 virtual-instruction (cause=22)（规范优先级存在歧义） |
+| SRMCFG-22 | V=0 HS-mode 正常访问 srmcfg | V=0（HS-mode），csrr/csrw srmcfg | 正常读写成功，无异常 |
+| SRMCFG-23 | Smstateen 实现且 mstateen0[55]=0 时 V=1 访问 | mstateen0[55]=0，VS-mode 尝试 csrr srmcfg | illegal-instruction exception (cause=2)（mstateen0 门控优先于 V=1 规则） |
+| SRMCFG-24 | virtual-instruction trap 时 stval/htinst 值 | VS-mode 访问 srmcfg 触发 virtual-instruction exception，检查 stval 和 htinst | stval 为 0 或故障指令编码（SYSTEM opcode），htinst 为 0 或转换值 |
 
-```c
-static bool check_h_extension(void) {
-    uint64_t misa = CSRR(misa);
-    if (!(misa & (1UL << ('H' - 'A')))) {
-        TEST_SKIP("H extension not available");
-        return false;
-    }
-    return true;
-}
+### 测试 ID 映射表
 
-static bool check_svadu_extension(void) {
-    // 通过尝试写 henvcfg.ADUE 并读回来探测
-    // 若只读零，则未实现 Svadu
-    uint64_t old = CSRR(henvcfg);
-    CSRW(henvcfg, old | HENVCFG_ADUE);
-    uint64_t new = CSRR(henvcfg);
-    CSRW(henvcfg, old);  // 恢复
-    return (new & HENVCFG_ADUE) != 0;
-}
+| 原始 ID | 新位置 | 测试名称 |
+|---------|--------|----------|
+| SRMCFG-19 | Group 15 | V=1 VS-mode 读 srmcfg |
+| SRMCFG-20 | Group 15 | V=1 VS-mode 写 srmcfg |
+| SRMCFG-21 | Group 15 | V=1 VU-mode 访问 srmcfg |
+| SRMCFG-22 | Group 15 | V=0 HS-mode 正常访问 |
+| SRMCFG-23 | Group 15 | mstateen0[55]=0 V=1 访问 |
+| SRMCFG-24 | Group 15 | stval/htinst 值验证 |
 
-static bool check_svinval_extension(void) {
-    // 通过 misa 或平台配置探测
-    // 若未实现 Svinval，HINVAL 指令触发 illegal-instruction
-    return platform_has_svinval();
-}
-```
+### 实现注意事项
 
-### 通用测试模式
+1. **扩展检测**：测试前需检测 Ssqosid（srmcfg CSR 0x181 存在性）和 H 扩展（misa.H）的可用性，不可用时 TEST_SKIP。
 
-#### 模式 1：Svadu 交叉测试（Group 1）
+2. **Smstateen 交互**：若 Smstateen 已实现，测试 SRMCFG-19/20/21/22/24 前需设置 mstateen0[55]=1，以确保测试的是 V=1 规则而非 mstateen 门控。
 
-```c
-TEST_REGISTER(test_hcross_svadu_01);
-bool test_hcross_svadu_01(void) {
-    TEST_BEGIN("HCROSS-SVADU-01: henvcfg.ADUE writability");
+3. **SRMCFG-21 规范歧义**：VU-mode（有效特权级=U）访问 S 级 CSR 时，标准 CSR 访问规则给出 cause=2（illegal-instruction），而 Ssqosid SPEC 的 "when V=1" 措辞暗示 cause=22（virtual-instruction）。测试接受两种 cause 值。
 
-    if (!check_h_extension()) TEST_SKIP("H extension not available");
+4. **SRMCFG-23 优先级**：mstateen0[55]=0 的门控规则优先于 V=1 的 virtual-instruction 规则，因此 VS-mode 访问应触发 illegal-instruction (cause=2)。
 
-    uint64_t old_henvcfg = CSRR(henvcfg);
+---
 
-    // 尝试写 ADUE=1
-    CSRW(henvcfg, old_henvcfg | HENVCFG_ADUE);
-    uint64_t readback_1 = CSRR(henvcfg);
+## Group 16. Hypervisor × Smcntrpmf 交叉测试
 
-    // 尝试写 ADUE=0
-    CSRW(henvcfg, old_henvcfg & ~HENVCFG_ADUE);
-    uint64_t readback_0 = CSRR(henvcfg);
+本组测试验证 Smcntrpmf（Cycle and Instret Privilege Mode Filtering）扩展在 Hypervisor 场景下的行为，即 `mcyclecfg`/`minstretcfg` 的 VSINH/VUINH 位对 VS/VU-mode 计数的抑制效果，以及与 `hcounteren` 的交互。这些测试从 `Smcntrpmf_test_plan.md` 迁移而来，专门针对依赖 H 扩展的用例。
 
-    // 恢复
-    CSRW(henvcfg, old_henvcfg);
+**规范依据**：
+- `norm:unimplemented_mode_bits`：`mcyclecfg`/`minstretcfg` 的 61:58 位中，若对应特权模式未实现，该位为只读零
+- `norm:counter_inhibited_behavior`：在被抑制的特权模式下执行时不发生计数
+- `norm:hcounteren_vs_vu_control`：`hcounteren` 控制 VS/VU-mode 下性能监控计数器的可用性
 
-    if (platform_has_svadu()) {
-        TEST_ASSERT("ADUE=1 writable", (readback_1 & HENVCFG_ADUE) != 0);
-        TEST_ASSERT("ADUE=0 writable", (readback_0 & HENVCFG_ADUE) == 0);
-    } else {
-        TEST_ASSERT("ADUE read-only zero without Svadu",
-                    (readback_1 & HENVCFG_ADUE) == 0);
-    }
+**测试职责**：验证 VSINH/VUINH 位对 VS/VU-mode 下 cycle/instret 计数的抑制效果、未实现 H 扩展时的只读零行为、以及 `hcounteren` 访问控制与计数抑制的正交性。
 
-    HYP_TEST_END();
-}
-```
+| 测试 ID | 测试名称 | 测试描述 | 预期结果 |
+|---------|----------|----------|----------|
+| PMF-CSR-05 | 未实现 H 扩展时 VSINH/VUINH 只读零 | 若 H 扩展未实现，写 `mcyclecfg`/`minstretcfg` 的 VSINH/VUINH=1，读回 | VSINH/VUINH 为只读零 |
+| PMF-CYC-08 | VSINH=1 抑制 VS-mode cycle 计数 | 设 `mcyclecfg.VSINH=1`，VS-mode 执行固定循环，读 cycle 差值 | VS-mode 下 cycle 不递增 |
+| PMF-CYC-09 | VUINH=1 抑制 VU-mode cycle 计数 | 设 `mcyclecfg.VUINH=1`，VU-mode 执行固定循环，读 cycle 差值 | VU-mode 下 cycle 不递增 |
+| PMF-INS-06 | VSINH=1 抑制 VS-mode instret 计数 | 设 `minstretcfg.VSINH=1`，VS-mode 执行 N 条指令，读 instret 差值 | VS-mode 下 instret 不递增 |
+| PMF-INS-07 | VUINH=1 抑制 VU-mode instret 计数 | 设 `minstretcfg.VUINH=1`，VU-mode 执行 N 条指令，读 instret 差值 | VU-mode 下 instret 不递增 |
+| PMF-CTR-04 | hcounteren.CY=0 时 VS-mode 不可读 cycle | `hcounteren.CY=0`，VS-mode 读 cycle | virtual-instruction exception (cause=22) |
+| HCROSS-PMF-01 | VSINH 抑制与 hcounteren 正交 | `mcyclecfg.VSINH=1`，`hcounteren.CY=1`，VS-mode 执行循环后读 cycle | cycle 可读但值不递增（访问允许但计数被抑制） |
 
-#### 模式 2：Sstvala 交叉测试（Group 2）
+> [!NOTE]
+> - PMF-CSR-05 验证 H 扩展**未实现**时 VSINH/VUINH 的只读零行为（`norm:unimplemented_mode_bits`）；在实现 H 扩展的平台上该用例应 TEST_SKIP，由 PMF-CYC-08/09、PMF-INS-06/07 验证 VSINH/VUINH 的可写性与功能。
+> - PMF-CYC-08/09、PMF-INS-06/07 需要在 VS/VU-mode 执行计数循环，验证 VSINH/VUINH 的抑制效果。VSINH/VUINH 位与 Sscofpmf 的 `mhpmevent` 字段共用相同的位编码（bit 59/58）。
+> - PMF-CTR-04 验证 `hcounteren` 对 VS-mode 计数器访问的控制：`hcounteren.CY=0` 时 VS-mode 读 cycle 触发 virtual-instruction exception（cause=22），而非 illegal-instruction。
+> - HCROSS-PMF-01 验证计数抑制（VSINH）与访问控制（`hcounteren`/`mcounteren`）的正交性：两者独立生效，访问允许但模式被抑制时计数器可读但不递增。
 
-```c
-TEST_REGISTER(test_hcross_sstvala_01);
-bool test_hcross_sstvala_01(void) {
-    TEST_BEGIN("HCROSS-SSTVALA-01: inst guest-page-fault stval precision");
+### 测试 ID 映射表
 
-    if (!check_h_extension()) TEST_SKIP("H extension not available");
+| 原始 ID | 新位置 | 测试名称 |
+|---------|--------|----------|
+| PMF-CSR-05 | Group 16 | 未实现 H 扩展时 VSINH/VUINH 只读零 |
+| PMF-CYC-08 | Group 16 | VSINH=1 抑制 VS-mode cycle 计数 |
+| PMF-CYC-09 | Group 16 | VUINH=1 抑制 VU-mode cycle 计数 |
+| PMF-INS-06 | Group 16 | VSINH=1 抑制 VS-mode instret 计数 |
+| PMF-INS-07 | Group 16 | VUINH=1 抑制 VU-mode instret 计数 |
+| PMF-CTR-04 | Group 16 | hcounteren.CY=0 时 VS-mode 不可读 cycle |
+| —（新增） | Group 16 | HCROSS-PMF-01 VSINH 抑制与 hcounteren 正交 |
 
-    two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, /*vs=Bare*/0, HGATP_MODE_SV39X4);
+### 实现注意事项
 
-    // 代码区映射
-    uintptr_t code_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
-    gpt_setup_identity_mapping(&ctx.g_ctx, code_base, PAGE_SIZE_1G,
-                               PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D,
-                               PT_LEVEL_1G);
+1. **H 扩展检测**：测试前需通过 `HAS_H_EXT()`（misa.H）运行时检测 H 扩展可用性。PMF-CYC-08/09、PMF-INS-06/07、PMF-CTR-04、HCROSS-PMF-01 在 H 扩展不可用时 TEST_SKIP；PMF-CSR-05 仅在 H 扩展**未实现**时执行（验证只读零），实现 H 扩展时 TEST_SKIP。
 
-    // 目标 GPA 未映射
-    uintptr_t target_gpa = 0x80000000UL + 0x20000000UL;
+2. **Smcntrpmf 检测**：需先探测 `mcyclecfg`（CSR 0x321）/`minstretcfg`（CSR 0x322）是否实现（trap-protected 写读 MINH 位），未实现时整组 TEST_SKIP。
 
-    trap_expect_begin();
-    two_stage_run_in_vs(&ctx, test_vs_jump_to, target_gpa);
-    TEST_ASSERT("inst guest-page-fault triggered", trap_was_triggered());
-    TEST_ASSERT_EQ("cause is inst guest-page-fault",
-                   trap_get_cause(), CAUSE_INST_GUEST_PAGE_FAULT);
-    TEST_ASSERT_EQ("stval == faulting GVA",
-                   trap_get_stval(), target_gpa);
-    trap_expect_end();
+3. **VS/VU-mode 切换**：需编译时启用 `ENABLE_HYP` 宏，使用 `goto_priv(PRIV_VS)`/`goto_priv(PRIV_VU)` 切换虚拟特权级，并配置两阶段翻译（`hgatp`/`vsatp`）使 VS/VU-mode 可执行计数循环。
 
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
+4. **计数器读取**：VS/VU-mode 读取 `cycle`/`instret`（CSR 0xC00/0xC02）需 `mcounteren` 与 `hcounteren` 对应位均使能；验证抑制效果时建议在 M-mode 切换前后读取 `mcycle`/`minstret` 取差值，避免在 VS/VU-mode 调用 C 函数。
 
-#### 模式 3：Svinval 交叉测试（Group 5）
+5. **计数抑制与访问控制正交**：VSINH/VUINH 抑制计数递增，`hcounteren`/`mcounteren` 控制计数器可读性，两者独立。HCROSS-PMF-01 需确保 `mcounteren.CY=1` 且 `hcounteren.CY=1`，再验证 VSINH=1 时计数不递增。
 
-```c
-TEST_REGISTER(test_hcross_svinval_01);
-bool test_hcross_svinval_01(void) {
-    TEST_BEGIN("HCROSS-SINVAL-01: HINVAL.VVMA basic functionality");
-
-    if (!check_h_extension()) TEST_SKIP("H extension not available");
-    if (!check_svinval_extension()) TEST_SKIP("Svinval not available");
-
-    two_stage_ctx_t ctx;
-    pt_pool_reset();
-    gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
-
-    // 建立初始映射
-    uintptr_t test_va = TEST_REGION_BASE;
-    uintptr_t test_gpa = test_va;
-    uintptr_t test_spa = test_gpa;
-    two_stage_map_vs_to_gpa(&ctx, test_va, test_gpa,
-                            PTE_V|PTE_R|PTE_W|PTE_A|PTE_D, PT_LEVEL_4K);
-    two_stage_map_gpa_to_spa(&ctx, test_gpa, test_spa,
-                             PTE_V|PTE_R|PTE_W|PTE_U|PTE_A|PTE_D, PT_LEVEL_4K);
-
-    // VS-mode 写入初始值
-    two_stage_run_in_vs(&ctx, test_vs_store, test_va, 0x1111);
-
-    // HS-mode 修改 VS-stage PTE（改为只读）
-    two_stage_modify_vs_pte(&ctx, test_va,
-                            PTE_V|PTE_R|PTE_A|PTE_D, PT_LEVEL_4K);
-
-    // 执行 HINVAL.VVMA 刷新 TLB
-    hinval_vvma(test_va, /*asid=*/0);
-    sfence_w_inval();
-    sfence_inval_ir();
-
-    // VS-mode 验证新 PTE 生效（store 应触发 page-fault）
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_store_expect_fault,
-                                           test_va, 0x2222);
-    TEST_ASSERT("store page-fault after HINVAL.VVMA",
-                result == CAUSE_STORE_PAGE_FAULT);
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
+---
 
 ### 关键注意事项
 
@@ -2133,132 +1275,6 @@ bool test_hcross_svinval_01(void) {
 | HCROSS-SMSTA-13 | VS-mode virtual-instruction | mstateen0 某位=0 且从 VS-mode 访问，满足虚拟指令异常条件 | 触发 virtual-instruction 异常 (cause=22) | `norm:stateen_illegal_state_access` |
 | HCROSS-SMSTA-14 | VU-mode virtual-instruction | mstateen0 某位=0 且从 VU-mode 访问，满足虚拟指令异常条件 | 触发 virtual-instruction 异常 (cause=22) | `norm:stateen_illegal_state_access` |
 
-### 代码示例
-
-```c
-/* HCROSS-SMSTA-01: hstateen0 复位后初始化 */
-TEST_REGISTER(test_hcross_smsta_01);
-bool test_hcross_smsta_01(void) {
-    TEST_BEGIN("HCROSS-SMSTA-01: hstateen0 zeroed after mstateen0 modification");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-
-    /* Set mstateen0.SE0 to allow hstateen0 access, plus some bits */
-    uintptr_t orig = mstateen0_read();
-    mstateen0_write(MSTATEEN0_SE0 | MSTATEEN0_C);
-
-    /* Write zero to hstateen0 */
-    trap_expect_begin();
-    hstateen0_write(0);
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-
-    if (trapped) {
-        TEST_SKIP("hstateen0 not accessible");
-    }
-
-    uintptr_t val = hstateen0_read();
-    TEST_ASSERT_EQ("hstateen0 reads zero", val, 0);
-
-    mstateen0_write(orig);
-    HYP_TEST_END();
-}
-
-/* HCROSS-SMSTA-02: mstateen0 零位传播到 hstateen0 */
-TEST_REGISTER(test_hcross_smsta_02);
-bool test_hcross_smsta_02(void) {
-    TEST_BEGIN("HCROSS-SMSTA-02: mstateen0 zero bit propagates to hstateen0");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-
-    uintptr_t orig = mstateen0_read();
-
-    /* Enable hstateen0 access (SE0=1) but clear C bit */
-    mstateen0_write(MSTATEEN0_SE0);
-
-    /* From M-mode, try writing C bit to hstateen0 */
-    hstateen0_write(MSTATEEN0_C);
-    uintptr_t val = hstateen0_read();
-
-    TEST_ASSERT_BITS("hstateen0.C is RO0 when mstateen0.C=0",
-                     val, MSTATEEN0_C, 0);
-
-    mstateen0_write(orig);
-    HYP_TEST_END();
-}
-
-/* HCROSS-SMSTA-03: SE0=0 阻止 HS-mode hstateen0 */
-TEST_REGISTER(test_hcross_smsta_03);
-bool test_hcross_smsta_03(void) {
-    TEST_BEGIN("HCROSS-SMSTA-03: mstateen0.SE0=0 blocks HS-mode hstateen0");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-
-    uintptr_t orig = mstateen0_read();
-
-    /* Clear SE0 (bit 63) */
-    mstateen0_clear(MSTATEEN0_SE0);
-
-    /* HS-mode access to hstateen0 should trigger illegal-instruction.
-     * Since we are in M-mode and HS-mode uses the same trap path,
-     * we test by switching to S-mode (which acts as HS when H ext
-     * is present and V=0). */
-    SMSTATEEN_TEST_SMODE_BLOCKED(
-        "HS-mode hstateen0 read blocked (SE0=0)",
-        hstateen0_read());
-
-    mstateen0_write(orig);
-    HYP_TEST_END();
-}
-
-/* HCROSS-SMSTA-13: VS-mode virtual-instruction */
-TEST_REGISTER(test_hcross_smsta_13);
-bool test_hcross_smsta_13(void) {
-    TEST_BEGIN("HCROSS-SMSTA-13: VS-mode access -> virtual-instruction");
-
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-
-    uintptr_t orig = mstateen0_read();
-
-    /* Set up: mstateen0.SE0=0 to block sstateen0 access.
-     * From VS-mode, accessing sstateen0 (which appears as sstateen0
-     * to the guest) should trigger virtual-instruction exception
-     * (cause=22) rather than illegal-instruction, because hstateen
-     * would allow it but mstateen blocks it. */
-
-    /* First set hstateen0 bit 63 = 1 (allow from H perspective),
-     * then set mstateen0 SE0=1 temporarily to write hstateen0 */
-    mstateen0_set(MSTATEEN0_SE0);
-    hstateen0_write(1ULL << 63);
-
-    /* Now clear mstateen0 SE0 to block at M-level */
-    mstateen0_clear(MSTATEEN0_SE0);
-
-    /* VS-mode access should see virtual-instruction (cause=22) */
-#ifdef ENABLE_HYP
-    goto_priv(PRIV_VS);
-    PRIV_DO(sstateen0_read());
-    goto_priv(PRIV_M);
-
-    /* Check for virtual-instruction exception */
-    if (trap_was_triggered()) {
-        uintptr_t cause = trap_get_cause();
-        /* Accept either virtual-instruction(22) or illegal-instruction(2)
-         * depending on implementation detail of privilege routing */
-        TEST_ASSERT("VS-mode trap cause is virtual-inst or illegal-inst",
-                    cause == CAUSE_VIRTUAL_INSTRUCTION ||
-                    cause == CAUSE_ILLEGAL_INST);
-    } else {
-        TEST_ASSERT("VS-mode trap should have triggered", false);
-    }
-#else
-    TEST_SKIP("ENABLE_HYP not compiled");
-#endif
-
-    mstateen0_write(orig);
-    HYP_TEST_END();
-}
-```
 
 ### 关键注意事项
 
@@ -2271,6 +1287,51 @@ bool test_hcross_smsta_13(void) {
 4. **virtual-instruction 与 illegal-instruction 的区分**：VS/VU-mode 访问受控 CSR 时，若 hstateen 允许但 mstateen 阻止，应触发 virtual-instruction (cause=22)；若 hstateen 也阻止，则触发 illegal-instruction (cause=2)。
 
 5. **hstateen CSR 地址**：hstateen0-3 的 CSR 地址为 0x60C-0x60F，hstateen0h-3h (RV32) 为 0x61C-0x61F。
+
+---
+
+## Group 17. Hypervisor × Zkr 交叉测试
+
+**规范依据**：
+- `norm:mseccfg_sseed_VSorVU-mode_op`：实现 H 扩展时，VS/VU 模式下 HS 限定指令访问 seed 引发 virtual-instruction exception；其他访问引发 illegal-instruction exception
+- `norm:mseccfg_sseed_useed_op_tbl`：VS/VU + SSEED=0 时任何访问引发 illegal-instruction exception；VS/VU + SSEED=1 时读写访问引发 virtual-instruction exception
+- `norm:mseccfg_sseed_SorHS-mode_op`：SSEED=0 时 HS-mode 访问 seed 引发 illegal-instruction exception；SSEED=1 时允许读写访问
+- `norm:seed_ro_illegal`：只读访问在任何模式下都引发 illegal-instruction exception
+
+**测试职责**：验证 H 扩展下 VS/VU-mode 和 HS-mode 访问 seed CSR 的异常类型区分与访问控制。
+
+### 17.1 HS-mode 访问控制（SSEED）
+
+| 测试 ID | 测试名称 | 测试描述 | 预期结果 |
+|---------|----------|----------|----------|
+| ZKR-HYP-01 | SSEED=1 HS-mode csrrw 访问 seed 正常 | 设 mseccfg.SSEED=1（H 扩展下 HS-mode），HS-mode 执行 csrrw rd, seed, x0 | 正常返回 seed 值 |
+| ZKR-HYP-02 | SSEED=0 HS-mode csrrw 访问 seed 触发异常 | 设 mseccfg.SSEED=0，HS-mode 执行 csrrw rd, seed, x0 | illegal-instruction exception (cause=2) |
+| ZKR-HYP-13 | SSEED=1 HS-mode 只读访问触发异常 | 设 mseccfg.SSEED=1，HS-mode 执行 csrrs rd, seed, x0 | illegal-instruction exception (cause=2) |
+
+### 17.2 VS/VU-mode 访问控制（SSEED + H 扩展）
+
+| 测试 ID | 测试名称 | 测试描述 | 预期结果 |
+|---------|----------|----------|----------|
+| ZKR-HYP-03 | SSEED=0 VS-mode csrrw 访问 seed 触发 illegal | 设 mseccfg.SSEED=0，VS-mode 执行 csrrw rd, seed, x0 | illegal-instruction exception (cause=2) |
+| ZKR-HYP-04 | SSEED=1 VS-mode csrrw 访问 seed 触发 virtual-instruction | 设 mseccfg.SSEED=1，VS-mode 执行 csrrw rd, seed, x0 | virtual-instruction exception (cause=22) |
+| ZKR-HYP-05 | SSEED=0 VU-mode csrrw 访问 seed 触发 illegal | 设 mseccfg.SSEED=0，VU-mode 执行 csrrw rd, seed, x0 | illegal-instruction exception (cause=2) |
+| ZKR-HYP-06 | SSEED=1 VU-mode csrrw 访问 seed 触发 virtual-instruction | 设 mseccfg.SSEED=1，VU-mode 执行 csrrw rd, seed, x0 | virtual-instruction exception (cause=22) |
+| ZKR-HYP-07 | SSEED=1 VS-mode 只读访问触发 illegal（非 virtual） | 设 mseccfg.SSEED=1，VS-mode 执行 csrrs rd, seed, x0 | illegal-instruction exception (cause=2)（只读访问条件优先） |
+| ZKR-HYP-08 | SSEED=1 VS-mode csrrsi uimm=0 触发 illegal | 设 mseccfg.SSEED=1，VS-mode 执行 csrrsi rd, seed, 0 | illegal-instruction exception (cause=2) |
+| ZKR-HYP-09 | SSEED=1 VS-mode csrrs(rs1≠x0) 触发 virtual-instruction | 设 mseccfg.SSEED=1，VS-mode 执行 csrrs rd, seed, t0 (t0≠0) | virtual-instruction exception (cause=22)（HS 限定的读写） |
+| ZKR-HYP-10 | SSEED=0 VS-mode csrrs(rs1≠x0) 触发 illegal | 设 mseccfg.SSEED=0，VS-mode 执行 csrrs rd, seed, t0 | illegal-instruction exception (cause=2) |
+| ZKR-HYP-11 | SSEED 不影响 M-mode（VS/VU 场景下） | 设 mseccfg.SSEED=0，M-mode csrrw seed | 正常访问 |
+| ZKR-HYP-14 | SSEED=1 VU-mode 只读访问触发 illegal（非 virtual） | 设 mseccfg.SSEED=1，VU-mode 执行 csrrs rd, seed, x0 | illegal-instruction exception (cause=2)（只读访问条件优先） |
+| ZKR-HYP-15 | SSEED=1 VU-mode csrrsi uimm=0 触发 illegal | 设 mseccfg.SSEED=1，VU-mode 执行 csrrsi rd, seed, 0 | illegal-instruction exception (cause=2) |
+| ZKR-HYP-16 | SSEED=1 VU-mode csrrs(rs1≠x0) 触发 virtual-instruction | 设 mseccfg.SSEED=1，VU-mode 执行 csrrs rd, seed, t0 (t0≠0) | virtual-instruction exception (cause=22)（HS 限定的读写） |
+| ZKR-HYP-17 | SSEED=0 VU-mode csrrs(rs1≠x0) 触发 illegal | 设 mseccfg.SSEED=0，VU-mode 执行 csrrs rd, seed, t0 | illegal-instruction exception (cause=2) |
+| ZKR-HYP-18 | SSEED=1 VS-mode csrrci uimm=0 触发 illegal | 设 mseccfg.SSEED=1，VS-mode 执行 csrrci rd, seed, 0 | illegal-instruction exception (cause=2) |
+
+### 17.3 异常优先级与组合场景
+
+| 测试 ID | 测试名称 | 测试描述 | 预期结果 |
+|---------|----------|----------|----------|
+| ZKR-HYP-12 | VU-mode 只读异常优先于 virtual-instruction | SSEED=1，VU-mode 执行 csrrs rd, seed, x0 | illegal-instruction exception (cause=2)（只读条件 → illegal，非 virtual-instruction） |
 
 ---
 
@@ -2308,3 +1369,9 @@ bool test_hcross_smsta_13(void) {
 - `SPEC/ssctr.adoc` — Ssctr (Control Transfer Records - Supervisor-level) Extension
 - `DOCS/testplan/Smctr_test_plan.md` — Smctr Machine Mode 测试计划
 - `DOCS/testplan/Ssctr_test_plan.md` — Ssctr Supervisor Mode 测试计划
+- `SPEC/riscv-ssqosid/sqosid.adoc` — Ssqosid (QoS Identifiers) Extension Specification
+- `DOCS/testplan/Ssqosid_test_plan.md` — Ssqosid 独立测试计划
+- `SPEC/smcntrpmf.adoc` — Smcntrpmf (Cycle and Instret Privilege Mode Filtering) Extension
+- `DOCS/testplan/Smcntrpmf_test_plan.md` — Smcntrpmf 独立测试计划
+- `SPEC/riscv-isa-manual/src/unpriv/zk.adoc` — Zkr Entropy Source Extension
+- `DOCS/testplan/Zkr_test_plan.md` — Zkr 独立测试计划

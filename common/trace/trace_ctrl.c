@@ -11,6 +11,15 @@
 static uintptr_t g_encoder_base = 0;
 static uintptr_t g_ramsink_base = 0;
 
+/* Software read cursor for SMEM mode (no hardware read pointer exists).
+ * Tracks how far into the DDR buffer trace data has been consumed. */
+static uint64_t g_smem_rp = 0;
+
+/* Bounded poll count for the trTeActive/trRamActive power-up handshake.
+ * Spec allows an arbitrarily long power-up; this is a safety cap so a
+ * missing/ stuck component cannot spin forever. */
+#define TRACE_ACTIVE_POLL_MAX  100000U
+
 /* ===================================================================
  * MMIO access helpers
  * =================================================================== */
@@ -59,6 +68,17 @@ void trace_activate(void)
     uint32_t ctrl = mmio_read32(g_encoder_base + TRTE_CONTROL_OFFSET);
     ctrl |= TRTE_ACTIVE_BIT;
     mmio_write32(g_encoder_base + TRTE_CONTROL_OFFSET, ctrl);
+
+    /* Spec: "Hardware may take an arbitrarily long time to process power-up
+     * ... and will indicate completion when the read value of this bit
+     * matches what was written." Poll trTeActive until the power-up
+     * handshake completes; skipping this and touching other registers at
+     * full speed can hang the trace subsystem / bus. */
+    for (uint32_t i = 0; i < TRACE_ACTIVE_POLL_MAX; i++)
+    {
+        if (mmio_read32(g_encoder_base + TRTE_CONTROL_OFFSET) & TRTE_ACTIVE_BIT)
+            break;
+    }
 }
 
 void trace_deactivate(void)
@@ -110,6 +130,30 @@ bool trace_is_enabled(void)
 
     uint32_t ctrl = mmio_read32(g_encoder_base + TRTE_CONTROL_OFFSET);
     return (ctrl & TRTE_ENABLE_BIT) != 0;
+}
+
+void trace_set_inst_tracing(bool enable)
+{
+    if (g_encoder_base == 0)
+        return;
+
+    /* Spec: trTeInstTracing is written after trTeEnable to actually start
+     * generating instruction trace. */
+    uint32_t ctrl = mmio_read32(g_encoder_base + TRTE_CONTROL_OFFSET);
+    if (enable)
+        ctrl |= TRTE_INST_TRACING_BIT;
+    else
+        ctrl &= ~TRTE_INST_TRACING_BIT;
+    mmio_write32(g_encoder_base + TRTE_CONTROL_OFFSET, ctrl);
+}
+
+bool trace_is_inst_tracing(void)
+{
+    if (g_encoder_base == 0)
+        return false;
+
+    uint32_t ctrl = mmio_read32(g_encoder_base + TRTE_CONTROL_OFFSET);
+    return (ctrl & TRTE_INST_TRACING_BIT) != 0;
 }
 
 /* ===================================================================
@@ -387,6 +431,66 @@ void trace_ram_configure(uint64_t start, uint64_t limit)
     mmio_write32(g_ramsink_base + TRRAM_START_HIGH_OFFSET, (uint32_t)(start >> 32));
     mmio_write32(g_ramsink_base + TRRAM_LIMIT_LOW_OFFSET, (uint32_t)limit);
     mmio_write32(g_ramsink_base + TRRAM_LIMIT_HIGH_OFFSET, (uint32_t)(limit >> 32));
+
+    /* Reset write pointer to the start of the buffer. */
+    mmio_write32(g_ramsink_base + TRRAM_WP_LOW_OFFSET, (uint32_t)start);
+    mmio_write32(g_ramsink_base + TRRAM_WP_HIGH_OFFSET, (uint32_t)(start >> 32));
+}
+
+void trace_ram_activate_smem(void)
+{
+    if (g_ramsink_base == 0)
+        return;
+
+    /* Spec: while trRamActive=0 the buffer registers may be inaccessible,
+     * so raise trRamActive first, then select SMEM mode. */
+    uint32_t ctrl = mmio_read32(g_ramsink_base + TRRAM_CONTROL_OFFSET);
+    ctrl |= TRRAM_ACTIVE_BIT;
+    mmio_write32(g_ramsink_base + TRRAM_CONTROL_OFFSET, ctrl);
+
+    /* Spec: "Hardware may take an arbitrarily long time to process power-up
+     * ... indicate completion when the read value of this bit matches what
+     * was written." Poll trRamActive before programming buffer registers;
+     * skipping this at full speed can hang the bus on the first sink access. */
+    for (uint32_t i = 0; i < TRACE_ACTIVE_POLL_MAX; i++)
+    {
+        if (mmio_read32(g_ramsink_base + TRRAM_CONTROL_OFFSET) & TRRAM_ACTIVE_BIT)
+            break;
+    }
+
+    ctrl = mmio_read32(g_ramsink_base + TRRAM_CONTROL_OFFSET);
+    ctrl |= TRRAM_MODE_BIT;      /* 1 = SMEM (system memory) mode */
+    mmio_write32(g_ramsink_base + TRRAM_CONTROL_OFFSET, ctrl);
+}
+
+void trace_ram_enable(void)
+{
+    if (g_ramsink_base == 0)
+        return;
+
+    uint32_t ctrl = mmio_read32(g_ramsink_base + TRRAM_CONTROL_OFFSET);
+    ctrl |= TRRAM_ENABLE_BIT;
+    mmio_write32(g_ramsink_base + TRRAM_CONTROL_OFFSET, ctrl);
+}
+
+void trace_ram_disable(void)
+{
+    if (g_ramsink_base == 0)
+        return;
+
+    /* Clearing trRamEnable flushes queued trace data out to memory. */
+    uint32_t ctrl = mmio_read32(g_ramsink_base + TRRAM_CONTROL_OFFSET);
+    ctrl &= ~TRRAM_ENABLE_BIT;
+    mmio_write32(g_ramsink_base + TRRAM_CONTROL_OFFSET, ctrl);
+}
+
+bool trace_ram_is_smem(void)
+{
+    if (g_ramsink_base == 0)
+        return false;
+
+    uint32_t ctrl = mmio_read32(g_ramsink_base + TRRAM_CONTROL_OFFSET);
+    return (ctrl & TRRAM_MODE_BIT) != 0;
 }
 
 uint64_t trace_ram_get_wp(void)
@@ -423,6 +527,33 @@ size_t trace_ram_read_bytes(uint8_t *buf, size_t maxlen)
     if (g_ramsink_base == 0)
         return 0;
 
+    if (trace_ram_is_smem())
+    {
+        /* SMEM mode: trace data was DMA'd into system memory in the
+         * [start, WP) range. There is no hardware read pointer, so use a
+         * software cursor (g_smem_rp) to consume unread bytes only. */
+        uint64_t start = ((uint64_t)mmio_read32(g_ramsink_base + TRRAM_START_HIGH_OFFSET) << 32)
+                         | mmio_read32(g_ramsink_base + TRRAM_START_LOW_OFFSET);
+        uint64_t wp = trace_ram_get_wp();
+
+        if (g_smem_rp < start)
+            g_smem_rp = start;
+
+        if (wp <= g_smem_rp)
+            return 0;
+
+        size_t avail = (size_t)(wp - g_smem_rp);
+        size_t to_read = (avail < maxlen) ? avail : maxlen;
+
+        const volatile uint8_t *src = (const volatile uint8_t *)(uintptr_t)g_smem_rp;
+        for (size_t i = 0; i < to_read; i++)
+            buf[i] = src[i];
+
+        g_smem_rp += to_read;
+        return to_read;
+    }
+
+    /* SRAM mode: read byte-by-byte through the trRamData register. */
     uint64_t rp = trace_ram_get_rp();
     uint64_t wp = trace_ram_get_wp();
 
@@ -455,5 +586,16 @@ void trace_ram_reset(void)
     uint32_t start_high = mmio_read32(g_ramsink_base + TRRAM_START_HIGH_OFFSET);
     uint64_t start = ((uint64_t)start_high << 32) | start_low;
 
-    trace_ram_set_rp(start);
+    if (trace_ram_is_smem())
+    {
+        /* SMEM mode: rewind the write pointer so the next capture starts
+         * at the buffer head, and reset the software read cursor. */
+        mmio_write32(g_ramsink_base + TRRAM_WP_LOW_OFFSET, start_low);
+        mmio_write32(g_ramsink_base + TRRAM_WP_HIGH_OFFSET, start_high);
+        g_smem_rp = start;
+    }
+    else
+    {
+        trace_ram_set_rp(start);
+    }
 }

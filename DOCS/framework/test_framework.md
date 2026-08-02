@@ -35,7 +35,7 @@
 ```
 common/
 ├── test_framework.h      # 测试框架核心头文件（宏、类型、API 声明）
-├── test_framework.c      # 测试结果跟踪、reset_state、test_print_summary
+├── test_framework.c      # 测试结果跟踪、reset_state、test_print_banner、test_print_summary
 ├── trap.c                # Trap 处理逻辑（arm/disarm、cause 记录）
 ├── trap_asm.S            # Trap 入口汇编（上下文保存/恢复）
 ├── privilege.c           # 特权级切换（goto_priv、run_in_priv）
@@ -65,7 +65,7 @@ _entry (entry.S)
   │
   └── 跳转到 main()
         │
-        ├── 打印测试 banner
+        ├── test_print_banner() → 打印测试 banner
         ├── 遍历 .test_table 段中的函数指针
         │     ├── test_fn_1() → TEST_BEGIN → 测试逻辑 → TEST_END
         │     ├── test_fn_2() → ...
@@ -561,6 +561,28 @@ void reset_state(void);
 7. 清理 Pointer Masking 状态（trap-protected）
 
 > 扩展特定的 reset（如 `pmp_clear_all()`）由各扩展自行在 `TEST_END` 前或 setup/teardown 中调用。
+
+#### test_print_banner — 打印测试 Banner
+
+```c
+void test_print_banner(const char *title);
+```
+
+在 `main()` 开头调用，打印标准化的测试套件 Banner：
+
+```
+==============================================
+  RISC-V PMP Compliance Test
+==============================================
+  Platform:     QEMU RV64 MAX
+  XLEN:         64
+  Compiler:     GCC 16.1.0
+  MEM_BASE:     0x80000000
+  MEM_SIZE:     0x10000000
+==============================================
+```
+
+扩展特有信息（如 PMP entries、IMSIC 基址等）在调用 `test_print_banner()` 之后自行 printf。
 
 #### test_print_summary — 打印测试汇总
 

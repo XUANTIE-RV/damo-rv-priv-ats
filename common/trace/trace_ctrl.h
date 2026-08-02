@@ -34,6 +34,14 @@
 #define TRRAM_DATA_OFFSET            0x040
 
 /* ===================================================================
+ * trRamControl bit field definitions
+ * =================================================================== */
+#define TRRAM_ACTIVE_BIT             (1UL << 0)  /* Primary activate/reset */
+#define TRRAM_ENABLE_BIT             (1UL << 1)  /* Sink enable */
+#define TRRAM_EMPTY_BIT              (1UL << 3)  /* RO: buffers empty */
+#define TRRAM_MODE_BIT               (1UL << 4)  /* 0=SRAM, 1=SMEM */
+
+/* ===================================================================
  * trTeControl bit field definitions
  * =================================================================== */
 #define TRTE_ACTIVE_BIT              (1UL << 0)
@@ -155,6 +163,12 @@ void trace_enable(void);
 void trace_disable(void);
 bool trace_is_enabled(void);
 
+/* Start/stop instruction trace generation (trTeInstTracing bit).
+ * Per Spec this must be written by the trace tool AFTER trTeEnable=1;
+ * without it the encoder is enabled but emits no instruction trace. */
+void trace_set_inst_tracing(bool enable);
+bool trace_is_inst_tracing(void);
+
 /* Set/get trace mode (trTeInstMode field) */
 bool trace_set_mode(uint8_t mode);
 uint8_t trace_get_mode(void);
@@ -212,6 +226,19 @@ uint8_t trace_get_src_bits(void);
 
 /* Configure RAM sink buffer (start and limit addresses) */
 void trace_ram_configure(uint64_t start, uint64_t limit);
+
+/* Activate the RAM sink (trRamActive) and select SMEM mode.
+ * Per Spec, buffer registers (start/limit/WP) are inaccessible while
+ * trRamActive=0, so this MUST be called before trace_ram_configure(). */
+void trace_ram_activate_smem(void);
+
+/* Enable/disable RAM sink data storage (trRamEnable).
+ * Disabling flushes any queued trace data out to memory. */
+void trace_ram_enable(void);
+void trace_ram_disable(void);
+
+/* Check whether the RAM sink is operating in SMEM (system-memory) mode. */
+bool trace_ram_is_smem(void);
 
 /* Get write pointer (current position in buffer) */
 uint64_t trace_ram_get_wp(void);

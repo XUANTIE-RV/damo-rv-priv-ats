@@ -177,19 +177,19 @@ bool ntrace_decode_next(ntrace_decoder_ctx_t *ctx, ntrace_msg_t *msg)
         return false;
     offset += consumed;
 
-    /* ---- Decode SRC (if present, variable-length up to src_bits) ---- */
+    /* ---- Decode SRC (if present, fixed-length, width = src_bits) ----
+     * Per RISC-V N-Trace Spec (Unified N-Trace Message Structure):
+     * SRC is a fixed-length field, not a variable-length field. It must
+     * always consume exactly src_bits of MDO data regardless of MSEO bits.
+     */
     if (msg->has_src) {
         uint64_t src_val;
-        int src_bits;
-        bool end_msg;
-        consumed = decode_varlen_field(start + offset, remaining - offset,
-                                      &src_val, &src_bits, &end_msg);
+        consumed = decode_fixed_field(start + offset, remaining - offset,
+                                     ctx->src_bits, &src_val);
         if (consumed < 0)
             return false;
-        msg->src = (uint8_t)src_val;
+        msg->src = (uint16_t)src_val;
         offset += consumed;
-        if (end_msg)
-            goto done;
     }
 
     /* ---- Decode message-specific fields based on TCODE ---- */
@@ -259,7 +259,10 @@ bool ntrace_decode_next(ntrace_decoder_ctx_t *ctx, ntrace_msg_t *msg)
         if (end_msg)
             break;
 
-        /* U-ADDR (variable-length) */
+        /* U-ADDR (variable-length, XOR-compressed address).
+         * Keep raw U-ADDR in msg->addr for test verification; update the
+         * decoder's previous address to the reconstructed full PC so that
+         * subsequent U-ADDR fields can be decoded correctly. */
         uint64_t uaddr;
         int addr_bits;
         consumed = decode_varlen_field(start + offset, remaining - offset,
@@ -268,6 +271,7 @@ bool ntrace_decode_next(ntrace_decoder_ctx_t *ctx, ntrace_msg_t *msg)
             return false;
         msg->addr = uaddr;
         msg->is_full_addr = false;
+        ctx->prev_addr = (uaddr << 1) ^ ctx->prev_addr;
         offset += consumed;
         if (end_msg)
             break;
@@ -323,15 +327,20 @@ bool ntrace_decode_next(ntrace_decoder_ctx_t *ctx, ntrace_msg_t *msg)
         if (end_msg)
             break;
 
-        /* F-ADDR (variable-length, full address) */
+        /* F-ADDR (variable-length, full address).
+         * Per N-Trace Spec, F-ADDR is PC >> 1; reconstruct full PC. */
         uint64_t faddr;
         int addr_bits;
         consumed = decode_varlen_field(start + offset, remaining - offset,
                                       &faddr, &addr_bits, &end_msg);
         if (consumed < 0)
             return false;
-        msg->addr = faddr;
+        msg->addr = faddr << 1;
         msg->is_full_addr = true;
+        /* Sync messages reset the decoder's previous address reference so that
+         * subsequent U-ADDR fields are XOR-decompressed relative to the sync
+         * address. */
+        ctx->prev_addr = msg->addr;
         offset += consumed;
         if (end_msg)
             break;
@@ -370,15 +379,18 @@ bool ntrace_decode_next(ntrace_decoder_ctx_t *ctx, ntrace_msg_t *msg)
         if (end_msg)
             break;
 
-        /* F-ADDR (variable-length, full address) */
+        /* F-ADDR (variable-length, full address).
+         * Per N-Trace Spec, F-ADDR is PC >> 1; reconstruct full PC. */
         uint64_t faddr;
         int addr_bits;
         consumed = decode_varlen_field(start + offset, remaining - offset,
                                       &faddr, &addr_bits, &end_msg);
         if (consumed < 0)
             return false;
-        msg->addr = faddr;
+        msg->addr = faddr << 1;
         msg->is_full_addr = true;
+        /* Sync messages reset the previous address reference. */
+        ctx->prev_addr = msg->addr;
         offset += consumed;
         if (end_msg)
             break;
@@ -508,15 +520,18 @@ bool ntrace_decode_next(ntrace_decoder_ctx_t *ctx, ntrace_msg_t *msg)
         if (end_msg)
             break;
 
-        /* F-ADDR (variable-length, full address) */
+        /* F-ADDR (variable-length, full address).
+         * Per N-Trace Spec, F-ADDR is PC >> 1; reconstruct full PC. */
         uint64_t faddr;
         int addr_bits;
         consumed = decode_varlen_field(start + offset, remaining - offset,
                                       &faddr, &addr_bits, &end_msg);
         if (consumed < 0)
             return false;
-        msg->addr = faddr;
+        msg->addr = faddr << 1;
         msg->is_full_addr = true;
+        /* Sync messages reset the previous address reference. */
+        ctx->prev_addr = msg->addr;
         offset += consumed;
         if (end_msg)
             break;
@@ -625,12 +640,11 @@ bool ntrace_decode_next(ntrace_decoder_ctx_t *ctx, ntrace_msg_t *msg)
         }
     }
 
-done:
     ctx->pos += offset;
 
     /* Update decoder state */
     if (msg->is_full_addr)
-        ctx->prev_addr = msg->addr << 1;  /* F-ADDR is addr >> 1 */
+        ctx->prev_addr = msg->addr;  /* msg->addr is already reconstructed PC */
 
     if (msg->has_tstamp)
         ctx->prev_tstamp = msg->tstamp;
