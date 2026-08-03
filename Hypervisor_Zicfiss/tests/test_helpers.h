@@ -176,6 +176,42 @@ static bool detect_zicfiss(void) {
 } while (0)
 
 /* ===================================================================
+ * Smstateen gate setup
+ *
+ * Per norm:mstateen0_envcfg_op the ENVCFG bit of mstateen0 controls
+ * access to the henvcfg and senvcfg CSRs from modes below M, and per
+ * norm:hstateen0_envcfg_op the ENVCFG bit of hstateen0 controls
+ * access to senvcfg from VS/VU-mode. Both bits reset to 0, so on an
+ * implementation with Smstateen a VS-mode senvcfg access traps
+ * (virtual-instruction) unless the gates are opened first. Writing
+ * hstateen0 from HS-mode additionally requires mstateen0.SE0=1
+ * (norm:mstateen0_se0_op).
+ *
+ * Smstateen gating behavior itself is covered by the Smstateen test
+ * suites; this suite opens the gates so the henvcfg/senvcfg-based
+ * Zicfiss tests are not blocked by them. Safe to call when Smstateen
+ * is not implemented (detected via an armed CSR probe).
+ * =================================================================== */
+void smstateen_open_envcfg_gates(void)
+{
+    /* Armed probe: accessing mstateen0 raises illegal-instruction
+     * when Smstateen is not implemented. */
+    trap_expect_begin();
+    uintptr_t v = mstateen_read(0);
+    trap_expect_end();
+    if (trap_was_triggered()) {
+        (void)v;
+        return;
+    }
+    (void)v;
+
+    /* Set SE0 first so hstateen0 becomes accessible from HS-mode,
+     * then open the ENVCFG gates at both levels. */
+    mstateen_set_bits(0, MSTATEEN0_SE0 | MSTATEEN0_ENVCFG);
+    hstateen_set_bits(0, STATEEN0_ENVCFG);
+}
+
+/* ===================================================================
  * Shadow Stack instruction encodings (Zicfiss)
  *
  * SSPUSH x1:     0xCE104073
@@ -283,11 +319,27 @@ static uintptr_t vs_write_senvcfg_fn(uintptr_t val) {
  * VS-mode trampolines for shadow stack instructions
  * =================================================================== */
 
+/* Fixed marker loaded into x1 (ra) right before SSPUSH/SSPOPCHK.
+ * The C calls inside the trampolines (trap_expect_begin etc.) clobber
+ * ra with call-site-specific return addresses, which differ between
+ * the sspush and sspopchk trampolines (and between VS entries). Per
+ * norm:sspop_exception, SSPOPCHK raises a software-check exception
+ * when mem[ssp] != x1, so push and pop-check must operate on the
+ * same known value. The real ra is saved/restored by the C function
+ * prologue/epilogue, so overwriting it here is safe. */
+#define SS_RA_MARKER  0xC1F15501
+
 /* VS-mode: execute SSPUSH x1 */
 static uintptr_t vs_exec_sspush(uintptr_t arg) {
     (void)arg;
     trap_expect_begin();
-    asm volatile(".word 0xCE104073" ::: "memory");
+    asm volatile(
+        "li    t0, %0\n\t"
+        "mv    ra, t0\n\t"
+        ".word 0xCE104073\n\t"   /* sspush x1 */
+        :
+        : "i"(SS_RA_MARKER)
+        : "t0", "ra", "memory");
     trap_expect_end();
     if (trap_was_triggered())
         return trap_get_cause();
@@ -298,19 +350,21 @@ static uintptr_t vs_exec_sspush(uintptr_t arg) {
  * at runtime so tests can compare it against vsepc after a trap. */
 static volatile uintptr_t g_sspopchk_addr;
 
-/* VS-mode: execute SSPOPCHK x1 */
+/* VS-mode: execute SSPOPCHK x1 (see SS_RA_MARKER comment above) */
 static uintptr_t vs_exec_sspopchk(uintptr_t arg) {
     (void)arg;
     trap_expect_begin();
     asm volatile(
+        "li    t0, %0\n\t"
+        "mv    ra, t0\n\t"
         "la    t0, 1f\n\t"
         "la    t1, g_sspopchk_addr\n\t"
         "sd    t0, 0(t1)\n\t"
         "1:\n\t"
-        ".word 0xCDC0C073\n\t"
+        ".word 0xCDC0C073\n\t"   /* sspopchk x1 */
         :
-        :
-        : "t0", "t1", "memory");
+        : "i"(SS_RA_MARKER)
+        : "t0", "t1", "ra", "memory");
     trap_expect_end();
     if (trap_was_triggered())
         return trap_get_cause();

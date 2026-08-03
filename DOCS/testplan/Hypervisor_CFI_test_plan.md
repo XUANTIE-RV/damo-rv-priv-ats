@@ -206,6 +206,7 @@
 **规范依据**：
 - `norm:henvcfg_sse_op`：SSE=1 激活 VS-mode Zicfiss；SSE=0 时指令回退、页表编码保留、senvcfg.SSE 只读零、SSAMOSWAP 触发虚拟指令异常
 - cfi.adoc xSSE 确定表：VS-mode xSSE = henvcfg.SSE；VU-mode xSSE = senvcfg.SSE
+- Smstateen 前置条件：若实现 Smstateen，低于 M 特权级对 henvcfg/senvcfg 的访问受 mstateen0.ENVCFG 门控（`norm:mstateen0_envcfg_op`），VS/VU-mode 对 senvcfg 的访问还受 hstateen0.ENVCFG 门控（`norm:hstateen0_envcfg_op`），两者复位值均为 0。本套件验证目标是 Zicfiss 使能控制而非 Smstateen 门控行为本身，故套件启动时须先置位 mstateen0.SE0/ENVCFG 与 hstateen0.ENVCFG 打开通道（Smstateen 未实现时为无操作）
 
 **测试职责**：验证 henvcfg.SSE 字段对 VS-mode Zicfiss 扩展的使能控制，包括 SSE=0 时的指令回退、页表编码保留等行为。
 
@@ -216,9 +217,9 @@
 | HCFI-SS-03 | henvcfg.SSE=0 时 32-bit Zicfiss 指令回退为 Zimop | 设 henvcfg.SSE=0，VS-mode 执行 32-bit SSPUSH 指令 | 指令作为 Zimop no-op 执行，不触发异常 |
 | HCFI-SS-04 | henvcfg.SSE=0 时 16-bit Zicfiss 指令回退为 Zcmop | 设 henvcfg.SSE=0，VS-mode 执行 C.SSPUSH 指令 | 指令作为 Zcmop no-op 执行，不触发异常 |
 | HCFI-SS-05 | henvcfg.SSE=0 时 VS-stage pte.xwr=010 保留 | 设 henvcfg.SSE=0，VS-stage 页表使用 pte.xwr=010 编码 | 该编码保留，触发 page-fault |
-| HCFI-SS-06 | henvcfg.SSE=0 时 senvcfg.SSE 只读零 | 设 henvcfg.SSE=0，VS-mode 读 senvcfg.SSE | senvcfg.SSE=0 且不可写 |
-| HCFI-SS-07 | henvcfg.SSE=0 时 senvcfg.SSE 写入无效 | 设 henvcfg.SSE=0，VS-mode 写 senvcfg.SSE=1 并读回 | senvcfg.SSE 保持 0 |
-| HCFI-SS-08 | henvcfg.SSE=1 时 senvcfg.SSE 可写 | 设 henvcfg.SSE=1，VS-mode 写 senvcfg.SSE=1 并读回 | senvcfg.SSE=1 |
+| HCFI-SS-06 | henvcfg.SSE=0 时 senvcfg.SSE 只读零 | 设 henvcfg.SSE=0，VS-mode 读 senvcfg.SSE（Smstateen 门控已打开） | senvcfg.SSE=0 且不可写 |
+| HCFI-SS-07 | henvcfg.SSE=0 时 senvcfg.SSE 写入无效 | 设 henvcfg.SSE=0，VS-mode 写 senvcfg.SSE=1 并由 HS-mode 读回（Smstateen 门控已打开，写入本身不得触发异常） | senvcfg.SSE 保持 0 |
+| HCFI-SS-08 | henvcfg.SSE=1 时 senvcfg.SSE 可写 | 设 henvcfg.SSE=1，VS-mode 写 senvcfg.SSE=1 并由 HS-mode 读回（Smstateen 门控已打开，须断言写入未触发异常，防止 trap 掩盖真实行为） | senvcfg.SSE=1 |
 | HCFI-SS-09 | henvcfg.SSE=0 + menvcfg.SSE=1 时 VS-mode SSAMOSWAP 触发异常 | 设 henvcfg.SSE=0, menvcfg.SSE=1，VS-mode 执行 SSAMOSWAP.W | virtual-instruction exception (cause=22) |
 | HCFI-SS-10 | henvcfg.SSE=1 时 VS-mode SSAMOSWAP 正常执行 | 设 henvcfg.SSE=1, menvcfg.SSE=1，VS-mode 执行 SSAMOSWAP.W（目标为 SS 页） | 正常执行，无异常 |
 | HCFI-SS-11 | henvcfg.SSE=0 + menvcfg.SSE=0 时 VS-mode SSAMOSWAP 行为 | 设 henvcfg.SSE=0, menvcfg.SSE=0，VS-mode 执行 SSAMOSWAP.W | illegal-instruction exception (cause=2)（SSAMOSWAP 为 AMO 编码，非 Zimop，特权级 < M 且 menvcfg.SSE=0 时按 cfi.adoc 操作伪码触发非法指令异常） |

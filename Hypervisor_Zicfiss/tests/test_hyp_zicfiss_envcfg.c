@@ -190,9 +190,11 @@ bool test_hcfi_ss_07(void) {
     uintptr_t orig_h = cfi_setup_vs_sse(false, true);
     senvcfg_clear(SENVCFG_SSE);
 
-    /* VS-mode write senvcfg.SSE=1 */
+    /* VS-mode write senvcfg.SSE=1. The CSR access itself must be
+     * allowed (Smstateen gates are opened by the suite setup); only
+     * the SSE field write is expected to have no effect. */
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_write_senvcfg_fn, SENVCFG_SSE);
-    (void)r;
+    TEST_ASSERT("senvcfg write access allowed in VS-mode", r == 0);
 
     /* Verify senvcfg.SSE still 0 */
     uintptr_t val = senvcfg_read();
@@ -218,9 +220,11 @@ bool test_hcfi_ss_08(void) {
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     senvcfg_clear(SENVCFG_SSE);
 
-    /* VS-mode write senvcfg.SSE=1 */
+    /* VS-mode write senvcfg.SSE=1. The write must actually execute
+     * (no trap); a trapped write would leave senvcfg.SSE=0 and the
+     * readback below would pass for the wrong reason. */
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_write_senvcfg_fn, SENVCFG_SSE);
-    (void)r;
+    TEST_ASSERT("senvcfg write access allowed in VS-mode", r == 0);
 
     /* Verify senvcfg.SSE is now 1 */
     uintptr_t val = senvcfg_read();
