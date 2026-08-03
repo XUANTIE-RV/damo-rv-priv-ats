@@ -40,7 +40,7 @@ Hypervisor_Zicbom,40,37,1,2
 Hypervisor_Zicbop,8,8,0,0
 Hypervisor_Zicboz,15,14,0,1
 Hypervisor_Zicfilp,44,37,6,1
-Hypervisor_Zicfiss,75,61,13,1
+Hypervisor_Zicfiss,75,65,9,1
 Hypervisor_Zkr,18,18,0,0
 Ss_CSR,75,64,1,10
 Ss_Exceptions,52,37,0,15

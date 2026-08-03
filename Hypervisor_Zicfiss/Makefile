@@ -16,7 +16,9 @@ QEMU_CPU   = max
 
 # Spike: explicitly request RV64 + H extension + Zicfiss + Zimop + Zcmop.
 # Zimop/Zcmop needed for SSE=0 instruction reversion tests.
-SPIKE_ISA = rv64imach_zicsr_zifencei_zicntr_sstc_svinval_zicfiss_zimop_zcmop
+# Smstateen included so the envcfg/senvcfg access gating path is
+# actually exercised (the suite opens the ENVCFG gates at startup).
+SPIKE_ISA = rv64imach_zicsr_zifencei_zicntr_sstc_svinval_zicfiss_zimop_zcmop_smstateen
 
 EXT_OBJS = \
     main.o \

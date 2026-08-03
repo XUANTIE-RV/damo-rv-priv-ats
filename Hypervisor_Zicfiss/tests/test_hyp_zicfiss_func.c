@@ -210,17 +210,19 @@ bool test_hcfi_ss_68(void) {
     ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
 
-    /* Set ssp to a known value */
-    ssp_write(0x1234);
+    /* Set ssp to a known value. Per norm:ssp-field_1_0 ssp is always
+     * XLEN/8-aligned on RV64 (bits [2:0] read-only zero), so use an
+     * aligned value for an implementation-independent round-trip. */
+    ssp_write(0x1238);
 
     /* Trigger a trap in VS-mode */
     uintptr_t r = two_stage_run_in_vs(&ctx, test_vs_store,
                                       (uintptr_t)test_fault_page);
     (void)r;
 
-    /* After returning from trap, ssp should still be 0x1234 */
+    /* After returning from trap, ssp should still be 0x1238 */
     uintptr_t val = ssp_read();
-    TEST_ASSERT_EQ("ssp persists across traps", val, (uintptr_t)0x1234);
+    TEST_ASSERT_EQ("ssp persists across traps", val, (uintptr_t)0x1238);
 
     cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }

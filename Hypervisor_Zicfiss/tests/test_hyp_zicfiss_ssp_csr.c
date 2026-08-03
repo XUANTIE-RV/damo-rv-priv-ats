@@ -166,13 +166,17 @@ bool test_hcfi_ss_22(void) {
     ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
 
-    /* VS-mode writes ssp */
-    uintptr_t r = two_stage_run_in_vs(&ctx, vs_write_ssp, 0x1234);
+    /* VS-mode writes ssp.
+     * Per norm:ssp-field_1_0, ssp bits [1:0] are read-only zero and
+     * bit 2 is also read-only zero when XLEN can never be 32 (RV64),
+     * i.e. ssp is always XLEN/8-aligned. Use an aligned value so the
+     * write/read round-trip is not implementation-dependent. */
+    uintptr_t r = two_stage_run_in_vs(&ctx, vs_write_ssp, 0x1238);
     TEST_ASSERT("ssp write in VS-mode succeeds", r == 0);
 
     /* HS-mode reads ssp */
     uintptr_t val = ssp_read();
-    TEST_ASSERT_EQ("HS-mode reads ssp value from VS-mode write", val, (uintptr_t)0x1234);
+    TEST_ASSERT_EQ("HS-mode reads ssp value from VS-mode write", val, (uintptr_t)0x1238);
 
     cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }

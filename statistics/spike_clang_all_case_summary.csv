@@ -39,8 +39,8 @@ Hypervisor_Svpbmt,4,4,0,0
 Hypervisor_Zicbom,40,38,0,2
 Hypervisor_Zicbop,8,8,0,0
 Hypervisor_Zicboz,15,14,0,1
-Hypervisor_Zicfilp,0,0,0,0
-Hypervisor_Zicfiss,75,69,5,1
+Hypervisor_Zicfilp,44,43,0,1
+Hypervisor_Zicfiss,75,74,0,1
 Hypervisor_Zkr,18,18,0,0
 Ss_CSR,75,56,0,19
 Ss_Exceptions,52,42,0,10

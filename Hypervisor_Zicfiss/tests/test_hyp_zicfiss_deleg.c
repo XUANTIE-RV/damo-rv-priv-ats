@@ -281,12 +281,14 @@ bool test_hcfi_ss_58(void) {
     TEST_ASSERT_EQ("store access-fault", r, (uintptr_t)CAUSE_STORE_ACCESS_FAULT);
 
     uintptr_t sepc_val = CSRR(sepc);
-    uintptr_t hs = hstatus_read();
-    printf("    sepc = 0x%lx, SPV = %lu\n",
-           (unsigned long)sepc_val,
-           (unsigned long)((hs & HSTATUS_SPV) ? 1 : 0));
+    printf("    sepc = 0x%lx, SPV(at trap entry) = %d\n",
+           (unsigned long)sepc_val, (int)trap_get_spv());
 
-    TEST_ASSERT("hstatus.SPV=1", (hs & HSTATUS_SPV) != 0);
+    /* Per norm:hstatus_spv_op, SPV is written at trap entry into
+     * HS-mode; the HS trap handler's sret back to VS-mode consumes it
+     * (norm:hstatus_spv_sret), so hstatus.SPV must be captured at
+     * trap time, not read after the VS run has completed. */
+    TEST_ASSERT("hstatus.SPV=1 (captured at trap entry)", trap_get_spv());
 
     cfi_restore_henvcfg(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
 }

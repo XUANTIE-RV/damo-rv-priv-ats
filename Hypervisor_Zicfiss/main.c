@@ -28,9 +28,16 @@
 extern test_func_t _test_table[];
 extern test_func_t _test_table_end[];
 
+/* Defined in tests/test_helpers.h (compiled via tests/test_register.c):
+ * open the Smstateen ENVCFG gates so VS/VU-mode henvcfg/senvcfg
+ * accesses are not blocked by Smstateen (see norm:mstateen0_envcfg_op,
+ * norm:hstateen0_envcfg_op). No-op when Smstateen is absent. */
+extern void smstateen_open_envcfg_gates(void);
+
 int main(void) {
     uart_init();
     reset_state();
+    smstateen_open_envcfg_gates();
 
     /* Configure PMP: allow S/U-mode full access to all memory. */
     asm volatile(
