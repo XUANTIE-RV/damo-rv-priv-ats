@@ -1,0 +1,200 @@
+# RISC-V Privilege Test Framework CI
+# Runs hypervisor extension test suite on Spike with GCC and Clang toolchains.
+# The job FAILS if any statistics/*.csv file is modified after the test run.
+
+name: Priv Test CI
+
+on:
+  # Run on any Pull Request (opened / updated / reopened).
+  pull_request:
+  # Post-merge: a merge into master produces a push.
+  push:
+
+# Cancel superseded runs on the same ref
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# Bump this to force-invalidate all cached artifacts (e.g. after a poisoned cache).
+env:
+  CACHE_VERSION: "v2"
+
+jobs:
+  # --------------------------------------------------------------------
+  # Build Spike and Sail exactly once. The matrix test jobs below restore
+  # them from cache. Keeping the build in a single job both avoids the
+  # parallel cache-save race ("Cache save failed") and avoids compiling
+  # Spike twice (once per toolchain).
+  # --------------------------------------------------------------------
+  setup-simulators:
+    name: Build simulators (spike + sail)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      # ---- Spike (built from source) ----
+      - name: Restore Spike cache
+        id: cache-spike
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ github.workspace }}/.spike
+          key: spike-${{ env.CACHE_VERSION }}-ubuntu-22.04-${{ hashFiles('.github/scripts/install-spike.sh') }}
+
+      - name: Build and install Spike
+        if: steps.cache-spike.outputs.cache-hit != 'true'
+        run: bash .github/scripts/install-spike.sh "${GITHUB_WORKSPACE}/.spike"
+
+      - name: Save Spike cache
+        if: steps.cache-spike.outputs.cache-hit != 'true' && success()
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ github.workspace }}/.spike
+          key: spike-${{ env.CACHE_VERSION }}-ubuntu-22.04-${{ hashFiles('.github/scripts/install-spike.sh') }}
+
+      # ---- Sail (pre-built binary) ----
+      - name: Restore Sail cache
+        id: cache-sail
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ github.workspace }}/.sail
+          key: sail-${{ env.CACHE_VERSION }}-ubuntu-22.04-${{ hashFiles('.github/scripts/install-sail.sh') }}
+
+      - name: Install Sail RISC-V model
+        if: steps.cache-sail.outputs.cache-hit != 'true'
+        run: bash .github/scripts/install-sail.sh "${GITHUB_WORKSPACE}/.sail"
+
+      - name: Save Sail cache
+        if: steps.cache-sail.outputs.cache-hit != 'true' && success()
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ github.workspace }}/.sail
+          key: sail-${{ env.CACHE_VERSION }}-ubuntu-22.04-${{ hashFiles('.github/scripts/install-sail.sh') }}
+
+  # --------------------------------------------------------------------
+  # Per-toolchain regression. Toolchain cache keys include the toolchain
+  # name, so gcc and clang never collide. Spike/Sail are restored from the
+  # cache populated by setup-simulators above.
+  # --------------------------------------------------------------------
+  hyp-test:
+    name: spike + ${{ matrix.toolchain }}
+    needs: setup-simulators
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [gcc, clang]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      # ---- RISC-V toolchain (per-matrix, distinct keys -> no race) ----
+      - name: Restore RISC-V toolchain cache (${{ matrix.toolchain }})
+        id: cache-toolchain
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ github.workspace }}/.toolchain
+          key: riscv-toolchain-${{ env.CACHE_VERSION }}-${{ matrix.toolchain }}-ubuntu-22.04-${{ hashFiles('.github/scripts/install-toolchain.sh') }}
+
+      - name: Download and install RISC-V toolchain (${{ matrix.toolchain }})
+        if: steps.cache-toolchain.outputs.cache-hit != 'true'
+        run: bash .github/scripts/install-toolchain.sh "${{ matrix.toolchain }}" "${GITHUB_WORKSPACE}/.toolchain"
+
+      - name: Save RISC-V toolchain cache (${{ matrix.toolchain }})
+        if: steps.cache-toolchain.outputs.cache-hit != 'true' && success()
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ github.workspace }}/.toolchain
+          key: riscv-toolchain-${{ env.CACHE_VERSION }}-${{ matrix.toolchain }}-ubuntu-22.04-${{ hashFiles('.github/scripts/install-toolchain.sh') }}
+
+      - name: Add toolchain to PATH
+        run: echo "${GITHUB_WORKSPACE}/.toolchain/bin" >> "$GITHUB_PATH"
+
+      # ---- Restore Spike (built by setup-simulators) ----
+      - name: Restore Spike cache
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ github.workspace }}/.spike
+          key: spike-${{ env.CACHE_VERSION }}-ubuntu-22.04-${{ hashFiles('.github/scripts/install-spike.sh') }}
+          fail-on-cache-miss: true
+
+      # Spike's RUNTIME dependencies. install-spike.sh installs them on the
+      # setup-simulators runner, but spike actually executes on this fresh
+      # runner, so they must be present here too:
+      #   - libboost_regex : spike dynamically links it (fails to load, exit 127)
+      #   - device-tree-compiler (dtc) : spike shells out to it to compile the
+      #     generated device tree ("Failed to run dtc: No such file or directory")
+      - name: Install Spike runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libboost-regex1.74.0 device-tree-compiler
+
+      - name: Add Spike to PATH
+        run: echo "${GITHUB_WORKSPACE}/.spike/bin" >> "$GITHUB_PATH"
+
+      - name: Verify Spike
+        run: spike --help
+
+      - name: Verify toolchain (${{ matrix.toolchain }})
+        run: riscv64-unknown-elf-${{ matrix.toolchain }} --version
+
+      # ---- Restore Sail (installed by setup-simulators) ----
+      - name: Restore Sail cache
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ github.workspace }}/.sail
+          key: sail-${{ env.CACHE_VERSION }}-ubuntu-22.04-${{ hashFiles('.github/scripts/install-sail.sh') }}
+          fail-on-cache-miss: true
+
+      - name: Add Sail to PATH
+        run: echo "${GITHUB_WORKSPACE}/.sail/bin" >> "$GITHUB_PATH"
+
+      - name: Verify Sail
+        run: sail_riscv_sim --version
+
+      # ----------------------------------------------------------------
+      # Run framework test suite.
+      # ----------------------------------------------------------------
+      - name: Run framework test suite (spike + ${{ matrix.toolchain }})
+        run: cd framework_test && make clean && make TOOLCHAIN=${{ matrix.toolchain }} spike
+      # ----------------------------------------------------------------
+      # Run the hypervisor test suite.
+      # ----------------------------------------------------------------
+      - name: Run hyp test suite (spike + ${{ matrix.toolchain }})
+        run: SIMULATOR=spike TOOLCHAIN=${{ matrix.toolchain }} ./run_case_stats.sh hyp
+
+      # ----------------------------------------------------------------
+      # Verdict: FAIL if any statistics CSV was modified or created.
+      # ----------------------------------------------------------------
+      - name: Check statistics CSVs are unchanged
+        run: |
+          changed=$(git diff --name-only -- 'statistics/*.csv')
+          untracked=$(git ls-files --others --exclude-standard -- 'statistics/*.csv')
+          if [ -n "$changed" ] || [ -n "$untracked" ]; then
+            echo "::error::Statistics CSV files changed after test run — this indicates a regression."
+            [ -n "$changed" ]   && echo "Modified files:" && echo "$changed"
+            [ -n "$untracked" ] && echo "New files:"      && echo "$untracked"
+            git diff -- 'statistics/*.csv' || true
+            exit 1
+          fi
+          echo "All statistics CSV files are unchanged — CI passed."
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: hyp-spike-${{ matrix.toolchain }}-logs
+          path: statistics/
+          retention-days: 14
