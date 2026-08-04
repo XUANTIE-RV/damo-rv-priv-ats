@@ -211,10 +211,14 @@ bool test_htval_imp_04_store_walk(void) {
 /* ===================================================================
  * HTVAL-IMP-05: Implicit read GPF htinst pseudoinstruction
  *
- * When an implicit VS-stage PTE read triggers a G-stage GPF, the
- * spec (norm:H_trap_xtinst_guestpage) says htinst should contain a
- * read pseudoinstruction (0x00003000 for RV64). Some implementations
- * may write htinst=0 (spec allows this), in which case we note it.
+ * When an implicit VS-stage PTE read triggers a G-stage GPF:
+ *  - norm:htval_trapval: htval may be zero OR the faulting GPA >> 2;
+ *    both are compliant, and when htval == 0 there is no htinst
+ *    requirement.
+ *  - norm:H_trap_xtinst_guestpage: once htval is nonzero (condition
+ *    (b) met; condition (a) holds by construction here), htinst MUST
+ *    be the read pseudoinstruction (0x00003000 for RV64) — zero is
+ *    NOT allowed and must be reported, not tolerated.
  * =================================================================== */
 TEST_REGISTER(test_htval_imp_05_htinst_read);
 bool test_htval_imp_05_htinst_read(void) {
@@ -238,17 +242,11 @@ bool test_htval_imp_05_htinst_read(void) {
     if (trap_was_triggered()) {
         TEST_ASSERT_EQ("cause = 21 (load-gpf)",
                        trap_get_cause(), CAUSE_LOAD_GUEST_PAGE_FAULT);
-        CHECK_HTVAL("htval = PTE_GPA>>2", pte_gpa >> 2);
 
-        /* htinst should be the read pseudoinstruction (0x00003000).
-         * If the implementation writes 0, that's also spec-legal. */
-        uintptr_t htinst = trap_get_htinst();
-        if (htinst == 0) {
-            printf("  [INFO] htinst=0 (implementation does not report pseudoinstruction)\n");
-        } else {
-            TEST_ASSERT_EQ("htinst == 0x00003000 (read pseudo)",
-                           htinst, (uintptr_t)0x00003000);
-        }
+        /* Strict spec check: htval == 0 accepted (no htinst
+         * requirement); htval != 0 requires htval == PTE_GPA>>2 and
+         * htinst == 0x00003000 with zero NOT allowed. */
+        CHECK_IMPLICIT_FAULT_REPORT(pte_gpa >> 2, (uintptr_t)0x00003000);
     }
     trap_expect_end();
 

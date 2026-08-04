@@ -313,7 +313,7 @@ bool test_shtvala_load_gpf_two_stage(void) {
 | HTVAL-IMP-02 | Implicit L1：VS 中级 PTE 缺映射 | vsatp Sv39 中级页表 GPA 在 hgatp 中未映射，VS-mode load → cause 21 | `cause == 21`；`htval == 中级 PTE 所在 GPA >> 2 != 0` |
 | HTVAL-IMP-03 | Implicit L2：VS 叶子 PTE 缺映射 | vsatp Sv39 叶子页表 GPA 在 hgatp 中未映射，VS-mode load → cause 21 | `cause == 21`；`htval == 叶子 PTE 所在 GPA >> 2 != 0` |
 | HTVAL-IMP-04 | Implicit + store/inst | 同 HTVAL-IMP-01 但分别用 store/取指 → cause 23/20 | `cause == 23/20`；`htval == 根表 PTE GPA >> 2 != 0` |
-| HTVAL-IMP-05 | Implicit read GPF 时 htinst == pseudoinstruction（read） | 复用 HTVAL-IMP-01 场景（隐式读 PTE 触发 GPF），额外验证 `htinst` | `htinst == 0x00003000`（RV64 read pseudoinstruction，`norm:H_trap_xtinst_guestpage`） |
+| HTVAL-IMP-05 | Implicit read GPF 时 htinst == pseudoinstruction（read） | 复用 HTVAL-IMP-01 场景（隐式读 PTE 触发 GPF），额外验证 `htinst` | `htval == 0` 时接受（`norm:htval_trapval` 允许写零，此时对 htinst 无要求）；`htval != 0` 时必须 `htval == PTE GPA>>2` 且 `htinst == 0x00003000`（RV64 read pseudoinstruction），零不允许（`norm:H_trap_xtinst_guestpage`） |
 | HTVAL-IMP-06 | Implicit write GPF 时 htinst == pseudoinstruction（write） | vsatp Sv39 构造 VS-stage PTE A=0（需硬件自动置 A），隐式写触发 GPF → cause 23 | `htinst == 0x00003020`（RV64 write pseudoinstruction）；若平台不自动更新 A/D 则 `TEST_SKIP` |
 | HTVAL-IMP-07 | Sv48x4 隐式 GPF 路径 | vsatp=Sv48，构造 L2 PTE 所在 GPA 在 G-stage（Sv48x4）未映射 → cause 21 | `htval == L2 PTE GPA >> 2 != 0`；若平台不支持 Sv48 则 `TEST_SKIP` |
 

@@ -47,6 +47,7 @@
 | `norm:H_trap_m_csrwrites` | When a trap is taken into M-mode, V gets set to 0, and fields MPV and MPP in `mstatus` are set accordingly. A trap into M-mode also writes fields GVA, MPIE, and MIE in `mstatus` and writes CSRs `mepc`, `mcause`, `mtval`, `mtval2`, and `mtinst`. | 陷阱进入 M 模式时，V 设为 0，`mstatus` 的 MPV 和 MPP 相应设置。同时写入 GVA、MPIE、MIE 及 CSR `mepc`、`mcause`、`mtval`、`mtval2`、`mtinst`。 |
 | `norm:H_trap_vs_csrwrites` | When a trap is taken into VS-mode, `vsstatus`.SPP is set accordingly. Register `hstatus` and the HS-level `sstatus` are not modified, and V remains 1. A trap into VS-mode also writes SPIE and SIE in `vsstatus` and writes CSRs `vsepc`, `vscause`, and `vstval`. | 陷阱进入 VS 模式时，`vsstatus`.SPP 相应设置。`hstatus` 和 HS 级 `sstatus` 不修改，V 保持 1。同时写入 `vsstatus` 的 SPIE/SIE 及 CSR `vsepc`、`vscause`、`vstval`。 |
 | `norm:H_trap_xtinst` | On any trap into M-mode or HS-mode, one of these values is written to `mtinst` or `htinst`: zero; a transformation of the trapping instruction; a custom value (only if the trapping instruction is non-standard); or a special pseudoinstruction. | 任何陷阱进入 M/HS 模式时，`mtinst`/`htinst` 写入以下之一：零；陷阱指令的转换；自定义值（仅限非标准指令）；或特殊伪指令。 |
+| `norm:H_trap_xtinst_exception` | On a synchronous exception, if a nonzero value is written to the trap instruction register, it must be one of: a standard transformed instruction (bit 0 = 1, replacing bit 1 with 1 yields a valid standard encoding); a custom value (bit 0 = 1, replacing bit 1 with 1 yields a designated custom encoding); or a special pseudoinstruction (bits 1:0 = 00). All other values (e.g. bits 1:0 = 10) are illegal. | 同步异常时，若陷阱指令寄存器写入非零值，必须是以下之一：标准转换指令（bit0=1，将 bit1 置 1 后为标准指令编码）；custom 值（bit0=1，bit1 置 1 后为指定的 custom 编码）；特殊伪指令（bits1:0=00）。其他值（如 bits1:0=10）非法。 |
 | `norm:H_trap_xtinst_guestpage` | For guest-page faults, the trap instruction register is written with a special pseudoinstruction value if: (a) the fault is caused by an implicit memory access for VS-stage address translation, and (b) a nonzero value is written to `mtval2` or `htval`. If both conditions are met, zero is not allowed. | 对于客户页错误，若 (a) 故障由 VS 阶段地址翻译的隐式内存访问引起，且 (b) `mtval2`/`htval` 写入非零值，则陷阱指令寄存器必须写入特殊伪指令值，不允许零。 |
 | `norm:H_trap_xtinst_guestpage_rw` | A write pseudoinstruction (0x00002020 or 0x00003020) is used for the case that the machine is attempting automatically to update bits A and/or D in VS-level page tables. All other implicit memory accesses for VS-stage address translation will be reads. | 写伪指令（0x00002020 或 0x00003020）用于机器自动更新 VS 级页表 A/D 位的情况。所有其他 VS 阶段翻译的隐式内存访问为读取。 |
 | `norm:H_trap_xtinst_interrupt` | On an interrupt, the value written to the trap instruction register is always zero. | 中断时，陷阱指令寄存器写入值始终为零。 |
@@ -135,6 +136,7 @@
 | `norm:mtval2_sz_acc_op` | The `mtval2` register is an MXLEN-bit read/write register. When a trap is taken into M-mode, `mtval2` is written with additional exception-specific information, alongside `mtval`. | `mtval2` 是一个 MXLEN 位读写寄存器。陷阱进入 M 模式时写入额外异常特定信息。 |
 | `norm:mtval2_trapval` | When a guest-page-fault trap is taken into M-mode, `mtval2` is written with either zero or the guest physical address that faulted, shifted right by 2 bits. For other traps, `mtval2` is set to zero. | 客户页错误陷阱进入 M 模式时，`mtval2` 写入零或故障客户物理地址右移 2 位。其他陷阱设为零。 |
 | `norm:mtval2_trapval_vstrans` | If a guest-page fault is due to an implicit memory access during first-stage (VS-stage) address translation, a guest physical address written to `mtval2` is that of the implicit memory access that faulted. | 若客户页错误由 VS 阶段地址翻译的隐式内存访问引起，写入 `mtval2` 的地址是故障的隐式内存访问地址。 |
+| `norm:mtval2_val` | `mtval2` is a WARL register that must be able to hold zero and may be capable of holding only an arbitrary subset of other 2-bit-shifted guest physical addresses, if any. | `mtval2` 是 WARL 寄存器，必须能保持零，且可能只能保持 2 位右移客户物理地址的任意子集。写入任意值后不要求回显原值，但读回值必须稳定。 |
 | `norm:sie_hip_hie_mutex` | For each writable bit in `sie`, the corresponding bit shall be read-only zero in both `hip` and `hie`. Hence, the nonzero bits in `sie` and `hie` are always mutually exclusive, and likewise for `sip` and `hip`. | 对于 `sie` 中的每个可写位，`hip` 和 `hie` 中的对应位必须为只读零。`sie` 和 `hie` 的非零位始终互斥，`sip` 和 `hip` 同理。 |
 | `norm:sret_dt` | If the Ssdbltrp extension is implemented, when SRET is executed in HS-mode, if the new privilege mode is VU, the SRET instruction sets `vsstatus`.SDT to 0. When executed in VS-mode, `vsstatus`.SDT is set to 0. | 若实现了 Ssdbltrp 扩展，HS 模式执行 SRET 且新特权模式为 VU 时，设 `vsstatus`.SDT=0。VS 模式执行时也设 `vsstatus`.SDT=0。 |
 | `norm:sret_v0` | When executed in M-mode or HS-mode (V=0), SRET first determines the new privilege mode according to `hstatus`.SPV and `sstatus`.SPP. SRET then sets `hstatus`.SPV=0, and in `sstatus` sets SPP=0, SIE=SPIE, and SPIE=1. Lastly, SRET sets the privilege mode and sets pc=sepc. | 在 M/HS 模式（V=0）执行时，SRET 根据 `hstatus`.SPV 和 `sstatus`.SPP 确定新特权模式，然后设 SPV=0、SPP=0、SIE=SPIE、SPIE=1，最后设置特权模式并 pc=sepc。 |
@@ -651,25 +653,31 @@
 ## Group 15. htinst / mtinst 转换指令
 
 **规范依据**：
-- `norm:H_trap_xtinst`：trap 时写入 mtinst/htinst 的值类型（零/转换指令/custom/pseudoinstruction）
+- `norm:H_trap_xtinst`：trap 时写入 mtinst/htinst 的值类型（零/转换指令/custom/pseudoinstruction）；除强制伪指令场景外，实现始终允许写零
 - `norm:H_trap_xtinst_interrupt`：中断时写零
-- `norm:H_trap_xtinst_val`：各异常类型可写入的值类型（tinst-values 表）
-- `norm:H_trap_xtinst_guestpage`：隐式 VS-stage 访问引发 guest-page-fault 且 htval 非零时必须写 pseudoinstruction
+- `norm:H_trap_xtinst_exception`：同步异常写入非零值时必须满足三类合法形式之一（标准转换指令/custom/伪指令）
+- `norm:H_trap_xtinst_val`：各异常类型可写入的值类型（tinst-values 表）；custom 值仅限非标准指令，标准指令（如 ecall/illegal-instruction）只允许写零
+- `norm:H_trap_xtinst_guestpage`：隐式 VS-stage 访问引发 guest-page-fault 且 htval/mtval2 非零时必须写 pseudoinstruction，不允许零
 - `norm:H_trap_xtinst_guestpage_rw`：read 用 0x00003000，write（A/D 更新）用 0x00003020（RV64）
 
-**测试职责**：验证 htinst 在各种 trap 场景下的写入值。
+**测试职责**：验证 htinst/mtinst 在各种 trap 场景下的写入值。
+
+**严格验证原则**（针对评审 Gap：原用例对 trap 写入值的检查过于宽松，存在恒真断言）：
+1. SPEC 允许实现在非强制场景写零，因此“零”必须被接受；但当实现写入非零值时，必须与 SPEC 推导的期望值精确匹配（golden 值从 mepc 处的实际陷阱指令按转换规则计算），不接受“任意非零值”。
+2. 隐式 VS-stage 访问 fault 且 htval/mtval2 非零时，htinst/mtinst 必须精确等于伪指令值，零不合法（norm:H_trap_xtinst_guestpage）。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
-| TINST-01 | 中断 trap 时 htinst=0 | VS-mode 中断 trap 到 HS-mode | htinst=0 |
-| TINST-02 | ecall trap 时 htinst=0 或 custom | VS-mode ecall | htinst=0 |
-| TINST-03 | load guest-page-fault htinst 值 | VS-mode load 触发 guest-page-fault | htinst 为 0 或转换后的 load 指令 |
-| TINST-04 | store guest-page-fault htinst 值 | VS-mode store 触发 guest-page-fault | htinst 为 0 或转换后的 store 指令 |
-| TINST-05 | 隐式 VS-stage 访问 fault + htval 非零时 htinst 为 pseudoinstruction | VS-stage 页表所在 GPA 无映射，触发 guest-page-fault | htinst=0x00003000（RV64 read） |
-| TINST-06 | 隐式写（A/D 更新）的 pseudoinstruction | 如实现支持 A/D 自动更新，触发隐式写 fault | htinst=0x00003020（RV64 write） |
-| TINST-07 | 转换指令 bit 1:0 编码验证 | 32-bit load 触发 fault | htinst bits 1:0 = 11（32-bit 指令） |
-| TINST-08 | 压缩指令转换后 bit 1:0 编码 | 16-bit C.LW 触发 fault | htinst bits 1:0 = 01（压缩指令） |
-| TINST-09 | page-fault 不产生 pseudoinstruction | VS-mode load page-fault（非 guest-page-fault） | htinst=0 或转换指令（非 pseudoinstruction） |
+| TINST-01 | 中断 trap 时 mtinst/htinst=0 | hvip.VSSIP 注入 VS 软件中断（hideleg.VSSIP=0；mideleg VS 位只读 1，必然 trap 到 HS-mode） | cause 为中断且来自 V=1，htinst=0（严格） |
+| TINST-02 | ecall trap 时 htinst=0 | VS-mode ecall（标准指令，custom 不允许） | htinst=0（严格） |
+| TINST-03 | load guest-page-fault htinst 值 | VS-mode 确定性 `ld` 触发 guest-page-fault | htinst=0 或精确等于该 `ld` 的 SPEC 转换指令（golden，从 mepc 指令计算） |
+| TINST-04 | store guest-page-fault htinst 值 | VS-mode 确定性 `sd` 触发 guest-page-fault | htinst=0 或精确等于该 `sd` 的 SPEC 转换指令（golden） |
+| TINST-05 | 隐式 VS-stage 读 fault 的 pseudoinstruction | VS-stage 叶页表页在 G-stage 不可读，触发隐式读 guest-page-fault | htval≠0 时 htinst=0x00003000（零不允许）；htval=0 时接受 |
+| TINST-06 | 隐式写（A/D 更新）的 pseudoinstruction | VS-stage 叶页表页在 G-stage D=0，触发隐式写 fault；平台支持 Svadu 时 SKIP | htval≠0 时 htinst=0x00003020（零不允许） |
+| TINST-07 | 转换指令字段结构验证 | 32-bit load 触发 fault，htinst 非零时逐字段校验 | opcode/funct3/rd 保留、imm 清零、Addr Offset 正确、bits1:0=11 |
+| TINST-08 | 压缩指令转换后 bit 1:0 编码 | 16-bit C.LW 触发 fault | htinst bits 1:0 = 01（压缩指令）；当前框架无压缩探针，保留 SKIP |
+| TINST-09 | page-fault 不产生 pseudoinstruction | VS-stage 叶 PTE R=0 触发 load page-fault（cause=13，非 guest-page-fault） | htinst=0 或转换指令（golden 精确匹配）；不允许伪指令值 |
+| TINST-10 | illegal-instruction 只允许写零 | VS-mode 执行非法指令（标准异常，tinst-values 表仅允许 Zero） | htinst=0（严格） |
 
 ---
 
@@ -730,19 +738,23 @@
 
 **规范依据**：
 - `norm:mtval2_sz_acc_op`：MXLEN-bit 读写寄存器
-- `norm:mtval2_trapval`：guest-page-fault trap 到 M-mode 时 mtval2 写入 GPA >> 2 或零
+- `norm:mtval2_trapval`：guest-page-fault trap 到 M-mode 时 mtval2 写入 GPA >> 2 或零；其他 trap 必须写零
 - `norm:mtval2_trapval_vstrans`：隐式 VS-stage 访问导致 guest-page-fault 时 mtval2 写入隐式访问的 GPA
-- `norm:mtinst_sz_acc_op` / `norm:mtinst_val`：mtinst 格式与 WARL
+- `norm:mtval2_val`：WARL，必须能保持零；写入任意值不要求回显，但读回必须稳定
+- `norm:mtinst_sz_acc_op` / `norm:mtinst_val`：mtinst 格式与 WARL（仅需能保持 trap 时可能自动写入的值）
 
-**测试职责**：验证 M-mode trap 时 mtval2/mtinst 的写入行为。
+**测试职责**：验证 M-mode trap 时 mtval2/mtinst 的写入行为。本套件中 VS/HS trap 默认不委托，统一进入 M-mode，框架在 M-mode trap 入口捕获 mtval2/mtinst（`trap_get_htval()`/`trap_get_htinst()` 在 M-mode 递送路径下即为 mtval2/mtinst）。
+
+**严格验证原则**（针对评审 Gap）：trap 写入值按 SPEC 允许集精确断言 —— GPF 时 mtval2 必须是 `0` 或 `GPA>>2` 二者之一（不允许其他值）；WARL 读写不要求原值回显但必须稳定且零必须可保持；隐式访问 fault 时 mtval2 非零则必须精确等于隐式访问 GPA>>2。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
-| MTVAL-01 | mtval2 基本读写 | M-mode 写 mtval2 并读回 | WARL 行为正确 |
-| MTVAL-02 | guest-page-fault trap 到 M-mode 时 mtval2 | VS-mode 触发 guest-page-fault，trap 到 M-mode | mtval2 = GPA >> 2 或 0 |
-| MTVAL-03 | 非 guest-page-fault 时 mtval2=0 | VS-mode ecall trap 到 M-mode | mtval2=0 |
-| MTVAL-04 | mtinst 基本读写 | M-mode 写 mtinst 并读回 | WARL 行为正确 |
-| MTVAL-05 | mtinst 在 M-mode guest-page-fault trap 值 | VS-mode 触发 guest-page-fault，trap 到 M-mode | mtinst = 0 或转换指令/pseudoinstruction |
+| MTVAL-01 | mtval2 WARL 读写 | M-mode 写 0、任意 pattern 并重复写入读回 | 写 0 后读回必为 0；任意值读回稳定（重复写同一值读回一致）；不要求原值回显 |
+| MTVAL-02 | guest-page-fault trap 到 M-mode 时 mtval2 | VS-mode 确定性 load 触发 guest-page-fault | mtval2 = GPA >> 2 或 0（严格二选一），且与 trap 记录一致 |
+| MTVAL-03 | 非 guest-page-fault 时 mtval2=0 | VS-mode ecall trap 到 M-mode | mtval2=0（严格），htval=0 |
+| MTVAL-04 | mtinst WARL 读写 | M-mode 写 0、任意 pattern 并重复写入读回 | 同 MTVAL-01 的 WARL 语义 |
+| MTVAL-05 | mtinst 在 M-mode guest-page-fault trap 值 | VS-mode 确定性 load 触发 guest-page-fault | mtinst = 0 或精确等于转换指令（golden） |
+| MTVAL-06 | 隐式 VS-stage 访问 fault 时 mtval2 | VS-stage 叶页表页在 G-stage 不可读，触发隐式读 fault | mtval2 = 0 或精确等于隐式访问 PTE GPA>>2；非零时 mtinst 必须为 0x00003000 |
 
 ---
 

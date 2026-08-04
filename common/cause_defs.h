@@ -67,10 +67,13 @@
  * masking off the CAUSE_INTERRUPT_BIT.
  * =================================================================== */
 #define IRQ_S_SOFTWARE      1
+#define IRQ_VS_SOFTWARE     2   /* Hypervisor: VS-level software interrupt */
 #define IRQ_M_SOFTWARE      3
 #define IRQ_S_TIMER         5
+#define IRQ_VS_TIMER        6   /* Hypervisor: VS-level timer interrupt */
 #define IRQ_M_TIMER         7
 #define IRQ_S_EXTERNAL      9
+#define IRQ_VS_EXTERNAL     10  /* Hypervisor: VS-level external interrupt */
 #define IRQ_M_EXTERNAL      11
 
 /* ===================================================================

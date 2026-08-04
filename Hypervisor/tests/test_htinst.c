@@ -6,66 +6,127 @@
 /*
  * Test Group 15: htinst/mtinst transformed instructions
  *
- * Tests TINST-01 through TINST-09 verify htinst behavior during traps.
+ * Tests TINST-01 through TINST-10 verify htinst/mtinst behavior on
+ * traps, following the strict-verification principles of the test
+ * plan (DOCS/testplan/Hypervisor_test_plan.md, Group 15):
+ *  - zero is always accepted where the spec allows it;
+ *  - any nonzero value must EXACTLY match the spec-derived golden
+ *    value (transformed instruction computed from the trapping
+ *    instruction at mepc, or the mandated pseudoinstruction);
+ *  - implicit VS-stage walk faults with htval != 0 require the
+ *    pseudoinstruction value; zero is NOT allowed there.
  */
 
 #include "test_helpers.h"
 
+/* mie/hvip bit for the VS software interrupt (VSSIP/VSSIE). */
+#define VS_SOFT_INT_BIT   (1UL << 2)
+
 /* ------------------------------------------------------------------
- * TINST-01: Interrupt trap sets htinst=0
+ * TINST-01: Interrupt trap writes zero to the trap instruction CSR
+ *
+ * norm:H_trap_xtinst_interrupt: on an interrupt, the value written to
+ * mtinst/htinst is ALWAYS zero.
+ *
+ * A real VS software interrupt is injected via hvip.VSSIP. Per
+ * norm:mideleg_acc_h, mideleg bits 2/6/10 are read-only 1, so a
+ * VS-level interrupt can never trap to M-mode; with hideleg bit 2
+ * clear it is delivered to HS-mode and htinst is observed there.
+ * With hideleg[2]=0 the interrupt is enabled via hie.VSSIE and
+ * reported in hip (norm:hideleg_hs), not through sie/sip.
  * ------------------------------------------------------------------ */
 TEST_REGISTER(htinst_interrupt_zero);
 bool htinst_interrupt_zero(void) {
-    TEST_BEGIN("TINST-01: Verify htinst=0 during interrupt trap");
+    TEST_BEGIN("TINST-01: Verify htinst=0 during an interrupt trap");
 
-    /* Trigger VS ecall (cause=10) via run_in_vs_mode. */
+    /* hideleg.VSSIP must be clear so the interrupt traps to HS-mode
+     * (not VS-mode). */
+    uintptr_t hideleg = hideleg_read();
+    hideleg_write(hideleg & ~VS_SOFT_INT_BIT);
+    CSRW(CSR_HVIP, 0);
+
+    uintptr_t saved_hie;
+    asm volatile ("csrr %0, 0x604" : "=r"(saved_hie));
+
+    /* Enable only VSSIE via hie. */
+    CSRW(CSR_HIE, VS_SOFT_INT_BIT);
+
+    /* Inject VSSIP; it fires during VS-mode execution. */
+    CSRS(CSR_HVIP, VS_SOFT_INT_BIT);
+
     trap_expect_begin();
-    run_in_vs_mode(vs_exec_ecall, 0);
+    run_in_vs_mode(vs_nop_fn, 0);
     trap_expect_end();
 
-    /* Check that htinst is 0. */
-    uintptr_t htinst = trap_get_htinst();
-    TEST_ASSERT_EQ("htinst should be 0 during ecall trap", htinst, 0);
+    /* Restore interrupt state before asserting. */
+    CSRW(CSR_HVIP, 0);
+    CSRW(CSR_HIE, saved_hie);
+    hideleg_write(hideleg);
+
+    TEST_ASSERT("interrupt trap fired", trap_was_triggered());
+    TEST_ASSERT_EQ("cause = VS software interrupt",
+                   trap_get_cause(), CAUSE_INTERRUPT_BIT | IRQ_VS_SOFTWARE);
+    /* Snapshot taken at HS trap entry: hstatus.SPVP is written like
+     * sstatus.SPP when V was 1 (norm:H_trap_hs_csrwrites). Reading
+     * hstatus here would be wrong: sret already cleared SPV/SPVP. */
+    TEST_ASSERT("trap came from V=1 (hstatus.SPVP at entry)",
+                trap_get_spv_snap());
+    TEST_ASSERT_EQ("htinst must be 0 on interrupt (strict)",
+                   trap_get_htinst(), 0);
+    TEST_ASSERT_EQ("htval must be 0 on interrupt (strict)",
+                   trap_get_htval(), 0);
 
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
- * TINST-02: ECALL trap sets htinst=0
+ * TINST-02: ECALL trap writes zero to htinst
+ *
+ * tinst-values table: for Environment call, only Zero may be written
+ * (a custom value is allowed only for non-standard instructions, and
+ * ecall is standard). Hence htinst == 0 strictly.
  * ------------------------------------------------------------------ */
 TEST_REGISTER(htinst_ecall_zero);
 bool htinst_ecall_zero(void) {
-    TEST_BEGIN("TINST-02: Verify htinst=0 during ECALL trap");
+    TEST_BEGIN("TINST-02: Verify htinst=0 during ECALL trap (strict)");
 
-    /* Trigger VS ecall (cause=10) via run_in_vs_mode. */
     trap_expect_begin();
     run_in_vs_mode(vs_exec_ecall, 0);
+    TEST_ASSERT("ecall trap fired", trap_was_triggered());
+    TEST_ASSERT_EQ("cause = ecall from VS-mode",
+                   trap_get_cause(), (uintptr_t)CAUSE_ECALL_FROM_VS);
     trap_expect_end();
 
-    /* Check that htinst is 0. */
-    uintptr_t htinst = trap_get_htinst();
-    TEST_ASSERT_EQ("htinst should be 0 during ecall trap", htinst, 0);
+    TEST_ASSERT_EQ("htinst must be 0 on ecall (strict)",
+                   trap_get_htinst(), 0);
 
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
  * TINST-03: Load guest-page-fault htinst value
+ *
+ * A deterministic VS-mode `ld` faults on a G-stage leaf without read
+ * permission. htinst must be either 0 (always allowed) or EXACTLY the
+ * transformed load computed from the trapping instruction.
  * ------------------------------------------------------------------ */
 TEST_REGISTER(htinst_load_gpf);
 bool htinst_load_gpf(void) {
-    TEST_BEGIN("TINST-03: Verify htinst value during load guest-page-fault");
+    TEST_BEGIN("TINST-03: htinst on load guest-page-fault (0 or golden)");
 
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
-    /* Fire a VS load fault. */
     uintptr_t victim_gpa = (uintptr_t)test_fault_page;
-    uintptr_t flags = G_FLAGS_RWXU_AD | PTE_R;
-    fire_vs_load_fault(victim_gpa, flags);
+    /* G-stage leaf: readable NOT (no R/W/X) -> load guest-page-fault. */
+    uintptr_t flags = PTE_V | PTE_U | PTE_A | PTE_D;
+    bool fired = probe_load_gpf(victim_gpa, flags);
 
-    /* Check htinst value (either 0 or transformed instruction). */
-    uintptr_t htinst = trap_get_htinst();
-    TEST_ASSERT("htinst valid", htinst == 0 || htinst != 0);
+    TEST_ASSERT("load guest-page-fault fired", fired);
+    TEST_ASSERT_EQ("cause = load guest-page-fault",
+                   trap_get_cause(), (uintptr_t)CAUSE_LOAD_GUEST_PAGE_FAULT);
+
+    (void)check_xtinst_zero_or_golden(
+        "htinst == 0 or exact transformed load", 0x03UL, victim_gpa);
 
     HYP_TEST_END();
 }
@@ -75,65 +136,152 @@ bool htinst_load_gpf(void) {
  * ------------------------------------------------------------------ */
 TEST_REGISTER(htinst_store_gpf);
 bool htinst_store_gpf(void) {
-    TEST_BEGIN("TINST-04: Verify htinst value during store guest-page-fault");
+    TEST_BEGIN("TINST-04: htinst on store guest-page-fault (0 or golden)");
 
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
-    /* Fire a VS store fault. */
     uintptr_t victim_gpa = (uintptr_t)test_fault_page;
-    uintptr_t flags = G_FLAGS_RWXU_AD | PTE_W;
-    fire_vs_store_fault(victim_gpa, flags);
+    /* G-stage leaf: R but NOT W -> store guest-page-fault. */
+    uintptr_t flags = PTE_V | PTE_R | PTE_U | PTE_A | PTE_D;
+    bool fired = probe_store_gpf(victim_gpa, flags);
 
-    /* Check htinst value (either 0 or transformed instruction). */
-    uintptr_t htinst = trap_get_htinst();
-    TEST_ASSERT("htinst valid", htinst == 0 || htinst != 0);
+    TEST_ASSERT("store guest-page-fault fired", fired);
+    TEST_ASSERT_EQ("cause = store guest-page-fault",
+                   trap_get_cause(), (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);
+
+    (void)check_xtinst_zero_or_golden(
+        "htinst == 0 or exact transformed store", 0x23UL, victim_gpa);
 
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
- * TINST-05: Implicit VS-stage access fault pseudoinstruction
+ * TINST-05: Implicit VS-stage read fault pseudoinstruction
+ *
+ * The VS-stage leaf page-table page is made unreadable at G-stage, so
+ * the PTE walk raises a guest-page-fault on an implicit read.
+ * norm:H_trap_xtinst_guestpage: when htval != 0, htinst MUST be the
+ * read pseudoinstruction 0x00003000 (RV64) — zero is NOT allowed.
  * ------------------------------------------------------------------ */
 TEST_REGISTER(htinst_implicit_vs_fault);
 bool htinst_implicit_vs_fault(void) {
-    TEST_BEGIN("TINST-05: Verify htinst pseudoinstruction for implicit VS-stage fault");
+    TEST_BEGIN("TINST-05: htinst pseudoinstruction on implicit VS-stage read fault");
 
-    TEST_SKIP("requires two-stage implicit fault setup");
+    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_VSATP_MODE(SATP_MODE_SV39);
 
+    two_stage_ctx_t ctx;
+    uintptr_t test_va = HYP_IMP_TEST_VA;
+
+    uintptr_t pt_gpa = setup_implicit_walk_victim(&ctx, test_va, 0);
+    TEST_ASSERT("VS leaf PT page resolved", pt_gpa != 0);
+    uintptr_t pte_gpa = pt_gpa + VA_VPN(test_va, 0) * sizeof(uintptr_t);
+
+    trap_expect_begin();
+    (void)two_stage_run_in_vs(&ctx, vs_load_probe, test_va);
+    TEST_ASSERT("implicit walk GPF fired", trap_was_triggered());
+    if (trap_was_triggered()) {
+        TEST_ASSERT_EQ("cause = load guest-page-fault",
+                       trap_get_cause(),
+                       (uintptr_t)CAUSE_LOAD_GUEST_PAGE_FAULT);
+        /* Strict: htval == 0 accepted; if nonzero, htval must be the
+         * implicit-access GPA>>2 and htinst the read pseudoinstruction
+         * (zero NOT allowed). */
+        CHECK_IMPLICIT_FAULT_REPORT(pte_gpa >> 2, HTINST_PSEUDO_READ_RV64);
+    }
+    trap_expect_end();
+
+    two_stage_cleanup(&ctx);
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
- * TINST-06: Pseudoinstruction for A/D update
+ * TINST-06: Implicit write (A/D update) pseudoinstruction
+ *
+ * The VS-stage leaf page-table page carries D=0 at G-stage. Without
+ * ADUE, the walker's implicit A/D write faults there; htinst must be
+ * the WRITE pseudoinstruction 0x00003020 (RV64) when htval != 0.
+ * Platforms auto-updating A/D (Svadu) never raise the fault: SKIP.
  * ------------------------------------------------------------------ */
 TEST_REGISTER(htinst_ad_update);
 bool htinst_ad_update(void) {
-    TEST_BEGIN("TINST-06: Verify htinst pseudoinstruction for A/D auto-update");
+    TEST_BEGIN("TINST-06: htinst write pseudoinstruction on implicit A/D update fault");
 
-    TEST_SKIP("requires A/D auto-update support");
+    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_VSATP_MODE(SATP_MODE_SV39);
 
+    two_stage_ctx_t ctx;
+    uintptr_t test_va = HYP_IMP_TEST_VA;
+
+    uintptr_t pt_gpa = setup_implicit_walk_victim(
+        &ctx, test_va, G_FLAGS_RWXU_AD & ~PTE_D);
+    TEST_ASSERT("VS leaf PT page resolved", pt_gpa != 0);
+    uintptr_t pte_gpa = pt_gpa + VA_VPN(test_va, 0) * sizeof(uintptr_t);
+
+    trap_expect_begin();
+    (void)two_stage_run_in_vs(&ctx, vs_load_probe, test_va);
+    bool fired = trap_was_triggered();
+    trap_expect_end();
+
+    if (!fired) {
+        two_stage_cleanup(&ctx);
+        TEST_SKIP("platform auto-updates A/D (Svadu), no implicit write GPF");
+    }
+
+    /* Cause follows the original access type (load). */
+    TEST_ASSERT_EQ("cause = load guest-page-fault",
+                   trap_get_cause(),
+                   (uintptr_t)CAUSE_LOAD_GUEST_PAGE_FAULT);
+    CHECK_IMPLICIT_FAULT_REPORT(pte_gpa >> 2, HTINST_PSEUDO_WRITE_RV64);
+
+    two_stage_cleanup(&ctx);
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
- * TINST-07: Transformed instruction bits 1:0 encoding verification
+ * TINST-07: Transformed instruction field-by-field structure
+ *
+ * Same scenario as TINST-03; when htinst is nonzero every field is
+ * checked individually against the SPEC transformed-load format:
+ * opcode/funct3/rd preserved, immediate zeroed, Addr. Offset correct,
+ * bits 1:0 = 11 for a non-compressed instruction.
  * ------------------------------------------------------------------ */
 TEST_REGISTER(htinst_bits_encoding);
 bool htinst_bits_encoding(void) {
-    TEST_BEGIN("TINST-07: Verify transformed instruction bits 1:0 encoding");
+    TEST_BEGIN("TINST-07: transformed instruction field structure");
 
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
-    /* Fire a VS load fault. */
     uintptr_t victim_gpa = (uintptr_t)test_fault_page;
-    uintptr_t flags = G_FLAGS_RWXU_AD | PTE_R;
-    fire_vs_load_fault(victim_gpa, flags);
+    uintptr_t flags = PTE_V | PTE_U | PTE_A | PTE_D;
+    bool fired = probe_load_gpf(victim_gpa, flags);
 
-    /* Check htinst bits 1:0 if not zero. */
-    uintptr_t htinst = trap_get_htinst();
+    TEST_ASSERT("load guest-page-fault fired", fired);
+    TEST_ASSERT_EQ("cause = load guest-page-fault",
+                   trap_get_cause(), (uintptr_t)CAUSE_LOAD_GUEST_PAGE_FAULT);
+
+    uintptr_t htinst = check_xtinst_zero_or_golden(
+        "htinst == 0 or exact transformed load", 0x03UL, victim_gpa);
+
     if (htinst != 0) {
-        uintptr_t bits10 = htinst & 3;
-        TEST_ASSERT_EQ("bits 1:0 should be 0b11 for 32-bit instruction", bits10, 0x3);
+        uintptr_t epc  = trap_get_epc();
+        uintptr_t inst = hyp_fetch_inst32(epc);
+
+        TEST_ASSERT_EQ("bits 1:0 = 11 (non-compressed)", htinst & 3UL, 3UL);
+        TEST_ASSERT_EQ("opcode preserved",
+                       htinst & 0x7FUL, inst & 0x7FUL);
+        TEST_ASSERT_EQ("funct3 preserved",
+                       (htinst >> 12) & 7UL, (inst >> 12) & 7UL);
+        TEST_ASSERT_EQ("rd preserved",
+                       (htinst >> 7) & 0x1FUL, (inst >> 7) & 0x1FUL);
+        TEST_ASSERT_EQ("immediate field zeroed",
+                       htinst & 0xFFF00000UL, 0UL);
+
+        uintptr_t tval = trap_get_tval();
+        uintptr_t off  = (tval != 0 && tval >= victim_gpa)
+                         ? (tval - victim_gpa) : 0;
+        TEST_ASSERT_EQ("Addr. Offset field",
+                       (htinst >> 15) & 0x1FUL, off & 0x1FUL);
     }
 
     HYP_TEST_END();
@@ -146,27 +294,90 @@ TEST_REGISTER(htinst_compressed_encoding);
 bool htinst_compressed_encoding(void) {
     TEST_BEGIN("TINST-08: Verify compressed instruction transformed encoding");
 
-    TEST_SKIP("requires compressed instruction fault");
+    TEST_SKIP("requires a compressed-instruction VS-mode fault probe");
 
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
- * TINST-09: Page-fault does not produce pseudoinstruction
+ * TINST-09: VS-stage page fault does not produce a pseudoinstruction
+ *
+ * A VS-stage leaf PTE without R raises a plain load page-fault
+ * (cause 13, NOT a guest-page fault). tinst-values table: load page
+ * fault allows Zero or a transformed instruction only — never a
+ * pseudoinstruction.
  * ------------------------------------------------------------------ */
 TEST_REGISTER(htinst_page_fault_no_pseudo);
 bool htinst_page_fault_no_pseudo(void) {
-    TEST_BEGIN("TINST-09: Verify page-fault does not produce pseudoinstruction");
+    TEST_BEGIN("TINST-09: page-fault htinst is 0 or transformed (no pseudoinst)");
 
-    /* Trigger VS ecall and check htinst is readable afterwards. */
+    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_VSATP_MODE(SATP_MODE_SV39);
+
+    two_stage_ctx_t ctx;
+    gpt_pool_reset();
+    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+
+    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
+    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
+    uintptr_t lo_end  = r_start & ~(PAGE_SIZE_2M - 1);
+
+    /* VS-stage: low region RWX; test_data_area mapped WITHOUT R so a
+     * VS-mode load raises a VS-stage load page-fault (cause 13). */
+    two_stage_vs_identity(&ctx, lo_base, lo_end - lo_base,
+                          PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D,
+                          PT_LEVEL_2M);
+    uintptr_t target = (uintptr_t)test_data_area;
+    two_stage_vs_map(&ctx, target, target,
+                     PTE_V | PTE_W | PTE_X | PTE_U | PTE_A | PTE_D,
+                     PT_LEVEL_4K);
+
+    /* G-stage: identity RWX everywhere. */
+    uintptr_t r_end = (uintptr_t)__vm_test_region_end;
+    two_stage_setup_identity(&ctx, lo_base, r_end - lo_base,
+                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+
     trap_expect_begin();
-    run_in_vs_mode(vs_exec_ecall, 0);
+    (void)two_stage_run_in_vs(&ctx, vs_load_probe, target);
+    TEST_ASSERT("VS-stage page fault fired", trap_was_triggered());
+    if (trap_was_triggered()) {
+        TEST_ASSERT_EQ("cause = load page fault (13)",
+                       trap_get_cause(), (uintptr_t)CAUSE_LOAD_PAGE_FAULT);
+
+        uintptr_t htinst = check_xtinst_zero_or_golden(
+            "htinst == 0 or exact transformed load", 0x03UL, target);
+
+        /* Explicit: pseudoinstruction values are illegal here. */
+        TEST_ASSERT("htinst must not be a pseudoinstruction",
+                    htinst != HTINST_PSEUDO_READ_RV64 &&
+                    htinst != HTINST_PSEUDO_WRITE_RV64);
+    }
     trap_expect_end();
 
-    /* Check htinst CSR is readable. */
-    uintptr_t htinst = trap_get_htinst();
-    (void)htinst;
-    TEST_ASSERT("htinst readable", true);
+    two_stage_cleanup(&ctx);
+    HYP_TEST_END();
+}
+
+/* ------------------------------------------------------------------
+ * TINST-10: illegal-instruction trap allows only zero
+ *
+ * tinst-values table: for Illegal instruction, Transformed = No,
+ * Custom = No (custom values are reserved for non-standard trapping
+ * instructions), Pseudoinstruction = No. Hence htinst must be 0.
+ * ------------------------------------------------------------------ */
+TEST_REGISTER(htinst_illegal_zero);
+bool htinst_illegal_zero(void) {
+    TEST_BEGIN("TINST-10: htinst=0 on illegal-instruction trap (strict)");
+
+    trap_expect_begin();
+    run_in_vs_mode(vs_exec_illegal, 0);
+    TEST_ASSERT("illegal-inst trap fired", trap_was_triggered());
+    TEST_ASSERT_EQ("cause = illegal-instruction",
+                   trap_get_cause(), (uintptr_t)CAUSE_ILLEGAL_INST);
+    trap_expect_end();
+
+    TEST_ASSERT_EQ("htinst must be 0 on illegal-instruction (strict)",
+                   trap_get_htinst(), 0);
 
     HYP_TEST_END();
 }

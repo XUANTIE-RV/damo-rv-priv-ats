@@ -47,27 +47,28 @@
     TEST_ASSERT_EQ(msg, trap_get_htval(), (uintptr_t)(expected_gpa_shifted)); \
 } while (0)
 
-/* Lenient htval check used for implicit-PT-walk faults. The RISC-V
- * Hypervisor spec mandates htval/mtval2 = PT-page GPA >> 2 for an
- * implicit access during VS-stage page-table walk, but some QEMU
- * builds leave htval=0 for this case (the implicit-walk distinction
- * is not modelled). Accept either. */
-#define CHECK_HTVAL_OR_ZERO(msg, expected_gpa_shifted) do { \
-    uintptr_t _v = trap_get_htval(); \
-    bool _ok = (_v == (uintptr_t)(expected_gpa_shifted)) || (_v == 0); \
-    TEST_ASSERT(msg, _ok); \
-} while (0)
-
-/* Check htinst == expected pseudoinstruction / transformed inst. */
-#define CHECK_HTINST(msg, expected) do { \
-    TEST_ASSERT_EQ(msg, trap_get_htinst(), (uintptr_t)(expected)); \
-} while (0)
-
-/* Lenient htinst check for implicit-PT-walk faults (see CHECK_HTVAL_OR_ZERO). */
-#define CHECK_HTINST_OR_ZERO(msg, expected) do { \
-    uintptr_t _v = trap_get_htinst(); \
-    bool _ok = (_v == (uintptr_t)(expected)) || (_v == 0); \
-    TEST_ASSERT(msg, _ok); \
+/* Tightened trap-report check for guest-page faults raised by implicit
+ * memory accesses during VS-stage page-table walks.
+ *
+ * Spec semantics:
+ *  - norm:htval_trapval: htval may be written with zero OR the
+ *    faulting GPA >> 2. Both are compliant, so htval == 0 is accepted
+ *    and no htinst requirement applies in that case.
+ *  - norm:H_trap_xtinst_guestpage: once htval is nonzero (condition
+ *    (b) met; condition (a) holds by construction in these tests),
+ *    htinst MUST be the special pseudoinstruction - zero is NOT
+ *    allowed.
+ *
+ * Do NOT accept htinst == 0 when htval != 0: that combination
+ * violates the spec and must be reported, not worked around. */
+#define CHECK_IMPLICIT_FAULT_REPORT(expected_gpa_shifted, expected_pseudo) do { \
+    uintptr_t _hv = trap_get_htval(); \
+    if (_hv != 0) { \
+        TEST_ASSERT_EQ("htval == implicit-access GPA >> 2", \
+                       _hv, (uintptr_t)(expected_gpa_shifted)); \
+        TEST_ASSERT_EQ("htinst == pseudoinst (zero NOT allowed when htval != 0)", \
+                       trap_get_htinst(), (uintptr_t)(expected_pseudo)); \
+    } \
 } while (0)
 
 /* Check hstatus.GVA captured at trap. */

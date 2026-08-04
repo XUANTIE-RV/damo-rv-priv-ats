@@ -35,9 +35,9 @@ typedef volatile struct {
     uintptr_t status_snap;  /* mstatus/sstatus snapshot at trap entry */
     uintptr_t return_addr;  /* for instruction faults: where to resume */
 #ifdef ENABLE_HYP
-    uintptr_t htval;        /* mtval2 (M-mode) / htval (S-mode) >> 2 */
-    uintptr_t htinst;       /* mtinst / htinst */
-    bool      gva;          /* hstatus.GVA captured at trap time */
+    uintptr_t htval;        /* mtval2 (M-mode) / htval (S-mode), hardware value >> 2 */
+    uintptr_t htinst;       /* mtinst / htinst, hardware value */
+    bool      gva;          /* mstatus.GVA / hstatus.GVA captured at trap time */
     bool      spv;          /* hstatus.SPV captured at trap time */
 #endif
 } trap_record_t;
@@ -209,10 +209,16 @@ static uintptr_t normalize_qemu_tvm_cause(uintptr_t cause, uintptr_t epc) {
 }
 
 /* Capture mtval2/mtinst (M-mode side) into trap_record.
- * Also capture mstatus.GVA into trap_record.gva. */
+ * Also capture mstatus.GVA into trap_record.gva.
+ *
+ * Called on EVERY trap into M-mode, not only guest-page faults:
+ * norm:mtval2_trapval mandates mtval2 = 0 for other traps and
+ * norm:H_trap_xtinst_interrupt mandates mtinst = 0 on interrupts,
+ * so tests must observe the real hardware-written values instead of
+ * software-forced zeros. */
 static inline void hyp_capture_m(void) {
-    /* mtval2: contains the faulting guest physical address >> 2
-     * (only valid for guest-page-faults; reads as 0 otherwise). */
+    /* mtval2: the faulting guest physical address >> 2 on a
+     * guest-page-fault; hardware must write 0 for other traps. */
     trap_record.htval  = CSRR(CSR_MTVAL2);
     trap_record.htinst = CSRR(CSR_MTINST);
     /* mstatus.GVA = bit 38 (RV64 only) */
@@ -226,6 +232,12 @@ static inline void hyp_capture_s(void) {
     trap_record.htinst = CSRR(CSR_HTINST);
     uintptr_t hs = CSRR(CSR_HSTATUS);
     trap_record.gva = ((hs >> 6) & 0x1UL) != 0;  /* HSTATUS_GVA bit 6 */
+    /* Record whether the trap came from a virtualized mode. For
+     * HS-mode delivery use hstatus.SPVP (written like sstatus.SPP
+     * when V was 1, norm:H_trap_hs_csrwrites) falling back to SPV:
+     * both are cleared by sret, so they must be snapshotted here. */
+    trap_record.spv = (((hs >> 7) & 0x1UL) != 0) ||   /* SPVP */
+                      ((hs & HSTATUS_SPV) != 0);      /* SPV  */
 }
 #endif /* ENABLE_HYP */
 
@@ -327,6 +339,15 @@ unsigned m_trap_handler(void) {
              * bit to prevent infinite re-entry. */
             CSRC(mip, (1UL << 9));
         }
+#ifdef ENABLE_HYP
+        if (irq == IRQ_VS_SOFTWARE) {
+            /* VS software interrupt (VSSIP): the only software-writable
+             * source is hvip.VSSIP. Clear it to prevent infinite
+             * re-entry when a test injects VSSIP without delegating it
+             * to VS-mode (trap delivered to M-mode instead). */
+            CSRC(CSR_HVIP, (1UL << 2));
+        }
+#endif
         /* Record interrupt in trap_record if armed */
         if (trap_record.armed) {
             trap_record.triggered   = true;
@@ -335,6 +356,14 @@ unsigned m_trap_handler(void) {
             trap_record.epc         = epc;
             trap_record.tval        = tval;
             trap_record.status_snap = CSRR(mstatus);
+#ifdef ENABLE_HYP
+            /* Interrupts also write mtval2/mtinst/mstatus.GVA on trap
+             * entry (zero per norm:mtval2_trapval and
+             * norm:H_trap_xtinst_interrupt); capture the hardware
+             * values so tests can verify them. */
+            hyp_capture_m();
+            trap_record.spv = (CSRR(CSR_HSTATUS) & HSTATUS_SPV) ? true : false;
+#endif
             trap_record.armed       = false;
         }
         /* Return to interrupted instruction (no epc advance for interrupts) */
@@ -358,13 +387,12 @@ unsigned m_trap_handler(void) {
         trap_record.tval        = tval;
         trap_record.status_snap = CSRR(mstatus);
 #ifdef ENABLE_HYP
-        if (is_guest_page_fault(cause))
-            hyp_capture_m();
-        else {
-            trap_record.htval  = 0;
-            trap_record.htinst = 0;
-            trap_record.gva    = false;
-        }
+        /* Capture the hardware-written values unconditionally: for
+         * non-guest-page-fault traps the spec still mandates specific
+         * writes (mtval2/mtinst = 0, norm:mtval2_trapval), so tests
+         * must observe the real hardware values rather than
+         * software-forced zeros. */
+        hyp_capture_m();
         /* Snapshot hstatus.SPV for tests that need to verify trap
          * came from VS-mode (LP-36/40). sret/mret clears SPV, so
          * capture it at trap entry. */
@@ -497,6 +525,16 @@ unsigned s_trap_handler(void) {
              * to clear the interrupt source and prevent re-entry */
             CSRW(CSR_STIMECMP, (uintptr_t)-1);
         }
+#ifdef ENABLE_HYP
+        if (irq == IRQ_VS_SOFTWARE) {
+            /* VS software interrupt delivered to HS-mode (mideleg
+             * bit 2 is read-only 1 per norm:mideleg_acc_h, and
+             * hideleg bit 2 is clear). The only software-writable
+             * source is hvip.VSSIP; clear it to prevent infinite
+             * re-entry. */
+            CSRC(CSR_HVIP, (1UL << 2));
+        }
+#endif
         /* Record interrupt in trap_record if armed */
         if (trap_record.armed) {
             trap_record.triggered   = true;
@@ -505,6 +543,13 @@ unsigned s_trap_handler(void) {
             trap_record.epc         = epc;
             trap_record.tval        = tval;
             trap_record.status_snap = CSRR(sstatus);
+#ifdef ENABLE_HYP
+            /* Interrupts into HS-mode also write htval/htinst/GVA
+             * (zero per norm:htval_trapval / H_trap_xtinst_interrupt);
+             * capture the hardware values for verification. Also
+             * snapshots hstatus.SPV/SPVP into trap_record.spv. */
+            hyp_capture_s();
+#endif
             trap_record.armed       = false;
         }
         /* Return to interrupted instruction (no epc advance for interrupts) */
@@ -520,17 +565,13 @@ unsigned s_trap_handler(void) {
         trap_record.tval        = tval;
         trap_record.status_snap = CSRR(sstatus);
 #ifdef ENABLE_HYP
-        if (is_guest_page_fault(cause))
-            hyp_capture_s();
-        else {
-            trap_record.htval  = 0;
-            trap_record.htinst = 0;
-            trap_record.gva    = false;
-        }
-        /* Snapshot hstatus.SPV for tests that need to verify trap
-         * came from VS-mode (LP-36/40). sret clears SPV, so capture
-         * it at trap entry. */
-        trap_record.spv = (CSRR(CSR_HSTATUS) & HSTATUS_SPV) ? true : false;
+        /* Capture the hardware-written values unconditionally: for
+         * non-guest-page-fault traps the spec still mandates specific
+         * writes (htval/htinst = 0, norm:htval_trapval), so tests
+         * must observe the real hardware values rather than
+         * software-forced zeros. Also snapshots hstatus.SPV/SPVP
+         * into trap_record.spv. */
+        hyp_capture_s();
 #endif
         trap_record.armed      = false;
 
