@@ -268,4 +268,103 @@ bool fire_vs_load_fault(uintptr_t victim_gpa, uintptr_t flags);
 /* Fire a store fault via VS-mode under G-stage. */
 bool fire_vs_store_fault(uintptr_t victim_gpa, uintptr_t flags);
 
+/* ===================================================================
+ * Trap-value probe helpers (Group 15 TINST / Group 18 MTVAL).
+ *
+ * These support STRICT verification of htinst/mtinst/mtval2 values
+ * written on trap entry: the golden transformed-instruction value is
+ * computed from the actual trapping instruction per the SPEC rules
+ * (hypervisor.adoc, "Transformed Instruction or Pseudoinstruction").
+ * =================================================================== */
+
+/* Special pseudoinstruction values for guest-page faults (RV64;
+ * the RV32 values 0x00002000/0x00002020 apply when VSXLEN=32).
+ * norm:H_trap_xtinst_guestpage_rw */
+#define HTINST_PSEUDO_READ_RV64   0x00003000UL
+#define HTINST_PSEUDO_WRITE_RV64  0x00003020UL
+
+/* Deterministic VS-mode memory probes: exactly one 32-bit `ld`/`sd`
+ * against arg. Using an explicit asm instruction (instead of a
+ * compiler-generated volatile access) makes the trapping instruction
+ * deterministic, so the expected transformed value can be computed
+ * from the instruction bytes at mepc. */
+uintptr_t vs_load_probe(uintptr_t addr);
+uintptr_t vs_store_probe(uintptr_t addr);
+
+/* Compute the SPEC-defined transformed instruction for a trapping
+ * memory instruction, or 0 if inst is not a recognized standard
+ * load/store/AMO/HLV/HSV encoding. addr_offset is the positive
+ * difference between the faulting VA (mtval/stval) and the original
+ * VA (0 for aligned accesses). */
+uintptr_t hyp_transform_mem_inst(uintptr_t inst, uintptr_t addr_offset);
+
+/* Fire a deterministic load/store guest-page-fault at victim_gpa
+ * (G-stage leaf flags = victim_flags) using the probes above.
+ * Returns trap_was_triggered(); the trap record stays valid for
+ * inspection until the next trap_expect_begin/hyp_reset_state. */
+bool probe_load_gpf(uintptr_t victim_gpa, uintptr_t victim_flags);
+bool probe_store_gpf(uintptr_t victim_gpa, uintptr_t victim_flags);
+
+/* Implicit VS-stage walk fault setup (norm:mtval2_trapval_vstrans /
+ * norm:H_trap_xtinst_guestpage): build VS-stage Sv39 + G-stage Sv39x4
+ * so that the VS-stage LEAF page-table page holding the PTE for
+ * test_va carries victim_g_flags at G-stage. A VS-mode access to
+ * test_va then faults on the implicit PTE read (or A/D write).
+ * Returns the GPA of that leaf PT page, or 0 on setup failure. */
+uintptr_t setup_implicit_walk_victim(two_stage_ctx_t *ctx,
+                                     uintptr_t test_va,
+                                     uintptr_t victim_g_flags);
+
+/* Test VA for implicit-walk tests: VPN2 distinct from the kernel's
+ * so the VS-stage mapping uses a separate top-level subtree. */
+#define HYP_IMP_KERNEL_VPN2  ((uintptr_t)(PLATFORM_MEM_BASE) >> 30)
+#define HYP_IMP_TEST_VPN2    (HYP_IMP_KERNEL_VPN2 == 1 ? 2UL : 1UL)
+#define HYP_IMP_TEST_VA      ((HYP_IMP_TEST_VPN2 << 30) | 0x200000UL)
+
+/* Read a 32-bit instruction at @addr using two halfword accesses.
+ * A trapping instruction is only guaranteed 2-byte aligned (RVC), so
+ * a plain uint32_t load may raise load-address-misaligned on strict
+ * implementations (e.g. Spike). */
+static inline uint32_t hyp_fetch_inst32(uintptr_t addr)
+{
+    uint16_t lo = *(volatile uint16_t *)addr;
+    uint16_t hi = *(volatile uint16_t *)(addr + 2);
+    return ((uint32_t)hi << 16) | lo;
+}
+
+/* Strict trap-instruction check shared by TINST/MTVAL tests.
+ *
+ * Fetch the trapping instruction from memory at trap_get_epc() (the
+ * test regions are identity-mapped, so M-mode can read it directly),
+ * sanity-check its opcode, then compute the SPEC golden transformed
+ * value. The hardware-written htinst/mtinst must be either zero
+ * (always allowed, norm:H_trap_xtinst) or exactly the golden value —
+ * any other nonzero value is a spec violation. Returns the value. */
+static inline uintptr_t check_xtinst_zero_or_golden(const char *msg,
+                                                    uintptr_t expect_opcode,
+                                                    uintptr_t orig_va)
+{
+    uintptr_t epc  = trap_get_epc();
+    uintptr_t inst = hyp_fetch_inst32(epc);
+    TEST_ASSERT_EQ("trapping inst bits 1:0 = 11 (32-bit)",
+                   inst & 3UL, 3UL);
+    TEST_ASSERT_EQ("trapping inst opcode", inst & 0x7FUL, expect_opcode);
+
+    uintptr_t tval = trap_get_tval();
+    uintptr_t off  = (tval != 0 && tval >= orig_va) ? (tval - orig_va) : 0;
+    uintptr_t golden = hyp_transform_mem_inst(inst, off);
+    TEST_ASSERT("golden transformed value computable", golden != 0);
+
+    uintptr_t val = trap_get_htinst();
+    if (!(val == 0 || val == golden)) {
+        /* Diagnostic: surface the mismatch before failing so platform
+         * deviations from the SPEC transformation can be reported. */
+        printf("  [INFO] %s: trap-inst-reg=0x%lx golden=0x%lx inst@epc=0x%lx tval=0x%lx\n",
+               msg, (unsigned long)val, (unsigned long)golden,
+               (unsigned long)inst, (unsigned long)tval);
+    }
+    TEST_ASSERT(msg, val == 0 || val == golden);
+    return val;
+}
+
 #endif /* HYPERVISOR_TEST_HELPERS_H */

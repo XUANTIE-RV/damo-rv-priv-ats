@@ -97,6 +97,13 @@ void hyp_reset_state(void) {
     CSRW(CSR_HTVAL, 0);
     CSRW(CSR_HTINST, 0);
 
+    /* mtval2 / mtinst (M-mode counterparts): clear so a stale value
+     * from a previous test cannot be mistaken for a hardware-written
+     * trap value (MTVAL/TINST strict checks). Both are WARL and must
+     * hold zero (norm:mtval2_val / norm:mtinst_val). */
+    CSRW(CSR_MTVAL2, 0);
+    CSRW(CSR_MTINST, 0);
+
     /* ----- VS-level CSRs ----- */
     CSRW(CSR_VSSTATUS, 0);
     CSRW(CSR_VSIE, 0);

@@ -47,6 +47,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-19
 | `norm:H_trap_m_csrwrites` | When a trap is taken into M-mode, V gets set to 0, and fields MPV and MPP in `mstatus` are set accordingly. A trap into M-mode also writes fields GVA, MPIE, and MIE in `mstatus` and writes CSRs `mepc`, `mcause`, `mtval`, `mtval2`, and `mtinst`. |
 | `norm:H_trap_vs_csrwrites` | When a trap is taken into VS-mode, `vsstatus`.SPP is set accordingly. Register `hstatus` and the HS-level `sstatus` are not modified, and V remains 1. A trap into VS-mode also writes SPIE and SIE in `vsstatus` and writes CSRs `vsepc`, `vscause`, and `vstval`. |
 | `norm:H_trap_xtinst` | On any trap into M-mode or HS-mode, one of these values is written to `mtinst` or `htinst`: zero; a transformation of the trapping instruction; a custom value (only if the trapping instruction is non-standard); or a special pseudoinstruction. |
+| `norm:H_trap_xtinst_exception` | On a synchronous exception, if a nonzero value is written to the trap instruction register, it must be one of: a standard transformed instruction (bit 0 = 1, replacing bit 1 with 1 yields a valid standard encoding); a custom value (bit 0 = 1, replacing bit 1 with 1 yields a designated custom encoding); or a special pseudoinstruction (bits 1:0 = 00). All other values (e.g. bits 1:0 = 10) are illegal. |
 | `norm:H_trap_xtinst_guestpage` | For guest-page faults, the trap instruction register is written with a special pseudoinstruction value if: (a) the fault is caused by an implicit memory access for VS-stage address translation, and (b) a nonzero value is written to `mtval2` or `htval`. If both conditions are met, zero is not allowed. |
 | `norm:H_trap_xtinst_guestpage_rw` | A write pseudoinstruction (0x00002020 or 0x00003020) is used for the case that the machine is attempting automatically to update bits A and/or D in VS-level page tables. All other implicit memory accesses for VS-stage address translation will be reads. |
 | `norm:H_trap_xtinst_interrupt` | On an interrupt, the value written to the trap instruction register is always zero. |
@@ -92,6 +93,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-19
 | `norm:mtval2_sz_acc_op` | The `mtval2` register is an MXLEN-bit read/write register. When a trap is taken into M-mode, `mtval2` is written with additional exception-specific information, alongside `mtval`. |
 | `norm:mtval2_trapval` | When a guest-page-fault trap is taken into M-mode, `mtval2` is written with either zero or the guest physical address that faulted, shifted right by 2 bits. For other traps, `mtval2` is set to zero. |
 | `norm:mtval2_trapval_vstrans` | If a guest-page fault is due to an implicit memory access during first-stage (VS-stage) address translation, a guest physical address written to `mtval2` is that of the implicit memory access that faulted. |
+| `norm:mtval2_val` | `mtval2` is a WARL register that must be able to hold zero and may be capable of holding only an arbitrary subset of other 2-bit-shifted guest physical addresses, if any. Echoing an arbitrary written value is not required, but the readback must be stable. |
 | `norm:sie_hip_hie_mutex` | For each writable bit in `sie`, the corresponding bit shall be read-only zero in both `hip` and `hie`. Hence, the nonzero bits in `sie` and `hie` are always mutually exclusive, and likewise for `sip` and `hip`. |
 | `norm:sret_dt` | If the Ssdbltrp extension is implemented, when SRET is executed in HS-mode, if the new privilege mode is VU, the SRET instruction sets `vsstatus`.SDT to 0. When executed in VS-mode, `vsstatus`.SDT is set to 0. |
 | `norm:sret_v0` | When executed in M-mode or HS-mode (V=0), SRET first determines the new privilege mode according to `hstatus`.SPV and `sstatus`.SPP. SRET then sets `hstatus`.SPV=0, and in `sstatus` sets SPP=0, SIE=SPIE, and SPIE=1. Lastly, SRET sets the privilege mode and sets pc=sepc. |
@@ -559,25 +561,31 @@ This section lists all specification points (norm IDs) referenced in Groups 1-19
 ## Group 15. htinst / mtinst Transformed Instructions
 
 **Specification References**:
-- `norm:H_trap_xtinst`: Value types written to mtinst/htinst on trap (zero/transformed instruction/custom/pseudoinstruction)
+- `norm:H_trap_xtinst`: Value types written to mtinst/htinst on trap (zero/transformed instruction/custom/pseudoinstruction); except for the mandated pseudoinstruction scenario, the implementation is always allowed to write zero
 - `norm:H_trap_xtinst_interrupt`: Write zero on interrupt
-- `norm:H_trap_xtinst_val`: Value types writable for each exception type (tinst-values table)
-- `norm:H_trap_xtinst_guestpage`: Must write pseudoinstruction when implicit VS-stage access causes guest-page-fault and htval is non-zero
+- `norm:H_trap_xtinst_exception`: When a synchronous exception writes a nonzero value, it must satisfy one of the three legal forms (standard transformed instruction/custom/pseudoinstruction)
+- `norm:H_trap_xtinst_val`: Value types writable for each exception type (tinst-values table); custom values are limited to non-standard instructions, standard instructions (e.g. ecall/illegal-instruction) may only write zero
+- `norm:H_trap_xtinst_guestpage`: Must write pseudoinstruction (zero not allowed) when an implicit VS-stage access causes guest-page-fault and htval/mtval2 is non-zero
 - `norm:H_trap_xtinst_guestpage_rw`: Use 0x00003000 for read, 0x00003020 for write (A/D update) (RV64)
 
-**Test Responsibilities**: Verify htinst write values in various trap scenarios.
+**Test Responsibilities**: Verify htinst/mtinst write values in various trap scenarios.
+
+**Strict Verification Principles** (addressing the review gap: the original cases checked trap-written values too leniently, including tautological assertions):
+1. The SPEC allows the implementation to write zero in non-mandated scenarios, so zero must be accepted; but when the implementation writes a nonzero value, it must EXACTLY match the SPEC-derived expected value (the golden value computed from the actual trapping instruction at mepc per the transformation rules) — "any nonzero value" is not accepted.
+2. For implicit VS-stage access faults with htval/mtval2 non-zero, htinst/mtinst must be exactly the pseudoinstruction value; zero is illegal (norm:H_trap_xtinst_guestpage).
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
-| TINST-01 | htinst=0 on interrupt trap | VS-mode interrupt trap to HS-mode | htinst=0 |
-| TINST-02 | htinst=0 or custom on ecall trap | VS-mode ecall | htinst=0 |
-| TINST-03 | htinst value on load guest-page-fault | VS-mode load triggers guest-page-fault | htinst is 0 or transformed load instruction |
-| TINST-04 | htinst value on store guest-page-fault | VS-mode store triggers guest-page-fault | htinst is 0 or transformed store instruction |
-| TINST-05 | htinst is pseudoinstruction when implicit VS-stage access fault + htval non-zero | GPA where VS-stage page table resides has no mapping, triggers guest-page-fault | htinst=0x00003000 (RV64 read) |
-| TINST-06 | Pseudoinstruction for implicit write (A/D update) | If implementation supports automatic A/D update, trigger implicit write fault | htinst=0x00003020 (RV64 write) |
-| TINST-07 | Transformed instruction bit 1:0 encoding verification | 32-bit load triggers fault | htinst bits 1:0 = 11 (32-bit instruction) |
-| TINST-08 | Compressed instruction transformed bit 1:0 encoding | 16-bit C.LW triggers fault | htinst bits 1:0 = 01 (compressed instruction) |
-| TINST-09 | Page-fault does not produce pseudoinstruction | VS-mode load page-fault (not guest-page-fault) | htinst=0 or transformed instruction (not pseudoinstruction) |
+| TINST-01 | mtinst/htinst=0 on interrupt trap | Inject VS software interrupt via hvip.VSSIP (hideleg.VSSIP=0; mideleg VS bits are read-only 1, so the trap necessarily goes to HS-mode) | cause is an interrupt and came from V=1, htinst=0 (strict) |
+| TINST-02 | htinst=0 on ecall trap | VS-mode ecall (standard instruction, custom not allowed) | htinst=0 (strict) |
+| TINST-03 | htinst value on load guest-page-fault | Deterministic VS-mode `ld` triggers guest-page-fault | htinst=0 or exactly the SPEC transformed instruction of that `ld` (golden, computed from the instruction at mepc) |
+| TINST-04 | htinst value on store guest-page-fault | Deterministic VS-mode `sd` triggers guest-page-fault | htinst=0 or exactly the SPEC transformed instruction of that `sd` (golden) |
+| TINST-05 | Pseudoinstruction for implicit VS-stage read fault | VS-stage leaf page-table page made unreadable at G-stage, triggering an implicit read guest-page-fault | htinst=0x00003000 when htval≠0 (zero NOT allowed); accepted when htval=0 |
+| TINST-06 | Pseudoinstruction for implicit write (A/D update) | VS-stage leaf page-table page has D=0 at G-stage, triggering an implicit write fault; SKIP on platforms with Svadu | htinst=0x00003020 when htval≠0 (zero NOT allowed) |
+| TINST-07 | Transformed instruction field structure verification | 32-bit load triggers fault; field-by-field check when htinst is nonzero | opcode/funct3/rd preserved, imm zeroed, Addr. Offset correct, bits 1:0 = 11 |
+| TINST-08 | Compressed instruction transformed bit 1:0 encoding | 16-bit C.LW triggers fault | htinst bits 1:0 = 01 (compressed instruction); remains SKIP (no compressed-instruction probe in the current framework) |
+| TINST-09 | Page-fault does not produce pseudoinstruction | VS-stage leaf PTE R=0 triggers load page-fault (cause=13, not guest-page-fault) | htinst=0 or transformed instruction (golden exact match); pseudoinstruction values not allowed |
+| TINST-10 | illegal-instruction allows only zero | VS-mode executes an illegal instruction (standard exception, tinst-values table allows Zero only) | htinst=0 (strict) |
 
 ---
 
@@ -638,19 +646,23 @@ This section lists all specification points (norm IDs) referenced in Groups 1-19
 
 **Specification References**:
 - `norm:mtval2_sz_acc_op`: MXLEN-bit read/write register
-- `norm:mtval2_trapval`: On guest-page-fault trap to M-mode, mtval2 is written with GPA >> 2 or zero
-- `norm:mtval2_trapval_vstrans`: On guest-page-fault caused by implicit VS-stage access, mtval2 is written with GPA of the implicit access
-- `norm:mtinst_sz_acc_op` / `norm:mtinst_val`: mtinst format and WARL
+- `norm:mtval2_trapval`: On guest-page-fault trap to M-mode, mtval2 is written with GPA >> 2 or zero; other traps must write zero
+- `norm:mtval2_trapval_vstrans`: On guest-page-fault caused by implicit VS-stage access, mtval2 is written with the GPA of the implicit access
+- `norm:mtval2_val`: WARL, must be able to hold zero; echoing an arbitrary written value is not required, but readback must be stable
+- `norm:mtinst_sz_acc_op` / `norm:mtinst_val`: mtinst format and WARL (need only hold the values the implementation may automatically write on a trap)
 
-**Test Responsibilities**: Verify write behavior of mtval2/mtinst on M-mode trap.
+**Test Responsibilities**: Verify write behavior of mtval2/mtinst on M-mode trap. In this suite VS/HS traps are not delegated by default and are all taken into M-mode; the framework captures mtval2/mtinst at M-mode trap entry (`trap_get_htval()`/`trap_get_htinst()` are mtval2/mtinst on the M-mode delivery path).
+
+**Strict Verification Principles** (addressing the review gap): trap-written values are asserted exactly against the SPEC-allowed set — on GPF mtval2 must be exactly one of `0` or `GPA>>2` (no other value allowed); WARL read/write does not require echo of the written value but must be stable and zero must be holdable; on an implicit-access fault a nonzero mtval2 must be exactly the implicit-access GPA>>2.
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
-| MTVAL-01 | Basic read/write of mtval2 | M-mode writes mtval2 and reads back | WARL behavior correct |
-| MTVAL-02 | mtval2 on guest-page-fault trap to M-mode | VS-mode triggers guest-page-fault, traps to M-mode | mtval2 = GPA >> 2 or 0 |
-| MTVAL-03 | mtval2=0 on non-guest-page-fault | VS-mode ecall traps to M-mode | mtval2=0 |
-| MTVAL-04 | Basic read/write of mtinst | M-mode writes mtinst and reads back | WARL behavior correct |
-| MTVAL-05 | mtinst value on M-mode guest-page-fault trap | VS-mode triggers guest-page-fault, traps to M-mode | mtinst = 0 or transformed instruction/pseudoinstruction |
+| MTVAL-01 | WARL read/write of mtval2 | M-mode writes 0 and arbitrary patterns, writes repeatedly and reads back | Readback must be 0 after writing 0; readback of any value is stable (writing the same value twice reads back identically); echoing the original value is not required |
+| MTVAL-02 | mtval2 on guest-page-fault trap to M-mode | Deterministic VS-mode load triggers guest-page-fault | mtval2 = GPA >> 2 or 0 (strictly one of the two), consistent with the trap record |
+| MTVAL-03 | mtval2=0 on non-guest-page-fault | VS-mode ecall traps to M-mode | mtval2=0 (strict), htval=0 |
+| MTVAL-04 | WARL read/write of mtinst | M-mode writes 0 and arbitrary patterns, writes repeatedly and reads back | Same WARL semantics as MTVAL-01 |
+| MTVAL-05 | mtinst value on M-mode guest-page-fault trap | Deterministic VS-mode load triggers guest-page-fault | mtinst = 0 or exactly the transformed instruction (golden) |
+| MTVAL-06 | mtval2 on implicit VS-stage access fault | VS-stage leaf page-table page made unreadable at G-stage, triggering an implicit read fault | mtval2 = 0 or exactly the implicit-access PTE GPA>>2; when nonzero, mtinst must be 0x00003000 |
 
 ---
 

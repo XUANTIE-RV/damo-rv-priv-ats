@@ -221,8 +221,11 @@ uintptr_t vs_exec_ebreak(uintptr_t arg) {
 
 uintptr_t vs_exec_illegal(uintptr_t arg) {
     (void)arg;
-    /* UNIMP (0x00000000) is guaranteed illegal on all implementations. */
-    asm volatile (".word 0x00000000");
+    /* 0xC0001073: SYSTEM opcode with reserved funct3 — guaranteed
+     * illegal on all implementations. A full 4-byte encoding is used
+     * (NOT the all-zeros word, which the trap handler would mistake
+     * for a 2-byte compressed instruction and skip incorrectly). */
+    asm volatile (".word 0xC0001073");
     return 0;
 }
 
@@ -567,4 +570,137 @@ bool fire_vs_store_fault(uintptr_t victim_gpa, uintptr_t flags) {
 
     two_stage_cleanup(&ctx);
     return fired;
+}
+
+/* ===================================================================
+ * Trap-value probe helpers (Group 15 TINST / Group 18 MTVAL).
+ * =================================================================== */
+
+/* .option norvc keeps the probe bodies free of compressed
+ * instructions: the trapping instruction must be a deterministic
+ * 32-bit ld/sd so its SPEC transformed value is unambiguous
+ * (bits 1:0 = 11 in htinst/mtinst).
+ * aligned(16): tests fetch the trapping instruction from mepc; a
+ * 4-byte-aligned address avoids misaligned-fetch issues on strict
+ * implementations and keeps the golden check simple. */
+uintptr_t vs_load_probe(uintptr_t addr) __attribute__((naked, aligned(16)));
+uintptr_t vs_load_probe(uintptr_t addr) {
+    asm volatile (
+        ".option push\n\t"
+        ".option norvc\n\t"
+        "ld a0, 0(a0)\n\t"
+        ".option pop\n\t"
+        "ret\n\t"
+        ::: "memory"
+    );
+}
+
+uintptr_t vs_store_probe(uintptr_t addr) __attribute__((naked, aligned(16)));
+uintptr_t vs_store_probe(uintptr_t addr) {
+    asm volatile (
+        ".option push\n\t"
+        ".option norvc\n\t"
+        "sd zero, 0(a0)\n\t"
+        ".option pop\n\t"
+        "li a0, 0\n\t"
+        "ret\n\t"
+        ::: "memory"
+    );
+}
+
+uintptr_t hyp_transform_mem_inst(uintptr_t inst, uintptr_t addr_offset)
+{
+    uintptr_t opcode = inst & 0x7FUL;
+    uintptr_t off5   = (addr_offset & 0x1FUL) << 15;
+
+    if (opcode == 0x03UL) {
+        /* Basic load (LB..LD/FLW..FLQ): keep funct3/rd/opcode (bits
+         * 14:0), zero the immediate (bits 31:20), rs1 field <-
+         * Addr. Offset. */
+        return (inst & 0x00007FFFUL) | off5;
+    }
+    if (opcode == 0x23UL) {
+        /* Basic store (SB..SD/FSW..FSQ): keep rs2/funct3/opcode, zero
+         * both immediate halves (bits 31:25 and 11:7), rs1 field <-
+         * Addr. Offset. */
+        return (inst & 0x01F0707FUL) | off5;
+    }
+    if (opcode == 0x2FUL) {
+        /* Atomic (LR/SC/AMO): all fields kept except bits 19:15. */
+        return (inst & ~(0x1FUL << 15)) | off5;
+    }
+    if (opcode == 0x73UL && ((inst >> 12) & 0x7UL) == 0x4UL &&
+        (inst & (0x7FUL << 25)) != 0) {
+        /* HLV/HLVX/HSV (SYSTEM opcode, funct3=4, nonzero funct7 —
+         * distinguishes them from CSR instructions): all fields kept
+         * except bits 19:15. */
+        return (inst & ~(0x1FUL << 15)) | off5;
+    }
+    return 0;
+}
+
+bool probe_load_gpf(uintptr_t victim_gpa, uintptr_t victim_flags) {
+    two_stage_ctx_t ctx;
+    setup_gstage_with_victim(&ctx, victim_gpa, victim_flags);
+
+    trap_expect_begin();
+    (void)two_stage_run_in_vs(&ctx, vs_load_probe, victim_gpa);
+    bool fired = trap_was_triggered();
+    trap_expect_end();
+
+    two_stage_cleanup(&ctx);
+    return fired;
+}
+
+bool probe_store_gpf(uintptr_t victim_gpa, uintptr_t victim_flags) {
+    two_stage_ctx_t ctx;
+    setup_gstage_with_victim(&ctx, victim_gpa, victim_flags);
+
+    trap_expect_begin();
+    (void)two_stage_run_in_vs(&ctx, vs_store_probe, victim_gpa);
+    bool fired = trap_was_triggered();
+    trap_expect_end();
+
+    two_stage_cleanup(&ctx);
+    return fired;
+}
+
+uintptr_t setup_implicit_walk_victim(two_stage_ctx_t *ctx,
+                                     uintptr_t test_va,
+                                     uintptr_t victim_g_flags)
+{
+    gpt_pool_reset();
+    two_stage_init(ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+
+    /* --- VS-stage: identity-map the kernel/low region at 2MB and
+     *     map test_va into the test region at 4KB (creates the leaf
+     *     PT page that becomes the implicit-access victim). --- */
+    uintptr_t lo_base  = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
+    uintptr_t r_start  = (uintptr_t)__vm_test_region_start;
+    uintptr_t lo_end   = r_start & ~(PAGE_SIZE_2M - 1);
+    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
+
+    two_stage_vs_identity(ctx, lo_base, lo_end - lo_base,
+                          vs_flags, PT_LEVEL_2M);
+    two_stage_vs_map(ctx, test_va, r_start, vs_flags, PT_LEVEL_4K);
+
+    /* Leaf PT page holding the PTE for test_va (level 0). */
+    uintptr_t victim_gpa =
+        two_stage_vs_pt_page_addr(ctx, test_va, PT_LEVEL_4K);
+    if (victim_gpa == 0)
+        return 0;
+    uintptr_t victim_page = victim_gpa & ~(PAGE_SIZE_4K - 1);
+
+    /* --- G-stage: 4KB identity over kernel + test region so the
+     *     single victim PT page can be overridden. --- */
+    two_stage_setup_identity(ctx, lo_base, r_start - lo_base,
+                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+    uintptr_t r_end = (uintptr_t)__vm_test_region_end;
+    two_stage_setup_identity(ctx, r_start, r_end - r_start,
+                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+
+    two_stage_g_map_page(ctx, victim_page, victim_page,
+                         victim_g_flags, PT_LEVEL_4K);
+
+    return victim_gpa;
 }

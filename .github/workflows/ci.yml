@@ -173,7 +173,7 @@ jobs:
       # Run the hypervisor test suite.
       # ----------------------------------------------------------------
       - name: Run hyp test suite (spike + ${{ matrix.toolchain }})
-        run: SIMULATOR=spike TOOLCHAIN=${{ matrix.toolchain }} ./run_case_stats.sh hyp
+        run: ./run_case_stats.sh -t ${{ matrix.toolchain }} -s spike -l hyp
 
       # ----------------------------------------------------------------
       # Verdict: FAIL if any statistics CSV was modified or created.
