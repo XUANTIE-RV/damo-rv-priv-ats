@@ -34,7 +34,7 @@ damo-priv-test/
 ├── Sha/                   # ── 扩展测试目录 ──
 ├── Sstc/                  #    （每个目录编译为独立的裸机二进制）
 ├── Sv39/                  #
-├── Hypervisor/            #
+├── Hypervisor_CSR/        #
 ├── aia_aplic/             #
 └── ...                    #    （共 90+ 个扩展目录）
 ```
@@ -224,7 +224,9 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | **PMP+VM 交互** | `pmp_sv39` | PMP + Sv39 交互 | |
 | | `pmp_sv48` | PMP + Sv48 交互 | |
 | | `pmp_sv57` | PMP + Sv57 交互 | |
-| **Hypervisor** | `Hypervisor` | Hypervisor 基础扩展 | ✓ |
+| **Hypervisor** | `Hypervisor_CSR` | Hypervisor CSR 子集 | ✓ |
+| | `Hypervisor_Interrupts` | Hypervisor 中断子集 | ✓ |
+| | `Hypervisor_Exceptions` | Hypervisor 异常与 trap 子集 | ✓ |
 | | `Sv39x4` | Sv39x4 G-stage 翻译 | ✓ |
 | | `Sv48x4` | Sv48x4 G-stage 翻译 | ✓ |
 | | `Sv57x4` | Sv57x4 G-stage 翻译 | ✓ |
@@ -237,7 +239,7 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `Sv57x4_Sv39` | 两阶段：Sv57x4 + Sv39 | ✓ |
 | | `Sv57x4_Sv48` | 两阶段：Sv57x4 + Sv48 | ✓ |
 | | `Sv57x4_Sv57` | 两阶段：Sv57x4 + Sv57 | ✓ |
-| **Hypervisor CSR** | `Sha` | 增强 Hypervisor 扩展 | ✓ |
+| **Hypervisor Sh 扩展** | `Sha` | 增强 Hypervisor 扩展 | ✓ |
 | | `Shgatpa` | 翻译模式支持 | ✓ |
 | | `Shcounterenw` | 计数器使能可写性 | ✓ |
 | | `Shlcofideleg` | 计数器溢出委托 | ✓ |

@@ -340,4 +340,6 @@ bool test_rnmi_01(void) {
 - `SPEC/smrnmi.adoc` — Smrnmi Resumable NMI Extension
 - `DOCS/testplan/Ssdbltrp_test_plan.md` — Ssdbltrp 扩展测试计划（Supervisor-level Double Trap）
 - `DOCS/testplan/smrnmi_test_plan.md` — Smrnmi 扩展测试计划
-- `DOCS/testplan/Hypervisor_test_plan.md` — Hypervisor 扩展综合测试计划
+- `DOCS/testplan/Hypervisor_CSR_test_plan.md` — Hypervisor CSR 子集测试计划
+- `DOCS/testplan/Hypervisor_Interrupts_test_plan.md` — Hypervisor 中断子集测试计划
+- `DOCS/testplan/Hypervisor_Exceptions_test_plan.md` — Hypervisor 异常与 trap 子集测试计划

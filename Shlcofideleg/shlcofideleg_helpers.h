@@ -20,6 +20,7 @@
 #include "hyp/hyp_test.h"
 #include "hyp/hyp_trap.h"
 #include "hyp/hyp_reset.h"
+#include "hyp/hyp_test_helpers.h"   /* shared VS trampolines (vs_read_sip/sie, ...) */
 
 /* Dynamic CSR read/write (defined in common/csr_accessors.c) */
 extern uintptr_t csr_read(uint16_t csr);
@@ -46,13 +47,8 @@ bool shlcofideleg_check_available(void);
  *
  * These are passed to run_in_vs_mode(). In V=1, S-level CSR names
  * (sip, sie) map to their VS counterparts (vsip, vsie) automatically.
+ * vs_read_sip / vs_read_sie are provided by common/hyp/hyp_test_helpers.c.
  * =================================================================== */
-
-/* Read sip (actually vsip when V=1). */
-uintptr_t vs_read_sip(uintptr_t arg);
-
-/* Read sie (actually vsie when V=1). */
-uintptr_t vs_read_sie(uintptr_t arg);
 
 /* Set sie LCOFI bit via csrs (actually vsie when V=1). Returns sie value. */
 uintptr_t vs_set_sie_lcofi(uintptr_t arg);

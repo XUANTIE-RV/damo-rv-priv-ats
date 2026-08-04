@@ -114,7 +114,8 @@ HYP_OBJS = \
     $(HYP_DIR)/two_stage.o \
     $(HYP_DIR)/test_vs_helpers.o \
     $(HYP_DIR)/hyp_vs_trap.o \
-    $(HYP_DIR)/hyp_platform.o
+    $(HYP_DIR)/hyp_platform.o \
+    $(HYP_DIR)/hyp_test_helpers.o
 ifdef ENABLE_TWO_STAGE
 HYP_OBJS += $(HYP_DIR)/two_stage_helpers.o
 endif

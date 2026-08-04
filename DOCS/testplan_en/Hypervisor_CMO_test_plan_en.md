@@ -22,7 +22,7 @@ The CMO extension comprises three sub-extensions:
 
 ### Covered by Other Test Plans
 - CMO base functionality (M/HS/U-mode CSR control, functional semantics, encoding) → `CMO_test_plan.md`
-- Hypervisor core functionality (hstatus/hedeleg/hideleg/VS CSRs) → `Hypervisor_test_plan.md`
+- Hypervisor core functionality (hstatus/hedeleg/hideleg/VS CSRs) → `Hypervisor_CSR_test_plan_en.md`
 
 ---
 

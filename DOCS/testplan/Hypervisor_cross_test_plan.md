@@ -2,7 +2,7 @@
 
 # Hypervisor 与其他扩展交叉测试计划
 
-> 本文档描述 Hypervisor（H）扩展与其他 S-mode 扩展在交叉场景下的测试计划。这些测试场景原本在各扩展的独立测试计划中被标记为"由 Hypervisor 测试计划覆盖"或"因缺少 H 扩展而排除"，但经分析发现现有 Hypervisor 测试计划（`Hypervisor_test_plan.md`、`Hypervisor_2_stage_test_plan.md`、`Hypervisor_gstage_test_plan.md`）并未完全覆盖。
+> 本文档描述 Hypervisor（H）扩展与其他 S-mode 扩展在交叉场景下的测试计划。这些测试场景原本在各扩展的独立测试计划中被标记为"由 Hypervisor 测试计划覆盖"或"因缺少 H 扩展而排除"，但经分析发现现有 Hypervisor 测试计划（`Hypervisor_CSR_test_plan.md`、`Hypervisor_Interrupts_test_plan.md`、`Hypervisor_Exceptions_test_plan.md`、`Hypervisor_2_stage_test_plan.md`、`Hypervisor_gstage_test_plan.md`）并未完全覆盖。
 >
 > 生成时间：2026-06-22
 
@@ -32,7 +32,7 @@
 
 ### 不在本文档范围
 
-- 已由 `Hypervisor_test_plan.md`、`Hypervisor_2_stage_test_plan.md`、`Hypervisor_gstage_test_plan.md` 覆盖的 Hypervisor 基础功能
+- 已由 `Hypervisor_CSR_test_plan.md`、`Hypervisor_Interrupts_test_plan.md`、`Hypervisor_Exceptions_test_plan.md`、`Hypervisor_2_stage_test_plan.md`、`Hypervisor_gstage_test_plan.md` 覆盖的 Hypervisor 基础功能
 - 已由 `Shcounterenw_test_plan.md` 覆盖的 Sha 子扩展（与 Sscounterenw 是不同的扩展体系）
 - 各扩展在非 Hypervisor 场景下的行为（由各自独立测试计划覆盖）
 - Ssdbltrp 非 Hypervisor 测试（`sstatus`.SDT 字段、S-mode double-trap、`menvcfg`.DTE 基础控制、`medeleg`[16]、`mtval2`） — 由 `Ssdbltrp_test_plan.md` 覆盖
@@ -141,7 +141,7 @@
 
 > [!NOTE]
 > - Sstvala 的核心语义是保证 `stval` 写入 faulting 地址（而非 0）。基础 H 扩展规范允许 `stval` 在某些场景下为 0，而 Sstvala 扩展强制要求写入精确地址。
-> - HCROSS-SSTVALA-01~03 验证 guest-page-fault（G-stage fault）trap 到 HS-mode 时 `stval` 的精确性；HCROSS-SSTVALA-04~05 验证 VS-stage page-fault 通过 medeleg+hedeleg 委托到 VS-mode 时 `vstval` 的精确性。04/05 使用 VS-stage page-fault（cause 12/13）而非 guest-page-fault（cause 20/23），因为 RISC-V SPEC 规定 guest-page-fault 不能通过 hedeleg 委托到 VS-mode（hedeleg bits 20/21/23 为 read-only zero，详见 `Hypervisor_test_plan.md` DELEG-15/16）。
+> - HCROSS-SSTVALA-01~03 验证 guest-page-fault（G-stage fault）trap 到 HS-mode 时 `stval` 的精确性；HCROSS-SSTVALA-04~05 验证 VS-stage page-fault 通过 medeleg+hedeleg 委托到 VS-mode 时 `vstval` 的精确性。04/05 使用 VS-stage page-fault（cause 12/13）而非 guest-page-fault（cause 20/23），因为 RISC-V SPEC 规定 guest-page-fault 不能通过 hedeleg 委托到 VS-mode（hedeleg bits 20/21/23 为 read-only zero，详见 `Hypervisor_Exceptions_test_plan.md` DELEG-15/16）。
 > - 与 `Hypervisor_gstage_test_plan.md` 的 GFAULT 系列用例的区别：GFAULT 系列主要验证 fault 触发和 htval 编码，本组专注于 stval/vstval 的精确值断言。
 > - HCROSS-SSTVALA-06~08 验证 Sstvala 对 **指令类异常** 的精确性要求：virtual-instruction 异常（cause=22）时，`stval` 必须包含触发异常的指令编码（零扩展到 XLEN）。这与 guest-page-fault（地址类异常）的 stval 语义不同——后者要求写入故障虚拟地址。指令编码推导：`csrrs x5, 0x600, x0` = `[31:20]=0x600 [19:15]=00000 [14:12]=010 [11:7]=00101 [6:0]=1110011` = `0x600022F3`。
 > - HCROSS-SSTVALA-06~08 从 `sstvala_test_plan.md` Group 6（TVAL-VI-01~03）迁移而来。需要 H 扩展（`ENABLE_HYP=1`）。
@@ -1345,7 +1345,9 @@
 - `SPEC/svinval.adoc` — Svinval Extension
 - `SPEC/svnapot.adoc` — Svnapot Extension
 - `SPEC/svpbmt.adoc` — Svpbmt Extension
-- `DOCS/testplan/Hypervisor_test_plan.md` — Hypervisor 基础测试计划
+- `DOCS/testplan/Hypervisor_CSR_test_plan.md` — Hypervisor CSR 子集测试计划
+- `DOCS/testplan/Hypervisor_Interrupts_test_plan.md` — Hypervisor 中断子集测试计划
+- `DOCS/testplan/Hypervisor_Exceptions_test_plan.md` — Hypervisor 异常与 trap 子集测试计划
 - `DOCS/testplan/Hypervisor_2_stage_test_plan.md` — 两阶段翻译测试计划
 - `DOCS/testplan/Hypervisor_gstage_test_plan.md` — G-stage 独立测试计划
 - `DOCS/testplan/svadu_test_plan.md` — Svadu 独立测试计划

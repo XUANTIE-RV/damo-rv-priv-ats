@@ -60,7 +60,7 @@ Smmpm 定义（`norm:smmpm_definition`）：`mseccfg.PMM` 仅控制 M-mode 自�
 ### 由其他测试计划覆盖
 
 - Zpm 基础功能（U/S/M-mode 变换、三 CSR PMM 基础 WARL、MPRV/MXR 基础交互、非虚拟化 stval/mtval）→ `zpm_test_plan.md`
-- H 扩展基础功能（CSR、trap、HLV/HSV 异常场景）→ `Hypervisor_test_plan.md`
+- H 扩展基础功能（CSR、trap、HLV/HSV 异常场景）→ `Hypervisor_CSR_test_plan.md`、`Hypervisor_Interrupts_test_plan.md`、`Hypervisor_Exceptions_test_plan.md`
 - 两阶段地址翻译本身 → `Hypervisor_2_stage_test_plan.md`、`Hypervisor_gstage_test_plan.md`
 
 ### 不在本文档范围

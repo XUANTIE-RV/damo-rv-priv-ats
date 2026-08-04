@@ -1266,46 +1266,27 @@ Each subdirectory has one `Makefile`, uniformly `include ../common/Makefile.comm
 
 ---
 
-## Hypervisor Baseline Test Suite (`Hypervisor/`)
+## Hypervisor Baseline Test Suites (`Hypervisor_CSR/`, `Hypervisor_Interrupts/`, `Hypervisor_Exceptions/`)
 
 ### Overview
 
-The `Hypervisor/` directory contains a complete baseline test suite written according to `DOCS/testplan/Hypervisor_test_plan.md`, covering 19 test chapters and approximately 225 test cases. The test suite verifies core functionalities of the RISC-V Hypervisor Extension including CSR behavior, trap mechanisms, interrupt delegation, and address translation.
+The original `Hypervisor/` comprehensive baseline suite has been split into three independent subsets (the original directory and `Hypervisor_test_plan.md` have been removed), corresponding to `Hypervisor_CSR_test_plan.md` (9 groups / 128 cases), `Hypervisor_Interrupts_test_plan.md` (4 groups / 37 cases), and `Hypervisor_Exceptions_test_plan.md` (8 groups / 115 cases) respectively — 20 groups / 280 cases in total, with test case IDs unchanged from the original plan. Shared helper code lives in `common/hyp/hyp_test_helpers.{c,h}`; the G-stage fault helpers that depend on the `__vm_test_region` linker region live in `common/hyp/hyp_test_helpers_region.c` and are linked per subset via EXT_OBJS.
 
 ### Directory Structure
 
 ```
-Hypervisor/
+Hypervisor_CSR/                 # Hypervisor_Interrupts/ and Hypervisor_Exceptions/ share the same layout
 ├── Makefile                    # ENABLE_HYP=1, ENABLE_VM=1
 ├── kernel.ld                   # .test_table / .vm_test_region / .gpt_page_tables
 ├── main.c                      # Iterates _test_table[] to execute all tests
 └── tests/
-    ├── test_helpers.h          # Common helper function declarations
-    ├── test_helpers.c          # VS/VU trampolines, delegation configuration helpers
     ├── test_register.c         # #includes all test files, triggers TEST_REGISTER
-    ├── test_csr_basics.c       # Ch.1  VCSR-01~17  VS CSR aliasing behavior
-    ├── test_hstatus.c          # Ch.2  HSTAT-01~26 hstatus register
-    ├── test_delegation.c       # Ch.3  DELEG-01~16 hedeleg/hideleg
-    ├── test_interrupts.c       # Ch.4-5 HINT-01~14 + HGEI-01~05
-    ├── test_henvcfg.c          # Ch.6  HENV-01~14  henvcfg
-    ├── test_hcounteren.c       # Ch.7  HCNT-01~08  hcounteren
-    ├── test_htimedelta.c       # Ch.8  HTDL-01~04  htimedelta
-    ├── test_vsip_vsie.c        # Ch.9  VSIE-01~10  vsip/vsie alias
-    ├── test_vstimecmp.c        # Ch.10 VSTC-01~07  vstimecmp
-    ├── test_vs_scratch.c       # Ch.11 VSCR-01~06  vsscratch/vsepc/vscause/vstval
-    ├── test_virtual_inst.c     # Ch.12 VINST-01~24 virtual-instruction exception
-    ├── test_trap_entry.c       # Ch.13 TENT-01~15  trap entry CSR writes
-    ├── test_trap_return.c      # Ch.14 TRET-01~15  MRET/SRET mode switching
-    ├── test_htinst.c           # Ch.15 TINST-01~09 htinst transformed instruction
-    ├── test_mstatus_hyp.c      # Ch.16 MSTAT-01~14 mstatus enhancements
-    ├── test_mideleg_enhance.c  # Ch.17 MIDLG-01~07 mideleg/mip/mie enhancements
-    ├── test_mtval2.c           # Ch.18 MTVAL-01~05 mtval2/mtinst
-    └── test_exception_priority.c # Ch.19 PRIO-01~05 exception priority
+    └── test_xxx.c              # Test files organized by Group
 ```
 
 ### VS/VU-mode Trampoline Design
 
-Since tests run in M-mode, trampoline functions are needed to execute specific operations in VS/VU-mode. `test_helpers.c` provides a set of trampoline functions, each with signature `uintptr_t fn(uintptr_t arg)`, called via `run_in_vs_mode(fn, arg)` or `run_in_vu_mode(fn, arg)`.
+Since tests run in M-mode, trampoline functions are needed to execute specific operations in VS/VU-mode. `common/hyp/hyp_test_helpers.c` provides a set of trampoline functions, each with signature `uintptr_t fn(uintptr_t arg)`, called via `run_in_vs_mode(fn, arg)` or `run_in_vu_mode(fn, arg)`.
 
 **Trampoline Function Categories**:
 

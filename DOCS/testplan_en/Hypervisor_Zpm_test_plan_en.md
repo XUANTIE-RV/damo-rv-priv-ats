@@ -60,7 +60,7 @@ Smmpm definition (`norm:smmpm_definition`): `mseccfg.PMM` only controls PM for M
 ### Covered by Other Test Plans
 
 - Zpm basic functionality (U/S/M-mode transformation, three CSR PMM basic WARL, MPRV/MXR basic interaction, non-virtualization stval/mtval) → `zpm_test_plan.md`
-- H extension basic functionality (CSR, trap, HLV/HSV exception scenarios) → `Hypervisor_test_plan.md`
+- H extension basic functionality (CSR, trap, HLV/HSV exception scenarios) → `Hypervisor_CSR_test_plan_en.md`, `Hypervisor_Interrupts_test_plan_en.md`, `Hypervisor_Exceptions_test_plan_en.md`
 - Two-stage address translation itself → `Hypervisor_2_stage_test_plan.md`, `Hypervisor_gstage_test_plan.md`
 
 ### Out of Scope

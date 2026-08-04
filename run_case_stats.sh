@@ -34,7 +34,7 @@ EXT_ZPM="zpm.Smmpm zpm.Smnpm zpm.Ssnpm"
 EXT_CMO="cmo.base cmo.Zicbom cmo.Zicbop cmo.Zicboz"
 
 # Hypervisor extensions
-EXT_HYP="Hypervisor Sha Shcounterenw Shgatpa Shlcofideleg Shtvala Shvstvala Shvsatpa"
+EXT_HYP="Hypervisor_CSR Hypervisor_Interrupts Hypervisor_Exceptions Sha Shcounterenw Shgatpa Shlcofideleg Shtvala Shvstvala Shvsatpa"
 
 # Hypervisor translation modes
 EXT_HYP_VM="Sv39x4 Sv48x4 Sv57x4 Sv39x4_Sv39 Sv39x4_Sv48 Sv39x4_Sv57 Sv48x4_Sv39 Sv48x4_Sv48 Sv48x4_Sv57 Sv57x4_Sv39 Sv57x4_Sv48 Sv57x4_Sv57"

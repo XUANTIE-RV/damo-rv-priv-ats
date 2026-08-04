@@ -22,7 +22,7 @@ CMO 扩展包含三个子扩展：
 
 ### 由其他测试计划覆盖
 - CMO 基础功能（M/HS/U-mode CSR 控制、功能语义、编码）→ `CMO_test_plan.md`
-- Hypervisor 核心功能（hstatus/hedeleg/hideleg/VS CSR）→ `Hypervisor_test_plan.md`
+- Hypervisor 核心功能（hstatus/hedeleg/hideleg/VS CSR）→ `Hypervisor_CSR_test_plan.md`
 
 ---
 

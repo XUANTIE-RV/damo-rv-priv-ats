@@ -27,7 +27,7 @@
 - Trap Entry/Return 行为（VS-mode trap 时 ELP 保存恢复）
 
 ### 由其他测试计划覆盖
-- Hypervisor 核心功能 → `Hypervisor_test_plan.md`
+- Hypervisor 核心功能 → `Hypervisor_CSR_test_plan.md`、`Hypervisor_Interrupts_test_plan.md`、`Hypervisor_Exceptions_test_plan.md`
 - CFI 基础功能（非虚拟化场景）→ `cfi_test_plan.md`
 - G-stage / VS-stage 地址翻译 → `hyp_gstage_translation_test_plan.md` / `hyp_2_stage_translation_test_plan.md`
 
