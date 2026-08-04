@@ -34,7 +34,7 @@ damo-priv-test/
 ├── Sha/                   # ── Extension test directories ──
 ├── Sstc/                  #    (each compiles to an independent bare-metal binary)
 ├── Sv39/                  #
-├── Hypervisor/            #
+├── Hypervisor_CSR/        #
 ├── aia_aplic/             #
 └── ...                    #    (90+ extension directories total)
 ```
@@ -224,7 +224,9 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | **PMP+VM Interaction** | `pmp_sv39` | PMP + Sv39 interaction | |
 | | `pmp_sv48` | PMP + Sv48 interaction | |
 | | `pmp_sv57` | PMP + Sv57 interaction | |
-| **Hypervisor** | `Hypervisor` | Hypervisor base extension | ✓ |
+| **Hypervisor** | `Hypervisor_CSR` | Hypervisor CSR subset | ✓ |
+| | `Hypervisor_Interrupts` | Hypervisor interrupts subset | ✓ |
+| | `Hypervisor_Exceptions` | Hypervisor exceptions and traps subset | ✓ |
 | | `Sv39x4` | Sv39x4 G-stage translation | ✓ |
 | | `Sv48x4` | Sv48x4 G-stage translation | ✓ |
 | | `Sv57x4` | Sv57x4 G-stage translation | ✓ |
@@ -237,7 +239,7 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `Sv57x4_Sv39` | Two-stage: Sv57x4 + Sv39 | ✓ |
 | | `Sv57x4_Sv48` | Two-stage: Sv57x4 + Sv48 | ✓ |
 | | `Sv57x4_Sv57` | Two-stage: Sv57x4 + Sv57 | ✓ |
-| **Hypervisor CSR** | `Sha` | Augmented Hypervisor extension | ✓ |
+| **Hypervisor Sh** | `Sha` | Augmented Hypervisor extension | ✓ |
 | | `Shgatpa` | Translation mode support | ✓ |
 | | `Shcounterenw` | Counter-enable writability | ✓ |
 | | `Shlcofideleg` | Counter overflow delegation | ✓ |

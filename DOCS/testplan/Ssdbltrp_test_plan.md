@@ -15,7 +15,7 @@
 
 ### 由其他测试计划覆盖
 - M-mode double trap（`mstatus`.MDT 字段行为） → `Smdbltrp_test_plan.md`
-- Hypervisor 基本功能 → `Hypervisor_test_plan.md`
+- Hypervisor 基本功能 → `Hypervisor_CSR_test_plan.md`、`Hypervisor_Interrupts_test_plan.md`、`Hypervisor_Exceptions_test_plan.md`
 - Smrnmi 交互 → `smrnmi_test_plan.md`
 - **Hypervisor × Ssdbltrp 交叉测试**（`henvcfg`.DTE、`vsstatus`.SDT、SRET 清除 `vsstatus`.SDT、MRET/SRET/MNRET 在 Hypervisor 场景下的跨模式清除） → `Hypervisor_cross_test_plan.md` Group 12
 
@@ -341,5 +341,7 @@ bool test_dt_01(void) {
 - `SPEC/machine.adoc` — menvcfg.DTE, medeleg[16], MRET/SRET SDT clearing
 - `SPEC/smrnmi.adoc` — Smrnmi Extension (MNRET interaction)
 - `DOCS/testplan/Smdbltrp_test_plan.md` — Smdbltrp 扩展测试计划（Machine-level Double Trap）
-- `DOCS/testplan/Hypervisor_test_plan.md` — Hypervisor 扩展综合测试计划
+- `DOCS/testplan/Hypervisor_CSR_test_plan.md` — Hypervisor CSR 子集测试计划
+- `DOCS/testplan/Hypervisor_Interrupts_test_plan.md` — Hypervisor 中断子集测试计划
+- `DOCS/testplan/Hypervisor_Exceptions_test_plan.md` — Hypervisor 异常与 trap 子集测试计划
 - `DOCS/testplan/Hypervisor_cross_test_plan.md` — Hypervisor 与其他扩展交叉测试计划（含 Hypervisor × Ssdbltrp，Group 12）

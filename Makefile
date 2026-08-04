@@ -27,7 +27,7 @@ HYP_GROUP = Sv39x4 Sv48x4 Sv57x4 \
             Sv48x4_Sv39 Sv48x4_Sv48 Sv48x4_Sv57 \
             Sv57x4_Sv39 Sv57x4_Sv48 Sv57x4_Sv57 \
 			Shgatpa Shtvala Shcounterenw Shvstvecd Shvstvala Shvsatpa Shlcofideleg \
-			Hypervisor Sha Hypervisor_Svinval Hypervisor_Sstc
+			Hypervisor_CSR Hypervisor_Interrupts Hypervisor_Exceptions Sha Hypervisor_Svinval Hypervisor_Sstc
 INT_GROUP = aia_aplic aia_imsic aia_smaia aia_iommu aia_hypervisor aclint
 
 # All extensions (union of groups + ungrouped)

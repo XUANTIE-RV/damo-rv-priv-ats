@@ -132,7 +132,14 @@ uintptr_t test_vs_vi_read_hideleg(uintptr_t) {
  * vstval into global variables, then returns to HS-mode via ecall.
  * =================================================================== */
 
-static void vs_trap_handler_sstvala(void) __attribute__((naked));
+/* aligned(4) is mandatory: vs_trap_setup() writes the handler address
+ * into vstvec through VSTVEC_BASE_MASK (~0x3). If the handler is only
+ * 2-byte aligned (which clang + RVC allows), bit1 of its address is
+ * silently discarded and trap entry starts 2 bytes BEFORE the handler,
+ * executing whatever instruction precedes it (observed: a stray `ret`
+ * caused silent recovery on spike). Keep this consistent with all
+ * other VS trap handlers in the repo. */
+static void vs_trap_handler_sstvala(void) __attribute__((naked, aligned(4)));
 static void vs_trap_handler_sstvala(void) {
     asm volatile (
         /* Save ra and t0-t2 */

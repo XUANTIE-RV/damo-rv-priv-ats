@@ -29,7 +29,7 @@ This test plan is written based on specification points (norm tags) in `SPEC/hyp
 - Trap Entry/Return behavior (ELP save/restore on VS-mode trap)
 
 ### Covered by Other Test Plans
-- Hypervisor core functionality → `Hypervisor_test_plan.md`
+- Hypervisor core functionality → `Hypervisor_CSR_test_plan_en.md`, `Hypervisor_Interrupts_test_plan_en.md`, `Hypervisor_Exceptions_test_plan_en.md`
 - CFI basic functionality (non-virtualization scenarios) → `cfi_test_plan.md`
 - G-stage / VS-stage address translation → `hyp_gstage_translation_test_plan.md` / `hyp_2_stage_translation_test_plan.md`
 

@@ -1,6 +1,6 @@
 # Hypervisor Cross-Extension Test Plan
 
-> This document describes the test plan for cross-scenarios between the Hypervisor (H) extension and other S-mode extensions. These test scenarios were originally marked as "covered by the Hypervisor test plan" or "excluded due to missing H extension" in the individual extension test plans, but analysis revealed that the existing Hypervisor test plans (`Hypervisor_test_plan.md`, `Hypervisor_2_stage_test_plan.md`, `Hypervisor_gstage_test_plan.md`) do not fully cover them.
+> This document describes the test plan for cross-scenarios between the Hypervisor (H) extension and other S-mode extensions. These test scenarios were originally marked as "covered by the Hypervisor test plan" or "excluded due to missing H extension" in the individual extension test plans, but analysis revealed that the existing Hypervisor test plans (`Hypervisor_CSR_test_plan_en.md`, `Hypervisor_Interrupts_test_plan_en.md`, `Hypervisor_Exceptions_test_plan_en.md`, `Hypervisor_2_stage_test_plan.md`, `Hypervisor_gstage_test_plan.md`) do not fully cover them.
 >
 > Generated: 2026-06-22
 
@@ -27,7 +27,7 @@
 
 ### Out of Scope
 
-- Hypervisor base functionality already covered by `Hypervisor_test_plan.md`, `Hypervisor_2_stage_test_plan.md`, `Hypervisor_gstage_test_plan.md`
+- Hypervisor base functionality already covered by `Hypervisor_CSR_test_plan_en.md`, `Hypervisor_Interrupts_test_plan_en.md`, `Hypervisor_Exceptions_test_plan_en.md`, `Hypervisor_2_stage_test_plan.md`, `Hypervisor_gstage_test_plan.md`
 - Sha sub-extension already covered by `Shcounterenw_test_plan.md` (a different extension lineage from Sscounterenw)
 - Individual extension behavior in non-Hypervisor scenarios (covered by their respective test plans)
 - Ssdbltrp non-Hypervisor tests (`sstatus`.SDT field, S-mode double-trap, `menvcfg`.DTE basic control, `medeleg`[16], `mtval2`) -- covered by `Ssdbltrp_test_plan.md`
@@ -1236,7 +1236,9 @@ This group of tests verifies the behavior of the Smstateen extension in Hypervis
 - `SPEC/svinval.adoc` -- Svinval Extension
 - `SPEC/svnapot.adoc` -- Svnapot Extension
 - `SPEC/svpbmt.adoc` -- Svpbmt Extension
-- `DOCS/testplan/Hypervisor_test_plan.md` -- Hypervisor Basic Test Plan
+- `DOCS/testplan/Hypervisor_CSR_test_plan_en.md` -- Hypervisor CSR Subset Test Plan
+- `DOCS/testplan/Hypervisor_Interrupts_test_plan_en.md` -- Hypervisor Interrupts Subset Test Plan
+- `DOCS/testplan/Hypervisor_Exceptions_test_plan_en.md` -- Hypervisor Exceptions and Traps Subset Test Plan
 - `DOCS/testplan/Hypervisor_2_stage_test_plan.md` -- Two-Stage Translation Test Plan
 - `DOCS/testplan/Hypervisor_gstage_test_plan.md` -- G-stage Standalone Test Plan
 - `DOCS/testplan/svadu_test_plan.md` -- Svadu Standalone Test Plan

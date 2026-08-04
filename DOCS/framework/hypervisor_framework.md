@@ -1214,46 +1214,27 @@ Sha/               # 已实现：Sha 测试套件
 
 ---
 
-## Hypervisor 基线测试套件 (`Hypervisor/`)
+## Hypervisor 基线测试套件（`Hypervisor_CSR/`、`Hypervisor_Interrupts/`、`Hypervisor_Exceptions/`）
 
 ### 概述
 
-`Hypervisor/` 目录下包含根据 `DOCS/testplan/Hypervisor_test_plan.md` 编写的完整基线测试套件，覆盖 19 个测试章节、约 225 个测试用例。测试套件验证 RISC-V Hypervisor Extension 的 CSR 行为、trap 机制、中断委托、地址翻译等核心功能。
+原 `Hypervisor/` 综合基线套件已拆分为三个独立子集（原目录与 `Hypervisor_test_plan.md` 已删除），分别对应 `Hypervisor_CSR_test_plan.md`（9 组 / 128 用例）、`Hypervisor_Interrupts_test_plan.md`（4 组 / 37 用例）、`Hypervisor_Exceptions_test_plan.md`（8 组 / 115 用例），合计 20 组 / 280 用例，用例编号与原方案保持一致。共用辅助代码位于 `common/hyp/hyp_test_helpers.{c,h}`；其中依赖 `__vm_test_region` 链接区域的 G-stage fault 辅助位于 `common/hyp/hyp_test_helpers_region.c`，由各子集通过 EXT_OBJS 链接。
 
 ### 目录结构
 
 ```
-Hypervisor/
+Hypervisor_CSR/                 # Hypervisor_Interrupts/、Hypervisor_Exceptions/ 结构相同
 ├── Makefile                    # ENABLE_HYP=1, ENABLE_VM=1
 ├── kernel.ld                   # .test_table / .vm_test_region / .gpt_page_tables
 ├── main.c                      # 遍历 _test_table[] 执行所有测试
 └── tests/
-    ├── test_helpers.h          # 通用辅助函数声明
-    ├── test_helpers.c          # VS/VU trampoline、委托配置辅助
     ├── test_register.c         # #include 所有测试文件，触发 TEST_REGISTER
-    ├── test_csr_basics.c       # Ch.1  VCSR-01~17  VS CSR 替代行为
-    ├── test_hstatus.c          # Ch.2  HSTAT-01~26 hstatus 寄存器
-    ├── test_delegation.c       # Ch.3  DELEG-01~16 hedeleg/hideleg
-    ├── test_interrupts.c       # Ch.4-5 HINT-01~14 + HGEI-01~05
-    ├── test_henvcfg.c          # Ch.6  HENV-01~14  henvcfg
-    ├── test_hcounteren.c       # Ch.7  HCNT-01~08  hcounteren
-    ├── test_htimedelta.c       # Ch.8  HTDL-01~04  htimedelta
-    ├── test_vsip_vsie.c        # Ch.9  VSIE-01~10  vsip/vsie alias
-    ├── test_vstimecmp.c        # Ch.10 VSTC-01~07  vstimecmp
-    ├── test_vs_scratch.c       # Ch.11 VSCR-01~06  vsscratch/vsepc/vscause/vstval
-    ├── test_virtual_inst.c     # Ch.12 VINST-01~24 virtual-instruction exception
-    ├── test_trap_entry.c       # Ch.13 TENT-01~15  trap entry CSR 写入
-    ├── test_trap_return.c      # Ch.14 TRET-01~15  MRET/SRET 模式切换
-    ├── test_htinst.c           # Ch.15 TINST-01~09 htinst 转换指令
-    ├── test_mstatus_hyp.c      # Ch.16 MSTAT-01~14 mstatus 增强
-    ├── test_mideleg_enhance.c  # Ch.17 MIDLG-01~07 mideleg/mip/mie 增强
-    ├── test_mtval2.c           # Ch.18 MTVAL-01~05 mtval2/mtinst
-    └── test_exception_priority.c # Ch.19 PRIO-01~05 异常优先级
+    └── test_xxx.c              # 按 Group 划分的测试文件
 ```
 
 ### VS/VU-mode Trampoline 设计
 
-由于测试在 M-mode 下运行，需要通过 trampoline 函数在 VS/VU-mode 下执行特定操作。`test_helpers.c` 提供了一组 trampoline 函数，每个函数签名为 `uintptr_t fn(uintptr_t arg)`，通过 `run_in_vs_mode(fn, arg)` 或 `run_in_vu_mode(fn, arg)` 调用。
+由于测试在 M-mode 下运行，需要通过 trampoline 函数在 VS/VU-mode 下执行特定操作。`common/hyp/hyp_test_helpers.c` 提供了一组 trampoline 函数，每个函数签名为 `uintptr_t fn(uintptr_t arg)`，通过 `run_in_vs_mode(fn, arg)` 或 `run_in_vu_mode(fn, arg)` 调用。
 
 **Trampoline 函数分类**：
 

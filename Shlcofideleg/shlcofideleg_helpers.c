@@ -39,21 +39,10 @@ bool shlcofideleg_check_available(void) {
 
 /* ===================================================================
  * VS-mode trampoline functions
+ *
+ * vs_read_sip / vs_read_sie are provided by the shared helpers in
+ * common/hyp/hyp_test_helpers.c (identical semantics).
  * =================================================================== */
-
-uintptr_t vs_read_sip(uintptr_t arg) {
-    (void)arg;
-    uintptr_t val;
-    asm volatile("csrr %0, sip" : "=r"(val));
-    return val;
-}
-
-uintptr_t vs_read_sie(uintptr_t arg) {
-    (void)arg;
-    uintptr_t val;
-    asm volatile("csrr %0, sie" : "=r"(val));
-    return val;
-}
 
 uintptr_t vs_set_sie_lcofi(uintptr_t arg) {
     (void)arg;
