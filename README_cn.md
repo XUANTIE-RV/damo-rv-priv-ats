@@ -210,6 +210,7 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | **内存保护** | `pmp` | PMP 物理内存保护 | |
 | | `smepmp` | Smepmp（PMP M-mode 增强） | |
 | | `spmp` | SPMP（S-level 物理内存保护） | |
+| | `iopmp` | IOPMP 外设pmp| |
 | **虚拟内存** | `Sv39` | Sv39（3 级页表） | ✓ |
 | | `Sv48` | Sv48（4 级页表） | ✓ |
 | | `Sv57` | Sv57（5 级页表） | ✓ |
@@ -239,7 +240,7 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `Sv57x4_Sv39` | 两阶段：Sv57x4 + Sv39 | ✓ |
 | | `Sv57x4_Sv48` | 两阶段：Sv57x4 + Sv48 | ✓ |
 | | `Sv57x4_Sv57` | 两阶段：Sv57x4 + Sv57 | ✓ |
-| **Hypervisor Sh 扩展** | `Sha` | 增强 Hypervisor 扩展 | ✓ |
+| **Hypervisor (Sh\*) 扩展** | `Sha` | 增强 Hypervisor 扩展 | ✓ |
 | | `Shgatpa` | 翻译模式支持 | ✓ |
 | | `Shcounterenw` | 计数器使能可写性 | ✓ |
 | | `Shlcofideleg` | 计数器溢出委托 | ✓ |
@@ -270,14 +271,20 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `Hypervisor_Smcntrpmf` | Hyp + Smcntrpmf | ✓ |
 | | `Hypervisor_Ssqosid` | Hyp + Ssqosid | ✓ |
 | | `Hypervisor_Zkr` | Hyp + Zkr | ✓ |
-| **Machine-mode (Sm*)** | `Smstateen` | 状态使能 | ✓ |
+| **Machine-mode (Sm\*)扩展** | `Sm_CSR` | M-Mode CSR | |
+| | `Sm_Interrupts` | M-Mode 中断处理 | |
+| | `Sm_Exceptions` | M-Mode 异常处理 | |
+| | `Smstateen` | 状态使能 | ✓ |
 | | `smrnmi` | 可恢复 NMI | |
 | | `Smcdeleg` | 计数器委托 | |
 | | `Smcntrpmf` | Cycle/Instret 特权模式过滤 | ✓ |
 | | `Smcsrind` | 间接 CSR 访问 | ✓ |
 | | `Smctr` | 控制流传输记录 | |
 | | `Smdbltrp` | 双重 trap | |
-| **Supervisor (Ss*)** | `Ssccptr` | 主内存页表读取 | ✓ |
+| **Supervisor (Ss\*)扩展** | `Ss_CSR` | S-Mode CSR | |
+| | `Ss_Interrupts` | S-Mode 中断处理 | |
+| | `Ss_Exceptions` | S-Mode 异常处理 | |
+| | `Ssccptr` | 主内存页表读取 | ✓ |
 | | `Sscofpmf` | 计数器溢出/模式过滤 | |
 | | `Sscounterenw` | 计数器使能可写性 | |
 | | `Ssstateen` | 状态使能 | ✓ |
@@ -289,11 +296,14 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `Sscsrind` | 间接 CSR 访问 | ✓ |
 | | `Ssctr` | 控制流传输记录 | |
 | | `Ssdbltrp` | 双重 trap | ✓ |
-| **AIA（中断）** | `aia_aplic` | APLIC | |
+| **中断扩展** | `aia_aplic` | APLIC | |
 | | `aia_imsic` | AIA IMSIC | |
 | | `aia_smaia` | M-mode AIA | |
 | | `aia_iommu` | AIA + IOMMU | |
 | | `aia_hypervisor` | Hypervisor AIA | |
+| | `clic` | CLIC | |
+| | `aia_clic` | AIA + CLIC | |
+| | `aclint` | ACLINT | |
 | **CFI（控制流完整性）** | `cfi.Zicfilp` | CFI Landing Pad | ✓ |
 | | `cfi.Zicfiss` | CFI Shadow Stack | ✓ |
 | **CMO（缓存管理）** | `cmo.base` | CMO 基础 | |
@@ -303,13 +313,9 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | **Pointer Masking** | `zpm.Smmpm` | M-mode Pointer Masking | ✓ |
 | | `zpm.Smnpm` | Next-level Pointer Masking | ✓ |
 | | `zpm.Ssnpm` | S-mode Pointer Masking | ✓ |
-| **CLIC（中断）** | `clic` | CLIC | |
-| | `aia_clic` | AIA + CLIC | |
-| **其他** | `aclint` | ACLINT | |
-| | `iopmp` | IOPMP | |
-| | `qos.cbqri` | QoS CBQRI | |
+| **QoS** | `qos.cbqri` | QoS CBQRI | |
 | | `qos.Ssqosid` | QoS Ssqosid | ✓ |
-| | `sbi` | SBI 接口 | |
+| **其他** | `sbi` | SBI 接口 | |
 | | `ntrace` | Ntrace | |
 | | `raseri` | Raseri | |
 | | `Zkr` | 熵源（Key Seed） | ✓ |

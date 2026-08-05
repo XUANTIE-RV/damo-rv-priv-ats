@@ -29,6 +29,7 @@
 #define CAUSE_LOAD_PAGE_FAULT       13
 /* 14: Reserved by RISC-V privileged spec */
 #define CAUSE_STORE_PAGE_FAULT      15
+#define CAUSE_DOUBLE_TRAP           16  /* Double-trap exception (Ssdbltrp) */
 #define CAUSE_SOFTWARE_CHECK        18  /* Software-check exception (CFI) */
 #define CAUSE_HARDWARE_ERROR        19  /* Hardware-error exception */
 

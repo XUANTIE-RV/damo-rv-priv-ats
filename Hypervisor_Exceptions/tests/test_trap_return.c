@@ -6,10 +6,236 @@
 /*
  * Test Group 3: TRET - trap return behaviour
  *
- * Tests TRET-01 through TRET-15 verify MRET/SRET mode switching behavior.
+ * Tests TRET-01 through TRET-19 verify MRET/SRET mode switching behavior.
+ *
+ * SRET cases (TRET-06..14, 16..19) follow norm:sret_h: they execute a
+ * REAL SRET instruction in HS-mode (V=0) or VS-mode (V=1) and verify
+ * the landing context plus the before/after CSR state. Landing mode is
+ * discriminated by sentinel probes (sscratch/vsscratch) and by the
+ * exception an S-level CSR access raises at the landing privilege.
  */
 
 #include "hyp_test_helpers.h"
+
+/* ===================================================================
+ * SRET behaviour probes (norm:sret_h / sret_v0 / sret_v1)
+ *
+ * hs_sret_probe executes a real SRET in HS-mode (V=0) with hstatus.SPV
+ * / sstatus.SPP / sepc programmed from globals. vs_sret_probe executes
+ * a real SRET in VS-mode (V=1); there `csrw sepc` writes vsepc, so HS
+ * sepc can be poisoned beforehand: if the implementation wrongly
+ * returns through HS sepc, execution faults at the poisoned address.
+ *
+ * Both probes transfer control to tret_sret_land (address passed via
+ * g_tret_land), which runs at the privilege selected by the SRET:
+ *   - VS landing : csrr sscratch reads vsscratch (sentinel VS)
+ *   - HS landing : csrr sscratch reads sscratch  (sentinel HS)
+ *   - VU landing : csrr sscratch raises virtual-instruction (cause 22)
+ *   - U  landing : csrr sscratch raises illegal-instruction (cause 2)
+ * The landing function ends with `ret`: ra survives SRET unchanged, so
+ * control returns to the run_in_priv/run_in_vs_mode trampoline.
+ * =================================================================== */
+
+#define TRET_MAGIC_VS    0x5A5A5A5A5A5A5A5AUL  /* vsscratch sentinel */
+#define TRET_MAGIC_HS    0xA5A5A5A5A5A5A5A5UL  /* sscratch sentinel  */
+#define TRET_FLAG_MAGIC  0x1234ABCD5678EF01UL  /* trap-resume proof  */
+#define TRET_POISON_EPC  0xDEAD0000UL          /* unmapped, even-aligned */
+
+#define TRET_SSTATUS_SIE   (1UL << 1)
+#define TRET_SSTATUS_SPIE  (1UL << 5)
+#define TRET_SSTATUS_SPP   (1UL << 8)
+
+static volatile uintptr_t g_tret_landing;  /* sscratch readback at landing */
+static volatile uintptr_t g_tret_flag;     /* written after trap-resume    */
+static uintptr_t g_tret_spv;               /* hstatus.SPV for HS probe     */
+static uintptr_t g_tret_spp;               /* sstatus.SPP for HS probe     */
+static uintptr_t g_tret_land;              /* sepc target (landing label)  */
+static volatile uintptr_t g_tret_vs_cause; /* cause seen by VS handler     */
+
+/* Small CSR access helpers used by the assertions below. */
+static uintptr_t tret_sstatus_read(void)
+{
+    uintptr_t v;
+
+    asm volatile ("csrr %0, sstatus" : "=r"(v));
+    return v;
+}
+
+static void tret_sstatus_write(uintptr_t v)
+{
+    asm volatile ("csrw sstatus, %0" :: "r"(v));
+}
+
+static uintptr_t tret_vsstatus_read(void)
+{
+    uintptr_t v;
+
+    asm volatile ("csrr %0, 0x200" : "=r"(v));  /* vsstatus */
+    return v;
+}
+
+static void tret_vsstatus_write(uintptr_t v)
+{
+    asm volatile ("csrw 0x200, %0" :: "r"(v));  /* vsstatus */
+}
+
+static uintptr_t tret_sepc_read(void)
+{
+    uintptr_t v;
+
+    asm volatile ("csrr %0, sepc" : "=r"(v));
+    return v;
+}
+
+static void tret_sepc_write(uintptr_t v)
+{
+    asm volatile ("csrw sepc, %0" :: "r"(v));
+}
+
+static uintptr_t tret_vsepc_read(void)
+{
+    uintptr_t v;
+
+    asm volatile ("csrr %0, 0x241" : "=r"(v));  /* vsepc */
+    return v;
+}
+
+static void tret_vsepc_write(uintptr_t v)
+{
+    asm volatile ("csrw 0x241, %0" :: "r"(v));  /* vsepc */
+}
+
+/* SRET landing point shared by the HS/VS probes. Runs at the privilege
+ * selected by the SRET under test. */
+static void tret_sret_land(void) __attribute__((naked, aligned(16)));
+static void tret_sret_land(void)
+{
+    asm volatile (
+        ".option push\n\t"
+        ".option norvc\n\t"
+        "csrr   t0, sscratch\n\t"   /* vsscratch in VS; traps in VU/U */
+        "la     t1, g_tret_landing\n\t"
+        "sd     t0, 0(t1)\n\t"
+        ".option pop\n\t"
+        "ret\n\t"
+        ::: "t0", "t1", "memory"
+    );
+}
+
+/* Execute a real SRET in HS-mode (V=0, norm:sret_v0). hstatus.SPV and
+ * sstatus.SPP are programmed from globals, sepc from g_tret_land. */
+static uintptr_t hs_sret_probe(uintptr_t arg) __attribute__((naked, aligned(16)));
+static uintptr_t hs_sret_probe(uintptr_t arg)
+{
+    asm volatile (
+        ".option push\n\t"
+        ".option norvc\n\t"
+        /* hstatus.SPV <- g_tret_spv (SPV is bit 7) */
+        "la     t0, g_tret_spv\n\t"
+        "ld     t1, 0(t0)\n\t"
+        "li     t2, 0x80\n\t"
+        "beqz   t1, 1f\n\t"
+        "csrs   hstatus, t2\n\t"
+        "j      2f\n\t"
+        "1:\n\t"
+        "csrc   hstatus, t2\n\t"
+        /* sstatus.SPP <- g_tret_spp (SPP is bit 8) */
+        "2:\n\t"
+        "la     t0, g_tret_spp\n\t"
+        "ld     t1, 0(t0)\n\t"
+        "li     t2, 0x100\n\t"
+        "beqz   t1, 3f\n\t"
+        "csrs   sstatus, t2\n\t"
+        "j      4f\n\t"
+        "3:\n\t"
+        "csrc   sstatus, t2\n\t"
+        /* sepc <- g_tret_land, then the real SRET under test */
+        "4:\n\t"
+        "la     t0, g_tret_land\n\t"
+        "ld     t0, 0(t0)\n\t"
+        "csrw   sepc, t0\n\t"
+        "sret\n\t"
+        ".option pop\n\t"
+        ::: "t0", "t1", "t2", "memory"
+    );
+}
+
+/* Execute a real SRET in VS-mode (V=1, norm:sret_v1). In V=1 the
+ * `sepc` name aliases vsepc, so this programs vsepc = g_tret_land. */
+static uintptr_t vs_sret_probe(uintptr_t arg) __attribute__((naked, aligned(16)));
+static uintptr_t vs_sret_probe(uintptr_t arg)
+{
+    asm volatile (
+        ".option push\n\t"
+        ".option norvc\n\t"
+        "la     t0, g_tret_land\n\t"
+        "ld     t0, 0(t0)\n\t"
+        "csrw   sepc, t0\n\t"   /* V=1: writes vsepc */
+        "sret\n\t"
+        ".option pop\n\t"
+        ::: "t0", "memory"
+    );
+}
+
+/* ebreak probe for the trap round-trip tests (TRET-18/19). After the
+ * handler skips the ebreak and SRET-resumes this context, the magic
+ * flag write proves execution really continued here. */
+static uintptr_t tret_ebreak_probe(uintptr_t arg) __attribute__((naked, aligned(16)));
+static uintptr_t tret_ebreak_probe(uintptr_t arg)
+{
+    asm volatile (
+        ".option push\n\t"
+        ".option norvc\n\t"
+        "ebreak\n\t"
+        "la     t0, g_tret_flag\n\t"
+        "li     t1, 0x1234ABCD5678EF01\n\t"
+        "sd     t1, 0(t0)\n\t"
+        ".option pop\n\t"
+        "li     a0, 0\n\t"
+        "ret\n\t"
+        ::: "t0", "t1", "memory"
+    );
+}
+
+/* Custom VS-mode handler for TRET-19: records vscause, advances
+ * vsepc past the 4-byte ebreak and returns with a real SRET (the
+ * hardware-set vsstatus.SPP=1 brings execution back to VS-mode).
+ * aligned(4): vstvec BASE masking would otherwise misdirect entry. */
+static void tret_vs_handler(void) __attribute__((naked, aligned(4)));
+static void tret_vs_handler(void)
+{
+    asm volatile (
+        ".option push\n\t"
+        ".option norvc\n\t"
+        "addi   sp, sp, -16\n\t"
+        "sd     t0, 0(sp)\n\t"
+        "sd     t1, 8(sp)\n\t"
+        "csrr   t0, scause\n\t"     /* vscause in V=1 */
+        "la     t1, g_tret_vs_cause\n\t"
+        "sd     t0, 0(t1)\n\t"
+        "csrr   t0, sepc\n\t"       /* vsepc in V=1 */
+        "addi   t0, t0, 4\n\t"      /* ebreak is 4 bytes (.option norvc) */
+        "csrw   sepc, t0\n\t"
+        "ld     t0, 0(sp)\n\t"
+        "ld     t1, 8(sp)\n\t"
+        "addi   sp, sp, 16\n\t"
+        "sret\n\t"
+        ".option pop\n\t"
+        ::: "memory"
+    );
+}
+
+/* Common setup for the hs_sret_probe based cases. */
+static void tret_hs_probe_setup(uintptr_t spv, uintptr_t spp)
+{
+    clear_all_deleg();
+    asm volatile ("csrw sscratch, %0" :: "r"(TRET_MAGIC_HS));
+    asm volatile ("csrw 0x240, %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
+    g_tret_landing = 0;
+    g_tret_spv = spv;
+    g_tret_spp = spp;
+    g_tret_land = (uintptr_t)tret_sret_land;
+}
 
 /* ------------------------------------------------------------------
  * TRET-01: MRET return to VS-mode (MPV=1, MPP=1)
@@ -101,184 +327,297 @@ bool tret_05_mret_mie_mpie(void) {
 }
 
 /* ------------------------------------------------------------------
- * TRET-06: SRET(V=0) return to VS-mode
+ * TRET-06: SRET(V=0) return to VS-mode (real sret, norm:sret_v0)
  * ------------------------------------------------------------------ */
 TEST_REGISTER(tret_06_sret_v0_to_vs);
 bool tret_06_sret_v0_to_vs(void) {
-    TEST_BEGIN("TRET-06: SRET(V=0) returns to VS-mode (SPV cleared)");
+    TEST_BEGIN("TRET-06: SRET(V=0) returns to VS-mode (real sret)");
 
-    /* Run in VS-mode and verify SPV is cleared after return. */
-    run_in_vs_mode(vs_read_sstatus, 0);
+    tret_hs_probe_setup(1 /* SPV */, 1 /* SPP */);
 
-    /* Check SPV was cleared. */
-    TEST_ASSERT_EQ("SPV cleared after SRET(V=0)", hstatus_get_spv(), 0);
+    trap_expect_begin();
+    run_in_priv(PRIV_S, hs_sret_probe, 0);
+    bool trapped = trap_was_triggered();
+    trap_expect_end();
+
+    TEST_ASSERT("no trap on SRET(V=0) to VS-mode", !trapped);
+    TEST_ASSERT_EQ("landed in VS-mode (vsscratch sentinel)",
+                   g_tret_landing, TRET_MAGIC_VS);
+    TEST_ASSERT_EQ("hstatus.SPV cleared by SRET",
+                   hstatus_get_spv(), 0);
+    TEST_ASSERT_EQ("sstatus.SPP cleared by SRET",
+                   tret_sstatus_read() & TRET_SSTATUS_SPP, 0);
 
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
- * TRET-07: SRET(V=0) return to VU-mode
+ * TRET-07: SRET(V=0) return to VU-mode (real sret, norm:sret_v0)
  * ------------------------------------------------------------------ */
 TEST_REGISTER(tret_07_sret_v0_to_vu);
 bool tret_07_sret_v0_to_vu(void) {
-    TEST_BEGIN("TRET-07: SRET(V=0) returns to VU-mode (run_in_vu_mode)");
+    TEST_BEGIN("TRET-07: SRET(V=0) returns to VU-mode (real sret)");
 
-    /* Use run_in_vu_mode to verify SRET returns correctly.
-     * NOTE: VU-mode cannot access S-level CSRs like sstatus. */
-    uintptr_t r = run_in_vu_mode(vu_nop, 0x42);
-    TEST_ASSERT_EQ("returned from VU-mode with correct value", r, 0x42);
+    tret_hs_probe_setup(1 /* SPV */, 0 /* SPP */);
+
+    /* At the VU landing, csrr sscratch raises virtual-instruction;
+     * the armed M-mode handler records and skips it. */
+    trap_expect_begin();
+    run_in_priv(PRIV_S, hs_sret_probe, 0);
+    TEST_ASSERT("landing probe trapped in VU-mode", trap_was_triggered());
+    if (trap_was_triggered()) {
+        TEST_ASSERT_EQ("cause=22 proves VU-mode landing",
+                       trap_get_cause(),
+                       (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
+    }
+    trap_expect_end();
+
+    TEST_ASSERT_EQ("hstatus.SPV cleared by SRET",
+                   hstatus_get_spv(), 0);
+    TEST_ASSERT_EQ("sstatus.SPP cleared by SRET",
+                   tret_sstatus_read() & TRET_SSTATUS_SPP, 0);
 
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
- * TRET-08: SRET(V=0) return to HS-mode
+ * TRET-08: SRET(V=0) return to HS-mode (real sret, norm:sret_v0)
  * ------------------------------------------------------------------ */
 TEST_REGISTER(tret_08_sret_v0_to_hs);
 bool tret_08_sret_v0_to_hs(void) {
-    TEST_BEGIN("TRET-08: SRET(V=0) returns to HS-mode (simplified test)");
+    TEST_BEGIN("TRET-08: SRET(V=0) returns to HS-mode (real sret)");
 
-    /* Verify we are in HS-mode by reading sstatus */
-    uintptr_t sstatus;
-    asm volatile("csrr %0, sstatus" : "=r"(sstatus));
-    TEST_ASSERT("sstatus readable in HS-mode", true);
-    /* Verify SPV is 0 (we are in V=0 mode) */
-    TEST_ASSERT_EQ("SPV=0 in HS-mode", hstatus_get_spv(), (uintptr_t)0);
+    tret_hs_probe_setup(0 /* SPV */, 1 /* SPP */);
+
+    trap_expect_begin();
+    run_in_priv(PRIV_S, hs_sret_probe, 0);
+    bool trapped = trap_was_triggered();
+    trap_expect_end();
+
+    TEST_ASSERT("no trap on SRET(V=0) to HS-mode", !trapped);
+    /* A VS landing would read back TRET_MAGIC_VS, a VU/U landing
+     * would trap instead: the HS sentinel is the only conforming
+     * outcome. */
+    TEST_ASSERT_EQ("landed in HS-mode (sscratch sentinel)",
+                   g_tret_landing, TRET_MAGIC_HS);
+    TEST_ASSERT_EQ("hstatus.SPV stays 0", hstatus_get_spv(), 0);
 
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
- * TRET-09: SRET(V=0) return to U-mode
+ * TRET-09: SRET(V=0) return to U-mode (real sret, norm:sret_v0)
  * ------------------------------------------------------------------ */
 TEST_REGISTER(tret_09_sret_v0_to_u);
 bool tret_09_sret_v0_to_u(void) {
-    TEST_BEGIN("TRET-09: SRET(V=0) returns to U-mode (simplified test)");
+    TEST_BEGIN("TRET-09: SRET(V=0) returns to U-mode (real sret)");
 
-    /* Verify U-mode transition works */
-    goto_priv(PRIV_U);
-    goto_priv(PRIV_M);
-    TEST_ASSERT("U-mode transition succeeded", true);
+    tret_hs_probe_setup(0 /* SPV */, 0 /* SPP */);
+
+    /* At the U landing, csrr sscratch raises illegal-instruction;
+     * a VU landing would raise cause=22 instead. */
+    trap_expect_begin();
+    run_in_priv(PRIV_S, hs_sret_probe, 0);
+    TEST_ASSERT("landing probe trapped in U-mode", trap_was_triggered());
+    if (trap_was_triggered()) {
+        TEST_ASSERT_EQ("cause=2 proves U-mode landing (not VU)",
+                       trap_get_cause(), (uintptr_t)CAUSE_ILLEGAL_INST);
+    }
+    trap_expect_end();
+
+    TEST_ASSERT_EQ("hstatus.SPV stays 0", hstatus_get_spv(), 0);
 
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
- * TRET-10: SRET(V=0) SIE/SPIE restore
+ * TRET-10: SRET(V=0) SIE/SPIE restore (real sret, norm:sret_v0)
  * ------------------------------------------------------------------ */
 TEST_REGISTER(tret_10_sret_v0_sie_spie);
 bool tret_10_sret_v0_sie_spie(void) {
-    TEST_BEGIN("TRET-10: SRET(V=0) SIE/SPIE fields readable/writable");
+    TEST_BEGIN("TRET-10: SRET(V=0) SIE=old SPIE, SPIE=1 (real sret)");
 
-    /* Verify sstatus SIE/SPIE fields are readable/writable. */
-    uintptr_t sstatus;
-    asm volatile ("csrr %0, sstatus" : "=r"(sstatus));
+    /* Pattern (a): SPIE=1, SIE=0 -> after SRET: SIE=1, SPIE=1. */
+    tret_hs_probe_setup(0 /* SPV */, 1 /* SPP */);
+    tret_sstatus_write((tret_sstatus_read()
+                        & ~(TRET_SSTATUS_SIE | TRET_SSTATUS_SPIE))
+                       | TRET_SSTATUS_SPIE);
 
-    /* SIE is bit 1, SPIE is bit 5. */
-    bool sie = (sstatus >> 1) & 1;
-    bool spie = (sstatus >> 5) & 1;
-    (void)sie;
-    (void)spie;
+    trap_expect_begin();
+    run_in_priv(PRIV_S, hs_sret_probe, 0);
+    bool trapped = trap_was_triggered();
+    trap_expect_end();
 
-    TEST_ASSERT("SIE field readable", true);
-    TEST_ASSERT("SPIE field readable", true);
+    TEST_ASSERT("pattern (a): no trap", !trapped);
+    TEST_ASSERT_EQ("pattern (a): landed in HS-mode",
+                   g_tret_landing, TRET_MAGIC_HS);
+    uintptr_t ss = tret_sstatus_read();
+    TEST_ASSERT("pattern (a): SIE == old SPIE (1)",
+                (ss & TRET_SSTATUS_SIE) != 0);
+    TEST_ASSERT("pattern (a): SPIE == 1",
+                (ss & TRET_SSTATUS_SPIE) != 0);
 
-    /* Verify they are writable by toggling SIE. */
-    sstatus ^= (1UL << 1);  /* Toggle SIE bit */
-    asm volatile ("csrw sstatus, %0" :: "r"(sstatus));
+    /* Pattern (b): SPIE=0, SIE=1 -> after SRET: SIE=0, SPIE=1. */
+    tret_hs_probe_setup(0 /* SPV */, 1 /* SPP */);
+    tret_sstatus_write((tret_sstatus_read()
+                        & ~(TRET_SSTATUS_SIE | TRET_SSTATUS_SPIE))
+                       | TRET_SSTATUS_SIE);
+
+    trap_expect_begin();
+    run_in_priv(PRIV_S, hs_sret_probe, 0);
+    trapped = trap_was_triggered();
+    trap_expect_end();
+
+    TEST_ASSERT("pattern (b): no trap", !trapped);
+    TEST_ASSERT_EQ("pattern (b): landed in HS-mode",
+                   g_tret_landing, TRET_MAGIC_HS);
+    ss = tret_sstatus_read();
+    TEST_ASSERT("pattern (b): SIE == old SPIE (0)",
+                (ss & TRET_SSTATUS_SIE) == 0);
+    TEST_ASSERT("pattern (b): SPIE == 1",
+                (ss & TRET_SSTATUS_SPIE) != 0);
 
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
- * TRET-11: SRET(V=1) return to VS-mode
+ * TRET-11: SRET(V=1) return to VS-mode (real sret, norm:sret_v1)
+ *
+ * HS sepc is poisoned: if the implementation wrongly returns through
+ * HS sepc instead of vsepc, execution faults at the poisoned address.
  * ------------------------------------------------------------------ */
 TEST_REGISTER(tret_11_sret_v1_to_vs);
 bool tret_11_sret_v1_to_vs(void) {
-    TEST_BEGIN("TRET-11: SRET(V=1) returns to VS-mode (VTSR=0)");
+    TEST_BEGIN("TRET-11: SRET(V=1) returns to VS-mode (real sret)");
 
-    /* Ensure VTSR=0 so VS SRET executes normally. */
+    clear_all_deleg();
     hstatus_set_vtsr(0);
+    asm volatile ("csrw 0x240, %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
 
-    /* Verify VTSR is cleared. */
-    uintptr_t hstatus = hstatus_read();
-    bool vtsr = (hstatus >> 22) & 1;
-    TEST_ASSERT("VTSR == 0", !vtsr);
+    /* Poison HS sepc; the probe writes vsepc (sepc alias in V=1). */
+    tret_sepc_write(TRET_POISON_EPC);
+    TEST_ASSERT_EQ("sepc poison accepted (WARL)",
+                   tret_sepc_read(), TRET_POISON_EPC);
 
-    /* With VTSR=0, VS-mode SRET should not trigger virtual-instruction */
-    VS_EXPECT_NO_TRAP(run_in_vs_mode(vs_exec_sret, 0));
+    /* vsstatus: SPP=1 (return to VS), SPIE=1, SIE=0. */
+    tret_vsstatus_write(TRET_SSTATUS_SPP | TRET_SSTATUS_SPIE);
+    g_tret_landing = 0;
+    g_tret_land = (uintptr_t)tret_sret_land;
+
+    VS_EXPECT_NO_TRAP(run_in_vs_mode(vs_sret_probe, 0));
+
+    TEST_ASSERT_EQ("landed at vsepc target (vsscratch sentinel)",
+                   g_tret_landing, TRET_MAGIC_VS);
+    uintptr_t vss = tret_vsstatus_read();
+    TEST_ASSERT_EQ("vsstatus.SPP cleared by SRET",
+                   vss & TRET_SSTATUS_SPP, 0);
+    TEST_ASSERT("vsstatus.SIE == old SPIE (1)",
+                (vss & TRET_SSTATUS_SIE) != 0);
+    TEST_ASSERT("vsstatus.SPIE == 1",
+                (vss & TRET_SSTATUS_SPIE) != 0);
+    TEST_ASSERT_EQ("HS sepc untouched by SRET(V=1)",
+                   tret_sepc_read(), TRET_POISON_EPC);
 
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
- * TRET-12: SRET(V=1) return to VU-mode
+ * TRET-12: SRET(V=1) return to VU-mode (real sret, norm:sret_v1)
  * ------------------------------------------------------------------ */
 TEST_REGISTER(tret_12_sret_v1_to_vu);
 bool tret_12_sret_v1_to_vu(void) {
-    TEST_BEGIN("TRET-12: SRET(V=1) returns to VU-mode (VS to VU)");
+    TEST_BEGIN("TRET-12: SRET(V=1) returns to VU-mode (real sret)");
 
-    /* Verify transition from VS to VU is possible.
-     * NOTE: VU-mode cannot access S-level CSRs like sstatus. */
-    uintptr_t r = run_in_vu_mode(vu_nop, 0x42);
-    TEST_ASSERT_EQ("VU-mode accessible with correct return value", r, 0x42);
+    clear_all_deleg();
+    hstatus_set_vtsr(0);
+
+    tret_sepc_write(TRET_POISON_EPC);
+    /* vsstatus: SPP=0 (return to VU), SPIE=1, SIE=0. */
+    tret_vsstatus_write(TRET_SSTATUS_SPIE);
+    g_tret_landing = 0;
+    g_tret_land = (uintptr_t)tret_sret_land;
+
+    /* At the VU landing, csrr sscratch raises virtual-instruction. */
+    trap_expect_begin();
+    run_in_vs_mode(vs_sret_probe, 0);
+    TEST_ASSERT("landing probe trapped in VU-mode", trap_was_triggered());
+    if (trap_was_triggered()) {
+        TEST_ASSERT_EQ("cause=22 proves VU-mode landing",
+                       trap_get_cause(),
+                       (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
+    }
+    trap_expect_end();
+
+    TEST_ASSERT_EQ("vsstatus.SPP cleared by SRET",
+                   tret_vsstatus_read() & TRET_SSTATUS_SPP, 0);
+    TEST_ASSERT_EQ("HS sepc untouched by SRET(V=1)",
+                   tret_sepc_read(), TRET_POISON_EPC);
 
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
- * TRET-13: SRET(V=1) SIE/SPIE restore
+ * TRET-13: SRET(V=1) SIE/SPIE restore (real sret, norm:sret_v1)
  * ------------------------------------------------------------------ */
 TEST_REGISTER(tret_13_sret_v1_sie_spie);
 bool tret_13_sret_v1_sie_spie(void) {
-    TEST_BEGIN("TRET-13: SRET(V=1) vsstatus SIE/SPIE readable/writable");
+    TEST_BEGIN("TRET-13: SRET(V=1) SIE=old SPIE, SPIE=1 (real sret)");
 
-    /* Verify vsstatus SIE/SPIE fields are accessible. */
-    /* In V=1, sstatus accesses map to vsstatus. */
-    uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));  /* vsstatus */
+    clear_all_deleg();
+    hstatus_set_vtsr(0);
+    asm volatile ("csrw 0x240, %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
 
-    /* SIE is bit 1, SPIE is bit 5. */
-    bool sie = (vsstatus >> 1) & 1;
-    bool spie = (vsstatus >> 5) & 1;
-    (void)sie;
-    (void)spie;
+    /* Pattern (a): SPIE=1, SIE=0 -> after SRET: SIE=1, SPIE=1. */
+    tret_vsstatus_write(TRET_SSTATUS_SPP | TRET_SSTATUS_SPIE);
+    g_tret_landing = 0;
+    g_tret_land = (uintptr_t)tret_sret_land;
 
-    TEST_ASSERT("vsstatus.SIE field readable", true);
-    TEST_ASSERT("vsstatus.SPIE field readable", true);
+    VS_EXPECT_NO_TRAP(run_in_vs_mode(vs_sret_probe, 0));
+    TEST_ASSERT_EQ("pattern (a): landed in VS-mode",
+                   g_tret_landing, TRET_MAGIC_VS);
+    uintptr_t vss = tret_vsstatus_read();
+    TEST_ASSERT("pattern (a): SIE == old SPIE (1)",
+                (vss & TRET_SSTATUS_SIE) != 0);
+    TEST_ASSERT("pattern (a): SPIE == 1",
+                (vss & TRET_SSTATUS_SPIE) != 0);
 
-    /* Verify they are writable by toggling SIE. */
-    vsstatus ^= (1UL << 1);  /* Toggle SIE bit */
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));  /* vsstatus */
+    /* Pattern (b): SPIE=0, SIE=1 -> after SRET: SIE=0, SPIE=1. */
+    tret_vsstatus_write(TRET_SSTATUS_SPP | TRET_SSTATUS_SIE);
+    g_tret_landing = 0;
+
+    VS_EXPECT_NO_TRAP(run_in_vs_mode(vs_sret_probe, 0));
+    TEST_ASSERT_EQ("pattern (b): landed in VS-mode",
+                   g_tret_landing, TRET_MAGIC_VS);
+    vss = tret_vsstatus_read();
+    TEST_ASSERT("pattern (b): SIE == old SPIE (0)",
+                (vss & TRET_SSTATUS_SIE) == 0);
+    TEST_ASSERT("pattern (b): SPIE == 1",
+                (vss & TRET_SSTATUS_SPIE) != 0);
 
     HYP_TEST_END();
 }
 
 /* ------------------------------------------------------------------
- * TRET-14: SRET sepc restore PC
+ * TRET-14: SRET pc=sepc and SRET does not modify sepc
  * ------------------------------------------------------------------ */
 TEST_REGISTER(tret_14_sret_sepc);
 bool tret_14_sret_sepc(void) {
-    TEST_BEGIN("TRET-14: SRET sepc/vsepc readable/writable");
+    TEST_BEGIN("TRET-14: SRET jumps to sepc, sepc kept unchanged");
 
-    /* Verify sepc is readable/writable. */
-    uintptr_t test_val = 0x12345678UL;
-    asm volatile ("csrw sepc, %0" :: "r"(test_val));
+    /* The landing label is a non-adjacent function, so landing there
+     * proves pc was really loaded from sepc (not sepc+4 fallthrough). */
+    tret_hs_probe_setup(0 /* SPV */, 1 /* SPP */);
 
-    uintptr_t read_val;
-    asm volatile ("csrr %0, sepc" : "=r"(read_val));
+    trap_expect_begin();
+    run_in_priv(PRIV_S, hs_sret_probe, 0);
+    bool trapped = trap_was_triggered();
+    trap_expect_end();
 
-    TEST_ASSERT_EQ("sepc readback == written value", read_val, test_val);
-
-    /* Verify vsepc is readable/writable.
-     * vsepc (CSR 0x241) is WARL: bit 0 must be 0 (instruction alignment).
-     * Use an even-aligned test value. Note: 0x242 is vscause, NOT vsepc. */
-    test_val = 0x87654320UL;  /* even-aligned for WARL */
-    asm volatile ("csrw 0x241, %0" :: "r"(test_val));  /* vsepc */
-
-    asm volatile ("csrr %0, 0x241" : "=r"(read_val));  /* vsepc */
-
-    TEST_ASSERT_EQ("vsepc readback == written value", read_val, test_val);
+    TEST_ASSERT("no trap on SRET", !trapped);
+    TEST_ASSERT_EQ("landed at sepc target (sscratch sentinel)",
+                   g_tret_landing, TRET_MAGIC_HS);
+    TEST_ASSERT_EQ("sepc still holds landing label after SRET",
+                   tret_sepc_read(), (uintptr_t)tret_sret_land);
 
     HYP_TEST_END();
 }
@@ -298,6 +637,143 @@ bool tret_15_mret_mepc(void) {
     asm volatile ("csrr %0, mepc" : "=r"(read_val));
 
     TEST_ASSERT_EQ("mepc readback == written value", read_val, test_val);
+
+    HYP_TEST_END();
+}
+
+/* ------------------------------------------------------------------
+ * TRET-16: SRET(V=1) must not modify V=0 state (norm:sret_h)
+ * ------------------------------------------------------------------ */
+TEST_REGISTER(tret_16_sret_v1_preserves_v0);
+bool tret_16_sret_v1_preserves_v0(void) {
+    TEST_BEGIN("TRET-16: SRET(V=1) leaves hstatus/sstatus/sepc intact");
+
+    clear_all_deleg();
+    hstatus_set_vtsr(0);
+    asm volatile ("csrw 0x240, %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
+
+    /* Pre-load V=0 state that a spec-compliant SRET(V=1) must keep. */
+    hstatus_set_spv(1);
+    tret_sstatus_write(tret_sstatus_read() | TRET_SSTATUS_SPP);
+    tret_sepc_write(TRET_POISON_EPC);
+
+    /* vsstatus: SPP=1 keeps the probe in VS-mode across the SRET. */
+    tret_vsstatus_write(TRET_SSTATUS_SPP | TRET_SSTATUS_SPIE);
+    g_tret_landing = 0;
+    g_tret_land = (uintptr_t)tret_sret_land;
+
+    VS_EXPECT_NO_TRAP(run_in_vs_mode(vs_sret_probe, 0));
+
+    TEST_ASSERT_EQ("landed in VS-mode (vsscratch sentinel)",
+                   g_tret_landing, TRET_MAGIC_VS);
+    /* sret_v1 operates only on vsstatus/vsepc: only SRET(V=0) may
+     * clear hstatus.SPV, so it must survive here. */
+    TEST_ASSERT_EQ("hstatus.SPV unchanged by SRET(V=1)",
+                   hstatus_get_spv(), 1);
+    TEST_ASSERT("sstatus.SPP unchanged by SRET(V=1)",
+                (tret_sstatus_read() & TRET_SSTATUS_SPP) != 0);
+    TEST_ASSERT_EQ("HS sepc unchanged by SRET(V=1)",
+                   tret_sepc_read(), TRET_POISON_EPC);
+
+    HYP_TEST_END();
+}
+
+/* ------------------------------------------------------------------
+ * TRET-17: SRET(V=0) must not modify VS state (norm:sret_h)
+ * ------------------------------------------------------------------ */
+TEST_REGISTER(tret_17_sret_v0_preserves_vs);
+bool tret_17_sret_v0_preserves_vs(void) {
+    TEST_BEGIN("TRET-17: SRET(V=0) leaves vsstatus/vsepc intact");
+
+    /* Pre-load VS state that a spec-compliant SRET(V=0) must keep. */
+    tret_vsstatus_write(TRET_SSTATUS_SPP);
+    tret_vsepc_write(TRET_POISON_EPC);
+    asm volatile ("csrw 0x240, %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
+
+    /* SRET(V=0) with SPV=1, SPP=1 returns into VS-mode. */
+    tret_hs_probe_setup(1 /* SPV */, 1 /* SPP */);
+
+    trap_expect_begin();
+    run_in_priv(PRIV_S, hs_sret_probe, 0);
+    bool trapped = trap_was_triggered();
+    trap_expect_end();
+
+    TEST_ASSERT("no trap on SRET(V=0) to VS-mode", !trapped);
+    TEST_ASSERT_EQ("landed in VS-mode (vsscratch sentinel)",
+                   g_tret_landing, TRET_MAGIC_VS);
+    /* sret_v0 operates only on hstatus/sstatus/sepc. */
+    TEST_ASSERT("vsstatus.SPP unchanged by SRET(V=0)",
+                (tret_vsstatus_read() & TRET_SSTATUS_SPP) != 0);
+    TEST_ASSERT_EQ("vsepc unchanged by SRET(V=0)",
+                   tret_vsepc_read(), TRET_POISON_EPC);
+
+    HYP_TEST_END();
+}
+
+/* ------------------------------------------------------------------
+ * TRET-18: full round-trip VU trap -> HS handler -> SRET resume
+ * ------------------------------------------------------------------ */
+TEST_REGISTER(tret_18_vu_trap_hs_sret_resume);
+bool tret_18_vu_trap_hs_sret_resume(void) {
+    TEST_BEGIN("TRET-18: VU ebreak -> HS handler -> SRET resumes VU");
+
+    /* Delegate ebreak M->HS only; the trap stays in HS-mode. */
+    clear_all_deleg();
+    setup_deleg_to_hs(1UL << CAUSE_BREAKPOINT);
+
+    uintptr_t saved_stvec;
+    asm volatile ("csrr %0, stvec" : "=r"(saved_stvec));
+    asm volatile ("csrw stvec, %0" :: "r"((uintptr_t)&_hs_trap_entry));
+
+    g_tret_flag = 0;
+    run_in_vu_mode(tret_ebreak_probe, 0);
+
+    asm volatile ("csrw stvec, %0" :: "r"(saved_stvec));
+    clear_all_deleg();
+
+    /* The flag write after the ebreak proves the HS handler took the
+     * trap and its SRET really resumed VU-mode execution. */
+    TEST_ASSERT_EQ("HS handler SRET resumed VU execution",
+                   g_tret_flag, TRET_FLAG_MAGIC);
+    TEST_ASSERT("trap entered HS-mode with SPV=1", trap_get_spv());
+    /* SRET(V=0) clears hstatus.SPV on the way back to the guest. */
+    TEST_ASSERT_EQ("hstatus.SPV cleared by HS SRET",
+                   hstatus_get_spv(), 0);
+
+    HYP_TEST_END();
+}
+
+/* ------------------------------------------------------------------
+ * TRET-19: nested VS trap -> VS handler SRET resume
+ * ------------------------------------------------------------------ */
+TEST_REGISTER(tret_19_vs_trap_vs_sret_resume);
+bool tret_19_vs_trap_vs_sret_resume(void) {
+    TEST_BEGIN("TRET-19: VS ebreak -> VS handler -> SRET resumes VS");
+
+    /* Delegate ebreak M->HS->VS so the trap is delivered to VS-mode. */
+    clear_all_deleg();
+    setup_deleg_to_vs(1UL << CAUSE_BREAKPOINT, 0);
+    vs_trap_setup_direct((uintptr_t)tret_vs_handler);
+
+    /* HS-level sentinel: the V=1 trap/return path must not touch it. */
+    tret_sstatus_write(tret_sstatus_read() | TRET_SSTATUS_SPP);
+
+    g_tret_flag = 0;
+    g_tret_vs_cause = 0;
+    VS_EXPECT_NO_TRAP(run_in_vs_mode(tret_ebreak_probe, 0));
+
+    clear_all_deleg();
+
+    TEST_ASSERT_EQ("VS handler saw cause=3 (ebreak)",
+                   g_tret_vs_cause, (uintptr_t)CAUSE_BREAKPOINT);
+    /* The flag write after the ebreak proves the VS handler's SRET
+     * really resumed the VS context. */
+    TEST_ASSERT_EQ("VS handler SRET resumed guest execution",
+                   g_tret_flag, TRET_FLAG_MAGIC);
+    TEST_ASSERT_EQ("vsstatus.SPP cleared by VS SRET",
+                   tret_vsstatus_read() & TRET_SSTATUS_SPP, 0);
+    TEST_ASSERT("HS sstatus.SPP untouched by the V=1 path",
+                (tret_sstatus_read() & TRET_SSTATUS_SPP) != 0);
 
     HYP_TEST_END();
 }

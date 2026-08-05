@@ -167,20 +167,27 @@
 | DELEG-01 | medeleg[16] 只读零 | M-mode 尝试写 medeleg bit 16 = 1 | medeleg[16] 读回 0（只读零） |
 | DELEG-02 | double-trap 始终交付到 M-mode | 设 medeleg 全 1（包括尝试 bit 16），触发 double-trap | double-trap 始终交付到 M-mode（不会被委托到 S-mode） |
 
+
 ---
 
 ## Group 9. mtval2 CSR 依赖
 
 **规范依据**：
 - `norm:mtval2_Ssdbltrap`：Ssdbltrp 扩展要求 mtval2 CSR 的实现
+- `norm:sstatus_sdt_trap`：double-trap 交付时 mtval2 写入原始 trap 的 cause
 
-**测试职责**：验证实现 Ssdbltrp 时 mtval2 CSR 的存在性。
+**测试职责**：验证实现 Ssdbltrp 时 mtval2 CSR 的存在性，以及 double-trap / S-mode 交付路径对 mtval2 的写入行为。
+
+**实现映射**：本组是 Group 2 中 double-trap 交付行为（DT-02 的 mtval2 部分）的实际落地用例。探针通过 `ssdbltrp_run_s_probe()`（`Ssdbltrp/ssdbltrp_trap_asm.S`）在 S-mode 执行委托的非法指令触发；mtval2 的期望值取自 M-mode handler 入口捕获（`trap_m_entry_mtval2_hook`），因为后续任何 M-mode trap 入口都会重写 mtval2。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
-| MTVAL2-01 | mtval2 CSR 存在性 | M-mode 读写 mtval2 CSR | Ssdbltrp 实现时 mtval2 必须可读写 |
-| MTVAL2-02 | mtval2 在 double-trap 时写入正确值 | 触发 double-trap 到 M-mode，检查 mtval2 | mtval2 = 原始 trap 的 cause 值（非零） |
-| MTVAL2-03 | mtval2 在正常 S-mode trap 时为零 | 正常 trap 到 S-mode（SDT=0→1），检查 M-mode 未参与 | M-mode 的 mtval2 不被修改（trap 未到 M-mode） |
+| MTVAL2-01 | mtval2 CSR 存在性与读写 | M-mode 读 mtval2（缺失即 illegal-instruction，显性失败）；WARL 写回稳定性；保持零（`norm:mtval2_val`） | Ssdbltrp 实现时 mtval2 必须存在、WARL 稳定、可保持 0 |
+| MTVAL2-02 | double-trap 时 mtval2 写入原始 cause | 阶段 1（canary）：SDT=0 探测，合规实现不得升级；阶段 2：SDT=1 触发 double-trap 到 M-mode，检查 mcause=16、mtval2=原始 cause（illegal=2）、入口 mstatus.MPP=S | SDT=0 无升级；SDT=1 时 mcause=16、mtval2=2、MPP=S（`norm:sstatus_sdt_trap`） |
+| MTVAL2-03 | S-mode 交付不修改 mtval2 | 预置 mtval2 哨兵值，SDT=0 时委托 trap 交付到 S-mode（SDT 0→1），返回 M-mode 后验证 | 无 double-trap 升级记录；S-mode 侧记录 cause=2 且 status 快照 SDT=1；mtval2 为哨兵值或 0（非 2，证明无 M-mode 升级参与） |
+
+**测试环境要求**：
+- double-trap 探针要求环境严格保持 `mstatus.MDT=0`（无 Smrnmi 时 MDT=1 下的 M-mode 异常即不可恢复 critical error）：套件以 `SMDBLTRP_SUPPORTED` 构建，`TEST_END`/`reset_state` 均调用 `clear_mdt()`，探针前显式清 SDT/MDT。
 
 ---
 
@@ -206,25 +213,26 @@
 
 ```
 damo-priv-test/
-├── ssdbltrp/
-│   ├── Makefile
+├── Ssdbltrp/
+│   ├── Makefile                     # 定义 SMDBLTRP_SUPPORTED，激活 clear_mdt() 环境处理
 │   ├── kernel.ld
-│   ├── main.c
+│   ├── main.c                       # 安装 MDT 清除型 M/S trap 入口，探针环境检查
+│   ├── ssdbltrp_trap_asm.S          # M-mode MDT 清除入口 + S-mode 入口 + S-mode 探针 trampoline
 │   └── tests/
 │       ├── test_sdt_field.c           # Group 1: sstatus.SDT 字段行为
-│       ├── test_double_trap.c         # Group 2: S-mode Double Trap 交付
+│       ├── test_strap.c               # Group 2: S-mode Double Trap 交付（占位 SKIP，见 Group 8 实现映射注）
 │       ├── test_sret_sdt.c            # Group 3: SRET 对 SDT 的清除
 │       ├── test_menvcfg_dte.c        # Group 4: menvcfg.DTE 控制
 │       ├── test_xret_sdt.c           # Group 7: MRET/SRET/MNRET 跨模式清除
 │       ├── test_medeleg16.c          # Group 8: medeleg[16] 只读零
-│       └── test_mtval2_dep.c         # Group 9: mtval2 CSR 依赖
-├── hypervisor_cross/                  # Hypervisor 交叉测试（包含 Ssdbltrp）
+│       └── test_mtval2_dep.c         # Group 9: mtval2 CSR 依赖（含 double-trap 交付行为验证）
+├── Hypervisor_Ssdbltrp/              # Hypervisor × Ssdbltrp 交叉测试
 │   └── tests/
-│       └── test_hcross_ssdbltrp.c    # Group 12: Hypervisor × Ssdbltrp
-└── common/                            # 复用通用框架
+│       └── test_hcross_ssdbltrp_*.c  # Group 12: Hypervisor × Ssdbltrp
+└── common/                            # 复用通用框架（trap_dt_snap / mtval2 入口钩子 / probe 容错）
 ```
 
-> **注意**：原 `test_henvcfg_dte.c`（Group 5）和 `test_vsstatus_sdt.c`（Group 6）已迁移至 `hypervisor_cross/` 项目。
+> **注意**：原 `test_henvcfg_dte.c`（Group 5）和 `test_vsstatus_sdt.c`（Group 6）已迁移至 `Hypervisor_Ssdbltrp/` 项目。
 
 ### 运行时检测
 

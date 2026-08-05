@@ -13,7 +13,7 @@ ENABLE_VM  = 1
 ENABLE_HYP = 1
 
 # QEMU virt: explicitly request RV64 + H extension support.
-QEMU_CPU   = xt-c930v-cp
+QEMU_CPU   = max
 QEMU_MCH   = virt,aia=none
 
 # Spike: explicitly request RV64 + H extension support.

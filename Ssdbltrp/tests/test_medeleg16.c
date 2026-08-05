@@ -60,5 +60,5 @@ TEST_REGISTER(test_medeleg16_03);
 bool test_medeleg16_03(void)
 {
     TEST_BEGIN("MDEL-03: Double trap not delegated to S-mode");
-    TEST_SKIP("QEMU limitation: Cannot safely test double trap delegation");
+    TEST_SKIP("Not implemented yet (placeholder)");
 }

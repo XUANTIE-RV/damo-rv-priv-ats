@@ -243,7 +243,13 @@ bool test_ghcsr_08_tvm(void) {
  *   norm:hgatp_mode_bare - "When MODE=Bare, guest physical addresses
  *       are equal to supervisor physical addresses, and there is no
  *       further memory protection for a guest virtual machine beyond
- *       the physical memory protection scheme." */
+ *       the physical memory protection scheme."
+ *   norm:hgatp_mode_bare_trans - "When the address translation scheme
+ *       selected by the MODE field of hgatp is Bare, guest physical
+ *       addresses are equal to supervisor physical addresses without
+ *       modification, and no memory protection applies in the trivial
+ *       translation." (pass-through side; the no-protection side is
+ *       covered by Group 14 GBARE-01..05) */
 TEST_REGISTER(test_ghcsr_09_bare_passthrough);
 bool test_ghcsr_09_bare_passthrough(void) {
     TEST_BEGIN("GHCSR-09: hgatp MODE=Bare passthrough (GPA=SPA)");
