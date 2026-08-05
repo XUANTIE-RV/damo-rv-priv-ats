@@ -53,7 +53,7 @@ RISC-V Hypervisor 扩展中，`hcounteren` 寄存器控制 VS/VU-mode（V=1）�
 | Norm ID | 原文 | 中文说明 |
 |---------|------|----------|
 | `norm:shcounterenw_hpmcounter_hcounteren` | If the Shcounterenw extension is implemented, then for any `hpmcounter` that is not read-only zero, the corresponding bit in `hcounteren` must be writable. | 若实现了 Shcounterenw 扩展，则对于任何非只读零的 `hpmcounter`，`hcounteren` 中的对应位必须可写。 |
-| `norm:hcounteren_sz` | The counter-enable register `hcounteren` is a 32-bit register that controls the availability of the hardware performance monitoring counters to the guest virtual machine. | `hcounteren` 是一个 32 位寄存器，控制硬件性能监控计数器对客户虚拟机的可用性。 |
+| `norm:hcounteren_sz` | The counter-enable register `hcounteren` is a 32-bit register that controls the availability of the hardware performance monitoring counters to the guest virtual machine. | `hcounteren` 是一个 32 位寄存器，控制硬件性能监控计数器对客户虚拟机的可用性（32 位宽度由 SHCNTW-WR-05 验证）。 |
 | `norm:hcounteren_op` | When the CY, TM, IR, or HPMn bit in the `hcounteren` register is clear, attempts to read the corresponding counter while V=1 will cause a virtual-instruction exception if the same bit in `mcounteren` is 1. | 当 `hcounteren` 中的 CY、TM、IR 或 HPMn 位清零时，V=1 下读取对应计数器若 `mcounteren` 中同一位为 1 则引发虚拟指令异常。 |
 | `norm:hcounteren_warl` | `hcounteren` must be implemented. However, any of the bits may be read-only zero, indicating reads to the corresponding counter will cause an exception when V=1. Hence, they are effectively WARL fields. | `hcounteren` 必须实现。但任何位可以为只读零，表示 V=1 时读取对应计数器会引发异常。因此它们实际上是 WARL 字段。 |
 | `norm:H_virtinst_vs_nonhighctr_h0_m1` | In VS-mode, attempts to access a non-high-half counter CSR when the corresponding bit in `hcounteren` is 0 and the same bit in `mcounteren` is 1. | VS 模式下，访问非高半计数器 CSR 时 `hcounteren` 对应位为 0 且 `mcounteren` 同一位为 1。 |
@@ -154,6 +154,7 @@ VU-mode 下访问计数器需同时满足：
 | SHCNTW-WR-02 | time 对应 hcounteren[1] 可写 | 探测 time 是否已实现，若是则验证 hcounteren[1] 可写 1 和写 0 | 写入值回读一致 |
 | SHCNTW-WR-03 | instret 对应 hcounteren[2] 可写 | 探测 instret 是否已实现，若是则验证 hcounteren[2] 可写 1 和写 0 | 写入值回读一致 |
 | SHCNTW-WR-04 | hpmcounter3–31 对应 hcounteren[3:31] 可写 | 逐个探测 hpmcounter3–31，对已实现的验证 hcounteren 对应 bit 可写 | 已实现计数器的对应 bit 写入值回读一致 |
+| SHCNTW-WR-05 | hcounteren 为 32 位寄存器 | RV64 下写 hcounteren 全 1，回读检查高 32 位 | bits[63:32] 为只读零（`norm:hcounteren_sz`） |
 
 #### 关键代码示例：SHCNTW-WR-01
 

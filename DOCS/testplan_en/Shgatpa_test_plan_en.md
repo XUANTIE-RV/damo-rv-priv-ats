@@ -237,7 +237,7 @@ After Group 1 detects the set of MODEs supported by `satp`, results are stored i
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
-| HGATP-VMID-01 | VMID width probe | Write hgatp VMID field to all 1s (14-bit maximum 0x3FFF), read back to confirm actual supported width | Readback VMID is consecutive lower 1s (e.g., 0x3FFF indicates full 14-bit support, 0x003F indicates only 6-bit support) |
+| HGATP-VMID-01 | VMID width probe | Write hgatp VMID field to all 1s (14-bit maximum 0x3FFF), read back to confirm actual supported width | Readback VMID is consecutive lower 1s (e.g., 0x3FFF indicates full 14-bit support, 0x003F indicates only 6-bit support); VMIDLEN=0 (readback 0) is legal (`norm:hgatp_vmid`) |
 | HGATP-VMID-02 | VMID preservation after MODE switch | Write hgatp MODE=Sv39x4 + VMID=0x1234; switch MODE to Bare then back to Sv39x4; read back VMID | VMID value may be cleared (WARL allows), record behavior without pass/fail judgment |
 
 ---

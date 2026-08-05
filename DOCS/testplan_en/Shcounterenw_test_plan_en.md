@@ -55,6 +55,7 @@ This test plan covers the **Shcounterenw** extension, which makes `hcounteren` w
 | SHCNTW-WR-02 | Clear hcounteren[0] and read back | Set hcounteren[0]=0, read back | Read value matches written value |
 | SHCNTW-WR-03 | Write all implemented bits | Set all implemented hcounteren bits to 1, read back | All implemented bits read as 1 |
 | SHCNTW-WR-04 | Write pattern to hpmcounterN bits | Write alternating pattern to hpmcounterN bits, read back | Pattern preserved for implemented counters |
+| SHCNTW-WR-05 | hcounteren is a 32-bit register | On RV64, write all 1s to hcounteren and read back the upper 32 bits | bits[63:32] are read-only zero (`norm:hcounteren_sz`) |
 
 ---
 

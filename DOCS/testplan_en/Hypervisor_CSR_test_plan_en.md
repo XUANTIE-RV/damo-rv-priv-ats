@@ -36,6 +36,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-9 
 
 | Norm ID | English Description |
 |---------|---------------------|
+| `norm:H_mtval_nrz` | CSR `mtval` must not be read-only zero. |
 | `norm:hedeleg_acc` | Each bit of `hedeleg` shall be either writable or read-only zero. Many bits of `hedeleg` are required specifically to be writable or zero, as enumerated in the table. Bit 0, corresponding to instruction address-misaligned exceptions, must be writable if IALIGN=32. |
 | `norm:hedeleg_sz_acc` | Register `hedeleg` is a 64-bit read/write register. |
 | `norm:henvcfg_adue_op` | If the Svadu extension is implemented, the ADUE bit controls whether hardware updating of PTE A/D bits is enabled for VS-stage address translation. When ADUE=1, hardware updating is enabled. When ADUE=0, the implementation behaves as though Svade were implemented for VS-stage address translation. If Svadu is not implemented, ADUE is read-only zero. |
@@ -116,6 +117,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-9 
 - `norm:H_vscsrs_v1`: When V=1, HS-level S CSRs retain values but do not affect behavior
 - `norm:H_vscsrs_v0`: When V=0, VS CSRs do not affect behavior
 - `norm:H_scsrs_nomatch`: Behavior of S CSRs without matching VS CSRs (senvcfg/scounteren/scontext) when V=1
+- `norm:H_mtval_nrz`: mtval must not be read-only zero when the H extension is implemented (VCSR-18)
 
 **Test Responsibilities**: Verify VS CSR substitution, access control, and isolation behavior in both V=1 and V=0 modes.
 
@@ -138,6 +140,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-9 
 | VCSR-15 | satp accesses vsatp when V=1 | HS-mode writes vsatp, VS-mode csrr satp | Reads value of vsatp |
 | VCSR-16 | senvcfg without matching VS CSR functions normally when V=1 | VS-mode reads/writes senvcfg when V=1, verify this CSR takes effect directly rather than being substituted | senvcfg read/write normal, hypervisor must manually swap |
 | VCSR-17 | scounteren without matching VS CSR functions normally when V=1 | Set scounteren when V=1, verify VU-mode counter access is controlled by it | scounteren controls VU-mode counter visibility |
+| VCSR-18 | mtval is not read-only zero (H extension) | With the H extension present, write pattern and address values to mtval and read back | Written values must be retained (`norm:H_mtval_nrz`, no read-only zero fallback) |
 
 ---
 

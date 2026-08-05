@@ -10,6 +10,11 @@
  *   norm:hgatp_vmid_op (hypervisor.adoc:1000-1010):
  *     hgatp VMID field is WARL, up to 14 bits (HSXLEN=64).
  *     Implementation may support fewer bits (high bits read zero).
+ *   norm:hgatp_vmid:
+ *     The number of VMID bits is UNSPECIFIED and may be zero.
+ *   norm:hgatp_vmid_lsbs:
+ *     The least-significant bits of VMID are implemented first;
+ *     if VMIDLEN > 0, VMID[VMIDLEN-1:0] is writable.
  *
  * Test list (matches DOCS/testplan/shgatpa_test_plan.md HGATP-VMID):
  *   HGATP-VMID-01  VMID field width probe
@@ -34,15 +39,24 @@ bool test_shgatpa_vmid_width(void) {
     uintptr_t readback = hgatp_read();
     uintptr_t vmid = HGATP_GET_VMID(readback);
 
-    /* VMID should be at least 1 bit */
-    TEST_ASSERT("VMID field supports at least 1 bit", vmid > 0);
+    /* norm:hgatp_vmid allows VMIDLEN to be zero; do NOT require any
+     * implemented bits. A zero readback is a legal implementation. */
+    if (vmid == 0) {
+        LOG_I("hgatp VMIDLEN = 0 (legal per norm:hgatp_vmid)\n");
+    }
 
-    /* Compute actual width from readback */
+    /* Compute actual width from readback (contiguous LSBs expected) */
     unsigned width = 0;
     for (uintptr_t v = vmid; v & 1; v >>= 1) width++;
 
     LOG_I("hgatp VMID width = %u bits (readback=0x%lx)\n",
           width, (unsigned long)vmid);
+
+    /* norm:hgatp_vmid_lsbs: implemented bits must be the contiguous
+     * least-significant bits, i.e. readback == 2^width - 1. */
+    uintptr_t expect = (width == 0) ? 0UL : ((1UL << width) - 1UL);
+    TEST_ASSERT_EQ("VMID implemented bits are contiguous LSBs",
+                   vmid, expect);
 
     /* Cross-check with framework function */
     unsigned fw_width = hgatp_vmid_width();

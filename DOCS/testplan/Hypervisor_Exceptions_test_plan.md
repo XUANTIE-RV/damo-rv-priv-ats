@@ -38,10 +38,13 @@
 
 | Norm ID | 原文 | 中文说明 |
 |---------|------|----------|
+| `norm:H_cause` | The hypervisor extension augments the trap cause encoding. Codes are added for VS-level interrupts (2, 6, 10), for supervisor-level guest external interrupts (12), for virtual-instruction exceptions (22), and for guest-page faults (20, 21, 23). Environment calls from VS-mode are assigned cause 10. | hypervisor 扩展增加 trap cause 编码：VS 级中断（2/6/10）、HS 级客户外部中断（12）、虚拟指令异常（22）、客户页错误（20/21/23）；VS 模式 ecall 使用 cause 10。 |
 | `norm:H_cause_ecall` | HS-mode and VS-mode ECALLs use different cause values so they can be delegated separately. | HS 模式和 VS 模式的 ECALL 使用不同原因值以便分别委托。 |
 | `norm:H_cause_virtual_instruction` | When V=1, a virtual-instruction exception (code 22) is normally raised instead of an illegal-instruction exception if the attempted instruction is HS-qualified but is prevented from executing when V=1. An instruction is HS-qualified if it would be valid to execute in HS-mode, assuming TSR and TVM of `mstatus` are both zero. | V=1 时，若尝试的 HS 限定指令被阻止执行，通常引发虚拟指令异常（代码 22）而非非法指令异常。指令在假设 `mstatus`.TSR 和 TVM 均为零时能在 HS 模式有效执行则为 HS 限定。 |
 | `norm:H_cause_virtual_instruction_high` | When V=1 and XLEN=32, an invalid attempt to access a high-half CSR raises a virtual-instruction exception instead of an illegal-instruction exception if the same CSR instruction for the corresponding low-half CSR is HS-qualified. | V=1 且 XLEN=32 时，无效的高半 CSR 访问若对应低半 CSR 指令为 HS 限定，则引发虚拟指令异常而非非法指令异常。 |
+| `norm:H_csrs_hs_not_vs` | Additional CSRs are provided to HS-mode, but not to VS-mode, to manage two-stage address translation and to control the behavior of a VS-mode guest: `hstatus`, `hedeleg`, `hideleg`, `hvip`, `hip`, `hie`, `hgeip`, `hgeie`, `henvcfg`, `henvcfgh`, `hcounteren`, `htimedelta`, `htimedeltah`, `htval`, `htinst`, and `hgatp`. | 额外的 CSR 仅提供给 HS 模式，不提供给 VS 模式：hstatus、hedeleg、hideleg、hvip、hip、hie、hgeip、hgeie、henvcfg、henvcfgh、hcounteren、htimedelta、htimedeltah、htval、htinst、hgatp。 |
 | `norm:H_exception_priority` | If an instruction may raise multiple synchronous exceptions, the decreasing priority order indicates which exception is taken and reported in `mcause` or `scause`. | 若指令可能引发多个同步异常，按优先级递减顺序决定哪个异常被接收并报告在 `mcause` 或 `scause` 中。 |
+| `norm:H_illegal_high_half` | When XLEN>32, an attempt to access a high-half CSR always raises an illegal-instruction exception. | XLEN>32 时，访问高半 CSR 总是引发非法指令异常。 |
 | `norm:H_illegalinst_xstatus_fs_vs` | Fields FS and VS in registers `sstatus` and `vsstatus` deviate from the usual HS-qualified rule. If an instruction is prevented from executing because FS or VS is zero in either `sstatus` or `vsstatus`, the exception raised is always an illegal-instruction exception, never a virtual-instruction exception. | `sstatus` 和 `vsstatus` 中的 FS 和 VS 字段偏离通常的 HS 限定规则。若指令因 FS 或 VS 为零而被阻止，始终引发非法指令异常，不引发虚拟指令异常。 |
 | `norm:H_trap_deleg` | When a trap occurs in HS-mode or U-mode, it goes to M-mode, unless delegated by `medeleg` or `mideleg`, in which case it goes to HS-mode. When a trap occurs in VS-mode or VU-mode, it goes to M-mode, unless delegated by `medeleg`/`mideleg` to HS-mode, unless further delegated by `hedeleg`/`hideleg` to VS-mode. | HS/U 模式陷阱进入 M 模式，除非通过 `medeleg`/`mideleg` 委托给 HS 模式。VS/VU 模式陷阱进入 M 模式，除非委托给 HS 模式，除非进一步委托给 VS 模式。 |
 | `norm:H_trap_hs_csrwrites` | When a trap is taken into HS-mode, V is set to 0, and `hstatus`.SPV and `sstatus`.SPP are set accordingly. If V was 1 before the trap, SPVP is set the same as `sstatus`.SPP; otherwise, SPVP is left unchanged. A trap into HS-mode also writes GVA in `hstatus`, SPIE and SIE in `sstatus`, and CSRs `sepc`, `scause`, `stval`, `htval`, and `htinst`. | 陷阱进入 HS 模式时，V 设为 0，`hstatus`.SPV 和 `sstatus`.SPP 相应设置。陷阱前 V=1 时 SPVP 与 SPP 相同；否则不变。同时写入相关字段和 CSR。 |
@@ -73,6 +76,7 @@
 | `norm:mstatus_tvm_hs` | Setting TVM=1 prevents HS-mode from accessing `hgatp` or executing HFENCE.GVMA or HINVAL.GVMA, but has no effect on accesses to `vsatp` or instructions HFENCE.VVMA or HINVAL.VVMA. | TVM=1 阻止 HS 模式访问 `hgatp` 或执行 HFENCE.GVMA/HINVAL.GVMA，但不影响 `vsatp` 访问或 HFENCE.VVMA/HINVAL.VVMA 指令。 |
 | `norm:mtinst_sz_acc_op` | The `mtinst` register is an MXLEN-bit read/write register. When a trap is taken into M-mode, `mtinst` is written with a value that, if nonzero, provides information about the instruction that trapped. | `mtinst` 是一个 MXLEN 位读写寄存器。陷阱进入 M 模式时写入关于陷阱指令的信息。 |
 | `norm:mtinst_val` | `mtinst` is a WARL register that need only be able to hold the values that the implementation may automatically write to it on a trap. | `mtinst` 是 WARL 寄存器，仅需能保持实现在陷阱时可能自动写入的值。 |
+| `norm:htinst_val` | `htinst` is a WARL register that need only be able to hold the values that the implementation may automatically write to it on a trap. | `htinst` 是 WARL 寄存器，仅需能保持实现在陷阱时可能自动写入的值。 |
 | `norm:mtval2_sz_acc_op` | The `mtval2` register is an MXLEN-bit read/write register. When a trap is taken into M-mode, `mtval2` is written with additional exception-specific information, alongside `mtval`. | `mtval2` 是一个 MXLEN 位读写寄存器。陷阱进入 M 模式时写入额外异常特定信息。 |
 | `norm:mtval2_trapval` | When a guest-page-fault trap is taken into M-mode, `mtval2` is written with either zero or the guest physical address that faulted, shifted right by 2 bits. For other traps, `mtval2` is set to zero. | 客户页错误陷阱进入 M 模式时，`mtval2` 写入零或故障客户物理地址右移 2 位。其他陷阱设为零。 |
 | `norm:mtval2_trapval_vstrans` | If a guest-page fault is due to an implicit memory access during first-stage (VS-stage) address translation, a guest physical address written to `mtval2` is that of the implicit memory access that faulted. | 若客户页错误由 VS 阶段地址翻译的隐式内存访问引起，写入 `mtval2` 的地址是故障的隐式内存访问地址。 |
@@ -89,8 +93,11 @@
 **规范依据**：
 - `norm:H_cause_virtual_instruction`：HS-qualified 指令在 V=1 时因权限不足或被禁用 → virtual-instruction exception (cause=22)
 - `norm:H_cause_virtual_instruction_high`：V=1 且 XLEN=32 时高半 CSR 的特殊规则
+- `norm:H_illegal_high_half`：XLEN>32 时对偶规则——高半 CSR 访问恒为 illegal-instruction，绝不产生 virtual-instruction
 - `norm:H_virtinst_vu_vs_hinst`：VS/VU-mode 执行 HLV/HLVX/HSV/HFENCE
 - `norm:H_virtinst_vu_vs_nonhigh_allowedhs_tvm0`：VS/VU-mode 访问 H CSR / VS CSR
+- `norm:H_csrs_hs_not_vs`：H CSR 仅提供给 HS-mode，VS-mode 访问触发 virtual-instruction（VINST-07~10/25~31/49~52）
+- `norm:H_cause`：cause 22（virtual-instruction）与 cause 10（ecall-from-VS，TENT-01）编码
 - `norm:H_virtinst_vu_wfi_tw0` / `norm:H_virtinst_vu_sret_sfence`：VU-mode 执行 WFI/SRET/SFENCE
 - `norm:H_virtinst_vu_nonhigh_supervisor_allowedhs_tvm0`：VU-mode 访问 S CSR
 - `norm:H_virtinst_wfi_vtw1_tw0`：VS-mode WFI + VTW=1 + TW=0
@@ -147,6 +154,14 @@
 | VINST-42 | VS-mode 执行 HSV.H | VS-mode 执行 HSV.H | virtual-instruction exception (cause=22) |
 | VINST-43 | VS-mode 执行 HSV.D | VS-mode 执行 HSV.D | virtual-instruction exception (cause=22) |
 | VINST-44 | mstatus.TSR=1 不影响 VS-mode SRET | mstatus.TSR=1, hstatus.VTSR=1, VS-mode SRET。TSR 仅影响 HS-mode（norm:mstatus_modes），VS-mode SRET 仅受 VTSR 控制 | virtual-instruction exception (cause=22) |
+| VINST-45 | RV64 HS-mode 访问高半 CSR cycleh | RV64 下 HS-mode csrr cycleh（CSR 0xC80） | illegal-instruction exception (cause=2) |
+| VINST-46 | RV64 VS-mode 访问高半 CSR cycleh 恒为 illegal | RV64 下 VS-mode csrr cycleh，且 hcounteren[0]=0、mcounteren[0]=1（构造易误报 cause=22 的门控条件） | illegal-instruction exception (cause=2)，非 cause=22 |
+| VINST-47 | RV64 VU-mode 访问高半 CSR instreth 恒为 illegal | RV64 下 VU-mode csrr instreth（CSR 0xC82），且 mcounteren[2]=hcounteren[2]=scounteren[2]=1（证明即使全层使能高半仍非法） | illegal-instruction exception (cause=2) |
+| VINST-48 | RV64 M-mode 访问高半 CSR cycleh 恒为 illegal | RV64 下 M-mode csrr cycleh（SPEC "always" 语义覆盖 M-mode） | illegal-instruction exception (cause=2) |
+| VINST-49 | VS-mode 访问 hgeip | VS-mode csrr hgeip（`norm:H_csrs_hs_not_vs`） | virtual-instruction exception (cause=22) |
+| VINST-50 | VS-mode 访问 hgeie | VS-mode csrr hgeie（`norm:H_csrs_hs_not_vs`） | virtual-instruction exception (cause=22) |
+| VINST-51 | VS-mode 访问 htval | VS-mode csrr htval（`norm:H_csrs_hs_not_vs`） | virtual-instruction exception (cause=22) |
+| VINST-52 | VS-mode 访问 htinst | VS-mode csrr htinst（`norm:H_csrs_hs_not_vs`） | virtual-instruction exception (cause=22) |
 
 ---
 
@@ -177,6 +192,7 @@
 | TENT-13 | VU-mode trap 到 M-mode | VU-mode 异常未被 medeleg 委托 | MPV=1, MPP=0 |
 | TENT-14 | HS-mode trap 到 M-mode | HS-mode 异常 | MPV=0, MPP=1 |
 | TENT-15 | htval/htinst 在非 guest-page-fault 时为零 | VS-mode ecall trap 到 HS-mode | htval=0, htinst=0 |
+| TENT-16 | 委托到 HS-mode 的 guest-page-fault 的 htval/htinst | medeleg 委托 GPF 到 HS-mode（hedeleg GPF 位只读零），VS-mode 确定性 load 触发 GPF | cause=21 且来自 V=1；htval=0 或 GPA>>2（`norm:htval_trapval` 合法全集，严格二选一）；htinst=0 或精确 golden 转换指令 |
 
 ---
 
@@ -245,7 +261,7 @@
 | TINST-05 | 隐式 VS-stage 读 fault 的 pseudoinstruction | VS-stage 叶页表页在 G-stage 不可读，触发隐式读 guest-page-fault | htval≠0 时 htinst=0x00003000（零不允许）；htval=0 时接受 |
 | TINST-06 | 隐式写（A/D 更新）的 pseudoinstruction | VS-stage 叶页表页在 G-stage D=0，触发隐式写 fault；平台支持 Svadu 时 SKIP | htval≠0 时 htinst=0x00003020（零不允许） |
 | TINST-07 | 转换指令字段结构验证 | 32-bit load 触发 fault，htinst 非零时逐字段校验 | opcode/funct3/rd 保留、imm 清零、Addr Offset 正确、bits1:0=11 |
-| TINST-08 | 压缩指令转换后 bit 1:0 编码 | 16-bit C.LW 触发 fault | htinst bits 1:0 = 01（压缩指令）；当前框架无压缩探针，保留 SKIP |
+| TINST-08 | 压缩指令转换编码 | 16-bit `c.lw`（0x4108）触发 load guest-page-fault | htinst == 0 或 == 压缩转换值（展开为 32 位等效指令后转换，bit1 置 0，bits1:0=01，`norm:H_trap_xtinst_exception`） |
 | TINST-09 | page-fault 不产生 pseudoinstruction | VS-stage 叶 PTE R=0 触发 load page-fault（cause=13，非 guest-page-fault） | htinst=0 或转换指令（golden 精确匹配）；不允许伪指令值 |
 | TINST-10 | illegal-instruction 只允许写零 | VS-mode 执行非法指令（标准异常，tinst-values 表仅允许 Zero） | htinst=0（严格） |
 
@@ -290,6 +306,7 @@
 - `norm:mtval2_trapval_vstrans`：隐式 VS-stage 访问导致 guest-page-fault 时 mtval2 写入隐式访问的 GPA
 - `norm:mtval2_val`：WARL，必须能保持零；写入任意值不要求回显，但读回必须稳定
 - `norm:mtinst_sz_acc_op` / `norm:mtinst_val`：mtinst 格式与 WARL（仅需能保持 trap 时可能自动写入的值）
+- `norm:htinst_val`：htinst WARL（仅需能保持 trap 时可能自动写入的值，零恒在其内），读写语义与 mtinst 相同
 
 **测试职责**：验证 M-mode trap 时 mtval2/mtinst 的写入行为。本套件中 VS/HS trap 默认不委托，统一进入 M-mode，框架在 M-mode trap 入口捕获 mtval2/mtinst（`trap_get_htval()`/`trap_get_htinst()` 在 M-mode 递送路径下即为 mtval2/mtinst）。
 
@@ -303,6 +320,7 @@
 | MTVAL-04 | mtinst WARL 读写 | M-mode 写 0、任意 pattern 并重复写入读回 | 同 MTVAL-01 的 WARL 语义 |
 | MTVAL-05 | mtinst 在 M-mode guest-page-fault trap 值 | VS-mode 确定性 load 触发 guest-page-fault | mtinst = 0 或精确等于转换指令（golden） |
 | MTVAL-06 | 隐式 VS-stage 访问 fault 时 mtval2 | VS-stage 叶页表页在 G-stage 不可读，触发隐式读 fault | mtval2 = 0 或精确等于隐式访问 PTE GPA>>2；非零时 mtinst 必须为 0x00003000 |
+| MTVAL-07 | htinst WARL 读写 | M-mode 写 0、任意 pattern 并重复写入读回 | 同 MTVAL-04 的 WARL 语义（零必须可保持，读回稳定，不要求原值回显） |
 
 ---
 

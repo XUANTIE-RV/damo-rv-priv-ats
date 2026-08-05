@@ -871,3 +871,37 @@ bool test_vcsr_17(void)
 
     HYP_TEST_END();
 }
+
+/* ===================================================================
+ * VCSR-18: mtval must not be read-only zero (H extension)
+ *
+ * norm:H_mtval_nrz: when the hypervisor extension is implemented,
+ * CSR mtval must not be read-only zero. A read-only-zero mtval is
+ * only legal without the H extension (see Sm_CSR MTRAP-10/11); in
+ * this suite the H extension is present, so mtval is required to
+ * hold written values. No degraded "read-only zero is acceptable"
+ * branch is allowed here.
+ * =================================================================== */
+TEST_REGISTER(test_vcsr_18);
+bool test_vcsr_18(void)
+{
+    TEST_BEGIN("VCSR-18: mtval is not read-only zero (H ext)");
+
+    uintptr_t orig = CSRR(mtval);
+
+    /* Pattern round-trip: mtval must be writable. */
+    CSRW(mtval, 0xDEADBEEFUL);
+    uintptr_t rb1 = CSRR(mtval);
+    TEST_ASSERT_EQ("mtval must be writable (norm:H_mtval_nrz)",
+                   rb1, 0xDEADBEEFUL);
+
+    /* Address-valued round-trip: mtval must hold faulting addresses. */
+    uintptr_t addr = (uintptr_t)test_vcsr_18;
+    CSRW(mtval, addr);
+    uintptr_t rb2 = CSRR(mtval);
+    TEST_ASSERT_EQ("mtval must hold an address value", rb2, addr);
+
+    CSRW(mtval, orig);
+
+    HYP_TEST_END();
+}

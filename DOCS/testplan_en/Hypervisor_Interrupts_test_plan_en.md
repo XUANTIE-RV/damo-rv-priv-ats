@@ -37,6 +37,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-4 
 
 | Norm ID | English Description |
 |---------|---------------------|
+| `norm:H_cause` | The hypervisor extension augments the trap cause encoding. Codes are added for VS-level interrupts (2, 6, 10), for supervisor-level guest external interrupts (12), for virtual-instruction exceptions (22), and for guest-page faults (20, 21, 23). Environment calls from VS-mode are assigned cause 10. This suite covers HS-level delivery of VS-level interrupt causes 2/6/10 (HINT-10/21/22). |
 | `norm:geilen` | The number of bits implemented in `hgeip` and `hgeie` for guest external interrupts is UNSPECIFIED and may be zero. This number is known as GEILEN. The least-significant bits are implemented first, apart from bit 0. Hence, if GEILEN is nonzero, bits GEILEN:1 shall be writable in `hgeie`, and all other bit positions shall be read-only zeros in both `hgeip` and `hgeie`. |
 | `norm:hgeie_op` | Register `hgeie` selects the subset of guest external interrupts that cause a supervisor-level (HS-level) guest external interrupt. The enable bits in `hgeie` do not affect the VS-level external interrupt signal selected from `hgeip` by `hstatus`.VGEIN. |
 | `norm:hgeie_sz_acc_op` | The `hgeie` register is an HSXLEN-bit read/write register that contains enable bits for the guest external interrupts at this hart. |
@@ -45,7 +46,9 @@ This section lists all specification points (norm IDs) referenced in Groups 1-4 
 | `norm:hideleg_hs` | An interrupt _i_ will trap to HS-mode whenever all of the following are true: (a) either the current operating mode is HS-mode and the SIE bit in the `sstatus` register is set, or the current operating mode has less privilege than HS-mode; (b) bit _i_ is set in both `sip` and `sie`, or in both `hip` and `hie`; and (c) bit _i_ is not set in `hideleg`. |
 | `norm:hideleg_op` | An interrupt that has been delegated to HS-mode (using `mideleg`) is further delegated to VS-mode if the corresponding `hideleg` bit is set. |
 | `norm:hideleg_trans` | When a virtual supervisor external interrupt (code 10) is delegated to VS-mode, it is automatically translated by the machine into a supervisor external interrupt (code 9) for VS-mode. Likewise, virtual supervisor timer interrupt (6) is translated into supervisor timer interrupt (5), and virtual supervisor software interrupt (2) into supervisor software interrupt (1). |
+| `norm:hie_acc` | A bit in `hie` shall be writable if the corresponding interrupt can ever become pending in `hip`. Bits of `hie` that are not writable shall be read-only zero. |
 | `norm:hie_op` | `hie` contains enable bits for the same interrupts. |
+| `norm:hip_acc` | If bit _i_ of `sie` is read-only zero, the same bit in register `hip` may be writable or may be read-only. When bit _i_ in `hip` is writable, a pending interrupt _i_ can be cleared by writing 0 to this bit. (The read-only-bit branch is cleared via `hvip`, see HINT-05/06/09.) |
 | `norm:hip_hie_sz_acc` | Registers `hip` and `hie` are HSXLEN-bit read/write registers that supplement HS-level's `sip` and `sie` respectively. |
 | `norm:hip_op` | The `hip` register indicates pending VS-level and hypervisor-specific interrupts. |
 | `norm:hip_vseip_vseie_op` | Bits `hip`.VSEIP and `hie`.VSEIE are the interrupt-pending and interrupt-enable bits for VS-level external interrupts. VSEIP is read-only in `hip`, and is the logical-OR of: bit VSEIP of `hvip`; the bit of `hgeip` selected by `hstatus`.VGEIN; and any other platform-specific external interrupt signal directed to VS-level. |
@@ -73,6 +76,9 @@ This section lists all specification points (norm IDs) referenced in Groups 1-4 
 - `norm:hip_vstip_vstie_acc_op`: VSTIP = hvip.VSTIP OR vstimecmp trigger
 - `norm:hip_vssip_vssie_op`: hip.VSSIP is an alias of hvip.VSSIP
 - `norm:hsint_priority`: HS-mode interrupt priority SEI > SSI > STI > SGEI > VSEI > VSSI > VSTI > LCOFI
+- `norm:hip_acc`: clearing a pending interrupt by writing 0 to a writable hip bit (HINT-19); read-only bits cleared via hvip (HINT-05/06/09)
+- `norm:hie_acc`: hie writable bits cover hip pending-capable bits; other bits are read-only zero (HINT-20)
+- `norm:H_cause`: HS-level delivery cause encodings 2/6/10 for VS-level interrupts (HINT-10/21/22)
 
 **Test Responsibilities**: Verify interrupt injection, pending/enable mechanism, priority, and mutual exclusion relationships.
 
@@ -96,6 +102,10 @@ This section lists all specification points (norm IDs) referenced in Groups 1-4 
 | HINT-16 | hvip non-writable bits read-only zero | Write hvip all 1s, read back | Only bits 2/6/10 (VSSIP/VSTIP/VSEIP) are 1, all others are 0 |
 | HINT-17 | hip.VSTIP remains defined at V=0 | In V=0 (HS-mode), set/clear hvip.VSTIP, read hip.VSTIP | hip.VSTIP reflects hvip.VSTIP at V=0 (defined behavior) |
 | HINT-18 | HS-mode interrupt priority SSI > STI | Both SSI and STI pending and enabled, enter HS-mode | SSI (cause=1) delivered first, proving SSI > STI |
+| HINT-19 | Writable hip bit cleared by writing 0 | Inject VSSIP -> hip.VSSIP=1; write hip.VSSIP=0 directly | hip.VSSIP=0, hvip.VSSIP=0 (alias), and the interrupt is no longer delivered to HS-mode (`norm:hip_acc`) |
+| HINT-20 | hie writable bits cover hip pending-capable bits | Probe hvip writable bits (pending-capable set) and hie writable bits (write all-1s readback) | writable(hie) covers writable(hvip) restricted to the base VS interrupt bits; non-writable bits read zero (`norm:hie_acc`) |
+| HINT-21 | VSTIP delivery cause encoding at HS-mode | hvip.VSTIP injection + hideleg[6]=0 + hie.VSTIE enabled, enter HS-mode | HS receives the interrupt with cause = interrupt\|6 (`norm:H_cause`) |
+| HINT-22 | VSEIP delivery cause encoding at HS-mode | hvip.VSEIP injection + hideleg[10]=0 + hie.VSEIE enabled, enter HS-mode | HS receives the interrupt with cause = interrupt\|10 (`norm:H_cause`) |
 
 ---
 

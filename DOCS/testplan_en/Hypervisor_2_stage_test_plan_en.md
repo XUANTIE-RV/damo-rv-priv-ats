@@ -36,6 +36,7 @@ The following table lists all specification norms referenced by this test plan a
 | `norm:hlsv_u_op` | Instructions HLVX.HU and HLVX.WU are the same as HLV.HU and HLV.WU, except that execute permission takes the place of read permission during address translation. The supervisor physical memory attributes must grant both execute and read permissions. |
 | `norm:hlsv_virtinst` | Attempts to execute a virtual-machine load/store instruction (HLV, HLVX, or HSV) when V=1 cause a virtual-instruction exception. |
 | `norm:hlsv_illegalinst` | Attempts to execute one of these same instructions from U-mode when `hstatus`.HU=0 cause an illegal-instruction exception. |
+| `norm:hlsv_op` | For every RV32I or RV64I load instruction, there is a corresponding virtual-machine load instruction: HLV.B, HLV.BU, HLV.H, HLV.HU, HLV.W, HLV.WU, and HLV.D. For every store instruction, there is: HSV.B, HSV.H, HSV.W, and HSV.D. Instructions HLV.WU, HLV.D, and HSV.D are not valid for RV32. The width and sign/zero-extension semantics of each variant are verified by TS-HLV-13/14. |
 | `norm:hfence-vvma_hfence-gvma_op` | HFENCE.VVMA and HFENCE.GVMA perform a function similar to SFENCE.VMA, except applying to the VS-level memory-management data structures controlled by CSR `vsatp` (HFENCE.VVMA) or the guest-physical memory-management data structures controlled by CSR `hgatp` (HFENCE.GVMA). |
 | `norm:hfence-vvma_mode` | HFENCE.VVMA is valid only in M-mode or HS-mode. Executing an HFENCE.VVMA guarantees that any previous stores already visible to the current hart are ordered before all implicit reads by that hart done for VS-stage address translation for subsequent instructions when `hgatp`.VMID has the same setting. |
 | `norm:hfence-vvma_limits` | Implicit reads need not be ordered when `hgatp`.VMID is different than at the time HFENCE.VVMA executed. If rs1≠x0, it specifies a single guest virtual address, and if rs2≠x0, it specifies a single guest address-space identifier (ASID). |
@@ -57,6 +58,7 @@ The following table lists all specification norms referenced by this test plan a
 | `norm:henvcfg_pbmte_op` | The PBMTE bit controls whether the Svpbmt extension is available for use in VS-stage address translation. When PBMTE=1, Svpbmt is available for VS-stage address translation. When PBMTE=0, the implementation behaves as though Svpbmt were not implemented for VS-stage address translation. If Svpbmt is not implemented, PBMTE is read-only zero. |
 | `norm:H_straddle` | When an instruction fetch or a misaligned memory access straddles a page boundary, two different address translations are involved. When a guest-page fault occurs, the faulting virtual address may be a page-boundary address that is higher than the instruction's original virtual address. |
 | `norm:mtval2_htval_virtaddr` | When a guest-page fault is not due to an implicit memory access for VS-stage address translation, a nonzero guest physical address written to `mtval2`/`htval` shall correspond to the exact virtual address written to `mtval`/`stval`. |
+| `norm:mtval2_trapval_other` | Otherwise, for misaligned loads and stores that cause guest-page faults, a nonzero guest physical address in `mtval2` corresponds to the faulting portion of the access as indicated by the virtual address in `mtval`. For instruction guest-page faults on systems with variable-length instructions, a nonzero `mtval2` corresponds to the faulting portion of the instruction (verified via htval in TS-STRD-01/02). |
 | `norm:H_vm_gpa_g` | The G bit in all G-stage PTEs is currently not used. It should be cleared by software for forward compatibility, and must be ignored by hardware. |
 | `norm:H_pmp` | Machine-level physical memory protection applies to supervisor physical addresses and is in effect regardless of virtualization mode. |
 | `norm:hgatp_mode_bare_trans` | When the address translation scheme selected by the MODE field of `hgatp` is Bare, guest physical addresses are equal to supervisor physical addresses without modification, and no memory protection applies in the trivial translation of guest physical addresses to supervisor physical addresses. |
@@ -373,6 +375,7 @@ The following table lists all specification norms referenced by this test plan a
 - `norm:hlvx-wu_valid32`: HLVX.WU is valid on RV32 as well
 - `norm:hlsv_virtinst`: V=1 execution of HLV/HLVX/HSV -> virtual-instruction exception
 - `norm:hlsv_illegalinst`: U-mode with hstatus.HU=0 -> illegal-instruction exception
+- `norm:hlsv_op`: every RV load/store has a corresponding HLV/HSV variant; width and sign/zero-extension semantics (TS-HLV-13/14)
 
 **Test Responsibility**: Verify HLV/HLVX/HSV behavior under two-stage translation, effective privilege control, MXR/SUM differences, exception triggering.
 
@@ -390,6 +393,8 @@ The following table lists all specification norms referenced by this test plan a
 | TS-HLV-10 | V=1 executes HLV -> virtual-inst | VS-mode executes `hlv.d` | virtual-instruction exception (cause=22) |
 | TS-HLV-11 | U-mode + HU=0 -> illegal | hstatus.HU=0, U-mode executes `hlv.d` | illegal-instruction exception (cause=2) |
 | TS-HLV-12 | U-mode + HU=1 -> normal | hstatus.HU=1, U-mode executes `hlv.d`, correct two-stage mapping | Success |
+| TS-HLV-13 | HLV width variants read and extension | Plant width-discriminating pattern in guest page, execute HLV.B/BU/H/HU/W/WU/D in sequence | Each variant reads the correct width with correct sign/zero extension (`norm:hlsv_op`) |
+| TS-HLV-14 | HSV width variants write isolation | Pre-fill guest page with 0xFF, execute HSV.B/H/W in sequence | Only the target-width bytes are modified; adjacent bytes remain 0xFF (`norm:hlsv_op`) |
 
 > [!NOTE]
 > TS-HLV-09 (HLVX) test requires test page to have at least X=1 in both VS-stage and G-stage (read permission may be absent). Additionally, SPA corresponding physical memory attributes must satisfy both X+R permissions (`norm:hlsv_u_op`), satisfied in practice through PMP configuration of full RWX.
@@ -442,13 +447,14 @@ The following table lists all specification norms referenced by this test plan a
 **Specification Basis**:
 - `norm:H_straddle`: When instruction fetch or misaligned memory access straddles page boundary, two address translations are involved; on guest-page-fault, stval may be page boundary address
 - `norm:mtval2_htval_virtaddr`: On non-implicit access guest-page-fault, nonzero GPA in htval must correspond to exact virtual address pointed to by stval
+- `norm:mtval2_trapval_other`: On misaligned-access / variable-length-fetch guest-page-fault, nonzero mtval2/htval corresponds to the faulting portion (TS-STRD-01/02)
 
 **Test Responsibility**: Verify fault behavior and htval/stval precision for cross-page-boundary accesses under two-stage translation.
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
-| TS-STRD-01 | Load crosses page, second page G-stage unmapped | 4-byte load starting at page_end-2, first page two-stage normal, second page G-stage invalid | guest-page-fault (cause=21), stval=second page start GVA, htval=second page GPA>>2 |
-| TS-STRD-02 | Fetch crosses page, second page G-stage no X | 2-byte compressed instruction starting at last byte of page, second page G-stage X=0 | inst guest-page-fault (cause=20), stval=second page start GVA |
+| TS-STRD-01 | Load crosses page, second page G-stage unmapped | 4-byte load starting at page_end-2, first page two-stage normal, second page G-stage invalid | guest-page-fault (cause=21), stval=second page start GVA, htval=0 or second page GPA>>2 (faulting portion, `norm:mtval2_trapval_other`) |
+| TS-STRD-02 | Fetch crosses page, second page G-stage no X | 32-bit instruction starting 2 bytes before the page end, second page G-stage X=0 | inst guest-page-fault (cause=20), stval=second page start GVA, htval=0 or second page GPA>>2 (`norm:mtval2_trapval_other`) |
 | TS-STRD-03 | Store crosses page, second page VS-stage no W | 4-byte store crosses page, second page VS-stage PTE W=0 | store page-fault (cause=15), stval=original VA |
 
 ---

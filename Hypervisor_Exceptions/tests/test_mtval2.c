@@ -6,8 +6,8 @@
 /*
  * Test Group 6: mtval2/mtinst registers (M-mode trap)
  *
- * Tests MTVAL-01 through MTVAL-06 verify mtval2 and mtinst behavior
- * per the strict-verification principles of the test plan
+ * Tests MTVAL-01 through MTVAL-07 verify mtval2, mtinst and htinst
+ * behavior per the strict-verification principles of the test plan
  * (DOCS/testplan/Hypervisor_Exceptions_test_plan.md, Group 6):
  *  - WARL read/write tests must not demand echo of the written value;
  *    zero must be holdable and readback must be stable;
@@ -230,5 +230,41 @@ bool mtval2_implicit_walk(void) {
     trap_expect_end();
 
     two_stage_cleanup(&ctx);
+    HYP_TEST_END();
+}
+
+/* ------------------------------------------------------------------
+ * MTVAL-07: htinst WARL read/write
+ *
+ * norm:htinst_val: htinst is WARL and need only hold the values the
+ * implementation may automatically write to it on a trap (zero is
+ * always among them, since every non-reporting trap writes zero).
+ * Echo of an arbitrary written value is NOT required; zero must be
+ * holdable and the readback of any value must be stable. Same WARL
+ * semantics as mtinst (MTVAL-04).
+ * ------------------------------------------------------------------ */
+TEST_REGISTER(htinst_basic_rw);
+bool htinst_basic_rw(void) {
+    TEST_BEGIN("MTVAL-07: htinst WARL read/write semantics");
+
+    asm volatile("csrw 0x64A, zero");
+    uintptr_t r0;
+    asm volatile("csrr %0, 0x64A" : "=r"(r0));
+    TEST_ASSERT_EQ("htinst must hold zero", r0, 0);
+
+    uintptr_t pattern = 0x9876543210FEDCBAUL;
+    uintptr_t r1a, r1b;
+    asm volatile("csrw 0x64A, %0" :: "r"(pattern));
+    asm volatile("csrr %0, 0x64A" : "=r"(r1a));
+    asm volatile("csrw 0x64A, %0" :: "r"(pattern));
+    asm volatile("csrr %0, 0x64A" : "=r"(r1b));
+    TEST_ASSERT_EQ("htinst readback must be stable", r1a, r1b);
+
+    uintptr_t r2;
+    asm volatile("csrr %0, 0x64A" : "=r"(r2));
+    TEST_ASSERT_EQ("htinst value must persist", r2, r1a);
+
+    asm volatile("csrw 0x64A, zero");
+
     HYP_TEST_END();
 }

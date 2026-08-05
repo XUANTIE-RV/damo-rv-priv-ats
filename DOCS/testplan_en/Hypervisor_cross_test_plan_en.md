@@ -74,6 +74,7 @@
 | `norm:hstateen0_aia_op` | `smstateen.adoc` | hstateen0.AIA (bit 59) controls VS-mode access to Ssaia state not covered by CSRIND or IMSIC bits. |
 | `norm:hstateen0_context_op` | `smstateen.adoc` | hstateen0.CONTEXT (bit 57) controls whether VS-mode may access scontext. |
 | `norm:Sstvala_virtual_inst_tval_inst` | `sstvala.adoc` | When a virtual-instruction exception is raised, `stval` must be written with the faulting instruction encoding. |
+| `norm:hcounteren_acc` | `hypervisor.adoc` | When the TM bit in `hcounteren` is clear, attempts to access the `vstimecmp` register (via `stimecmp`) while executing in VS-mode will cause a virtual-instruction exception if the same bit in `mcounteren` is set (HCROSS-SSTC-05). |
 | `norm:henvcfg_stce` | `hypervisor.adoc` | henvcfg.STCE=1 enables vstimecmp; when STCE=0, VS-mode (V=1) access to stimecmp raises virtual-instruction exception. |
 | `norm:vstimecmp_exist` | `sstc.adoc` | Sstc adds a new VS-level vstimecmp CSR. |
 | `norm:sstc_vs_facility` | `sstc.adoc` | Sstc provides a similar timer mechanism for VS-mode via the Hypervisor extension. |
@@ -408,6 +409,7 @@
 
 **Specification References**:
 - `norm:henvcfg_stce`: henvcfg.STCE=1 enables vstimecmp; when STCE=0, accessing stimecmp with V=1 produces a virtual-instruction exception
+- `norm:hcounteren_acc`: when hcounteren.TM=0 and mcounteren.TM=1, VS-mode access to stimecmp (vstimecmp) raises a virtual-instruction exception (HCROSS-SSTC-05)
 - `norm:vstimecmp_exist`: Sstc introduces the VS-level vstimecmp CSR
 - `norm:sstc_vs_facility`: Sstc provides a similar timer mechanism for the Hypervisor extension's VS-mode
 - `norm:hip_vstip_vstie_acc_op`: VSTIP = hvip.VSTIP OR vstimecmp timer signal
@@ -451,7 +453,7 @@
 |---------|-----------|------------------|-----------------|----------------|
 | HCROSS-SSTC-03 | VS-mode access to stimecmp when henvcfg.STCE=0 | menvcfg.STCE=1, henvcfg.STCE=0, VS-mode (V=1) reads stimecmp | Triggers virtual-instruction exception (cause=22) | `norm:henvcfg_stce` |
 | HCROSS-SSTC-04 | VS-mode access to stimecmp when henvcfg.STCE=1 | menvcfg.STCE=1, henvcfg.STCE=1, hcounteren.TM=1, VS-mode reads stimecmp | No exception, read succeeds (actually accesses vstimecmp) | `norm:henvcfg_stce` |
-| HCROSS-SSTC-05 | VS-mode access to stimecmp when hcounteren.TM=0 | menvcfg.STCE=1, henvcfg.STCE=1, hcounteren.TM=0, VS-mode reads stimecmp | Triggers virtual-instruction exception (cause=22) | `norm:henvcfg_stce` |
+| HCROSS-SSTC-05 | VS-mode access to stimecmp when hcounteren.TM=0 | menvcfg.STCE=1, henvcfg.STCE=1, hcounteren.TM=0, VS-mode reads stimecmp | Triggers virtual-instruction exception (cause=22) | `norm:hcounteren_acc`, `norm:henvcfg_stce` |
 
 #### 9.3 vstimecmp CSR Read/Write
 

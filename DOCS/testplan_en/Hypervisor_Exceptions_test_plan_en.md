@@ -38,10 +38,13 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 
 | Norm ID | English Description |
 |---------|---------------------|
+| `norm:H_cause` | The hypervisor extension augments the trap cause encoding. Codes are added for VS-level interrupts (2, 6, 10), for supervisor-level guest external interrupts (12), for virtual-instruction exceptions (22), and for guest-page faults (20, 21, 23). Environment calls from VS-mode are assigned cause 10. |
 | `norm:H_cause_ecall` | HS-mode and VS-mode ECALLs use different cause values so they can be delegated separately. |
 | `norm:H_cause_virtual_instruction` | When V=1, a virtual-instruction exception (code 22) is normally raised instead of an illegal-instruction exception if the attempted instruction is HS-qualified but is prevented from executing when V=1. An instruction is HS-qualified if it would be valid to execute in HS-mode, assuming TSR and TVM of `mstatus` are both zero. |
 | `norm:H_cause_virtual_instruction_high` | When V=1 and XLEN=32, an invalid attempt to access a high-half CSR raises a virtual-instruction exception instead of an illegal-instruction exception if the same CSR instruction for the corresponding low-half CSR is HS-qualified. |
+| `norm:H_csrs_hs_not_vs` | Additional CSRs are provided to HS-mode, but not to VS-mode, to manage two-stage address translation and to control the behavior of a VS-mode guest: `hstatus`, `hedeleg`, `hideleg`, `hvip`, `hip`, `hie`, `hgeip`, `hgeie`, `henvcfg`, `henvcfgh`, `hcounteren`, `htimedelta`, `htimedeltah`, `htval`, `htinst`, and `hgatp`. |
 | `norm:H_exception_priority` | If an instruction may raise multiple synchronous exceptions, the decreasing priority order indicates which exception is taken and reported in `mcause` or `scause`. |
+| `norm:H_illegal_high_half` | When XLEN>32, an attempt to access a high-half CSR always raises an illegal-instruction exception. |
 | `norm:H_illegalinst_xstatus_fs_vs` | Fields FS and VS in registers `sstatus` and `vsstatus` deviate from the usual HS-qualified rule. If an instruction is prevented from executing because FS or VS is zero in either `sstatus` or `vsstatus`, the exception raised is always an illegal-instruction exception, never a virtual-instruction exception. |
 | `norm:H_trap_deleg` | When a trap occurs in HS-mode or U-mode, it goes to M-mode, unless delegated by `medeleg` or `mideleg`, in which case it goes to HS-mode. When a trap occurs in VS-mode or VU-mode, it goes to M-mode, unless delegated by `medeleg`/`mideleg` to HS-mode, unless further delegated by `hedeleg`/`hideleg` to VS-mode. |
 | `norm:H_trap_hs_csrwrites` | When a trap is taken into HS-mode, V is set to 0, and `hstatus`.SPV and `sstatus`.SPP are set accordingly. If V was 1 before the trap, SPVP is set the same as `sstatus`.SPP; otherwise, SPVP is left unchanged. A trap into HS-mode also writes GVA in `hstatus`, SPIE and SIE in `sstatus`, and CSRs `sepc`, `scause`, `stval`, `htval`, and `htinst`. |
@@ -73,6 +76,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 | `norm:mstatus_tvm_hs` | Setting TVM=1 prevents HS-mode from accessing `hgatp` or executing HFENCE.GVMA or HINVAL.GVMA, but has no effect on accesses to `vsatp` or instructions HFENCE.VVMA or HINVAL.VVMA. |
 | `norm:mtinst_sz_acc_op` | The `mtinst` register is an MXLEN-bit read/write register. When a trap is taken into M-mode, `mtinst` is written with a value that, if nonzero, provides information about the instruction that trapped. |
 | `norm:mtinst_val` | `mtinst` is a WARL register that need only be able to hold the values that the implementation may automatically write to it on a trap. |
+| `norm:htinst_val` | `htinst` is a WARL register that need only be able to hold the values that the implementation may automatically write to it on a trap. |
 | `norm:mtval2_sz_acc_op` | The `mtval2` register is an MXLEN-bit read/write register. When a trap is taken into M-mode, `mtval2` is written with additional exception-specific information, alongside `mtval`. |
 | `norm:mtval2_trapval` | When a guest-page-fault trap is taken into M-mode, `mtval2` is written with either zero or the guest physical address that faulted, shifted right by 2 bits. For other traps, `mtval2` is set to zero. |
 | `norm:mtval2_trapval_vstrans` | If a guest-page fault is due to an implicit memory access during first-stage (VS-stage) address translation, a guest physical address written to `mtval2` is that of the implicit memory access that faulted. |
@@ -89,8 +93,11 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 **Specification References**:
 - `norm:H_cause_virtual_instruction`: HS-qualified instruction causes virtual-instruction exception (cause=22) when V=1 due to insufficient privilege or being disabled
 - `norm:H_cause_virtual_instruction_high`: Special rules for high-half CSR when V=1 and XLEN=32
+- `norm:H_illegal_high_half`: Dual rule for XLEN>32 — high-half CSR access is always an illegal-instruction, never a virtual-instruction
 - `norm:H_virtinst_vu_vs_hinst`: VS/VU-mode executes HLV/HLVX/HSV/HFENCE
 - `norm:H_virtinst_vu_vs_nonhigh_allowedhs_tvm0`: VS/VU-mode accesses H CSR / VS CSR
+- `norm:H_csrs_hs_not_vs`: H CSRs are provided to HS-mode only; VS-mode access raises virtual-instruction (VINST-07..10/25..31/49..52)
+- `norm:H_cause`: cause 22 (virtual-instruction) and cause 10 (ecall-from-VS, TENT-01) encodings
 - `norm:H_virtinst_vu_wfi_tw0` / `norm:H_virtinst_vu_sret_sfence`: VU-mode executes WFI/SRET/SFENCE
 - `norm:H_virtinst_vu_nonhigh_supervisor_allowedhs_tvm0`: VU-mode accesses S CSR
 - `norm:H_virtinst_wfi_vtw1_tw0`: VS-mode WFI + VTW=1 + TW=0
@@ -147,6 +154,14 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 | VINST-42 | VS-mode executes HSV.H | VS-mode executes HSV.H | virtual-instruction exception (cause=22) |
 | VINST-43 | VS-mode executes HSV.D | VS-mode executes HSV.D | virtual-instruction exception (cause=22) |
 | VINST-44 | mstatus.TSR=1 does not affect VS-mode SRET | mstatus.TSR=1, hstatus.VTSR=1, VS-mode SRET. TSR only affects HS-mode (norm:mstatus_modes); VS-mode SRET is controlled only by VTSR | virtual-instruction exception (cause=22) |
+| VINST-45 | RV64 HS-mode accesses high-half CSR cycleh | On RV64, HS-mode csrr cycleh (CSR 0xC80) | illegal-instruction exception (cause=2) |
+| VINST-46 | RV64 VS-mode high-half CSR access is always illegal | On RV64, VS-mode csrr cycleh with hcounteren[0]=0 and mcounteren[0]=1 (gating condition prone to false cause=22) | illegal-instruction exception (cause=2), not cause=22 |
+| VINST-47 | RV64 VU-mode high-half CSR access is always illegal | On RV64, VU-mode csrr instreth (CSR 0xC82) with mcounteren[2]=hcounteren[2]=scounteren[2]=1 (proves high-half stays illegal even fully enabled) | illegal-instruction exception (cause=2) |
+| VINST-48 | RV64 M-mode high-half CSR access is always illegal | On RV64, M-mode csrr cycleh (SPEC "always" semantics covers M-mode) | illegal-instruction exception (cause=2) |
+| VINST-49 | VS-mode accesses hgeip | VS-mode csrr hgeip (`norm:H_csrs_hs_not_vs`) | virtual-instruction exception (cause=22) |
+| VINST-50 | VS-mode accesses hgeie | VS-mode csrr hgeie (`norm:H_csrs_hs_not_vs`) | virtual-instruction exception (cause=22) |
+| VINST-51 | VS-mode accesses htval | VS-mode csrr htval (`norm:H_csrs_hs_not_vs`) | virtual-instruction exception (cause=22) |
+| VINST-52 | VS-mode accesses htinst | VS-mode csrr htinst (`norm:H_csrs_hs_not_vs`) | virtual-instruction exception (cause=22) |
 
 ---
 
@@ -177,6 +192,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 | TENT-13 | VU-mode trap to M-mode | VU-mode exception not delegated by medeleg | MPV=1, MPP=0 |
 | TENT-14 | HS-mode trap to M-mode | HS-mode exception | MPV=0, MPP=1 |
 | TENT-15 | htval/htinst zero on non-guest-page-fault | VS-mode ecall trap to HS-mode | htval=0, htinst=0 |
+| TENT-16 | htval/htinst on guest-page-fault delegated to HS-mode | medeleg delegates GPF to HS-mode (hedeleg GPF bits are read-only zero), deterministic VS-mode load triggers GPF | cause=21 from V=1; htval=0 or GPA>>2 (the full spec-legal set of `norm:htval_trapval`, strictly one of the two); htinst=0 or exactly the golden transformed instruction |
 
 ---
 
@@ -245,7 +261,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 | TINST-05 | Pseudoinstruction for implicit VS-stage read fault | VS-stage leaf page-table page made unreadable at G-stage, triggering an implicit read guest-page-fault | htinst=0x00003000 when htval≠0 (zero NOT allowed); accepted when htval=0 |
 | TINST-06 | Pseudoinstruction for implicit write (A/D update) | VS-stage leaf page-table page has D=0 at G-stage, triggering an implicit write fault; SKIP on platforms with Svadu | htinst=0x00003020 when htval≠0 (zero NOT allowed) |
 | TINST-07 | Transformed instruction field structure verification | 32-bit load triggers fault; field-by-field check when htinst is nonzero | opcode/funct3/rd preserved, imm zeroed, Addr. Offset correct, bits 1:0 = 11 |
-| TINST-08 | Compressed instruction transformed bit 1:0 encoding | 16-bit C.LW triggers fault | htinst bits 1:0 = 01 (compressed instruction); remains SKIP (no compressed-instruction probe in the current framework) |
+| TINST-08 | Compressed instruction transformed encoding | 16-bit `c.lw` (0x4108) triggers a load guest-page-fault | htinst == 0 or == the compressed transformed value (expand to the 32-bit equivalent, transform, replace bit 1 with 0 so bits 1:0 = 01, `norm:H_trap_xtinst_exception`) |
 | TINST-09 | Page-fault does not produce pseudoinstruction | VS-stage leaf PTE R=0 triggers load page-fault (cause=13, not guest-page-fault) | htinst=0 or transformed instruction (golden exact match); pseudoinstruction values not allowed |
 | TINST-10 | illegal-instruction allows only zero | VS-mode executes an illegal instruction (standard exception, tinst-values table allows Zero only) | htinst=0 (strict) |
 
@@ -290,6 +306,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 - `norm:mtval2_trapval_vstrans`: On guest-page-fault caused by implicit VS-stage access, mtval2 is written with the GPA of the implicit access
 - `norm:mtval2_val`: WARL, must be able to hold zero; echoing an arbitrary written value is not required, but readback must be stable
 - `norm:mtinst_sz_acc_op` / `norm:mtinst_val`: mtinst format and WARL (need only hold the values the implementation may automatically write on a trap)
+- `norm:htinst_val`: htinst WARL (need only hold the values the implementation may automatically write on a trap; zero is always among them), same read/write semantics as mtinst
 
 **Test Responsibilities**: Verify write behavior of mtval2/mtinst on M-mode trap. In this suite VS/HS traps are not delegated by default and are all taken into M-mode; the framework captures mtval2/mtinst at M-mode trap entry (`trap_get_htval()`/`trap_get_htinst()` are mtval2/mtinst on the M-mode delivery path).
 
@@ -303,6 +320,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 | MTVAL-04 | WARL read/write of mtinst | M-mode writes 0 and arbitrary patterns, writes repeatedly and reads back | Same WARL semantics as MTVAL-01 |
 | MTVAL-05 | mtinst value on M-mode guest-page-fault trap | Deterministic VS-mode load triggers guest-page-fault | mtinst = 0 or exactly the transformed instruction (golden) |
 | MTVAL-06 | mtval2 on implicit VS-stage access fault | VS-stage leaf page-table page made unreadable at G-stage, triggering an implicit read fault | mtval2 = 0 or exactly the implicit-access PTE GPA>>2; when nonzero, mtinst must be 0x00003000 |
+| MTVAL-07 | WARL read/write of htinst | M-mode writes 0 and arbitrary patterns, writes repeatedly and reads back | Same WARL semantics as MTVAL-04 (zero must be holdable, readback stable, echoing the original value is not required) |
 
 ---
 

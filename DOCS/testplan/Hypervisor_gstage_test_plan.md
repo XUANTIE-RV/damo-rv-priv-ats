@@ -49,7 +49,7 @@
 | `norm:hgatp_mode_sv` | When HSXLEN=32, the only other valid setting for MODE is Sv32x4. When HSXLEN=64, modes Sv39x4, Sv48x4, and Sv57x4 are defined. | 当 HSXLEN=32 时，MODE 的唯一其他有效设置为 Sv32x4。当 HSXLEN=64 时，定义了 Sv39x4、Sv48x4 和 Sv57x4 模式。 |
 | `norm:hgatp_mode_warl` | A write to `hgatp` with an unsupported MODE value is not ignored as it is for `satp`. Instead, the fields of `hgatp` are WARL in the normal way, when so indicated. | 使用不支持的 MODE 值写入 `hgatp` 不会像 `satp` 那样被忽略。`hgatp` 的字段按常规 WARL 方式处理。 |
 | `norm:hgatp_ppn_op` | For the paged virtual-memory schemes, the root page table is 16 KiB and must be aligned to a 16-KiB boundary. In these modes, the lowest two bits of the physical page number (PPN) in `hgatp` always read as zeros. | 对于分页虚拟内存方案，根页表为 16 KiB 且必须对齐到 16 KiB 边界。这些模式下 `hgatp` 中 PPN 的最低两位始终读为零。 |
-| `norm:hgatp_vmid` | The number of VMID bits is UNSPECIFIED and may be zero. | VMID 位数未指定，可以为零。 |
+| `norm:hgatp_vmid` | The number of VMID bits is UNSPECIFIED and may be zero. | VMID 位数未指定，可以为零（GHCSR-07 探测 VMIDLEN 并验证合法范围写读，容忍 VMIDLEN=0）。 |
 | `norm:hgatp_vmid_lsbs` | The least-significant bits of VMID are implemented first: that is, if VMIDLEN > 0, VMID[VMIDLEN-1:0] is writable. The maximal value of VMIDLEN, termed VMIDMAX, is 7 for Sv32x4 or 14 for Sv39x4, Sv48x4, and Sv57x4. | VMID 的最低有效位先实现。VMIDMAX 对于 Sv32x4 为 7，对于 Sv39x4/Sv48x4/Sv57x4 为 14。 |
 | `norm:hgatp_mode_sv39x4` | For Sv39x4, partitioning is identical to Sv39, except with 2 more bits at the high end in VPN[2]. Address bits 63:41 must all be zeros, or else a guest-page-fault exception occurs. | Sv39x4 的分区与 Sv39 相同，但 VPN[2] 高端多 2 位。地址位 63:41 必须全为零，否则发生客户页错误。 |
 | `norm:hgatp_mode_sv48x4` | For Sv48x4, partitioning is identical to Sv48, except with 2 more bits at the high end in VPN[3]. Address bits 63:50 must all be zeros, or else a guest-page-fault exception occurs. | Sv48x4 的分区与 Sv48 相同，但 VPN[3] 高端多 2 位。地址位 63:50 必须全为零，否则发生客户页错误。 |
@@ -58,6 +58,7 @@
 | `norm:H_vm_gpatrans` | The conversion of an Sv32x4, Sv39x4, Sv48x4, or Sv57x4 guest physical address uses the same algorithm as Sv32, Sv39, Sv48, or Sv57, except: `hgatp` substitutes for `satp`; the effective privilege mode must be VS-mode or VU-mode; the current privilege mode is always taken to be U-mode when checking the U bit; and guest-page-fault exceptions are raised instead of regular page-fault exceptions. | Sv32x4/Sv39x4/Sv48x4/Sv57x4 客户物理地址转换使用与 Sv32/Sv39/Sv48/Sv57 相同的算法，但有以下区别：`hgatp` 替代 `satp`；有效特权模式须为 VS/VU；检查 U 位时始终视为 U 模式；引发客户页错误而非普通页错误。 |
 | `norm:H_vm_gpapriv` | For G-stage address translation, all memory accesses are considered to be user-level accesses. Access type permissions are checked during G-stage translation the same as for VS-stage. For memory accesses supporting VS-stage translation, permissions and A/D bit needs are checked as though for an implicit load or store, not for the original access type. However, any exception is always reported for the original access type. | G 阶段地址翻译中，所有内存访问视为用户级访问。访问权限检查方式与 VS 阶段相同。支持 VS 阶段翻译的内存访问按隐式 load/store 检查权限和 A/D 位需求，但异常始终按原始访问类型报告。 |
 | `norm:H_vm_gpa_g` | The G bit in all G-stage PTEs is currently not used. It should be cleared by software for forward compatibility, and must be ignored by hardware. | G 阶段 PTE 中的 G 位当前未使用。软件应清零以保持前向兼容，硬件必须忽略。 |
+| `norm:H_cause` | The hypervisor extension augments the trap cause encoding. Codes are added for VS-level interrupts (2, 6, 10), for supervisor-level guest external interrupts (12), for virtual-instruction exceptions (22), and for guest-page faults (20, 21, 23). Environment calls from VS-mode are assigned cause 10. | hypervisor 扩展增加 trap cause 编码；本套件验证客户页错误 cause 20/21/23（GFAULT/TS/AD 系列用例）。 |
 | `norm:H_guest_page_fault` | Guest-page-fault traps may be delegated from M-mode to HS-mode under the control of `medeleg`, but cannot be delegated to other privilege modes. On a guest-page fault, `mtval` or `stval` is written with the faulting guest virtual address, and `mtval2` or `htval` is written either with zero or with the faulting guest physical address, shifted right by 2 bits. | 客户页错误可通过 `medeleg` 从 M 模式委托给 HS 模式，但不能委托给其他特权模式。客户页错误时 `mtval`/`stval` 写入故障客户虚拟地址，`mtval2`/`htval` 写入零或故障客户物理地址右移 2 位。 |
 | `norm:htval_trapval` | When a guest-page-fault trap is taken into HS-mode, `htval` is written with either zero or the guest physical address that faulted, shifted right by 2 bits. For other traps, `htval` is set to zero. | 客户页错误陷阱进入 HS 模式时，`htval` 写入零或故障的客户物理地址右移 2 位。其他陷阱时 `htval` 设为零。 |
 | `norm:mtval2_htval_virtaddr` | When a guest-page fault is not due to an implicit memory access for VS-stage address translation, a nonzero guest physical address written to `mtval2`/`htval` shall correspond to the exact virtual address written to `mtval`/`stval`. | 当客户页错误不是由 VS 阶段地址翻译的隐式内存访问引起时，写入 `mtval2`/`htval` 的非零客户物理地址必须对应写入 `mtval`/`stval` 的确切虚拟地址。 |
@@ -459,7 +460,7 @@ bool test_gstage_u0_faults(void) {
 | GFAULT-01 | load fault cause=21 | 触发 load guest-page-fault | scause=21 |
 | GFAULT-02 | store fault cause=23 | 触发 store guest-page-fault | scause=23 |
 | GFAULT-03 | inst fault cause=20 | 触发 inst guest-page-fault | scause=20 |
-| GFAULT-04 | htval = GPA>>2 | 显式 load fault，检查 htval | htval == faulting GPA >> 2 |
+| GFAULT-04 | htval = GPA>>2 | 显式 load fault，检查 htval | 0 或 faulting GPA >> 2（本组 trap 递送到 M-mode，`trap_get_htval()` 观测的是 mtval2；`norm:mtval2_trapval` 允许写零，其他任何值均为违规） |
 | GFAULT-05 | stval = GVA | 显式 load fault，检查 stval | stval == faulting GVA（在 VS-stage Bare 下 GVA=GPA） |
 | GFAULT-06 | hstatus.GVA = 1 | guest-page-fault 写 GVA 到 stval | hstatus.GVA == 1 |
 | GFAULT-07 | htinst transformed for load | load fault 的 htinst 为 transformed load 或 0 | htinst 符合 `norm:H_trap_xtinst_exception_list` |
@@ -469,10 +470,10 @@ bool test_gstage_u0_faults(void) {
 > `norm:H_trap_xtinst_guestpage_rw` 中的 **write pseudoinstruction**（0x00002020 / 0x00003020）场景仅在 VS-stage 隐式访问更新 A/D 位时触发 G-stage fault 才会出现，属于两阶段联合行为，由 `docs/two_stage_translation_test_plan.md` 覆盖。本组（VS-stage Bare）不存在 VS-stage 隐式访问，因此仅验证 read pseudoinstruction / transformed instruction / 0 的情况。
 
 ```c
-/* GFAULT-04 示例：htval = GPA >> 2 */
+/* GFAULT-04 示例：mtval2 = 0 或 GPA >> 2 */
 TEST_REGISTER(test_gstage_htval_gpa_shifted);
 bool test_gstage_htval_gpa_shifted(void) {
-    TEST_BEGIN("GFAULT-04: htval reports faulting GPA shifted right by 2");
+    TEST_BEGIN("GFAULT-04: mtval2 reports 0 or faulting GPA shifted right by 2");
 
     two_stage_ctx_t ctx;
     gpt_pool_reset();
@@ -491,7 +492,13 @@ bool test_gstage_htval_gpa_shifted(void) {
     TEST_ASSERT("guest-page-fault triggered", trap_was_triggered());
     TEST_ASSERT_EQ("cause is load guest-page-fault",
                    trap_get_cause(), CAUSE_LOAD_GUEST_PAGE_FAULT);
-    CHECK_HTVAL("htval = GPA >> 2", bad_gpa >> 2);
+    /* Traps in this group are taken into M-mode, so the observed
+     * register is mtval2; norm:mtval2_trapval allows zero (a WARL
+     * subset holding only zero is legal), hence the strict assertion
+     * accepts exactly the two spec-legal values. */
+    uintptr_t hv = trap_get_htval();
+    TEST_ASSERT("mtval2 == 0 or GPA >> 2 (strict)",
+                hv == 0 || hv == (bad_gpa >> 2));
     trap_expect_end();
 
     two_stage_cleanup(&ctx);

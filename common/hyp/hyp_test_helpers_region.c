@@ -96,6 +96,21 @@ bool probe_store_gpf(uintptr_t victim_gpa, uintptr_t victim_flags) {
     return fired;
 }
 
+/* Compressed-load variant (TINST-08): same GPF scenario but the
+ * trapping instruction is a 2-byte `c.lw`. */
+bool probe_load_gpf_c(uintptr_t victim_gpa, uintptr_t victim_flags) {
+    two_stage_ctx_t ctx;
+    setup_gstage_with_victim(&ctx, victim_gpa, victim_flags);
+
+    trap_expect_begin();
+    (void)two_stage_run_in_vs(&ctx, vs_load_probe_c, victim_gpa);
+    bool fired = trap_was_triggered();
+    trap_expect_end();
+
+    two_stage_cleanup(&ctx);
+    return fired;
+}
+
 uintptr_t setup_implicit_walk_victim(two_stage_ctx_t *ctx,
                                      uintptr_t test_va,
                                      uintptr_t victim_g_flags)

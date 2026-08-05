@@ -126,6 +126,15 @@ void trap_probe_mtval2(void) {
     trap_expect_end();
 }
 
+/* Explicit override of the mtval2 availability gate. Tests that
+ * transiently disable the H extension at runtime (e.g. clearing
+ * misa.H per norm:misa_h_op) must suppress the handler's entry-time
+ * mtval2 read for the disabled window to avoid a nested-trap loop,
+ * then re-probe with trap_probe_mtval2() after restoring. */
+void trap_set_mtval2_present(bool present) {
+    trap_mtval2_present = present;
+}
+
 static inline void _trace_add(unsigned priv, uintptr_t cause,
                               uintptr_t epc, uintptr_t status,
                               uintptr_t tval, uintptr_t mtval2,

@@ -474,3 +474,106 @@ bool test_ts_hlv_12_u_hu1_ok(void) {
     TEST_ASSERT("HLV.D in U-mode (HU=1) did not trap", !fired);
     HYP_TEST_END();
 }
+
+/* ===================================================================
+ * TS-HLV-13: every HLV width variant reads with the correct width
+ *            and sign/zero extension.
+ *
+ * norm:hlsv_op: for every RV64I load there is a corresponding
+ * virtual-machine load (HLV.B/BU/H/HU/W/WU/D). Each must read exactly
+ * its operand width and apply the correct extension.
+ * =================================================================== */
+TEST_REGISTER(test_ts_hlv_13_load_widths);
+bool test_ts_hlv_13_load_widths(void) {
+    TEST_BEGIN("TS-HLV-13: HLV.B/BU/H/HU/W/WU/D width and extension");
+    REQUIRE_VSATP_MODE(G13_VSMODE);
+    REQUIRE_HGATP_MODE(G13_GMODE);
+
+    two_stage_ctx_t ctx;
+    uintptr_t va = (uintptr_t)test_fault_page;
+
+    /* Plant width-discriminating patterns (MSB of each field set so
+     * sign- vs zero-extension is observable). */
+    *(volatile uint64_t *)(va + 0)  = 0x0000000000000080ULL; /* byte */
+    *(volatile uint64_t *)(va + 8)  = 0x0000000000008001ULL; /* half */
+    *(volatile uint64_t *)(va + 16) = 0x0000000080000002ULL; /* word */
+    *(volatile uint64_t *)(va + 24) = 0x8000000000000003ULL; /* dword */
+
+    ts2_setup_full(&ctx, G13_VSMODE, G13_GMODE);
+    two_stage_enable(&ctx, /*vmid*/0);
+    hstatus_set_spvp(PRIV_S);
+
+    trap_expect_begin();
+    uintptr_t v_b  = (uintptr_t)(uint64_t)(int8_t)hlv_b(va + 0);
+    uintptr_t v_bu = (uintptr_t)hlv_bu(va + 0);
+    uintptr_t v_h  = (uintptr_t)(uint64_t)(int16_t)hlv_h(va + 8);
+    uintptr_t v_hu = (uintptr_t)hlv_hu(va + 8);
+    uintptr_t v_w  = (uintptr_t)(uint64_t)(int32_t)hlv_w(va + 16);
+    uintptr_t v_wu = (uintptr_t)hlv_wu(va + 16);
+    uintptr_t v_d  = (uintptr_t)hlv_d(va + 24);
+    bool fired = trap_was_triggered();
+    trap_expect_end();
+    ts2_finish(&ctx);
+
+    TEST_ASSERT("no trap on HLV width probes", !fired);
+    TEST_ASSERT_EQ("HLV.B sign-extends byte",
+                   v_b, (uintptr_t)(uint64_t)(int8_t)0x80);
+    TEST_ASSERT_EQ("HLV.BU zero-extends byte", v_bu, 0x80UL);
+    TEST_ASSERT_EQ("HLV.H sign-extends halfword",
+                   v_h, (uintptr_t)(uint64_t)(int16_t)0x8001);
+    TEST_ASSERT_EQ("HLV.HU zero-extends halfword", v_hu, 0x8001UL);
+    TEST_ASSERT_EQ("HLV.W sign-extends word",
+                   v_w, (uintptr_t)(uint64_t)(int32_t)0x80000002);
+    TEST_ASSERT_EQ("HLV.WU zero-extends word", v_wu, 0x80000002UL);
+    TEST_ASSERT_EQ("HLV.D reads full doubleword",
+                   v_d, 0x8000000000000003ULL);
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * TS-HLV-14: every HSV width variant writes exactly its operand
+ *            width and leaves adjacent bytes untouched.
+ *
+ * norm:hlsv_op: for every RV64I store there is a corresponding
+ * virtual-machine store (HSV.B/H/W/D).
+ * =================================================================== */
+TEST_REGISTER(test_ts_hlv_14_store_widths);
+bool test_ts_hlv_14_store_widths(void) {
+    TEST_BEGIN("TS-HLV-14: HSV.B/H/W/D store width isolation");
+    REQUIRE_VSATP_MODE(G13_VSMODE);
+    REQUIRE_HGATP_MODE(G13_GMODE);
+
+    two_stage_ctx_t ctx;
+    uintptr_t va = (uintptr_t)test_fault_page;
+
+    /* Fill three 8-byte slots with 0xFF so any out-of-width write
+     * would corrupt the sentinel bytes. */
+    *(volatile uint64_t *)(va + 64) = 0xFFFFFFFFFFFFFFFFULL;
+    *(volatile uint64_t *)(va + 72) = 0xFFFFFFFFFFFFFFFFULL;
+    *(volatile uint64_t *)(va + 80) = 0xFFFFFFFFFFFFFFFFULL;
+
+    ts2_setup_full(&ctx, G13_VSMODE, G13_GMODE);
+    two_stage_enable(&ctx, /*vmid*/0);
+    hstatus_set_spvp(PRIV_S);
+
+    trap_expect_begin();
+    hsv_b(va + 64, 0x11);
+    hsv_h(va + 72, 0x2233);
+    hsv_w(va + 80, 0x44556677UL);
+    bool fired = trap_was_triggered();
+    trap_expect_end();
+
+    uintptr_t rb_b = *(volatile uint64_t *)(va + 64);
+    uintptr_t rb_h = *(volatile uint64_t *)(va + 72);
+    uintptr_t rb_w = *(volatile uint64_t *)(va + 80);
+    ts2_finish(&ctx);
+
+    TEST_ASSERT("no trap on HSV width probes", !fired);
+    TEST_ASSERT_EQ("HSV.B writes exactly one byte",
+                   rb_b, 0xFFFFFFFFFFFFFF11ULL);
+    TEST_ASSERT_EQ("HSV.H writes exactly two bytes",
+                   rb_h, 0xFFFFFFFFFFFF2233ULL);
+    TEST_ASSERT_EQ("HSV.W writes exactly four bytes",
+                   rb_w, 0xFFFFFFFF44556677ULL);
+    HYP_TEST_END();
+}

@@ -533,6 +533,16 @@ extern bool      trap_get_spv_snap(void);
 void trap_probe_mtval2(void);
 
 /**
+ * trap_set_mtval2_present - Override the mtval2 availability gate
+ *
+ * Sets the handler-side gate directly without trapping. Needed by
+ * tests that transiently disable the H extension at runtime (e.g.
+ * clearing misa.H): suppress the entry-time mtval2 read while H is
+ * disabled, then call trap_probe_mtval2() after restoring.
+ */
+void trap_set_mtval2_present(bool present);
+
+/**
  * reset_state - Reset all PMP and test state
  *
  * Clears all PMP entries, resets mseccfg, returns to M-mode.

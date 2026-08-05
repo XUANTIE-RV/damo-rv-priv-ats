@@ -36,6 +36,7 @@
 
 | Norm ID | 原文 | 中文说明 |
 |---------|------|----------|
+| `norm:H_mtval_nrz` | CSR `mtval` must not be read-only zero. | 实现 H 扩展时 CSR `mtval` 不得为只读零。 |
 | `norm:hedeleg_acc` | Each bit of `hedeleg` shall be either writable or read-only zero. Many bits of `hedeleg` are required specifically to be writable or zero, as enumerated in the table. Bit 0, corresponding to instruction address-misaligned exceptions, must be writable if IALIGN=32. | `hedeleg` 的每一位要么可写要么为只读零。第 0 位（指令地址未对齐异常）在 IALIGN=32 时必须可写。 |
 | `norm:hedeleg_sz_acc` | Register `hedeleg` is a 64-bit read/write register. | `hedeleg` 是一个 64 位读写寄存器。 |
 | `norm:henvcfg_adue_op` | If the Svadu extension is implemented, the ADUE bit controls whether hardware updating of PTE A/D bits is enabled for VS-stage address translation. When ADUE=1, hardware updating is enabled. When ADUE=0, the implementation behaves as though Svade were implemented for VS-stage address translation. If Svadu is not implemented, ADUE is read-only zero. | 若实现了 Svadu 扩展，ADUE 位控制 VS 阶段地址翻译的 PTE A/D 位硬件更新是否启用。ADUE=1 时启用，ADUE=0 时行为如同实现了 Svade。未实现 Svadu 时，ADUE 为只读零。 |
@@ -116,6 +117,7 @@
 - `norm:H_vscsrs_v1`：V=1 时 HS-level S CSR 保留值但不影响行为
 - `norm:H_vscsrs_v0`：V=0 时 VS CSR 不影响行为
 - `norm:H_scsrs_nomatch`：无匹配 VS CSR 的 S CSR（senvcfg/scounteren/scontext）在 V=1 时的行为
+- `norm:H_mtval_nrz`：实现 H 扩展时 mtval 不得为只读零（VCSR-18）
 
 **测试职责**：验证 V=1/V=0 两种模式下 VS CSR 的替代、访问控制和隔离行为。
 
@@ -138,6 +140,7 @@
 | VCSR-15 | V=1 时 satp 访问 vsatp | HS-mode 写 vsatp，VS-mode csrr satp | 读到 vsatp 的值 |
 | VCSR-16 | 无匹配 VS CSR 的 senvcfg 在 V=1 时功能正常 | V=1 时 VS-mode 读写 senvcfg，验证该 CSR 直接生效而非被替代 | senvcfg 读写正常，hypervisor 需手动 swap |
 | VCSR-17 | 无匹配 VS CSR 的 scounteren 在 V=1 时功能正常 | V=1 时设置 scounteren，验证 VU-mode 计数器访问受其控制 | scounteren 控制 VU-mode 计数器可见性 |
+| VCSR-18 | mtval 非只读零（H 扩展） | H 扩展存在时写 mtval 模式值与地址值并回读 | 必须保持写入值（`norm:H_mtval_nrz`，无 read-only zero 降级分支） |
 
 ---
 

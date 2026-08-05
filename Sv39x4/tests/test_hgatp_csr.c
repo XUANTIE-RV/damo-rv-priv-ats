@@ -185,6 +185,14 @@ bool test_ghcsr_07_vmidlen(void) {
     }
     TEST_ASSERT("VMIDLEN <= 14", vmidlen <= 14);
 
+    /* norm:hgatp_vmid_lsbs: the least-significant VMID bits are
+     * implemented first, so the readback must be a contiguous mask
+     * of vmidlen low bits. */
+    uintptr_t expect_mask = (vmidlen == 0) ? 0UL
+                          : ((1UL << vmidlen) - 1UL);
+    TEST_ASSERT_EQ("VMID implemented bits are contiguous LSBs",
+                   vmid_field, expect_mask);
+
     if (vmidlen > 0) {
         unsigned vmid = 0x5U & ((1U << vmidlen) - 1U);
         hgatp_write(MAKE_HGATP(SUITE_HGATP_MODE, vmid, 0));
