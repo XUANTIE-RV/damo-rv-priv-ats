@@ -289,12 +289,59 @@ bool htinst_bits_encoding(void) {
 
 /* ------------------------------------------------------------------
  * TINST-08: Compressed instruction transformed encoding
+ *
+ * norm:H_trap_xtinst_exception: for a standard COMPRESSED trapping
+ * instruction the transformed value is found by (1) expanding to the
+ * 32-bit equivalent, (2) transforming that instruction, (3) replacing
+ * bit 1 with 0 -- so bits 1:0 = 01 mark a compressed source
+ * (hypervisor.adoc, "Transformed Instruction").
+ * A 2-byte `c.lw a0, 0(a0)` (0x4108) faults on a G-stage leaf
+ * without read permission; htinst must be 0 (always allowed) or
+ * exactly that compressed transformed value.
  * ------------------------------------------------------------------ */
 TEST_REGISTER(htinst_compressed_encoding);
 bool htinst_compressed_encoding(void) {
     TEST_BEGIN("TINST-08: Verify compressed instruction transformed encoding");
 
-    TEST_SKIP("requires a compressed-instruction VS-mode fault probe");
+#if !defined(__riscv_compressed)
+    TEST_SKIP("C extension not available in this test build");
+#endif
+
+    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+
+    uintptr_t victim_gpa = (uintptr_t)test_fault_page;
+    /* G-stage leaf: readable NOT (no R/W/X) -> load guest-page-fault. */
+    uintptr_t flags = PTE_V | PTE_U | PTE_A | PTE_D;
+    bool fired = probe_load_gpf_c(victim_gpa, flags);
+
+    TEST_ASSERT("load guest-page-fault fired", fired);
+    TEST_ASSERT_EQ("cause = load guest-page-fault",
+                   trap_get_cause(), (uintptr_t)CAUSE_LOAD_GUEST_PAGE_FAULT);
+
+    /* The trapping instruction at mepc must be the compressed c.lw. */
+    uintptr_t epc  = trap_get_epc();
+    uintptr_t half = *(volatile uint16_t *)epc;
+    TEST_ASSERT("trapping inst is compressed (bits 1:0 != 11)",
+                (half & 3UL) != 3UL);
+    TEST_ASSERT_EQ("compressed inst is c.lw a0, 0(a0)", half, 0x4108UL);
+
+    /* Golden value: expanded equivalent is `lw a0, 0(a0)` =
+     * 0x00052503; transform it, then replace bit 1 with 0. */
+    uintptr_t tval = trap_get_tval();
+    uintptr_t off  = (tval != 0 && tval >= victim_gpa)
+                     ? (tval - victim_gpa) : 0;
+    uintptr_t golden = hyp_transform_mem_inst(0x00052503UL, off) & ~2UL;
+    TEST_ASSERT("golden transformed value computable", golden != 0);
+
+    uintptr_t val = trap_get_htinst();
+    if (!(val == 0 || val == golden)) {
+        printf("  [INFO] TINST-08: trap-inst-reg=0x%lx golden=0x%lx "
+               "tval=0x%lx\n",
+               (unsigned long)val, (unsigned long)golden,
+               (unsigned long)tval);
+    }
+    TEST_ASSERT("htinst == 0 or transformed uncompressed equivalent",
+                val == 0 || val == golden);
 
     HYP_TEST_END();
 }

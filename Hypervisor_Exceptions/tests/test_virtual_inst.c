@@ -906,3 +906,178 @@ bool vinst_44_tsr_no_effect_vs_mode(void)
 
     HYP_TEST_END();
 }
+
+/* ===================================================================
+ * High-half counter CSR trampolines (VINST-45 .. VINST-48).
+ *
+ * cycleh (0xC80) and instreth (0xC82) exist only on RV32. On RV64
+ * (XLEN>32) these addresses are reserved, and per
+ * norm:H_illegal_high_half any access must raise an
+ * illegal-instruction exception. Numeric CSR addresses are used to
+ * avoid assembler symbol dependencies.
+ * =================================================================== */
+
+static uintptr_t vinst_read_cycleh(uintptr_t arg)
+{
+    (void)arg;
+    uintptr_t v;
+    asm volatile ("csrr %0, 0xC80" : "=r"(v));  /* cycleh */
+    return v;
+}
+
+static uintptr_t vinst_read_instreth(uintptr_t arg)
+{
+    (void)arg;
+    uintptr_t v;
+    asm volatile ("csrr %0, 0xC82" : "=r"(v));  /* instreth */
+    return v;
+}
+
+/* ===================================================================
+ * VINST-45: RV64 HS-mode accesses high-half CSR cycleh
+ *
+ * Per norm:H_illegal_high_half:
+ *   "When XLEN>32, an attempt to access a high-half CSR always
+ *    raises an illegal-instruction exception."
+ *
+ * Verify that HS-mode csrr cycleh (CSR 0xC80) traps with cause=2.
+ * =================================================================== */
+TEST_REGISTER(vinst_45_hs_cycleh_illegal);
+bool vinst_45_hs_cycleh_illegal(void)
+{
+    TEST_BEGIN("VINST-45: RV64 HS-mode accesses high-half CSR cycleh");
+
+    EXPECT_ILLEGAL_INST(asm volatile ("csrr x0, 0xC80"));
+
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * VINST-46: RV64 VS-mode high-half CSR access is always illegal
+ *
+ * Configure hcounteren[0]=0 with mcounteren[0]=1, which is exactly
+ * the gating condition of norm:H_virtinst_vs_nonhighctr_h0_m1 that
+ * would yield a virtual-instruction exception for the low-half CSR
+ * (cycle). The high-half counterpart (cycleh) must still raise an
+ * illegal-instruction exception (cause=2), never cause=22.
+ * =================================================================== */
+TEST_REGISTER(vinst_46_vs_cycleh_illegal);
+bool vinst_46_vs_cycleh_illegal(void)
+{
+    TEST_BEGIN("VINST-46: RV64 VS-mode high-half CSR access is always illegal");
+
+    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_hcen = hcounteren_read();
+
+    /* Gating condition prone to a false cause=22 report. */
+    mcounteren_set(1UL << 0);
+    hcounteren_clear(1UL << 0);
+
+    EXPECT_ILLEGAL_INST(run_in_vs_mode(vinst_read_cycleh, 0));
+
+    /* Restore. */
+    hcounteren_write(saved_hcen);
+    mcounteren_write(saved_mcen);
+
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * VINST-47: RV64 VU-mode high-half CSR access is always illegal
+ *
+ * Enable all three counter-enable layers for instret (bit 2) so the
+ * low-half CSR would be fully accessible from VU-mode; the high-half
+ * CSR (instreth) must still raise an illegal-instruction exception
+ * per norm:H_illegal_high_half.
+ * =================================================================== */
+TEST_REGISTER(vinst_47_vu_instreth_illegal);
+bool vinst_47_vu_instreth_illegal(void)
+{
+    TEST_BEGIN("VINST-47: RV64 VU-mode high-half CSR access is always illegal");
+
+    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_hcen = hcounteren_read();
+    uintptr_t saved_scen = scounteren_read();
+
+    /* Fully enable the low-half counter for VU-mode. */
+    mcounteren_set(1UL << 2);
+    hcounteren_set(1UL << 2);
+    scounteren_set(1UL << 2);
+
+    EXPECT_ILLEGAL_INST(run_in_vu_mode(vinst_read_instreth, 0));
+
+    /* Restore. */
+    scounteren_write(saved_scen);
+    hcounteren_write(saved_hcen);
+    mcounteren_write(saved_mcen);
+
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * VINST-48: RV64 M-mode high-half CSR access is always illegal
+ *
+ * The word "always" in norm:H_illegal_high_half covers M-mode as
+ * well: even at the highest privilege level, accessing a high-half
+ * CSR on RV64 must raise an illegal-instruction exception.
+ * =================================================================== */
+TEST_REGISTER(vinst_48_m_cycleh_illegal);
+bool vinst_48_m_cycleh_illegal(void)
+{
+    TEST_BEGIN("VINST-48: RV64 M-mode high-half CSR access is always illegal");
+
+    EXPECT_ILLEGAL_INST(asm volatile ("csrr x0, 0xC80"));
+
+    HYP_TEST_END();
+}
+
+/* ===================================================================
+ * VINST-49..52: VS accesses remaining H-extension CSRs
+ *
+ * norm:H_csrs_hs_not_vs: the H-extension CSRs are provided to
+ * HS-mode, but not to VS-mode. Any VS-mode access (even a plain
+ * read of a read-only CSR) must raise a virtual-instruction
+ * exception (cause=22). VINST-07..10/25..31 already cover hstatus,
+ * hedeleg, hgatp, hideleg, hcounteren, htimedelta, hip, hie, hvip
+ * and henvcfg; these cases complete the list with hgeip, hgeie,
+ * htval and htinst.
+ * =================================================================== */
+TEST_REGISTER(vinst_49_vs_hgeip);
+bool vinst_49_vs_hgeip(void)
+{
+    TEST_BEGIN("VINST-49: VS accesses hgeip");
+
+    EXPECT_VIRTUAL_INST(run_in_vs_mode(vs_read_hgeip, 0));
+
+    HYP_TEST_END();
+}
+
+TEST_REGISTER(vinst_50_vs_hgeie);
+bool vinst_50_vs_hgeie(void)
+{
+    TEST_BEGIN("VINST-50: VS accesses hgeie");
+
+    EXPECT_VIRTUAL_INST(run_in_vs_mode(vs_read_hgeie, 0));
+
+    HYP_TEST_END();
+}
+
+TEST_REGISTER(vinst_51_vs_htval);
+bool vinst_51_vs_htval(void)
+{
+    TEST_BEGIN("VINST-51: VS accesses htval");
+
+    EXPECT_VIRTUAL_INST(run_in_vs_mode(vs_read_htval, 0));
+
+    HYP_TEST_END();
+}
+
+TEST_REGISTER(vinst_52_vs_htinst);
+bool vinst_52_vs_htinst(void)
+{
+    TEST_BEGIN("VINST-52: VS accesses htinst");
+
+    EXPECT_VIRTUAL_INST(run_in_vs_mode(vs_read_htinst, 0));
+
+    HYP_TEST_END();
+}

@@ -102,6 +102,16 @@ bool test_ts_strd_01_load_g_invalid(void) {
 
     bool ok = (fired && cause == CAUSE_LOAD_GUEST_PAGE_FAULT);
     TEST_ASSERT("cause = load-guest-fault (21)", ok);
+
+    /* norm:mtval2_trapval_other: for a misaligned access causing a
+     * guest-page fault, a nonzero mtval2/htval must correspond to the
+     * FAULTING PORTION of the access. The straddling load faults on
+     * the second page, so a nonzero value must be page2 GPA >> 2
+     * (identity-mapped here). Zero is allowed (norm:htval_trapval). */
+    uintptr_t hv = trap_get_htval();
+    TEST_ASSERT("htval = 0 or faulting-portion GPA>>2 (page2)",
+                hv == 0 || hv == (page2 >> 2));
+
     HYP_TEST_END();
 }
 
@@ -162,6 +172,15 @@ bool test_ts_strd_02_fetch_g_no_x(void) {
 
     bool ok = (fired && cause == CAUSE_INST_GUEST_PAGE_FAULT);
     TEST_ASSERT("cause = inst-guest-fault (20)", ok);
+
+    /* norm:mtval2_trapval_other: for an instruction guest-page fault
+     * (variable-length fetch straddling the page edge), a nonzero
+     * mtval2/htval must correspond to the faulting portion of the
+     * instruction, i.e. the second page here. Zero is allowed. */
+    uintptr_t hv = trap_get_htval();
+    TEST_ASSERT("htval = 0 or faulting-portion GPA>>2 (page2)",
+                hv == 0 || hv == (page2 >> 2));
+
     HYP_TEST_END();
 }
 

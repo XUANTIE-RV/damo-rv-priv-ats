@@ -6,9 +6,10 @@
 /*
  * test_writable.c - Group 1: hcounteren Writability Verification
  *
- * Tests SHCNTW-WR-01 through SHCNTW-WR-04
+ * Tests SHCNTW-WR-01 through SHCNTW-WR-05
  * Validates that hcounteren bits corresponding to implemented counters
- * are writable (can be set to 1 and cleared to 0).
+ * are writable (can be set to 1 and cleared to 0), and that the
+ * register itself is 32 bits wide.
  */
 
 /* ------------------------------------------------------------------ */
@@ -136,6 +137,32 @@ bool test_shcounterenw_wr_04_hpm(void) {
 
     if (!found_any) TEST_SKIP("no hpmcounter3-31 implemented");
     TEST_ASSERT("all implemented hpmcounter hcounteren bits writable", true);
+
+    TEST_END();
+}
+
+/* ------------------------------------------------------------------ */
+/* SHCNTW-WR-05: hcounteren is a 32-bit register (upper bits RO zero) */
+/* ------------------------------------------------------------------ */
+TEST_REGISTER(test_shcounterenw_wr_05_width);
+bool test_shcounterenw_wr_05_width(void) {
+    TEST_BEGIN("SHCNTW-WR-05: hcounteren upper 32 bits read-only zero");
+    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+#if __riscv_xlen == 64
+    uintptr_t saved = hcounteren_read();
+
+    /* norm:hcounteren_sz: hcounteren is a 32-bit register. On RV64
+     * an all-ones write must not take effect in bits 63:32. */
+    hcounteren_write(~0UL);
+    uintptr_t readback = hcounteren_read();
+    TEST_ASSERT_EQ("hcounteren bits 63:32 read-only zero",
+                   readback & ~0xFFFFFFFFUL, (uintptr_t)0);
+
+    /* Restore */
+    hcounteren_write(saved);
+#else
+    TEST_SKIP("32-bit width check only meaningful on RV64");
+#endif
 
     TEST_END();
 }

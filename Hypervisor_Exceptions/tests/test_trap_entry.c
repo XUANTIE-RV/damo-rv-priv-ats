@@ -6,7 +6,7 @@
 /*
  * Test Group 2: TENT - trap entry behaviour
  *
- * Tests TENT-01 through TENT-15 verify trap entry CSR auto-write behavior.
+ * Tests TENT-01 through TENT-16 verify trap entry CSR auto-write behavior.
  */
 
 #include "hyp_test_helpers.h"
@@ -398,5 +398,74 @@ bool tent_15_htval_htinst_zero(void) {
     TEST_ASSERT_EQ("htval == 0", trap_get_htval(), 0);
     TEST_ASSERT_EQ("htinst == 0", trap_get_htinst(), 0);
 
+    HYP_TEST_END();
+}
+
+/* ------------------------------------------------------------------
+ * TENT-16: htval/htinst on a guest-page-fault delegated to HS-mode
+ *
+ * norm:htval_trapval: on a guest-page-fault trap taken into HS-mode,
+ * htval is written with either zero or the faulting GPA >> 2 -- the
+ * full spec-legal set, nothing else. The baseline H extension does
+ * NOT mandate a nonzero write (that is Shtvala), so zero must be
+ * accepted here; the Shtvala suite asserts the nonzero requirement.
+ * htinst follows the same "zero or exact golden" rule.
+ *
+ * The fault is delegated M -> HS via medeleg (hedeleg GPF bits are
+ * read-only zero, so it stops at HS-mode) and the values are captured
+ * at HS trap entry by the framework (hyp_capture_s); a post-hoc CSR
+ * read would see the rewrite caused by the VS-mode return ecall.
+ * ------------------------------------------------------------------ */
+TEST_REGISTER(tent_16_htval_delegated_gpf);
+bool tent_16_htval_delegated_gpf(void) {
+    TEST_BEGIN("TENT-16: htval on GPF delegated to HS-mode (0 or GPA>>2)");
+
+    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+
+    uintptr_t gpf_mask = (1UL << CAUSE_INST_GUEST_PAGE_FAULT) |
+                         (1UL << CAUSE_LOAD_GUEST_PAGE_FAULT) |
+                         (1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
+
+    uintptr_t medeleg_saved = CSRR(medeleg);
+    uintptr_t hedeleg_saved = hedeleg_read();
+
+    /* Delegate guest-page faults M -> HS; keep them at HS-mode. */
+    CSRW(medeleg, medeleg_saved | gpf_mask);
+    hedeleg_write(0);
+
+    /* H mandates GPF delegability: dropped bits are a violation. */
+    TEST_ASSERT_EQ("medeleg GPF bits delegable",
+                   CSRR(medeleg) & gpf_mask, gpf_mask);
+
+    uintptr_t victim_gpa = (uintptr_t)test_fault_page;
+    uintptr_t flags = PTE_V | PTE_U | PTE_A | PTE_D;  /* no R/W/X */
+    bool fired = probe_load_gpf(victim_gpa, flags);
+
+    /* Restore delegation before asserting so failures stay contained. */
+    CSRW(medeleg, medeleg_saved);
+    hedeleg_write(hedeleg_saved);
+
+    TEST_ASSERT("load guest-page-fault fired", fired);
+    if (fired) {
+        TEST_ASSERT_EQ("cause = load guest-page-fault",
+                       trap_get_cause(),
+                       (uintptr_t)CAUSE_LOAD_GUEST_PAGE_FAULT);
+        TEST_ASSERT("trap came from V=1 (SPV/SPVP at entry)",
+                    trap_get_spv_snap());
+
+        /* htval captured at HS trap entry (hyp_capture_s). */
+        uintptr_t htval = trap_get_htval();
+        if (htval == 0) {
+            printf("  [INFO] implementation writes 0 to htval on GPF "
+                   "(allowed by norm:htval_trapval)\n");
+        }
+        TEST_ASSERT("htval == 0 or GPA>>2 (strict)",
+                    htval == 0 || htval == (victim_gpa >> 2));
+
+        (void)check_xtinst_zero_or_golden(
+            "htinst == 0 or exact transformed load", 0x03UL, victim_gpa);
+    }
+
+    hyp_reset_state();
     HYP_TEST_END();
 }

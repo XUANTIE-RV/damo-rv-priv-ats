@@ -259,6 +259,34 @@ uintptr_t vs_read_hgatp(uintptr_t arg) {
     return v;
 }
 
+uintptr_t vs_read_hgeip(uintptr_t arg) {
+    (void)arg;
+    uintptr_t v;
+    asm volatile ("csrr %0, 0xE12" : "=r"(v));  /* hgeip (read-only) */
+    return v;
+}
+
+uintptr_t vs_read_hgeie(uintptr_t arg) {
+    (void)arg;
+    uintptr_t v;
+    asm volatile ("csrr %0, 0x607" : "=r"(v));  /* hgeie */
+    return v;
+}
+
+uintptr_t vs_read_htval(uintptr_t arg) {
+    (void)arg;
+    uintptr_t v;
+    asm volatile ("csrr %0, 0x643" : "=r"(v));  /* htval */
+    return v;
+}
+
+uintptr_t vs_read_htinst(uintptr_t arg) {
+    (void)arg;
+    uintptr_t v;
+    asm volatile ("csrr %0, 0x64A" : "=r"(v));  /* htinst */
+    return v;
+}
+
 uintptr_t vs_read_vsstatus_direct(uintptr_t arg) {
     (void)arg;
     uintptr_t v;
@@ -550,6 +578,24 @@ uintptr_t vs_store_probe(uintptr_t addr) {
         "sd zero, 0(a0)\n\t"
         ".option pop\n\t"
         "li a0, 0\n\t"
+        "ret\n\t"
+        ::: "memory"
+    );
+}
+
+/* Compressed-load variant for TINST-08: exactly one 2-byte `c.lw`
+ * (encoding 0x4108, `c.lw a0, 0(a0)`, equivalent to `lw a0, 0(a0)`)
+ * against arg. The trapping instruction is compressed, so the SPEC
+ * transformed value is derived from the UNCOMPRESSED equivalent with
+ * bit 1 replaced by 0 (bits 1:0 = 01 mark a compressed source,
+ * norm:H_trap_xtinst_exception). */
+uintptr_t vs_load_probe_c(uintptr_t addr) __attribute__((naked, aligned(16)));
+uintptr_t vs_load_probe_c(uintptr_t addr) {
+    asm volatile (
+        ".option push\n\t"
+        ".option rvc\n\t"
+        "c.lw a0, 0(a0)\n\t"
+        ".option pop\n\t"
         "ret\n\t"
         ::: "memory"
     );

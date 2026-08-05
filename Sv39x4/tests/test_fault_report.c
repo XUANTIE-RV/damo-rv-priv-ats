@@ -19,7 +19,7 @@
  * GFAULT-01: load gpf  -> mcause = 21
  * GFAULT-02: store gpf -> mcause = 23
  * GFAULT-03: inst gpf  -> mcause = 20
- * GFAULT-04: htval == GPA >> 2 (load fault)
+ * GFAULT-04: mtval2 == 0 or GPA >> 2 (load fault)
  * GFAULT-05: stval == GVA      (load fault)
  * GFAULT-06: GVA flag set on load gpf
  * GFAULT-07: htinst != 0 on load gpf (transformed)
@@ -84,10 +84,17 @@ static bool _fire_load_fault(uintptr_t victim_gpa, uintptr_t flags) {
     return fired;
 }
 
-/* GFAULT-04: htval == GPA >> 2 on load fault */
+/* GFAULT-04: mtval2 == 0 or GPA >> 2 on load fault
+ *
+ * hedeleg=0 and no medeleg GPF delegation in this suite, so the
+ * fault is taken into M-mode and trap_get_htval() reflects mtval2.
+ * norm:mtval2_trapval allows either zero or the faulting GPA >> 2;
+ * any other value is a spec violation. Zero must be accepted (an
+ * implementation whose mtval2 WARL subset holds only zero is legal,
+ * norm:mtval2_val). */
 TEST_REGISTER(test_gfault_04_htval);
 bool test_gfault_04_htval(void) {
-    TEST_BEGIN("GFAULT-04: htval == faulting GPA >> 2");
+    TEST_BEGIN("GFAULT-04: mtval2 == 0 or faulting GPA >> 2");
     uintptr_t target = (uintptr_t)test_fault_page;
     uintptr_t flags  = (G_FLAGS_RWXU_AD & ~PTE_R);
 
@@ -95,7 +102,12 @@ bool test_gfault_04_htval(void) {
     TEST_ASSERT("load gpf fired", fired);
     if (fired) {
         uintptr_t htval = trap_get_htval();
-        TEST_ASSERT_EQ("htval == GPA>>2", htval, target >> 2);
+        if (htval == 0) {
+            printf("  [INFO] implementation writes 0 to mtval2 on GPF "
+                   "(allowed by norm:mtval2_trapval)\n");
+        }
+        TEST_ASSERT("mtval2 == 0 or GPA>>2 (strict)",
+                    htval == 0 || htval == (target >> 2));
     }
     hyp_reset_state();
     HYP_TEST_END();

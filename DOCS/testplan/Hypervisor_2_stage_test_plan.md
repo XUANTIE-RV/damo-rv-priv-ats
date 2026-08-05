@@ -72,6 +72,7 @@
 | `norm:hlsv_u_op` | Instructions HLVX.HU and HLVX.WU are the same as HLV.HU and HLV.WU, except that execute permission takes the place of read permission during address translation. The supervisor physical memory attributes must grant both execute and read permissions. | HLVX.HU 和 HLVX.WU 与 HLV.HU 和 HLV.WU 相同，但地址翻译时执行权限替代读权限。supervisor 物理内存属性必须同时授予执行和读权限。 |
 | `norm:hlsv_virtinst` | Attempts to execute a virtual-machine load/store instruction (HLV, HLVX, or HSV) when V=1 cause a virtual-instruction exception. | V=1 时尝试执行虚拟机 load/store 指令引发虚拟指令异常。 |
 | `norm:hlsv_illegalinst` | Attempts to execute one of these same instructions from U-mode when `hstatus`.HU=0 cause an illegal-instruction exception. | 当 `hstatus`.HU=0 时从 U 模式执行这些指令引发非法指令异常。 |
+| `norm:hlsv_op` | For every RV32I or RV64I load instruction, there is a corresponding virtual-machine load instruction: HLV.B, HLV.BU, HLV.H, HLV.HU, HLV.W, HLV.WU, and HLV.D. For every store instruction, there is: HSV.B, HSV.H, HSV.W, and HSV.D. Instructions HLV.WU, HLV.D, and HSV.D are not valid for RV32. | 每条 RV load/store 指令都有对应的虚拟机 load/store 指令（HLV.B/BU/H/HU/W/WU/D，HSV.B/H/W/D）；各变体的宽度与符号/零扩展语义由 TS-HLV-13/14 验证。 |
 | `norm:hfence-vvma_hfence-gvma_op` | HFENCE.VVMA and HFENCE.GVMA perform a function similar to SFENCE.VMA, except applying to the VS-level memory-management data structures controlled by CSR `vsatp` (HFENCE.VVMA) or the guest-physical memory-management data structures controlled by CSR `hgatp` (HFENCE.GVMA). | HFENCE.VVMA 和 HFENCE.GVMA 类似 SFENCE.VMA，但分别应用于 `vsatp` 控制的 VS 级内存管理数据结构和 `hgatp` 控制的客户物理内存管理数据结构。 |
 | `norm:hfence-vvma_mode` | HFENCE.VVMA is valid only in M-mode or HS-mode. Executing an HFENCE.VVMA guarantees that any previous stores already visible to the current hart are ordered before all implicit reads by that hart done for VS-stage address translation for subsequent instructions when `hgatp`.VMID has the same setting. | HFENCE.VVMA 仅在 M 模式或 HS 模式有效。执行后保证先前可见的存储在 `hgatp`.VMID 相同时排在后续 VS 阶段地址翻译的隐式读取之前。 |
 | `norm:hfence-vvma_limits` | Implicit reads need not be ordered when `hgatp`.VMID is different than at the time HFENCE.VVMA executed. If rs1≠x0, it specifies a single guest virtual address, and if rs2≠x0, it specifies a single guest address-space identifier (ASID). | `hgatp`.VMID 不同时隐式读取无需排序。rs1≠x0 指定单个客户虚拟地址，rs2≠x0 指定单个客户 ASID。 |
@@ -93,6 +94,7 @@
 | `norm:henvcfg_pbmte_op` | The PBMTE bit controls whether the Svpbmt extension is available for use in VS-stage address translation. When PBMTE=1, Svpbmt is available for VS-stage address translation. When PBMTE=0, the implementation behaves as though Svpbmt were not implemented for VS-stage address translation. If Svpbmt is not implemented, PBMTE is read-only zero. | PBMTE 位控制 Svpbmt 扩展是否可用于 VS 阶段地址翻译。PBMTE=1 时可用，PBMTE=0 时行为如同未实现。若未实现 Svpbmt，PBMTE 为只读零。 |
 | `norm:H_straddle` | When an instruction fetch or a misaligned memory access straddles a page boundary, two different address translations are involved. When a guest-page fault occurs, the faulting virtual address may be a page-boundary address that is higher than the instruction's original virtual address. | 当取指或未对齐内存访问跨越页边界时涉及两个地址翻译。客户页错误时故障虚拟地址可能是高于指令原始虚拟地址的页边界地址。 |
 | `norm:mtval2_htval_virtaddr` | When a guest-page fault is not due to an implicit memory access for VS-stage address translation, a nonzero guest physical address written to `mtval2`/`htval` shall correspond to the exact virtual address written to `mtval`/`stval`. | 当客户页错误不是由 VS 阶段地址翻译的隐式内存访问引起时，写入 `mtval2`/`htval` 的非零客户物理地址必须对应写入 `mtval`/`stval` 的确切虚拟地址。 |
+| `norm:mtval2_trapval_other` | Otherwise, for misaligned loads and stores that cause guest-page faults, a nonzero guest physical address in `mtval2` corresponds to the faulting portion of the access as indicated by the virtual address in `mtval`. For instruction guest-page faults on systems with variable-length instructions, a nonzero `mtval2` corresponds to the faulting portion of the instruction. | 未对齐 load/store 引发客户页错误时，非零 `mtval2` 对应访问的故障部分；变长指令的取指客户页错误同理（TS-STRD-01/02 验证 htval）。 |
 | `norm:H_vm_gpa_g` | The G bit in all G-stage PTEs is currently not used. It should be cleared by software for forward compatibility, and must be ignored by hardware. | G 阶段 PTE 中的 G 位当前未使用。软件应清零以保持前向兼容，硬件必须忽略。 |
 | `norm:H_pmp` | Machine-level physical memory protection applies to supervisor physical addresses and is in effect regardless of virtualization mode. | 机器级物理内存保护适用于 supervisor 物理地址，与虚拟化模式无关。 |
 | `norm:hgatp_mode_bare_trans` | When the address translation scheme selected by the MODE field of `hgatp` is Bare, guest physical addresses are equal to supervisor physical addresses without modification, and no memory protection applies in the trivial translation of guest physical addresses to supervisor physical addresses. | 当 `hgatp` 的 MODE 选择 Bare 时，客户物理地址未经修改即等于 supervisor 物理地址，该平凡翻译中不施加任何内存保护。 |
@@ -588,6 +590,7 @@ bool test_vsstatus_mxr_does_not_override_gstage(void) {
 - `norm:hlvx-wu_valid32`：HLVX.WU 在 RV32 也有效
 - `norm:hlsv_virtinst`：V=1 时执行 HLV/HLVX/HSV → virtual-instruction exception
 - `norm:hlsv_illegalinst`：U-mode 且 hstatus.HU=0 时 → illegal-instruction exception
+- `norm:hlsv_op`：每条 RV load/store 都有对应 HLV/HSV 变体，宽度与符号/零扩展语义（TS-HLV-13/14）
 
 **测试职责**：验证 HLV/HLVX/HSV 在两阶段翻译下的行为、effective privilege 控制、MXR/SUM 差异、异常触发。
 
@@ -605,6 +608,8 @@ bool test_vsstatus_mxr_does_not_override_gstage(void) {
 | TS-HLV-10 | V=1 执行 HLV → virtual-inst | VS-mode 执行 `hlv.d` | virtual-instruction exception (cause=22) |
 | TS-HLV-11 | U-mode + HU=0 → illegal | hstatus.HU=0，U-mode 执行 `hlv.d` | illegal-instruction exception (cause=2) |
 | TS-HLV-12 | U-mode + HU=1 → 正常 | hstatus.HU=1，U-mode 执行 `hlv.d`，正确两阶段映射 | 成功 |
+| TS-HLV-13 | HLV 各宽度变体的读取与扩展 | guest 页植入宽度判别 pattern，依次执行 HLV.B/BU/H/HU/W/WU/D | 各变体读取宽度正确，符号/零扩展语义正确（`norm:hlsv_op`） |
+| TS-HLV-14 | HSV 各宽度变体的写入隔离 | guest 页预填 0xFF，依次执行 HSV.B/H/W | 仅目标宽度字节被修改，相邻字节保持 0xFF（`norm:hlsv_op`） |
 
 ```c
 /* TS-HLV-07：sstatus.MXR=1 使 G-stage X-only 页面可读 */
@@ -771,13 +776,14 @@ bool test_mprv_mpv_vs_level(void) {
 **规范依据**：
 - `norm:H_straddle`：取指或未对齐内存访问跨越页边界时涉及两个地址翻译；guest-page-fault 时 stval 可能是页边界地址
 - `norm:mtval2_htval_virtaddr`：非隐式访问的 guest-page-fault 时，htval 中的非零 GPA 必须对应 stval 指向的确切虚拟地址
+- `norm:mtval2_trapval_other`：未对齐访问/变长取指引发 guest-page-fault 时，非零 mtval2/htval 对应故障部分（TS-STRD-01/02）
 
 **测试职责**：验证跨页边界访问在两阶段翻译下的 fault 行为和 htval/stval 精度。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
-| TS-STRD-01 | Load 跨页，第二页 G-stage 未映射 | 4 字节 load 起始于 page_end-2，第一页两阶段正常，第二页 G-stage 无效 | guest-page-fault (cause=21)，stval=第二页起始 GVA，htval=第二页 GPA>>2 |
-| TS-STRD-02 | Fetch 跨页，第二页 G-stage 无 X | 2 字节压缩指令起始于页尾倒数第 1 字节，第二页 G-stage X=0 | inst guest-page-fault (cause=20)，stval=第二页起始 GVA |
+| TS-STRD-01 | Load 跨页，第二页 G-stage 未映射 | 4 字节 load 起始于 page_end-2，第一页两阶段正常，第二页 G-stage 无效 | guest-page-fault (cause=21)，stval=第二页起始 GVA，htval=0 或第二页 GPA>>2（故障部分，`norm:mtval2_trapval_other`） |
+| TS-STRD-02 | Fetch 跨页，第二页 G-stage 无 X | 32 位指令起始于页尾倒数第 2 字节，第二页 G-stage X=0 | inst guest-page-fault (cause=20)，stval=第二页起始 GVA，htval=0 或第二页 GPA>>2（`norm:mtval2_trapval_other`） |
 | TS-STRD-03 | Store 跨页，第二页 VS-stage 无 W | 4 字节 store 跨页，第二页 VS-stage PTE W=0 | store page-fault (cause=15)，stval=原始 VA |
 
 ---

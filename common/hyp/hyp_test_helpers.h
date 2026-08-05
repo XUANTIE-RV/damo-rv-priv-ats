@@ -205,6 +205,10 @@ uintptr_t vs_read_hip(uintptr_t arg);
 uintptr_t vs_read_hie(uintptr_t arg);
 uintptr_t vs_read_hvip(uintptr_t arg);
 uintptr_t vs_read_henvcfg(uintptr_t arg);
+uintptr_t vs_read_hgeip(uintptr_t arg);
+uintptr_t vs_read_hgeie(uintptr_t arg);
+uintptr_t vs_read_htval(uintptr_t arg);
+uintptr_t vs_read_htinst(uintptr_t arg);
 
 /* H-CSR write — should trap in V=1. */
 uintptr_t vs_write_hstatus(uintptr_t val);
@@ -290,6 +294,7 @@ bool fire_vs_store_fault(uintptr_t victim_gpa, uintptr_t flags);
  * from the instruction bytes at mepc. */
 uintptr_t vs_load_probe(uintptr_t addr);
 uintptr_t vs_store_probe(uintptr_t addr);
+uintptr_t vs_load_probe_c(uintptr_t addr);
 
 /* Compute the SPEC-defined transformed instruction for a trapping
  * memory instruction, or 0 if inst is not a recognized standard
@@ -304,6 +309,7 @@ uintptr_t hyp_transform_mem_inst(uintptr_t inst, uintptr_t addr_offset);
  * inspection until the next trap_expect_begin/hyp_reset_state. */
 bool probe_load_gpf(uintptr_t victim_gpa, uintptr_t victim_flags);
 bool probe_store_gpf(uintptr_t victim_gpa, uintptr_t victim_flags);
+bool probe_load_gpf_c(uintptr_t victim_gpa, uintptr_t victim_flags);
 
 /* Implicit VS-stage walk fault setup (norm:mtval2_trapval_vstrans /
  * norm:H_trap_xtinst_guestpage): build VS-stage Sv39 + G-stage Sv39x4

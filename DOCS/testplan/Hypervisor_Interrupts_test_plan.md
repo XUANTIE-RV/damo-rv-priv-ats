@@ -37,6 +37,7 @@
 
 | Norm ID | 原文 | 中文说明 |
 |---------|------|----------|
+| `norm:H_cause` | The hypervisor extension augments the trap cause encoding. Codes are added for VS-level interrupts (2, 6, 10), for supervisor-level guest external interrupts (12), for virtual-instruction exceptions (22), and for guest-page faults (20, 21, 23). Environment calls from VS-mode are assigned cause 10. | hypervisor 扩展增加 trap cause 编码：VS 级中断（2/6/10）、HS 级客户外部中断（12）等；本套件覆盖 VS 级中断 cause 2/6/10 的 HS 级递送（HINT-10/21/22）。 |
 | `norm:geilen` | The number of bits implemented in `hgeip` and `hgeie` for guest external interrupts is UNSPECIFIED and may be zero. This number is known as GEILEN. The least-significant bits are implemented first, apart from bit 0. Hence, if GEILEN is nonzero, bits GEILEN:1 shall be writable in `hgeie`, and all other bit positions shall be read-only zeros in both `hgeip` and `hgeie`. | `hgeip` 和 `hgeie` 中客户外部中断实现的位数未指定，可为零。该数目称为 GEILEN。除第 0 位外，最低有效位先实现。若 GEILEN 非零，`hgeie` 的 GEILEN:1 位可写，其余位在两个寄存器中均为只读零。 |
 | `norm:hgeie_op` | Register `hgeie` selects the subset of guest external interrupts that cause a supervisor-level (HS-level) guest external interrupt. The enable bits in `hgeie` do not affect the VS-level external interrupt signal selected from `hgeip` by `hstatus`.VGEIN. | `hgeie` 选择引起 HS 级客户外部中断的客户外部中断子集。`hgeie` 中的使能位不影响由 `hstatus`.VGEIN 从 `hgeip` 中选择的 VS 级外部中断信号。 |
 | `norm:hgeie_sz_acc_op` | The `hgeie` register is an HSXLEN-bit read/write register that contains enable bits for the guest external interrupts at this hart. | `hgeie` 是一个 HSXLEN 位读写寄存器，包含此 hart 的客户外部中断使能位。 |
@@ -45,7 +46,9 @@
 | `norm:hideleg_hs` | An interrupt _i_ will trap to HS-mode whenever all of the following are true: (a) either the current operating mode is HS-mode and the SIE bit in the `sstatus` register is set, or the current operating mode has less privilege than HS-mode; (b) bit _i_ is set in both `sip` and `sie`, or in both `hip` and `hie`; and (c) bit _i_ is not set in `hideleg`. | 中断 _i_ 在以下条件全部满足时陷入 HS 模式：(a) 当前为 HS 模式且 `sstatus`.SIE=1，或当前特权低于 HS 模式；(b) 位 _i_ 在 `sip`/`sie` 或 `hip`/`hie` 中都已设置；(c) 位 _i_ 在 `hideleg` 中未设置。 |
 | `norm:hideleg_op` | An interrupt that has been delegated to HS-mode (using `mideleg`) is further delegated to VS-mode if the corresponding `hideleg` bit is set. | 已通过 `mideleg` 委托给 HS 模式的中断，若对应 `hideleg` 位已设置，则进一步委托给 VS 模式。 |
 | `norm:hideleg_trans` | When a virtual supervisor external interrupt (code 10) is delegated to VS-mode, it is automatically translated by the machine into a supervisor external interrupt (code 9) for VS-mode. Likewise, virtual supervisor timer interrupt (6) is translated into supervisor timer interrupt (5), and virtual supervisor software interrupt (2) into supervisor software interrupt (1). | 当虚拟 supervisor 外部中断（代码 10）被委托给 VS 模式时，自动翻译为 supervisor 外部中断（代码 9）。类似地，虚拟定时器中断(6)→定时器中断(5)，虚拟软件中断(2)→软件中断(1)。 |
+| `norm:hie_acc` | A bit in `hie` shall be writable if the corresponding interrupt can ever become pending in `hip`. Bits of `hie` that are not writable shall be read-only zero. | 若对应中断可在 `hip` 中变为待处理，则 `hie` 中对应位必须可写；不可写的位必须为只读零。 |
 | `norm:hie_op` | `hie` contains enable bits for the same interrupts. | `hie` 包含相同中断的使能位。 |
+| `norm:hip_acc` | If bit _i_ of `sie` is read-only zero, the same bit in register `hip` may be writable or may be read-only. When bit _i_ in `hip` is writable, a pending interrupt _i_ can be cleared by writing 0 to this bit. | 若 `sie` 的位 _i_ 为只读零，`hip` 中的同一位可写或只读；`hip` 位 _i_ 可写时，写 0 可清除待处理中断 _i_（只读位分支经 hvip 清除，见 HINT-05/06/09）。 |
 | `norm:hip_hie_sz_acc` | Registers `hip` and `hie` are HSXLEN-bit read/write registers that supplement HS-level's `sip` and `sie` respectively. | `hip` 和 `hie` 是 HSXLEN 位读写寄存器，分别补充 HS 级的 `sip` 和 `sie`。 |
 | `norm:hip_op` | The `hip` register indicates pending VS-level and hypervisor-specific interrupts. | `hip` 寄存器指示待处理的 VS 级和 hypervisor 特定中断。 |
 | `norm:hip_vseip_vseie_op` | Bits `hip`.VSEIP and `hie`.VSEIE are the interrupt-pending and interrupt-enable bits for VS-level external interrupts. VSEIP is read-only in `hip`, and is the logical-OR of: bit VSEIP of `hvip`; the bit of `hgeip` selected by `hstatus`.VGEIN; and any other platform-specific external interrupt signal directed to VS-level. | `hip`.VSEIP 和 `hie`.VSEIE 是 VS 级外部中断的中断待处理和使能位。VSEIP 在 `hip` 中为只读，是 `hvip`.VSEIP、`hgeip` 中由 `hstatus`.VGEIN 选择的位、以及其他平台特定的 VS 级外部中断信号的逻辑或。 |
@@ -73,6 +76,9 @@
 - `norm:hip_vstip_vstie_acc_op`：VSTIP = hvip.VSTIP OR vstimecmp 触发
 - `norm:hip_vssip_vssie_op`：hip.VSSIP 是 hvip.VSSIP 的 alias
 - `norm:hsint_priority`：HS-mode 中断优先级 SEI > SSI > STI > SGEI > VSEI > VSSI > VSTI > LCOFI
+- `norm:hip_acc`：hip 可写位写 0 清除 pending 中断（HINT-19）；只读位经 hvip 清除（HINT-05/06/09）
+- `norm:hie_acc`：hie 可写位覆盖 hip 可 pending 位，其余位只读零（HINT-20）
+- `norm:H_cause`：VS 级中断 HS 级递送 cause 编码 2/6/10（HINT-10/21/22）
 
 **测试职责**：验证中断注入、pending/enable 机制、优先级和互斥关系。
 
@@ -96,6 +102,10 @@
 | HINT-16 | hvip 不可写位只读零 | 写 hvip 全 1，读回 | 仅 bits 2/6/10 (VSSIP/VSTIP/VSEIP) 为 1，其余均为 0 |
 | HINT-17 | hip.VSTIP 在 V=0 时仍有效 | V=0（HS-mode）下设置/清除 hvip.VSTIP，读 hip.VSTIP | hip.VSTIP 在 V=0 时始终反映 hvip.VSTIP（已定义） |
 | HINT-18 | HS-mode 中断优先级 SSI > STI | 同时 pending SSI 和 STI，使能两者，进入 HS-mode | SSI (cause=1) 先被递送，证明 SSI > STI |
+| HINT-19 | hip 可写位写 0 清除 pending 中断 | 注入 VSSIP → hip.VSSIP=1；直接写 hip.VSSIP=0 | hip.VSSIP=0、hvip.VSSIP=0（alias），且中断不再递送到 HS-mode（`norm:hip_acc`） |
+| HINT-20 | hie 可写位覆盖 hip 可 pending 位 | 探测 hvip 可写位（pending 能力集）与 hie 可写位（写全 1 回读） | writable(hie) ⊇ writable(hvip)∩基础 VS 中断位；非可写位读零（`norm:hie_acc`） |
+| HINT-21 | VSTIP 递送到 HS-mode 的 cause 编码 | hvip.VSTIP 注入 + hideleg[6]=0 + hie.VSTIE 使能，进入 HS-mode | HS 收到中断，cause = interrupt\|6（`norm:H_cause`） |
+| HINT-22 | VSEIP 递送到 HS-mode 的 cause 编码 | hvip.VSEIP 注入 + hideleg[10]=0 + hie.VSEIE 使能，进入 HS-mode | HS 收到中断，cause = interrupt\|10（`norm:H_cause`） |
 
 ---
 

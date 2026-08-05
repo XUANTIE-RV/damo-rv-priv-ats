@@ -447,7 +447,7 @@ bool test_shgatpa_hgatp_ppn_low2_forced_zero(void) {
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
-| HGATP-VMID-01 | VMID 宽度探测 | 写 hgatp 的 VMID 字段为全 1（14 位最大值 0x3FFF），回读确认实际支持的宽度 | 回读 VMID 为连续低位 1（如 0x3FFF 表示 14 位全支持，0x003F 表示仅支持 6 位） |
+| HGATP-VMID-01 | VMID 宽度探测 | 写 hgatp 的 VMID 字段为全 1（14 位最大值 0x3FFF），回读确认实际支持的宽度 | 回读 VMID 为连续低位 1（如 0x3FFF 表示 14 位全支持，0x003F 表示仅支持 6 位）；VMIDLEN=0（回读 0）合法（`norm:hgatp_vmid`） |
 | HGATP-VMID-02 | MODE 切换后 VMID 保留 | 写 hgatp MODE=Sv39x4 + VMID=0x1234；切换 MODE 为 Bare 再切回 Sv39x4；回读 VMID | VMID 值可能被清零（WARL 允许），记录行为但不做 pass/fail 判断 |
 
 #### 关键代码示例：HGATP-VMID-01
@@ -476,11 +476,13 @@ bool test_shgatpa_vmid_width(void) {
     asm volatile ("csrr %0, 0x680" : "=r"(readback));
     uintptr_t vmid_rb = (readback & HGATP_VMID_MASK) >> HGATP_VMID_SHIFT;
 
-    /* VMID 应为连续低位1（WARL，实现可截断高位） */
-    TEST_ASSERT("VMID field supports at least 1 bit", vmid_rb > 0);
-    /* 记录实际宽度供调试 */
+    /* norm:hgatp_vmid 允许 VMIDLEN=0，不得要求至少 1 位；
+     * norm:hgatp_vmid_lsbs：实现位必须为连续低位 1 */
     unsigned int width = 0;
     for (uintptr_t v = vmid_rb; v & 1; v >>= 1) width++;
+    uintptr_t expect = (width == 0) ? 0UL : ((1UL << width) - 1UL);
+    TEST_ASSERT_EQ("VMID implemented bits are contiguous LSBs",
+                   vmid_rb, expect);
     TEST_NOTE("VMID supported width: %u bits (readback=0x%lx)", width, vmid_rb);
 
     asm volatile ("csrw 0x680, %0" :: "r"(saved));

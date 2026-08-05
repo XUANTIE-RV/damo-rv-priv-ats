@@ -48,7 +48,7 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 | `norm:hgatp_mode_sv` | When HSXLEN=32, the only other valid setting for MODE is Sv32x4. When HSXLEN=64, modes Sv39x4, Sv48x4, and Sv57x4 are defined. |
 | `norm:hgatp_mode_warl` | A write to `hgatp` with an unsupported MODE value is not ignored as it is for `satp`. Instead, the fields of `hgatp` are WARL in the normal way, when so indicated. |
 | `norm:hgatp_ppn_op` | For the paged virtual-memory schemes, the root page table is 16 KiB and must be aligned to a 16-KiB boundary. In these modes, the lowest two bits of the physical page number (PPN) in `hgatp` always read as zeros. |
-| `norm:hgatp_vmid` | The number of VMID bits is UNSPECIFIED and may be zero. |
+| `norm:hgatp_vmid` | The number of VMID bits is UNSPECIFIED and may be zero. (GHCSR-07 probes VMIDLEN and verifies legal-range round-trips, tolerating VMIDLEN=0.) |
 | `norm:hgatp_vmid_lsbs` | The least-significant bits of VMID are implemented first: that is, if VMIDLEN > 0, VMID[VMIDLEN-1:0] is writable. The maximal value of VMIDLEN, termed VMIDMAX, is 7 for Sv32x4 or 14 for Sv39x4, Sv48x4, and Sv57x4. |
 | `norm:hgatp_mode_sv39x4` | For Sv39x4, partitioning is identical to Sv39, except with 2 more bits at the high end in VPN[2]. Address bits 63:41 must all be zeros, or else a guest-page-fault exception occurs. |
 | `norm:hgatp_mode_sv48x4` | For Sv48x4, partitioning is identical to Sv48, except with 2 more bits at the high end in VPN[3]. Address bits 63:50 must all be zeros, or else a guest-page-fault exception occurs. |
@@ -57,6 +57,7 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 | `norm:H_vm_gpatrans` | The conversion of an Sv32x4, Sv39x4, Sv48x4, or Sv57x4 guest physical address uses the same algorithm as Sv32, Sv39, Sv48, or Sv57, except: `hgatp` substitutes for `satp`; the effective privilege mode must be VS-mode or VU-mode; the current privilege mode is always taken to be U-mode when checking the U bit; and guest-page-fault exceptions are raised instead of regular page-fault exceptions. |
 | `norm:H_vm_gpapriv` | For G-stage address translation, all memory accesses are considered to be user-level accesses. Access type permissions are checked during G-stage translation the same as for VS-stage. For memory accesses supporting VS-stage translation, permissions and A/D bit needs are checked as though for an implicit load or store, not for the original access type. However, any exception is always reported for the original access type. |
 | `norm:H_vm_gpa_g` | The G bit in all G-stage PTEs is currently not used. It should be cleared by software for forward compatibility, and must be ignored by hardware. |
+| `norm:H_cause` | The hypervisor extension augments the trap cause encoding. Codes are added for VS-level interrupts (2, 6, 10), for supervisor-level guest external interrupts (12), for virtual-instruction exceptions (22), and for guest-page faults (20, 21, 23). Environment calls from VS-mode are assigned cause 10. This suite verifies guest-page-fault causes 20/21/23 (GFAULT/TS/AD case series). |
 | `norm:H_guest_page_fault` | Guest-page-fault traps may be delegated from M-mode to HS-mode under the control of `medeleg`, but cannot be delegated to other privilege modes. On a guest-page fault, `mtval` or `stval` is written with the faulting guest virtual address, and `mtval2` or `htval` is written either with zero or with the faulting guest physical address, shifted right by 2 bits. |
 | `norm:htval_trapval` | When a guest-page-fault trap is taken into HS-mode, `htval` is written with either zero or the guest physical address that faulted, shifted right by 2 bits. For other traps, `htval` is set to zero. |
 | `norm:mtval2_htval_virtaddr` | When a guest-page fault is not due to an implicit memory access for VS-stage address translation, a nonzero guest physical address written to `mtval2`/`htval` shall correspond to the exact virtual address written to `mtval`/`stval`. |
@@ -314,7 +315,7 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 | GFAULT-01 | load fault cause=21 | Trigger load guest-page-fault | scause=21 |
 | GFAULT-02 | store fault cause=23 | Trigger store guest-page-fault | scause=23 |
 | GFAULT-03 | inst fault cause=20 | Trigger inst guest-page-fault | scause=20 |
-| GFAULT-04 | htval = GPA>>2 | Explicit load fault, check htval | htval == faulting GPA >> 2 |
+| GFAULT-04 | htval = GPA>>2 | Explicit load fault, check htval | 0 or faulting GPA >> 2 (in this group traps are taken into M-mode, so `trap_get_htval()` observes mtval2; `norm:mtval2_trapval` allows writing zero, any other value is a violation) |
 | GFAULT-05 | stval = GVA | Explicit load fault, check stval | stval == faulting GVA (GVA=GPA under VS-stage Bare) |
 | GFAULT-06 | hstatus.GVA = 1 | guest-page-fault writes GVA to stval | hstatus.GVA == 1 |
 | GFAULT-07 | htinst transformed for load | htinst for load fault is transformed load or 0 | htinst conforms to `norm:H_trap_xtinst_exception_list` |
