@@ -27,6 +27,36 @@
 /* medeleg bit 16 (double trap) */
 #define MEDELEG_DOUBLE_TRAP (1ULL << 16)
 
+/* medeleg bit for ecall-from-S (cause 9) */
+#define MEDELEG_ECALL_FROM_S (1ULL << CAUSE_ECALL_FROM_S)
+
+/* ===================================================================
+ * mtval2 entry-time snapshots (captured by ssdbltrp_trap_asm.S)
+ *
+ * mtval2 is rewritten on every trap entry into M-mode, so tests that
+ * need the value written by a specific trap must use these snapshots
+ * instead of reading the CSR after returning to M-mode.
+ * =================================================================== */
+
+/* mtval2 captured at M-mode trap entry; on a double-trap delivery the
+ * hardware writes the original trap cause here (norm:sstatus_sdt_trap). */
+extern uintptr_t smdbltrp_saved_mtval2;
+
+/* mstatus captured at M-mode trap entry, before the MDT-clearing MRET
+ * in smdbltrp_m_trap_entry overwrites it.  The C handler's own
+ * mstatus snapshot sees MPP=0 (post-MRET), so tests verifying the
+ * hardware trap-entry MPP write must use this entry-time capture. */
+extern uintptr_t smdbltrp_saved_mstatus;
+
+/* mtval2 captured at S-mode trap entry; a trap delivered to S-mode
+ * must leave mtval2 unchanged (norm:mtval2_trapval). */
+extern uintptr_t ssdbltrp_s_trap_mtval2;
+
+/* Set while an Ssdbltrp probe is in flight (see test_mtval2_dep.c).
+ * The S-mode trap entry wrapper uses it to re-arm late deliveries
+ * produced by broken double-delivery implementations. */
+extern volatile bool ssdbltrp_probe_active;
+
 /* ===================================================================
  * SDT / SIE helper functions
  * =================================================================== */

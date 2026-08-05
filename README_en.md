@@ -210,6 +210,7 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | **Memory Protection** | `pmp` | PMP Physical Memory Protection | |
 | | `smepmp` | Smepmp (PMP M-mode enhancements) | |
 | | `spmp` | SPMP (S-level Physical Memory Protection) | |
+| | `iopmp` | IOPMP peripheral PMP | |
 | **Virtual Memory** | `Sv39` | Sv39 (3-level page table) | ✓ |
 | | `Sv48` | Sv48 (4-level page table) | ✓ |
 | | `Sv57` | Sv57 (5-level page table) | ✓ |
@@ -239,7 +240,7 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `Sv57x4_Sv39` | Two-stage: Sv57x4 + Sv39 | ✓ |
 | | `Sv57x4_Sv48` | Two-stage: Sv57x4 + Sv48 | ✓ |
 | | `Sv57x4_Sv57` | Two-stage: Sv57x4 + Sv57 | ✓ |
-| **Hypervisor Sh** | `Sha` | Augmented Hypervisor extension | ✓ |
+| **Hypervisor (Sh\*)** | `Sha` | Augmented Hypervisor extension | ✓ |
 | | `Shgatpa` | Translation mode support | ✓ |
 | | `Shcounterenw` | Counter-enable writability | ✓ |
 | | `Shlcofideleg` | Counter overflow delegation | ✓ |
@@ -270,15 +271,21 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `Hypervisor_Smcntrpmf` | Hyp + Smcntrpmf | ✓ |
 | | `Hypervisor_Ssqosid` | Hyp + Ssqosid | ✓ |
 | | `Hypervisor_Zkr` | Hyp + Zkr | ✓ |
-| **Machine-mode (Sm*)** | `Smstateen` | State enable | ✓ |
+| **Machine-mode (Sm\*)** | `Sm_CSR` | M-Mode CSR | |
+| | `Sm_Interrupts` | M-Mode interrupt handling | |
+| | `Sm_Exceptions` | M-Mode exception handling | |
+| | `Smstateen` | State enable | ✓ |
 | | `smrnmi` | Resumable NMI | |
 | | `Smcdeleg` | Counter delegation | |
-| | `Smcntrpmf` | Cycle/Instret privilege mode filtering | |
+| | `Smcntrpmf` | Cycle/Instret privilege mode filtering | ✓ |
 | | `Smcsrind` | Indirect CSR access | ✓ |
 | | `Smctr` | Control Transfer Records | |
 | | `Smdbltrp` | Double trap | |
-| **Supervisor (Ss*)** | `Ssccptr` | Main memory page-table reads | ✓ |
-| | `Sscofpmf` | Counter overflow / mode filtering | ✓ |
+| **Supervisor (Ss\*)** | `Ss_CSR` | S-Mode CSR | |
+| | `Ss_Interrupts` | S-Mode interrupt handling | |
+| | `Ss_Exceptions` | S-Mode exception handling | |
+| | `Ssccptr` | Main memory page-table reads | ✓ |
+| | `Sscofpmf` | Counter overflow / mode filtering | |
 | | `Sscounterenw` | Counter enable writability | |
 | | `Ssstateen` | State enable | ✓ |
 | | `Sstc` | Supervisor-mode timer interrupts | ✓ |
@@ -289,11 +296,14 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `Sscsrind` | Indirect CSR access | ✓ |
 | | `Ssctr` | Control Transfer Records | |
 | | `Ssdbltrp` | Double trap | ✓ |
-| **AIA (Interrupts)** | `aia_aplic` | APLIC | |
+| **Interrupt Extensions** | `aia_aplic` | APLIC | |
 | | `aia_imsic` | AIA IMSIC | |
 | | `aia_smaia` | M-mode AIA | |
 | | `aia_iommu` | AIA + IOMMU | |
 | | `aia_hypervisor` | Hypervisor AIA | |
+| | `clic` | CLIC | |
+| | `aia_clic` | AIA + CLIC | |
+| | `aclint` | ACLINT | |
 | **CFI (Control Flow Integrity)** | `cfi.Zicfilp` | CFI Landing Pad | ✓ |
 | | `cfi.Zicfiss` | CFI Shadow Stack | ✓ |
 | **CMO (Cache Management)** | `cmo.base` | CMO base | |
@@ -303,13 +313,9 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | **Pointer Masking** | `zpm.Smmpm` | M-mode Pointer Masking | ✓ |
 | | `zpm.Smnpm` | Next-level Pointer Masking | ✓ |
 | | `zpm.Ssnpm` | S-mode Pointer Masking | ✓ |
-| **CLIC (Interrupts)** | `clic` | CLIC | |
-| | `aia_clic` | AIA + CLIC | |
-| **Other** | `aclint` | ACLINT | |
-| | `iopmp` | IOPMP | |
-| | `qos.cbqri` | QoS CBQRI | |
+| **QoS** | `qos.cbqri` | QoS CBQRI | |
 | | `qos.Ssqosid` | QoS Ssqosid | ✓ |
-| | `sbi` | SBI interface | |
+| **Other** | `sbi` | SBI interface | |
 | | `ntrace` | Ntrace | |
 | | `raseri` | Raseri | |
 | | `Zkr` | Entropy source (Key Seed) | ✓ |

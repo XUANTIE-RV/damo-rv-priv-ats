@@ -60,6 +60,18 @@ typedef int                intptr_t;
 #define INSERT_FIELD(val, off, len, field) \
     (((uintptr_t)(val) & ~BIT_MASK(off, len)) | (((uintptr_t)(field) << (off)) & BIT_MASK(off, len)))
 
+/* Snapshot of a trap record (see trap_snapshot() in trap.c): saved by
+ * flows where one hardware event can produce multiple handler records
+ * (e.g. Ssdbltrp double-trap escalation on broken implementations). */
+typedef struct {
+    bool      triggered;
+    unsigned  priv_level;
+    uintptr_t cause;
+    uintptr_t epc;
+    uintptr_t tval;
+    uintptr_t status_snap;
+} trap_snapshot_t;
+
 #endif /* __ASSEMBLER__ */
 
 #endif /* COMMON_TYPES_H */

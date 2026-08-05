@@ -286,6 +286,20 @@ extern uintptr_t trap_get_epc(void);
 extern uintptr_t trap_get_tval(void);
 extern uintptr_t trap_get_status_snap(void);
 
+/* Snapshot of the trap record; trap_snapshot_t is defined in types.h */
+extern void trap_snapshot(trap_snapshot_t *snap);
+
+/* Automatic snapshot of a double-trap (cause 16) record, taken by the
+ * M-mode handler before a possible second delivery overwrites the
+ * record.  Reset trap_dt_snap_valid before triggering. */
+extern trap_snapshot_t trap_dt_snap;
+extern bool trap_dt_snap_valid;
+
+/* Trap entry trace (diagnostic): record the last few trap entries and
+ * dump them on UNEXPECTED TRAP.  Off by default, zero overhead. */
+extern void trap_trace_on(void);
+extern void trap_trace_off(void);
+
 /* CFI (Zicfilp) PELP control flags (defined in trap.c).
  * Default 0 = no impact on existing suites. Tests set these to
  * verify hardware xRET xpelp handling. See trap.c for details. */
@@ -505,6 +519,18 @@ extern bool      trap_get_spv_snap(void);
 /* ===================================================================
  * State Management
  * =================================================================== */
+
+/**
+ * trap_probe_mtval2 - Detect mtval2 CSR availability
+ *
+ * Probes mtval2 (0x34B) with a trap-protected read and records the
+ * result for the trap handlers. mtval2 exists when the Hypervisor
+ * extension or Ssdbltrp is implemented (norm:mtval2_Ssdbltrap); the
+ * m_trap_handler reads it only when this probe found it, avoiding
+ * an infinite nested-trap loop on platforms without it.
+ * Called automatically by reset_state() after trap vectors are set up.
+ */
+void trap_probe_mtval2(void);
 
 /**
  * reset_state - Reset all PMP and test state

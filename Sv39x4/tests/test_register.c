@@ -29,6 +29,7 @@
  *   Group 11 (ALIGN)   - Superpage alignment verification
  *   Group 12 (GBIT)    - G-bit ignored
  *   Group 13 (FAULT)   - Guest-page-fault reporting
+ *   Group 14 (BARE)    - hgatp MODE=Bare trivial translation
  */
 
 #include "test_helpers.h"
@@ -50,3 +51,4 @@
 /* Group 11 */ #include "test_align.c"
 /* Group 12 */ #include "test_gbit.c"
 /* Group 13 */ #include "test_fault_report.c"
+/* Group 14 */ #include "test_gstage_bare.c"

@@ -6,7 +6,7 @@
 /*
  * test_register.c - Two-Stage Translation Test Registration
  *
- * 纯聚合文件：#include test_helpers.h + 全部 24 个 group test 源文件。
+ * 纯聚合文件：#include test_helpers.h + 全部 25 个 group test 源文件。
  * SUITE_VSATP_MODE / SUITE_HGATP_MODE 由各目录 Makefile 通过 -D 传入，
  * 若未定义则 common/hyp/two_stage_helpers.h 提供默认值 (Sv39 + Sv39x4)。
  *
@@ -38,4 +38,6 @@
 /* Group 21 */ #include "test_hgatp_warl.c"
 /* Group 22 */ #include "test_svinval.c"
 /* Group 23 */ #include "test_large_page.c"
+/* Group 24 */ #include "test_ppn_width.c"
+/* Group 25 */ #include "test_hgatp_bare_joint.c"
 /* Granular */ #include "test_granular_matrix.c"

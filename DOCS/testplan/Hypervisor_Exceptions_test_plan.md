@@ -78,6 +78,7 @@
 | `norm:mtval2_trapval_vstrans` | If a guest-page fault is due to an implicit memory access during first-stage (VS-stage) address translation, a guest physical address written to `mtval2` is that of the implicit memory access that faulted. | 若客户页错误由 VS 阶段地址翻译的隐式内存访问引起，写入 `mtval2` 的地址是故障的隐式内存访问地址。 |
 | `norm:mtval2_val` | `mtval2` is a WARL register that must be able to hold zero and may be capable of holding only an arbitrary subset of other 2-bit-shifted guest physical addresses, if any. | `mtval2` 是 WARL 寄存器，必须能保持零，且可能只能保持 2 位右移客户物理地址的任意子集。写入任意值后不要求回显原值，但读回值必须稳定。 |
 | `norm:sret_dt` | If the Ssdbltrp extension is implemented, when SRET is executed in HS-mode, if the new privilege mode is VU, the SRET instruction sets `vsstatus`.SDT to 0. When executed in VS-mode, `vsstatus`.SDT is set to 0. | 若实现了 Ssdbltrp 扩展，HS 模式执行 SRET 且新特权模式为 VU 时，设 `vsstatus`.SDT=0。VS 模式执行时也设 `vsstatus`.SDT=0。 |
+| `norm:sret_h` | The SRET instruction is used to return from a trap taken into HS-mode or VS-mode. Its behavior depends on the current virtualization mode. | SRET 指令用于从进入 HS-mode 或 VS-mode 的 trap 返回，其行为取决于当前虚拟化模式 V：V=0 时按 `norm:sret_v0` 路径执行（依据 `hstatus`.SPV/`sstatus`.SPP，使用 `sepc`），V=1 时按 `norm:sret_v1` 路径执行（依据 `vsstatus`.SPP，使用 `vsepc`），且每条路径不得改动另一路径的 CSR 状态。 |
 | `norm:sret_v0` | When executed in M-mode or HS-mode (V=0), SRET first determines the new privilege mode according to `hstatus`.SPV and `sstatus`.SPP. SRET then sets `hstatus`.SPV=0, and in `sstatus` sets SPP=0, SIE=SPIE, and SPIE=1. Lastly, SRET sets the privilege mode and sets pc=sepc. | 在 M/HS 模式（V=0）执行时，SRET 根据 `hstatus`.SPV 和 `sstatus`.SPP 确定新特权模式，然后设 SPV=0、SPP=0、SIE=SPIE、SPIE=1，最后设置特权模式并 pc=sepc。 |
 | `norm:sret_v1` | When executed in VS-mode (V=1), SRET sets the privilege mode accordingly, in `vsstatus` sets SPP=0, SIE=SPIE, and SPIE=1, and lastly sets pc=vsepc. | 在 VS 模式（V=1）执行时，SRET 相应设置特权模式，在 `vsstatus` 中设 SPP=0、SIE=SPIE、SPIE=1，最后 pc=vsepc。 |
 
@@ -182,12 +183,17 @@
 ## Group 3. Trap Return 行为
 
 **规范依据**：
+- `norm:sret_h`：总纲——SRET 用于从进入 HS/VS-mode 的 trap 返回，行为取决于当前虚拟化模式 V（V=0 走 `sret_v0` 路径，V=1 走 `sret_v1` 路径）
 - `norm:mret_h`：MRET 根据 MPP/MPV 确定新特权级，然后 MPV=0, MPP=0, MIE=MPIE, MPIE=1
-- `norm:sret_v0`：V=0 时 SRET 根据 SPV/SPP 确定新模式，SPV=0, SPP=0, SIE=SPIE, SPIE=1
-- `norm:sret_v1`：V=1 时 SRET 根据 vsstatus.SPP 确定模式，SPP=0, SIE=SPIE, SPIE=1
+- `norm:sret_v0`：V=0 时 SRET 根据 SPV/SPP 确定新模式，SPV=0, SPP=0, SIE=SPIE, SPIE=1，pc=sepc
+- `norm:sret_v1`：V=1 时 SRET 根据 vsstatus.SPP 确定模式，SPP=0, SIE=SPIE, SPIE=1，pc=vsepc
 - `norm:sret_dt`：Ssdbltrp 时 SRET 在 HS-mode 且新模式为 VU 时清 vsstatus.SDT；VS-mode 时清 vsstatus.SDT
 
 **测试职责**：验证 MRET/SRET 在 H 扩展下的模式切换和 CSR 恢复行为。
+
+**严格验证原则**（norm:sret_h 总纲语义）：SRET 相关用例必须**实际执行 SRET 指令**并验证落地上下文与 CSR 前后变化，禁止用 CSR 读写检查替代行为验证。落地特权级通过两类证伪探针判别：
+1. **哨兵值探针**：sscratch/vsscratch 预置不同哨兵值，落地后 `csrr sscratch` 的读回值区分 VS（读 vsscratch）与 HS（读 sscratch）落地；VU/U 落地则由该访问触发的异常类型区分（virtual-instruction cause=22 / illegal-instruction cause=2）。
+2. **毒化 sepc 探针**：V=1 路径执行前把 HS `sepc` 设为无效地址；若实现错误地用 HS `sepc` 返回（而非 `vsepc`），将跳到无效地址触发 fault，可直接证伪。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
@@ -196,16 +202,21 @@
 | TRET-03 | MRET 返回到 HS-mode | 设 MPV=0, MPP=1, 执行 MRET | 进入 HS-mode (V=0) |
 | TRET-04 | MRET 返回到 M-mode | 设 MPP=3, 执行 MRET | 进入 M-mode, V 保持 0 |
 | TRET-05 | MRET MIE/MPIE 恢复 | 设 MPIE=1，执行 MRET | MIE=1, MPIE=1 |
-| TRET-06 | SRET(V=0) 返回到 VS-mode | 设 hstatus.SPV=1, sstatus.SPP=1, 执行 SRET | 进入 VS-mode (V=1), SPV=0, SPP=0 |
-| TRET-07 | SRET(V=0) 返回到 VU-mode | 设 hstatus.SPV=1, sstatus.SPP=0, 执行 SRET | 进入 VU-mode (V=1), SPV=0, SPP=0 |
-| TRET-08 | SRET(V=0) 返回到 HS-mode | 设 hstatus.SPV=0, sstatus.SPP=1, 执行 SRET | 进入 HS-mode (V=0) |
-| TRET-09 | SRET(V=0) 返回到 U-mode | 设 hstatus.SPV=0, sstatus.SPP=0, 执行 SRET | 进入 U-mode (V=0) |
-| TRET-10 | SRET(V=0) SIE/SPIE 恢复 | 设 sstatus.SPIE=1, 执行 SRET | SIE=1, SPIE=1 |
-| TRET-11 | SRET(V=1) 返回到 VS-mode | VS-mode 中 vsstatus.SPP=1, 执行 SRET | 返回 VS-mode, SPP=0 |
-| TRET-12 | SRET(V=1) 返回到 VU-mode | VS-mode 中 vsstatus.SPP=0, 执行 SRET | 返回 VU-mode, SPP=0 |
-| TRET-13 | SRET(V=1) SIE/SPIE 恢复 | vsstatus.SPIE=1, 执行 SRET | vsstatus.SIE=1, vsstatus.SPIE=1 |
-| TRET-14 | SRET sepc 恢复 PC | 设 sepc=目标地址, 执行 SRET | PC=sepc |
+| TRET-06 | SRET(V=0) 返回到 VS-mode | HS-mode 设 hstatus.SPV=1, sstatus.SPP=1, sepc=落地标签，实际执行 SRET | 真实落在 VS-mode 落地标签（读回 vsscratch 哨兵值证明）；返回后 SPV=0, SPP=0 |
+| TRET-07 | SRET(V=0) 返回到 VU-mode | HS-mode 设 SPV=1, SPP=0, sepc=落地标签，实际执行 SRET | 真实落在 VU-mode（落地后访问 sscratch 触发 virtual-instruction cause=22 证明）；SPV=0, SPP=0 |
+| TRET-08 | SRET(V=0) 返回到 HS-mode | HS-mode 设 SPV=0, SPP=1, sepc=落地标签，实际执行 SRET | 真实落在 HS-mode（读回 HS sscratch 哨兵值证明） |
+| TRET-09 | SRET(V=0) 返回到 U-mode | HS-mode 设 SPV=0, SPP=0, sepc=落地标签，实际执行 SRET | 真实落在 U-mode（落地后访问 sscratch 触发 illegal-instruction cause=2 证明） |
+| TRET-10 | SRET(V=0) SIE/SPIE 恢复 | HS-mode 分别以 ①SPIE=1,SIE=0 ②SPIE=0,SIE=1 两种模式实际执行 SRET | 每次 SRET 后 sstatus.SIE=旧 SPIE、SPIE=1（两种 pattern 均可证伪） |
+| TRET-11 | SRET(V=1) 返回到 VS-mode | 预置 vsstatus.SPP=1 并把 HS sepc 毒化为无效地址，VS-mode 实际执行 SRET | 真实落在 vsepc 指向的落地标签（误用 HS sepc 会跳无效地址 fault）；vsstatus.SPP=0；HS sepc 保持不变 |
+| TRET-12 | SRET(V=1) 返回到 VU-mode | 预置 vsstatus.SPP=0 并毒化 HS sepc，VS-mode 实际执行 SRET | 真实落在 VU-mode（落地后访问 sscratch 触发 cause=22 证明）；vsstatus.SPP=0；HS sepc 不变 |
+| TRET-13 | SRET(V=1) SIE/SPIE 恢复 | VS-mode 分别以 ①SPIE=1,SIE=0 ②SPIE=0,SIE=1 两种模式实际执行 SRET | 每次 SRET 后 vsstatus.SIE=旧 SPIE、SPIE=1 |
+| TRET-14 | SRET sepc 恢复 PC 且 SRET 不改 sepc | HS-mode 设 sepc=非相邻落地标签并实际执行 SRET | pc=sepc（真实跳到该标签）；返回后 sepc 仍等于该标签值（SRET 不修改 sepc） |
 | TRET-15 | MRET mepc 恢复 PC | 设 mepc=目标地址, 执行 MRET | PC=mepc |
+| TRET-16 | SRET(V=1) 不修改 V=0 状态 | 预置 hstatus.SPV=1、sstatus.SPP=1、毒化 HS sepc，VS-mode 实际执行 SRET（vsstatus.SPP=1） | 返回后 hstatus.SPV、sstatus.SPP、HS sepc 均保持不变（sret_v1 只操作 vsstatus/vsepc） |
+| TRET-17 | SRET(V=0) 不修改 VS 状态 | 预置 vsstatus.SPP=1、毒化 vsepc，HS-mode 实际执行 SRET（SPV=1, SPP=1）返回 VS-mode | 返回后 vsstatus.SPP、vsepc 保持不变（sret_v0 只操作 hstatus/sstatus/sepc） |
+| TRET-18 | VU trap→HS 处理后 SRET 返回的完整闭环 | medeleg[3] 委托 ebreak 到 HS-mode，stvec 指向 HS handler，VU-mode 执行 ebreak | trap 进入 HS-mode（trap_get_spv()=1）；HS handler 经 SRET 返回 VU-mode 恢复执行（标志写入成功）；返回后 hstatus.SPV=0（SRET 清除） |
+| TRET-19 | VS 嵌套 trap→VS handler SRET 返回的完整闭环 | medeleg[3]+hedeleg[3] 委托 ebreak 到 VS-mode，vstvec 指向自定义 VS handler，VS-mode 执行 ebreak | trap 进入 VS handler（vscause=3）；handler 的 SRET 返回 ebreak 之后的 VS 上下文恢复执行；HS 级 sstatus.SPP 不受影响 |
+
 
 ---
 

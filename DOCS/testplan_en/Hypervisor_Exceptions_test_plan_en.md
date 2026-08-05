@@ -78,6 +78,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 | `norm:mtval2_trapval_vstrans` | If a guest-page fault is due to an implicit memory access during first-stage (VS-stage) address translation, a guest physical address written to `mtval2` is that of the implicit memory access that faulted. |
 | `norm:mtval2_val` | `mtval2` is a WARL register that must be able to hold zero and may be capable of holding only an arbitrary subset of other 2-bit-shifted guest physical addresses, if any. Echoing an arbitrary written value is not required, but the readback must be stable. |
 | `norm:sret_dt` | If the Ssdbltrp extension is implemented, when SRET is executed in HS-mode, if the new privilege mode is VU, the SRET instruction sets `vsstatus`.SDT to 0. When executed in VS-mode, `vsstatus`.SDT is set to 0. |
+| `norm:sret_h` | The SRET instruction is used to return from a trap taken into HS-mode or VS-mode. Its behavior depends on the current virtualization mode. SRET returns from a trap taken into HS-mode or VS-mode; its behavior depends on the current virtualization mode V: with V=0 it follows the `norm:sret_v0` path (based on `hstatus`.SPV/`sstatus`.SPP, using `sepc`), with V=1 it follows the `norm:sret_v1` path (based on `vsstatus`.SPP, using `vsepc`), and neither path may modify the CSR state owned by the other. |
 | `norm:sret_v0` | When executed in M-mode or HS-mode (V=0), SRET first determines the new privilege mode according to `hstatus`.SPV and `sstatus`.SPP. SRET then sets `hstatus`.SPV=0, and in `sstatus` sets SPP=0, SIE=SPIE, and SPIE=1. Lastly, SRET sets the privilege mode and sets pc=sepc. |
 | `norm:sret_v1` | When executed in VS-mode (V=1), SRET sets the privilege mode accordingly, in `vsstatus` sets SPP=0, SIE=SPIE, and SPIE=1, and lastly sets pc=vsepc. |
 
@@ -182,12 +183,17 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 ## Group 3. Trap Return Behavior
 
 **Specification References**:
+- `norm:sret_h`: umbrella rule — SRET returns from a trap taken into HS/VS-mode; its behavior depends on the current virtualization mode V (V=0 follows the `sret_v0` path, V=1 follows the `sret_v1` path)
 - `norm:mret_h`: MRET determines new privilege level based on MPP/MPV, then MPV=0, MPP=0, MIE=MPIE, MPIE=1
-- `norm:sret_v0`: When V=0, SRET determines new mode based on SPV/SPP, SPV=0, SPP=0, SIE=SPIE, SPIE=1
-- `norm:sret_v1`: When V=1, SRET determines mode based on vsstatus.SPP, SPP=0, SIE=SPIE, SPIE=1
+- `norm:sret_v0`: When V=0, SRET determines new mode based on SPV/SPP, SPV=0, SPP=0, SIE=SPIE, SPIE=1, pc=sepc
+- `norm:sret_v1`: When V=1, SRET determines mode based on vsstatus.SPP, SPP=0, SIE=SPIE, SPIE=1, pc=vsepc
 - `norm:sret_dt`: With Ssdbltrp, SRET clears vsstatus.SDT when in HS-mode and new mode is VU; clears vsstatus.SDT when in VS-mode
 
 **Test Responsibilities**: Verify mode switching and CSR restoration behavior of MRET/SRET under H extension.
+
+**Strict Verification Principles** (norm:sret_h umbrella semantics): SRET-related cases MUST execute a real SRET instruction and verify the landing context plus the before/after CSR state; CSR read/write checks are NOT a substitute for behavioral verification. The landing privilege level is discriminated by two falsifiable probes:
+1. **Sentinel probe**: sscratch/vsscratch are pre-loaded with distinct sentinels; after landing, `csrr sscratch` readback distinguishes a VS landing (reads vsscratch) from an HS landing (reads sscratch); a VU/U landing is distinguished by the exception that access raises (virtual-instruction cause=22 / illegal-instruction cause=2).
+2. **Poisoned-sepc probe**: before the V=1 path, HS `sepc` is set to an invalid address; if the implementation wrongly returns through HS `sepc` (instead of `vsepc`), execution jumps to the invalid address and faults, directly falsifying the behavior.
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
@@ -196,16 +202,21 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 | TRET-03 | MRET returns to HS-mode | Set MPV=0, MPP=1, execute MRET | Enter HS-mode (V=0) |
 | TRET-04 | MRET returns to M-mode | Set MPP=3, execute MRET | Enter M-mode, V remains 0 |
 | TRET-05 | MRET MIE/MPIE restoration | Set MPIE=1, execute MRET | MIE=1, MPIE=1 |
-| TRET-06 | SRET(V=0) returns to VS-mode | Set hstatus.SPV=1, sstatus.SPP=1, execute SRET | Enter VS-mode (V=1), SPV=0, SPP=0 |
-| TRET-07 | SRET(V=0) returns to VU-mode | Set hstatus.SPV=1, sstatus.SPP=0, execute SRET | Enter VU-mode (V=1), SPV=0, SPP=0 |
-| TRET-08 | SRET(V=0) returns to HS-mode | Set hstatus.SPV=0, sstatus.SPP=1, execute SRET | Enter HS-mode (V=0) |
-| TRET-09 | SRET(V=0) returns to U-mode | Set hstatus.SPV=0, sstatus.SPP=0, execute SRET | Enter U-mode (V=0) |
-| TRET-10 | SRET(V=0) SIE/SPIE restoration | Set sstatus.SPIE=1, execute SRET | SIE=1, SPIE=1 |
-| TRET-11 | SRET(V=1) returns to VS-mode | In VS-mode vsstatus.SPP=1, execute SRET | Return to VS-mode, SPP=0 |
-| TRET-12 | SRET(V=1) returns to VU-mode | In VS-mode vsstatus.SPP=0, execute SRET | Return to VU-mode, SPP=0 |
-| TRET-13 | SRET(V=1) SIE/SPIE restoration | vsstatus.SPIE=1, execute SRET | vsstatus.SIE=1, vsstatus.SPIE=1 |
-| TRET-14 | SRET restores PC from sepc | Set sepc=target address, execute SRET | PC=sepc |
+| TRET-06 | SRET(V=0) returns to VS-mode | In HS-mode set hstatus.SPV=1, sstatus.SPP=1, sepc=landing label, execute a real SRET | Actually lands at the VS-mode landing label (proven by vsscratch sentinel readback); afterwards SPV=0, SPP=0 |
+| TRET-07 | SRET(V=0) returns to VU-mode | In HS-mode set SPV=1, SPP=0, sepc=landing label, execute a real SRET | Actually lands in VU-mode (proven by the sscratch access at landing raising virtual-instruction cause=22); SPV=0, SPP=0 |
+| TRET-08 | SRET(V=0) returns to HS-mode | In HS-mode set SPV=0, SPP=1, sepc=landing label, execute a real SRET | Actually lands in HS-mode (proven by HS sscratch sentinel readback) |
+| TRET-09 | SRET(V=0) returns to U-mode | In HS-mode set SPV=0, SPP=0, sepc=landing label, execute a real SRET | Actually lands in U-mode (proven by the sscratch access at landing raising illegal-instruction cause=2) |
+| TRET-10 | SRET(V=0) SIE/SPIE restoration | In HS-mode execute a real SRET with both patterns (a) SPIE=1,SIE=0 and (b) SPIE=0,SIE=1 | After each SRET, sstatus.SIE=old SPIE and SPIE=1 (both patterns falsifiable) |
+| TRET-11 | SRET(V=1) returns to VS-mode | Pre-set vsstatus.SPP=1 and poison HS sepc with an invalid address, execute a real SRET in VS-mode | Actually lands at the landing label pointed by vsepc (using HS sepc by mistake would jump to the invalid address and fault); vsstatus.SPP=0; HS sepc unchanged |
+| TRET-12 | SRET(V=1) returns to VU-mode | Pre-set vsstatus.SPP=0 and poison HS sepc, execute a real SRET in VS-mode | Actually lands in VU-mode (proven by the sscratch access at landing raising cause=22); vsstatus.SPP=0; HS sepc unchanged |
+| TRET-13 | SRET(V=1) SIE/SPIE restoration | In VS-mode execute a real SRET with both patterns (a) SPIE=1,SIE=0 and (b) SPIE=0,SIE=1 | After each SRET, vsstatus.SIE=old SPIE and SPIE=1 |
+| TRET-14 | SRET restores PC from sepc and does not modify sepc | In HS-mode set sepc=a non-adjacent landing label and execute a real SRET | pc=sepc (actually jumps to that label); afterwards sepc still equals that label value (SRET does not modify sepc) |
 | TRET-15 | MRET restores PC from mepc | Set mepc=target address, execute MRET | PC=mepc |
+| TRET-16 | SRET(V=1) does not modify V=0 state | Pre-set hstatus.SPV=1, sstatus.SPP=1 and poison HS sepc, execute a real SRET in VS-mode (vsstatus.SPP=1) | Afterwards hstatus.SPV, sstatus.SPP and HS sepc all remain unchanged (sret_v1 only operates on vsstatus/vsepc) |
+| TRET-17 | SRET(V=0) does not modify VS state | Pre-set vsstatus.SPP=1 and poison vsepc, execute a real SRET in HS-mode (SPV=1, SPP=1) returning to VS-mode | Afterwards vsstatus.SPP and vsepc remain unchanged (sret_v0 only operates on hstatus/sstatus/sepc) |
+| TRET-18 | Full round-trip: VU trap -> HS handler -> SRET resume | Delegate ebreak to HS-mode via medeleg[3], stvec points to the HS handler, execute ebreak in VU-mode | Trap enters HS-mode (trap_get_spv()=1); the HS handler returns via SRET and resumes VU execution (flag write succeeds); afterwards hstatus.SPV=0 (cleared by SRET) |
+| TRET-19 | Full round-trip: nested VS trap -> VS handler SRET resume | Delegate ebreak to VS-mode via medeleg[3]+hedeleg[3], vstvec points to a custom VS handler, execute ebreak in VS-mode | Trap enters the VS handler (vscause=3); the handler's SRET resumes the VS context after the ebreak; HS-level sstatus.SPP is unaffected |
+
 
 ---
 

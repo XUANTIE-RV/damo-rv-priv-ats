@@ -71,6 +71,13 @@ void reset_state(void) {
     CSRW(mtvec, (uintptr_t)m_trap_entry);
     CSRW(stvec, (uintptr_t)s_trap_entry);
 
+    /* Detect mtval2 CSR availability (H-extension / double-trap
+     * platforms only). Must run after trap vectors are installed.
+     * The probe itself may record a trap, so re-clear the record
+     * afterwards to keep a clean baseline for the tests. */
+    trap_probe_mtval2();
+    trap_clear_record();
+
     /* Do NOT delegate exceptions (M-mode handler catches everything) */
     CSRW(medeleg, 0);
     CSRW(mideleg, 0);

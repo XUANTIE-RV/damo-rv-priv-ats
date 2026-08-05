@@ -44,6 +44,125 @@ typedef volatile struct {
 
 trap_record_t trap_record;
 
+/* Automatic snapshot of a double-trap (cause 16) record taken in the
+ * M-mode handler before any later delivery can overwrite trap_record.
+ * Tests reset trap_dt_snap_valid before triggering and inspect the
+ * snapshot afterwards. */
+trap_snapshot_t trap_dt_snap;
+bool trap_dt_snap_valid;
+
+/* Ssdbltrp probe robustness state (used by the trap handlers below):
+ * a probe is in flight while ssdbltrp_probe_active is set, and
+ * ssdbltrp_s_probe_repeats counts how many times the probe trap was
+ * delivered, so repeated deliveries cannot loop forever. */
+__attribute__((weak)) volatile bool ssdbltrp_probe_active;
+__attribute__((weak)) char ssdbltrp_probe_rearm[0];
+__attribute__((weak)) char ssdbltrp_run_s_probe[0];
+__attribute__((weak)) char ssdbltrp_probe_return[0];
+__attribute__((weak)) char ssdbltrp_probe_mtval2_ld[0];
+unsigned ssdbltrp_s_probe_repeats;
+unsigned ssdbltrp_dt_entries;
+
+/* True when linked into a suite that defines the Ssdbltrp probe
+ * symbols (Ssdbltrp suite).  The address check is required because
+ * the weak references are NULL in every other suite; the pragma
+ * silences -Waddress in the suite where the symbols are strong. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress"
+static inline bool _ssdbltrp_probe_present(void) {
+    return &ssdbltrp_probe_active != 0 && &ssdbltrp_probe_rearm != 0;
+}
+#pragma GCC diagnostic pop
+
+/* ===================================================================
+ * Trap entry trace ring (diagnostic)
+ *
+ * Records the last few trap entries (M and S side) so unexpected
+ * traps can dump the sequence that led to them.  Zero overhead when
+ * trap_trace_enabled is left at 0.
+ * =================================================================== */
+#define TRAP_TRACE_DEPTH 8
+typedef struct {
+    unsigned      priv;    /* PRIV_M / PRIV_S handler side */
+    uintptr_t     cause;
+    uintptr_t     epc;
+    uintptr_t     status;
+    uintptr_t     tval;
+    uintptr_t     mtval2;
+    int           armed;
+} trap_trace_entry_t;
+static volatile trap_trace_entry_t _trace_ring[TRAP_TRACE_DEPTH];
+static volatile unsigned _trace_idx;
+static volatile bool trap_trace_enabled;
+
+void trap_trace_on(void)  { trap_trace_enabled = true; }
+void trap_trace_off(void) { trap_trace_enabled = false; }
+
+/* ===================================================================
+ * mtval2 CSR availability detection
+ *
+ * mtval2 (0x34B) exists when the Hypervisor extension is implemented
+ * (H "adds CSRs mtval2 and mtinst") OR when Ssdbltrp is implemented
+ * (norm:mtval2_Ssdbltrap: "The Ssdbltrap extension requires the
+ * implementation of the mtval2 CSR" -- independent of H).  On builds
+ * whose ISA has neither (e.g. Ss_CSR), reading mtval2 raises an
+ * illegal instruction, which inside m_trap_handler would nest into an
+ * infinite trap loop.  A compile-time macro cannot express this: it
+ * depends on each suite's effective ISA (suites run with restricted
+ * ISA strings even on max-capability platform configs), so probe
+ * once at reset (M-mode, trap vectors already installed) and read
+ * mtval2 in the handler only when present. */
+static bool trap_mtval2_present;
+
+/* Trap-arming API (defined further down in this file) */
+extern void trap_expect_begin(void);
+extern void trap_expect_end(void);
+extern bool trap_was_triggered(void);
+
+void trap_probe_mtval2(void) {
+    trap_expect_begin();
+    (void)CSRR(CSR_MTVAL2);
+    trap_mtval2_present = !trap_was_triggered();
+    trap_expect_end();
+}
+
+static inline void _trace_add(unsigned priv, uintptr_t cause,
+                              uintptr_t epc, uintptr_t status,
+                              uintptr_t tval, uintptr_t mtval2,
+                              int armed) {
+    if (!trap_trace_enabled)
+        return;
+    unsigned i = _trace_idx % TRAP_TRACE_DEPTH;
+    _trace_ring[i].priv   = priv;
+    _trace_ring[i].cause  = cause;
+    _trace_ring[i].epc    = epc;
+    _trace_ring[i].status = status;
+    _trace_ring[i].tval   = tval;
+    _trace_ring[i].mtval2 = mtval2;
+    _trace_ring[i].armed  = armed;
+    _trace_idx++;
+}
+
+static void _trace_dump(void) {
+    if (!trap_trace_enabled)
+        return;
+    printf("  [TRACE] last trap entries (old -> new):\n");
+    unsigned start = (_trace_idx < TRAP_TRACE_DEPTH)
+                         ? 0 : _trace_idx;
+    for (unsigned k = 0; k < TRAP_TRACE_DEPTH && k < _trace_idx; k++) {
+        unsigned i = (start + k) % TRAP_TRACE_DEPTH;
+        printf("    priv=%c cause=0x%lx epc=0x%lx status=0x%lx "
+               "tval=0x%lx mtval2=0x%lx armed=%d\n",
+               _trace_ring[i].priv == 3 ? 'M' : 'S',
+               (unsigned long)_trace_ring[i].cause,
+               (unsigned long)_trace_ring[i].epc,
+               (unsigned long)_trace_ring[i].status,
+               (unsigned long)_trace_ring[i].tval,
+               (unsigned long)_trace_ring[i].mtval2,
+               _trace_ring[i].armed);
+    }
+}
+
 #ifdef ENABLE_HYP
 /* Snapshot of mstatus.MPV/MPP captured at M-mode trap entry, before
  * the handler modifies them.  Tests use trap_get_mpv/mpp() to verify
@@ -260,10 +379,42 @@ static inline uintptr_t next_instruction(uintptr_t epc) {
  *
  * Returns the privilege level to return to (for mret MPP setup).
  * =================================================================== */
+/* Weak hook: called at every M-mode trap entry with the mtval2 value
+ * read at the earliest point of the C handler, where the hardware
+ * trap-entry write is guaranteed to be visible (an assembly-side
+ * capture right after the MDT-clearing MRET may run too early).
+ * Suites that need the entry-time mtval2 (Ssdbltrp) override this
+ * hook. */
+__attribute__((weak)) void trap_m_entry_mtval2_hook(uintptr_t mtval2) {
+    (void)mtval2;
+}
+
 unsigned m_trap_handler(void) {
     uintptr_t cause = CSRR(mcause);
     uintptr_t epc   = CSRR(mepc);
     uintptr_t tval  = CSRR(mtval);
+
+    /* mtval2 exists only with the H extension or Ssdbltrp
+     * (norm:mtval2_Ssdbltrap); reading it when unimplemented traps
+     * into this very handler and loops forever.  Only read it when
+     * the reset-time probe found it present (pass 0 otherwise,
+     * matching the hardware-write-zero rule for other traps). */
+    uintptr_t mtval2_val = trap_mtval2_present ? CSRR(CSR_MTVAL2) : 0;
+    _trace_add(PRIV_M, cause, epc, CSRR(mstatus), tval,
+               mtval2_val, trap_record.armed);
+    /* Feed the mtval2 capture hook on eligible entries; the hook
+     * itself applies any suite-specific gating (e.g. one-shot). */
+    trap_m_entry_mtval2_hook(mtval2_val);
+
+    /* Ssdbltrp probe tolerance (M side): a cause-16 arrival may hit
+     * the handler after the armed flag was already consumed by an
+     * earlier record.  Re-arm it while a probe is in flight so the
+     * escalated record is taken instead of halting the suite. */
+    if (_ssdbltrp_probe_present() && ssdbltrp_probe_active &&
+        cause == CAUSE_DOUBLE_TRAP && !trap_record.armed &&
+        ssdbltrp_s_probe_repeats < 16) {
+        trap_record.armed = true;
+    }
 
     /* ---- Handle ecall for privilege switching ---- */
     if (is_ecall(cause) && ecall_args[0] == ECALL_GOTO_PRIV) {
@@ -417,6 +568,56 @@ unsigned m_trap_handler(void) {
          * the very next memory operation after mret. */
         CSRC(mstatus, MSTATUS_MPRV_BIT);
 
+        /* Ssdbltrp double-trap recovery: a double-trap exception
+         * (cause 16, norm:sstatus_sdt_trap) arrives with sstatus.SDT
+         * still set and mstatus.MPP=S (written like the unexpected
+         * trap would have).  mret back to S-mode would leave SDT=1,
+         * and the framework's ecall-based return to M-mode would be
+         * delegated to S-mode again, cascading into another unexpected
+         * trap.  The SPEC note says a handler should clear SDT once
+         * state is saved, so do it here and redirect mret to M-mode
+         * where the test resumes.  Harmless on implementations without
+         * Ssdbltrp (cause 16 cannot occur there). */
+        if (cause == CAUSE_DOUBLE_TRAP) {
+            /* Bound the escalation loop: if cause-16 entries keep
+             * arriving while the probe is in flight, fail explicitly
+             * instead of hanging. */
+            if (_ssdbltrp_probe_present() && ssdbltrp_probe_active &&
+                ++ssdbltrp_dt_entries > 8) {
+                printf("\n!!! UNRECOVERABLE: double-trap escalation "
+                       "does not terminate; aborting\n");
+                _halt_fail();
+            }
+            /* Snapshot the record now: a later delivery may overwrite
+             * trap_record. */
+            trap_dt_snap_valid = true;
+            trap_dt_snap.triggered   = trap_record.triggered;
+            trap_dt_snap.priv_level  = trap_record.priv_level;
+            trap_dt_snap.cause       = trap_record.cause;
+            trap_dt_snap.epc         = trap_record.epc;
+            trap_dt_snap.tval        = trap_record.tval;
+            trap_dt_snap.status_snap = trap_record.status_snap;
+            /* Probe-flow recovery (Ssdbltrp suite only): clear SDT,
+             * redirect mret to M-mode and disable DTE so the ecall
+             * return path cannot cascade.  Other suites that observe
+             * cause 16 keep the architectural state untouched. */
+            if (_ssdbltrp_probe_present() && ssdbltrp_probe_active) {
+                CSRC(sstatus, (1UL << 24));       /* sstatus.SDT */
+                uintptr_t _ms = CSRR(mstatus);
+                _ms |= (3UL << 11);               /* MPP = M-mode */
+                CSRW(mstatus, _ms);
+                /* Force the resume point to the probe continuation on
+                 * EVERY escalation (the generic _exec_return_addr is
+                 * consumed after the first use). */
+                _exec_return_addr = (uintptr_t)ssdbltrp_probe_rearm;
+                /* The record and its mtval2 capture are already
+                 * taken; disable DTE so the return path cannot
+                 * re-enter the double-trap machinery.  The test
+                 * restores menvcfg. */
+                CSRC(menvcfg, (1UL << 59));      /* menvcfg.DTE */
+            }
+        }
+
         /* CFI (Zicfilp): Any synchronous exception taken while
          * ELP=LP_EXPECTED saves ELP into mstatus.MPELP (trap to M).
          * If we don't clear it before mret, the restored ELP=LP_EXPECTED
@@ -488,6 +689,7 @@ unsigned m_trap_handler(void) {
     printf("  mstatus = 0x%lx\n", (unsigned long)CSRR(mstatus));
     printf("  armed   = %d  current_priv = %u\n",
            (int)trap_record.armed, current_priv);
+    _trace_dump();
 
     /* Halt with fail status */
     _halt_fail();
@@ -504,6 +706,29 @@ unsigned s_trap_handler(void) {
     uintptr_t cause = CSRR(scause);
     uintptr_t epc   = CSRR(sepc);
     uintptr_t tval  = CSRR(stval);
+
+    /* NOTE: do NOT read mtval2 here: mtval2 is an M-mode CSR, so an
+     * S-side read may raise an illegal-instruction trap inside the
+     * handler itself and overwrite the armed record. Pass 0; the
+     * M-side entry still captures mtval2. */
+    _trace_add(PRIV_S, cause, epc, CSRR(sstatus), tval,
+               0, trap_record.armed);
+
+    /* Ssdbltrp probe tolerance (S side): the probe trap may be
+     * redelivered after the armed flag was consumed by an earlier
+     * record (e.g. an escalated double-trap entry in M-mode).  Re-arm
+     * these traps so the armed branch below records them instead of
+     * halting the suite.  Region A is the trampoline entry path plus
+     * probe body; region B is the continuation's mtval2 read. */
+    if (_ssdbltrp_probe_present() && ssdbltrp_probe_active &&
+        cause == CAUSE_ILLEGAL_INST && !trap_record.armed &&
+        ssdbltrp_s_probe_repeats < 16 &&
+        ((epc >= (uintptr_t)ssdbltrp_run_s_probe &&
+          epc < (uintptr_t)ssdbltrp_probe_rearm) ||
+         (epc >= (uintptr_t)ssdbltrp_probe_mtval2_ld &&
+          epc < (uintptr_t)ssdbltrp_probe_mtval2_ld + 8))) {
+        trap_record.armed = true;
+    }
 
     /* ---- Handle ecall for privilege switching ---- */
     if (is_ecall(cause) && ecall_args[0] == ECALL_GOTO_PRIV) {
@@ -575,6 +800,30 @@ unsigned s_trap_handler(void) {
 #endif
         trap_record.armed      = false;
 
+        /* Ssdbltrp probe tolerance: the probe trap may be delivered
+         * repeatedly, or resume in a mode where a C call is unsafe.
+         * While a probe is in flight, keep the expectation armed so
+         * repeated deliveries are recorded instead of halting the
+         * suite, and redirect the resume point to the probe
+         * continuation label (a mode-agnostic ecall-based return to
+         * M-mode).  With a single delivery this only re-arms a harmless
+         * leftover expectation. */
+        if (_ssdbltrp_probe_present() && ssdbltrp_probe_active &&
+            cause == CAUSE_ILLEGAL_INST &&
+            ((epc >= (uintptr_t)ssdbltrp_run_s_probe &&
+              epc < (uintptr_t)ssdbltrp_probe_rearm) ||
+             (epc >= (uintptr_t)ssdbltrp_probe_mtval2_ld &&
+              epc < (uintptr_t)ssdbltrp_probe_mtval2_ld + 8))) {
+            ssdbltrp_s_probe_repeats++;
+            if (ssdbltrp_s_probe_repeats > 4) {
+                CSRW(sepc, (uintptr_t)ssdbltrp_probe_rearm);
+                return PRIV_S;
+            }
+            trap_record.armed = true;
+            CSRW(sepc, (uintptr_t)ssdbltrp_probe_rearm);
+            return PRIV_S;
+        }
+
         /* CFI (Zicfilp): clear SPELP on any synchronous exception for
          * clean recovery, same logic as m_trap_handler. Any sync trap
          * taken while ELP=LP_EXPECTED saves ELP into SPELP (trap to S).
@@ -626,6 +875,7 @@ unsigned s_trap_handler(void) {
     printf("  scause = 0x%lx\n", (unsigned long)cause);
     printf("  sepc   = 0x%lx\n", (unsigned long)epc);
     printf("  stval  = 0x%lx\n", (unsigned long)tval);
+    _trace_dump();
 
     /* Halt with fail status */
     _halt_fail();
@@ -705,6 +955,21 @@ uintptr_t trap_get_tval(void) {
 
 uintptr_t trap_get_status_snap(void) {
     return trap_record.status_snap;
+}
+
+/* Snapshot of the current trap record into caller storage.  Needed by
+ * flows where a single hardware event produces more than one handler
+ * record (e.g. broken Ssdbltrp implementations delivering both the
+ * escalated double-trap to M-mode and the original trap to S-mode):
+ * the continuation code snapshots the first record before the second
+ * delivery overwrites trap_record. */
+void trap_snapshot(trap_snapshot_t *snap) {
+    snap->triggered   = trap_record.triggered;
+    snap->priv_level  = trap_record.priv_level;
+    snap->cause       = trap_record.cause;
+    snap->epc         = trap_record.epc;
+    snap->tval        = trap_record.tval;
+    snap->status_snap = trap_record.status_snap;
 }
 
 #ifdef ENABLE_HYP

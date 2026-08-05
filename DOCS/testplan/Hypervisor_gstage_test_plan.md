@@ -65,6 +65,8 @@
 | `norm:H_trap_xtinst_guestpage_rw` | A write pseudoinstruction (0x00002020 or 0x00003020) is used for the case that the machine is attempting automatically to update bits A and/or D in VS-level page tables. All other implicit memory accesses for VS-stage address translation will be reads. | 写伪指令（0x00002020 或 0x00003020）用于机器自动更新 VS 级页表 A/D 位的情况。所有其他 VS 阶段翻译的隐式内存访问均为读取。 |
 | `norm:hgatp_tvm_illegal` | When `mstatus`.TVM=1, attempts to read or write `hgatp` while executing in HS-mode will raise an illegal-instruction exception. | 当 `mstatus`.TVM=1 时，在 HS 模式下尝试读写 `hgatp` 将引发非法指令异常。 |
 | `norm:hstatus_gva_op` | Field GVA (Guest Virtual Address) is written by the implementation whenever a trap is taken into HS-mode. For any trap that writes a guest virtual address to `stval`, GVA is set to 1. For any other trap into HS-mode, GVA is set to 0. | GVA 字段在进入 HS 模式的陷阱时由实现写入。写入客户虚拟地址到 `stval` 的陷阱设置 GVA=1，其他陷阱设置 GVA=0。 |
+| `norm:hgatp_mode_bare_trans` | When the address translation scheme selected by the MODE field of `hgatp` is Bare, guest physical addresses are equal to supervisor physical addresses without modification, and no memory protection applies in the trivial translation of guest physical addresses to supervisor physical addresses. | 当 `hgatp` 的 MODE 选择 Bare 时，客户物理地址未经修改即等于 supervisor 物理地址，该平凡翻译中不施加任何内存保护。 |
+| `norm:H_pmp` | Machine-level physical memory protection applies to supervisor physical addresses and is in effect regardless of virtualization mode. | 机器级物理内存保护适用于 supervisor 物理地址，与虚拟化模式无关。 |
 
 ---
 
@@ -92,7 +94,7 @@
 | GHCSR-06 | PPN[1:0] 强制为 0 | 通过 `MAKE_HGATP(SV39X4, 0, ppn_with_low2_bits_set)` 写入 hgatp，读回提取 PPN 字段 | 读回 PPN[1:0]=0 |
 | GHCSR-07 | VMIDLEN 探测与回写 | 向 VMID 字段写入全 1，读回判断 VMIDLEN；再用 0..VMIDMAX 范围内合法 VMID 写读 | VMIDLEN ≤ 14；合法 VMID 可写读 |
 | GHCSR-08 | TVM=1 时 HS-mode 访问 hgatp | M-mode 设置 `mstatus.TVM=1`，切换到 HS-mode 后 `csrr` 读 `hgatp` | illegal-instruction exception (`scause`=2)；M-mode 访问不受影响 |
-| GHCSR-09 | MODE=Bare 透传验证 | M-mode 写入 `hgatp` MODE=Bare，VS-mode 访问任意 GPA | GPA = SPA，无翻译无保护，访问成功 |
+| GHCSR-09 | MODE=Bare 透传验证 | M-mode 写入 `hgatp` MODE=Bare，VS-mode 访问任意 GPA | GPA = SPA，无翻译无保护，访问成功（同时覆盖 `norm:hgatp_mode_bare_trans` 的直通侧） |
 
 ```c
 /* GHCSR-06 示例：PPN[1:0] 强制为零 */
@@ -499,12 +501,61 @@ bool test_gstage_htval_gpa_shifted(void) {
 
 ---
 
+### Group 14：hgatp MODE=Bare 平凡翻译（G-stage Bare 独立行为）
+
+**规范依据**：
+- `norm:hgatp_mode_bare_trans`：`hgatp`.MODE=Bare 时 GPA 未经修改等于 SPA，平凡翻译中不施加任何内存保护（不可能产生 guest-page-fault）
+- `norm:hgatp_mode_bare`：MODE=Bare 时除 PMP 外无其他内存保护
+- `norm:H_pmp`：机器级 PMP 适用于 supervisor 物理地址，与虚拟化模式无关（V=1 时依然生效）
+- `norm:htval_trapval`：非 guest-page-fault 的陷阱 `htval` 置零
+- `norm:hstatus_gva_op`：写客户虚拟地址到 `stval` 的陷阱 `hstatus.GVA` 置 1；其 NOTE 明确内存访问陷阱的 GVA 与 SPV 同值（HLV/HLVX/HSV 除外）
+
+**测试职责**：在 `vsatp=Bare` + `hgatp=Bare`（两级均平凡翻译）场景下，验证 GPA==SPA 直通（含取指与 VU-mode）、绝无 guest-page-fault、PMP 是唯一保护机制、Bare 下 trap 报告的 htval/GVA 行为。实现文件：`Sv39x4/tests/test_gstage_bare.c`（GBARE-01~05）。
+
+| 测试 ID | 测试名称 | 测试描述 | 预期结果 |
+|---------|----------|----------|----------|
+| GBARE-01 | VS-mode fetch 直通 | 双 Bare（`two_stage_init(ctx, BARE, BARE)`），VS-mode 跳转 `test_exec_page` 取指执行 | 执行成功返回，无 trap（平凡翻译不施加保护） |
+| GBARE-02 | VU-mode load/store 直通 | 双 Bare，`two_stage_run_in_vu` 对 `test_data_area` 读写 | 读写成功，值一致 |
+| GBARE-03 | 多地址 GPA==SPA 严格等价 | 双 Bare，VS-mode 依次访问代码区/数据区/测试区 3 个不同物理区段 | 全部直通成功，证明 GPA 未经任何修改等于 SPA |
+| GBARE-04 | PMP 兜底 → access fault | 双 Bare，仿 Group 19 手法用 `pmp_set_entry` 将 entry0 改为拒绝目标 4K 页（entry1 全空间 RWX 兜底），VS-mode 分别 load / store / fetch | cause=5 / 7 / 1（access fault），且断言 cause 不属于 {20,21,23}（Bare 下绝无 guest-page-fault） |
+| GBARE-05 | Bare 下 trap 报告 | 续 GBARE-04 的 PMP load fault，检查 trap 现场 | `trap_get_htval()==0`（`norm:htval_trapval`：非 guest-page-fault）；`hstatus.GVA==SPV==1`（`norm:hstatus_gva_op` NOTE：写非零 stval 的内存访问陷阱 GVA 与 SPV 同值，V=1 时故障地址即客户虚拟地址） |
+
+```c
+/* GBARE-04 示例：PMP 兜底，Bare 下产生 access fault 而非 guest fault */
+TEST_REGISTER(test_gbare_04_pmp_access_fault);
+bool test_gbare_04_pmp_access_fault(void) {
+    TEST_BEGIN("GBARE-04: PMP deny under Bare -> access fault, never guest fault");
+
+    two_stage_ctx_t ctx;
+    two_stage_init(&ctx, SATP_MODE_BARE, HGATP_MODE_BARE);
+
+    uintptr_t target = (uintptr_t)test_data_area;
+
+    /* entry0: deny target 4KB; entry1: allow-all RWX fall-through */
+    g14_pmp_save_t save;
+    g14_pmp_deny_page(target, &save);
+
+    trap_expect_begin();
+    two_stage_run_in_vs(&ctx, test_vs_load_expect_fault, target);
+    TEST_ASSERT("trap triggered", trap_was_triggered());
+    TEST_ASSERT_EQ("cause = load access fault (5)",
+                   trap_get_cause(), CAUSE_LOAD_ACCESS_FAULT);
+    trap_expect_end();
+
+    g14_pmp_restore(&save);
+    two_stage_cleanup(&ctx);
+    HYP_TEST_END();
+}
+```
+
+---
+
 ## 测试优先级
 
 | 优先级 | 测试组 | 覆盖的测试 ID | 理由 |
 |--------|--------|--------------|------|
 | P0（必须） | Group 3、Group 7、Group 8、Group 9 | G39-MAP-01~03、GVALID-01~05、GRWX-01~07、GUBIT-01~05 | Sv39x4 核心算法 + PTE 有效性 + RWX + U-bit 关键差异 |
-| P1（重要） | Group 1、Group 2、Group 6、Group 10、Group 13 | GHCSR-01~08、GROOT-01~04、GHIGH-01~06、GAD-01~04、GFAULT-01~08 | hgatp CSR、根表对齐、GPA 高位、A/D 位、fault 报告 |
+| P1（重要） | Group 1、Group 2、Group 6、Group 10、Group 13、Group 14 | GHCSR-01~09、GROOT-01~04、GHIGH-01~06、GAD-01~04、GFAULT-01~08、GBARE-01~05 | hgatp CSR、根表对齐、GPA 高位、A/D 位、fault 报告、Bare 平凡翻译 |
 | P2（建议） | Group 4、Group 5、Group 11 | G48-MAP-01~04、G57-MAP-01~03、GALIGN-01~05 | Sv48x4/Sv57x4 扩展模式、superpage 对齐 |
 | P3（可选） | Group 12 | GGBIT-01~02 | G-bit 忽略验证 |
 

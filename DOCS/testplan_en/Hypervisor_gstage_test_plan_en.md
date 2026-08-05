@@ -64,6 +64,8 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 | `norm:H_trap_xtinst_guestpage_rw` | A write pseudoinstruction (0x00002020 or 0x00003020) is used for the case that the machine is attempting automatically to update bits A and/or D in VS-level page tables. All other implicit memory accesses for VS-stage address translation will be reads. |
 | `norm:hgatp_tvm_illegal` | When `mstatus`.TVM=1, attempts to read or write `hgatp` while executing in HS-mode will raise an illegal-instruction exception. |
 | `norm:hstatus_gva_op` | Field GVA (Guest Virtual Address) is written by the implementation whenever a trap is taken into HS-mode. For any trap that writes a guest virtual address to `stval`, GVA is set to 1. For any other trap into HS-mode, GVA is set to 0. |
+| `norm:hgatp_mode_bare_trans` | When the address translation scheme selected by the MODE field of `hgatp` is Bare, guest physical addresses are equal to supervisor physical addresses without modification, and no memory protection applies in the trivial translation of guest physical addresses to supervisor physical addresses. |
+| `norm:H_pmp` | Machine-level physical memory protection applies to supervisor physical addresses and is in effect regardless of virtualization mode. |
 
 ---
 
@@ -91,7 +93,7 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 | GHCSR-06 | PPN[1:0] forced to 0 | Write hgatp via `MAKE_HGATP(SV39X4, 0, ppn_with_low2_bits_set)`, read back and extract PPN field | Read-back PPN[1:0]=0 |
 | GHCSR-07 | VMIDLEN probing and write-back | Write all 1s to VMID field, read back to determine VMIDLEN; then write-read with valid VMID in 0..VMIDMAX range | VMIDLEN ≤ 14; valid VMIDs can be written and read back |
 | GHCSR-08 | HS-mode access to hgatp with TVM=1 | M-mode sets `mstatus.TVM=1`, switch to HS-mode and `csrr` read `hgatp` | illegal-instruction exception (`scause`=2); M-mode access is unaffected |
-| GHCSR-09 | MODE=Bare pass-through verification | M-mode writes `hgatp` MODE=Bare, VS-mode accesses arbitrary GPA | GPA = SPA, no translation or protection, access succeeds |
+| GHCSR-09 | MODE=Bare pass-through verification | M-mode writes `hgatp` MODE=Bare, VS-mode accesses arbitrary GPA | GPA = SPA, no translation or protection, access succeeds (also covers the pass-through side of `norm:hgatp_mode_bare_trans`) |
 
 ---
 
@@ -323,12 +325,33 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 
 ---
 
+### Group 14: hgatp MODE=Bare Trivial Translation (G-stage Bare Standalone Behavior)
+
+**Specification Basis**:
+- `norm:hgatp_mode_bare_trans`: When `hgatp`.MODE=Bare, guest physical addresses equal supervisor physical addresses without modification, and no memory protection applies in the trivial translation (a guest-page-fault can never occur)
+- `norm:hgatp_mode_bare`: With MODE=Bare there is no memory protection beyond PMP
+- `norm:H_pmp`: Machine-level PMP applies to supervisor physical addresses regardless of virtualization mode (still in effect with V=1)
+- `norm:htval_trapval`: For traps other than guest-page-fault, `htval` is set to zero
+- `norm:hstatus_gva_op`: Traps that write a guest virtual address to `stval` set `hstatus.GVA` to 1; its NOTE states that memory access traps set GVA the same as SPV (except HLV/HLVX/HSV)
+
+**Test Responsibility**: Under `vsatp=Bare` + `hgatp=Bare` (both stages trivial), verify GPA==SPA pass-through (including fetch and VU-mode), that guest-page-fault can never occur, that PMP is the only remaining protection, and the htval/GVA trap-reporting behavior under Bare. Implementation file: `Sv39x4/tests/test_gstage_bare.c` (GBARE-01~05).
+
+| Test ID | Test Name | Test Description | Expected Result |
+|---------|----------|----------|----------|
+| GBARE-01 | VS-mode fetch pass-through | Both stages Bare (`two_stage_init(ctx, BARE, BARE)`), VS-mode jumps to `test_exec_page` and executes | Execution returns successfully, no trap (trivial translation applies no protection) |
+| GBARE-02 | VU-mode load/store pass-through | Both stages Bare, `two_stage_run_in_vu` reads/writes `test_data_area` | Read/write succeed, value matches |
+| GBARE-03 | Multi-address GPA==SPA strict equivalence | Both stages Bare, VS-mode accesses three distinct physical regions in turn (code/data/test region) | All pass through successfully, proving GPA equals SPA without modification |
+| GBARE-04 | PMP fallback -> access fault | Both stages Bare, mirroring the Group 19 technique: override entry0 with a deny rule for the target 4KB page (entry1 as allow-all RWX fall-through), VS-mode performs load / store / fetch respectively | cause=5 / 7 / 1 (access fault), and assert cause is NOT in {20,21,23} (no guest-page-fault possible under Bare) |
+| GBARE-05 | Trap reporting under Bare | Following the PMP load fault of GBARE-04, inspect the trap context | `trap_get_htval()==0` (`norm:htval_trapval`: not a guest-page-fault); `hstatus.GVA==SPV==1` (the `norm:hstatus_gva_op` NOTE: memory access traps writing a nonzero stval set GVA the same as SPV; with V=1 the faulting address is a guest virtual address) |
+
+---
+
 ## Test Priority
 
 | Priority | Test Group | Covered Test IDs | Rationale |
 |--------|--------|--------------|------|
 | P0 (Must) | Group 3, Group 7, Group 8, Group 9 | G39-MAP-01~03, GVALID-01~05, GRWX-01~07, GUBIT-01~05 | Sv39x4 core algorithm + PTE validity + RWX + U-bit key difference |
-| P1 (Important) | Group 1, Group 2, Group 6, Group 10, Group 13 | GHCSR-01~08, GROOT-01~04, GHIGH-01~06, GAD-01~04, GFAULT-01~08 | hgatp CSR, root table alignment, GPA high bits, A/D bits, fault reporting |
+| P1 (Important) | Group 1, Group 2, Group 6, Group 10, Group 13, Group 14 | GHCSR-01~09, GROOT-01~04, GHIGH-01~06, GAD-01~04, GFAULT-01~08, GBARE-01~05 | hgatp CSR, root table alignment, GPA high bits, A/D bits, fault reporting, Bare trivial translation |
 | P2 (Recommended) | Group 4, Group 5, Group 11 | G48-MAP-01~04, G57-MAP-01~03, GALIGN-01~05 | Sv48x4/Sv57x4 extended modes, superpage alignment |
 | P3 (Optional) | Group 12 | GGBIT-01~02 | G-bit ignore verification |
 

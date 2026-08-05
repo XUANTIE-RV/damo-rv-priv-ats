@@ -95,9 +95,13 @@
 | `norm:mtval2_htval_virtaddr` | When a guest-page fault is not due to an implicit memory access for VS-stage address translation, a nonzero guest physical address written to `mtval2`/`htval` shall correspond to the exact virtual address written to `mtval`/`stval`. | 当客户页错误不是由 VS 阶段地址翻译的隐式内存访问引起时，写入 `mtval2`/`htval` 的非零客户物理地址必须对应写入 `mtval`/`stval` 的确切虚拟地址。 |
 | `norm:H_vm_gpa_g` | The G bit in all G-stage PTEs is currently not used. It should be cleared by software for forward compatibility, and must be ignored by hardware. | G 阶段 PTE 中的 G 位当前未使用。软件应清零以保持前向兼容，硬件必须忽略。 |
 | `norm:H_pmp` | Machine-level physical memory protection applies to supervisor physical addresses and is in effect regardless of virtualization mode. | 机器级物理内存保护适用于 supervisor 物理地址，与虚拟化模式无关。 |
+| `norm:hgatp_mode_bare_trans` | When the address translation scheme selected by the MODE field of `hgatp` is Bare, guest physical addresses are equal to supervisor physical addresses without modification, and no memory protection applies in the trivial translation of guest physical addresses to supervisor physical addresses. | 当 `hgatp` 的 MODE 选择 Bare 时，客户物理地址未经修改即等于 supervisor 物理地址，该平凡翻译中不施加任何内存保护。 |
 | `norm:H_exception_priority` | If an instruction may raise multiple synchronous exceptions, the decreasing priority order indicates which exception is taken and reported in `mcause` or `scause`. | 若指令可能引发多个同步异常，按优先级递减顺序决定哪个异常被接收并报告在 `mcause` 或 `scause` 中。 |
 | `norm:hgatp_ppn_op` | For the paged virtual-memory schemes, the root page table is 16 KiB and must be aligned to a 16-KiB boundary. In these modes, the lowest two bits of the physical page number (PPN) in `hgatp` always read as zeros. | 对于分页虚拟内存方案，根页表为 16 KiB 且必须对齐到 16 KiB 边界。这些模式下 `hgatp` 中 PPN 的最低两位始终读为零。 |
 | `norm:hgatp_mode_warl` | A write to `hgatp` with an unsupported MODE value is not ignored as it is for `satp`. Instead, the fields of `hgatp` are WARL in the normal way, when so indicated. | 使用不支持的 MODE 值写入 `hgatp` 不会像 `satp` 那样被忽略。`hgatp` 的字段按常规 WARL 方式处理。 |
+| `norm:satp_ppn_sv39_sz` | The 27-bit VPN is translated into a 44-bit PPN via a three-level page table, while the 12-bit page offset is untranslated. | Sv39 将 27 位 VPN 翻译为 44 位 PPN（三级页表），12 位页内偏移不翻译。 |
+| `norm:satp_ppn_sv48_sz` | The 36-bit VPN is translated into a 44-bit PPN via a four-level page table, while the 12-bit page offset is untranslated. | Sv48 将 36 位 VPN 翻译为 44 位 PPN（四级页表），12 位页内偏移不翻译。 |
+| `norm:satp_ppn_sv57_sz` | The 45-bit VPN is translated into a 44-bit PPN via a five-level page table, while the 12-bit page offset is untranslated. | Sv57 将 45 位 VPN 翻译为 44 位 PPN（五级页表），12 位页内偏移不翻译。 |
 
 ---
 
@@ -893,13 +897,65 @@ bool test_mprv_mpv_vs_level(void) {
 
 ---
 
+### Group 24：VS-stage PPN 宽度（44-bit）验证
+
+**规范依据**：
+- `norm:satp_ppn_sv39_sz` / `norm:satp_ppn_sv48_sz` / `norm:satp_ppn_sv57_sz`：Sv39/Sv48/Sv57 将 VPN 翻译为 **44-bit PPN**，即 VS-stage（`vsatp`）叶 PTE 的 PPN 字段宽 44 位，VS-stage 翻译输出的 GPA 最高可达 bit 55（44+12）
+- `norm:H_vm_twostage`：VS-stage 输出的 GPA 进入 G-stage 翻译；只要 GPA 落在 G-stage MODE 可寻址范围内（Sv39x4 → 41-bit、Sv48x4 → 50-bit、Sv57x4 → 59-bit GPA 空间），翻译必须正常完成
+
+**测试职责**：验证 VS-stage PTE 保留完整 44-bit PPN，且在宽 G-stage 下输出高 GPA（≥2^41 / ≥2^50 / bit55）能成功完成两阶段翻译。单阶段翻译下 SPA 受真实物理内存限制无法构造高地址场景；两阶段翻译可借助 G-stage 把高 GPA 重映射回低地址真实内存，使该属性可测。
+
+| 测试 ID | 测试名称 | VS-stage | G-stage | 测试描述 | 预期结果 |
+|---------|----------|---------|--------|----------|----------|
+| TS-PPNW-01 | Sv39 VS-stage 输出 GPA ≥ 2^41 | Sv39 | Sv48x4 | VS-stage 映射测试 VA → GPA=2^41（PPN bit29，越过 Sv39x4 的 41-bit 边界），G-stage 将该 GPA 重映射到低地址真实 SPA，VS-mode R/W | R/W 成功（norm:satp_ppn_sv39_sz） |
+| TS-PPNW-02 | Sv39 VS-stage 输出 GPA bit55 | Sv39 | Sv57x4 | VS-stage 映射测试 VA → GPA=2^55（PPN bit43，44-bit PPN 最高位），G-stage 重映射到低地址真实 SPA | R/W 成功（norm:satp_ppn_sv39_sz） |
+| TS-PPNW-03 | Sv48 VS-stage 输出 GPA ≥ 2^50 | Sv48 | Sv57x4 | VS-stage 映射测试 VA → GPA=2^50（PPN bit38），G-stage 重映射到低地址真实 SPA | R/W 成功（norm:satp_ppn_sv48_sz） |
+| TS-PPNW-04 | Sv57 VS-stage 输出 GPA bit55 | Sv57 | Sv57x4 | VS-stage 映射测试 VA → GPA=2^55（PPN bit43），G-stage 重映射到低地址真实 SPA | R/W 成功（norm:satp_ppn_sv57_sz） |
+
+> [!NOTE]
+> - 负向对偶场景「VS-stage 输出的 GPA 超出窄 G-stage 可寻址范围（如 Sv48+Sv39x4 输出 GPA ≥ 2^41）必须触发 guest-page-fault (cause=21)」已由 Group 4 的 TS-XMODE-07/08/09 覆盖，本组为成功路径的互补验证。
+> - 所选 GPA 均低于对应 G-stage GPA 空间上限（Sv48x4 → 2^50，Sv57x4 → 2^59），同时高于较窄模式的上限，保证用例既合法又有区分度。
+> - 高 GPA 区域不对应任何真实内存，G-stage 将其重映射到 `test_data_area` 物理页；测试仅验证翻译路径正确性，与平台内存大小无关。
+> - 用例以 `REQUIRE_VSATP_MODE` / `REQUIRE_HGATP_MODE` 门控，仅在与目录 SUITE 模式匹配的目录中运行，其余目录自动 SKIP。
+
+---
+
+### Group 25：hgatp=Bare 联合行为（G-stage 平凡翻译 × VS-stage/联合机制）
+
+**规范依据**：
+- `norm:hgatp_mode_bare_trans`：`hgatp`.MODE=Bare 时 GPA 未经修改等于 SPA，平凡翻译中不施加任何内存保护（绝无 guest-page-fault）
+- `norm:H_vm_twostage`：V=1 时任一阶段可通过对应 ATP 设为 Bare 而"有效禁用"；VS-stage 有效 + G-stage Bare 时，fault 仍由 VS-stage 产生（cause 12/13/15）
+- `norm:H_vm_gpatrans`：guest-page-fault 仅由 G-stage 翻译失败产生——G-stage Bare 时不可达
+- `norm:hlsv_op`：HLV/HLVX/HSV 始终以 V=1 + `hstatus.SPVP` 名义特权级执行两阶段访问，G-stage Bare 时同样平凡翻译直通
+- `norm:mstatus_mprv_hypervisor`：MPRV=1 时显式访问按 MPV/MPP 翻译，G-stage Bare 时同样直通
+- `norm:hfence-gvma_mode`：`hgatp`.MODE 改变后必须执行 rs1=x0 的 HFENCE.GVMA 排序——即使旧/新 MODE 为 Bare
+- `norm:sstatus_sum` / `norm:sstatus_mxr`：SUM/MXR 仅在页式虚拟内存生效时作用；G-stage Bare 时对 G-stage 无意义
+
+**测试职责**：在 VS-stage 有效或联合机制（HLV/HSV、MPRV+MPV、HFENCE.GVMA）参与的前提下，验证 G-stage Bare 的平凡翻译语义：VS-stage fault 码区分、直通行为、模式切换排序、SUM/MXR 无 G-stage 效果。实现文件：`Sv39x4_Sv39/tests/test_hgatp_bare_joint.c`（TS-BARE-01~06），通过 symlink 在全部 9 个目录运行。
+
+| 测试 ID | 测试名称 | 测试描述 | 预期结果 |
+|---------|----------|----------|----------|
+| TS-BARE-01 | VS-stage fault 码区分 | `two_stage_init(ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE)` + `ts2_setup_full`，VS-stage 目标页 PTE V=0，VS-mode load | cause=13（load page-fault），且断言 cause 不属于 {20,21,23}（G-stage Bare 不可能产生 guest-page-fault） |
+| TS-BARE-02 | HLV/HSV 直通 | 双 Bare，`two_stage_enable` 后 HS-mode 执行 `hlv_d` 读、`hsv_d` 写 `test_data_area` | 无 trap，读回值与写入一致（G-stage 平凡翻译下 GPA=SPA） |
+| TS-BARE-03 | MPRV+MPV 直通 | 双 Bare，M-mode 设 MPV=1、MPP=VS 后在 MPRV=1 窗口内 ld/sd | 无 trap，访问如同 V=1 平凡翻译直通，值正确 |
+| TS-BARE-04 | Bare→Sv*x4 切换 | hgatp 从 Bare 切换到 SUITE_HGATP_MODE（预建恒等 G-stage 页表），切换后执行 `hfence_gvma_all()`，VS-mode 读写 | 访问成功（`norm:hfence-gvma_mode`：MODE 改变必须 HFENCE.GVMA 排序，新 MODE 生效） |
+| TS-BARE-05 | Sv*x4→Bare 切换 | 先在 SUITE_HGATP_MODE 下访问成功，再切回 Bare + `hfence_gvma_all()`，VS-mode 访问同一 GPA | 直通成功，无残留 G-stage 翻译干扰 |
+| TS-BARE-06 | 双 Bare 下 SUM/MXR 无效 | 双 Bare，置 `vsstatus.SUM`=1、`vsstatus.MXR`=1 后 VS-mode 访问任意 PMP 允许地址 | 访问成功，行为与 SUM/MXR=0 一致（无页式翻译时 SUM/MXR 无效） |
+
+> [!NOTE]
+> - 本组与 Group 1（TS-VS，hgatp=Bare 基线）互补：Group 1 验证 VS-stage 在 Bare G-stage 下的翻译对等性，本组验证 G-stage Bare 本身的平凡翻译语义与联合机制交叉。
+> - 纯 G-stage Bare 独立行为（直通/取指/VU/PMP 兜底/htval/GVA）由 G-stage 测试计划 Group 14（GBARE-01~05）覆盖。
+> - 双 Bare 场景无需任何页表，`ts2_setup_full(ctx, BARE, BARE)` 仅完成池复位与 CSR 编程。
+
+---
+
 ## 测试优先级
 
 | 优先级 | 测试组 | 覆盖的测试 ID | 理由 |
 |--------|--------|--------------|------|
 | P0（必须） | Group 1、Group 3、Group 6、Group 7、Group 15 | TS-VS-01~10、TS-MAP-01~12、TS-IMPL-01~06、TS-PERM-01~12、TS-AD-01~06 | VS-stage 基线 + 同位宽两阶段 + 隐式 G-stage fault + 权限交叉 + A/D 位处理 |
-| P1（重要） | Group 8、Group 9、Group 10、Group 11、Group 13、Group 16、Group 19 | TS-MXR-01~05、TS-SUM-01~03、TS-HV-01~06、TS-HG-01~06、TS-HLV-01~12、TS-STRD-01~03、TS-PMP-01~02 | MXR/SUM 双阶段语义、HFENCE 刷新、HLV/HSV、页边界跨越、PMP 交互 |
-| P2（建议） | Group 2、Group 5、Group 12、Group 14、Group 17、Group 18、Group 20、Group 21、Group 22 | TS-VSATP-01~07、TS-NID-01~04、TS-SF-01~04、TS-MPRV-01~05、TS-GBIT-01、TS-PBMT-01~02、TS-PRIO-01~02、TS-HGATP-01~02、TS-SINV-01~02 | vsatp CSR、非恒等映射、SFENCE V=1、MPRV、G bit、PBMTE、异常优先级、hgatp WARL、Svinval 异常 |
+| P1（重要） | Group 8、Group 9、Group 10、Group 11、Group 13、Group 16、Group 19、Group 25 | TS-MXR-01~05、TS-SUM-01~03、TS-HV-01~06、TS-HG-01~06、TS-HLV-01~12、TS-STRD-01~03、TS-PMP-01~02、TS-BARE-01~06 | MXR/SUM 双阶段语义、HFENCE 刷新、HLV/HSV、页边界跨越、PMP 交互、G-stage Bare 平凡翻译联合行为 |
+| P2（建议） | Group 2、Group 5、Group 12、Group 14、Group 17、Group 18、Group 20、Group 21、Group 22、Group 24 | TS-VSATP-01~07、TS-NID-01~04、TS-SF-01~04、TS-MPRV-01~05、TS-GBIT-01、TS-PBMT-01~02、TS-PRIO-01~02、TS-HGATP-01~02、TS-SINV-01~02、TS-PPNW-01~04 | vsatp CSR、非恒等映射、SFENCE V=1、MPRV、G bit、PBMTE、异常优先级、hgatp WARL、Svinval 异常、VS-stage 44-bit PPN 宽度验证 |
 | P3（可选） | Group 4、Group 23 | TS-XMODE-01~09、TS-LP-01~10 | 异位宽组合 + 大页面粒度组合（兼容性验证） |
 
 ---
@@ -912,7 +968,7 @@ bool test_mprv_mpv_vs_level(void) {
 
 采用「主目录持有 + 其他借用」模式：
 
-- **主目录** `Sv39x4_Sv39/`：物理持有全部 22 个 group test `.c` 文件 + 1 个新增 `test_granular_matrix.c` 笛卡尔积驱动文件。
+- **主目录** `Sv39x4_Sv39/`：物理持有全部 25 个 group test `.c` 文件 + 1 个 `test_granular_matrix.c` 笛卡尔积驱动文件。
 - **8 个借用目录**：`Sv39x4_Sv48/`、`Sv39x4_Sv57/`、`Sv48x4_Sv39/`、`Sv48x4_Sv48/`、`Sv48x4_Sv57/`、`Sv57x4_Sv39/`、`Sv57x4_Sv48/`、`Sv57x4_Sv57/`。每个目录通过 symlink 共享主目录 `tests/` 下所有源文件，仅在自身 `Makefile` 中定制 `SUITE_VSATP_MODE` / `SUITE_HGATP_MODE` 宏。
 - 原三个 G-stage 目录（`Sv39x4/`、`Sv48x4/`、`Sv57x4/`）退化为**纯 G-stage 测试目录**（保留 11 个 G-stage group：HCSR/ROOT/MAP/HIGH/VALID/RWX/UBIT/AD/ALIGN/GBIT/FAULT），不再承担两阶段测试。
 
@@ -920,14 +976,14 @@ bool test_mprv_mpv_vs_level(void) {
 damo-priv-test/
 ├── Sv39x4/  Sv48x4/  Sv57x4/    # 纯 G-stage 测试（清理 two_stage 后）
 │
-├── Sv39x4_Sv39/                 # 【主目录】持有 22 个 two_stage/*.c
+├── Sv39x4_Sv39/                 # 【主目录】持有 25 个 two_stage/*.c
 │   ├── Makefile                 #   ENABLE_TWO_STAGE=1, ENABLE_HYP=1
 │   ├── kernel.ld                #   16KB 对齐根表段（同 Sv39x4）
 │   ├── main.c
 │   └── tests/
 │       ├── test_helpers.h       # forward header（仅转发框架头）
-│       ├── test_register.c      # 22 个 two_stage/*.c #include + SUITE 宏
-│       └── (22 个 group test .c + test_granular_matrix.c)
+│       ├── test_register.c      # 25 个 two_stage/*.c #include + SUITE 宏
+│       └── (25 个 group test .c + test_granular_matrix.c)
 │
 ├── Sv39x4_Sv48/  ...  Sv57x4_Sv57/   # 8 个借用目录（symlink → 主目录）
 │   ├── Makefile                 #   定制 SUITE_VSATP_MODE / SUITE_HGATP_MODE
@@ -963,9 +1019,9 @@ damo-priv-test/
 - **矩阵驱动**：基于框架 helper `vs_max_level()` / `g_max_level()` / `PAGE_SIZE_AT_LEVEL()`（`common/hyp/two_stage_helpers.h`）。
 - **底层 API**：每个 case 调用 `ts2_setup_granular(ctx, vs_mode, g_mode, vs_level, g_level)` 后 `ts2_run_check_no_fault(ctx, test_vs_read_write, va)` 验证 R/W。
 
-#### 22 Group 在 9 目录的分布
+#### 25 Group 在 9 目录的分布
 
-所有 9 个目录均包含全部 22 个 group test 文件（共 ≈139 个 `TEST_REGISTER`）+ 1 个 `test_granular_matrix.c` 文件（25 个 `TEST_REGISTER`）。每条用例内部通过 `REQUIRE_VSATP_MODE` / `REQUIRE_HGATP_MODE` 在不匹配的目录中自动 SKIP，因此用例集合**对所有目录是同源的**，目录间差异仅由 `SUITE_*MODE` 宏控制运行时分支。
+所有 9 个目录均包含全部 25 个 group test 文件（共 ≈149 个 `TEST_REGISTER`）+ 1 个 `test_granular_matrix.c` 文件（25 个 `TEST_REGISTER`）。每条用例内部通过 `REQUIRE_VSATP_MODE` / `REQUIRE_HGATP_MODE` 在不匹配的目录中自动 SKIP，因此用例集合**对所有目录是同源的**，目录间差异仅由 `SUITE_*MODE` 宏控制运行时分支。
 
 | Group | 文件 | TEST 数 | 主测 (VS, G) | 在其他目录的行为 |
 |---|---|---|---|---|
@@ -992,8 +1048,10 @@ damo-priv-test/
 | Group 21 (HGATP WARL) | `test_hgatp_warl.c` | 2 | 全 G-mode | 全跑 |
 | Group 22 (Svinval) | `test_svinval.c` | 2 | 由 SUITE | 全跑 |
 | Group 23 (Large page) | `test_large_page.c` | 10 | 大页粒度 | 不匹配 SKIP |
+| Group 24 (PPN width) | `test_ppn_width.c` | 4 | 宽 G-stage + 高 GPA | 不匹配 SKIP |
+| Group 25 (G-stage Bare joint) | `test_hgatp_bare_joint.c` | 6 | 由 SUITE | 全跑 |
 | **新增 (Granular matrix)** | `test_granular_matrix.c` | 25 | VS×G 全笛卡尔积 | 超出 (vs_max, g_max) SKIP |
-| **合计** | 23 个文件 | **≈164** | | |
+| **合计** | 26 个文件 | **≈174** | | |
 
 #### 框架层最小增量
 
