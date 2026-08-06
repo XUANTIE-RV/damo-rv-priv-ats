@@ -588,10 +588,10 @@ EXTENSIONS = pmp smepmp spmp ... iopmp
 
 ### 4.1 创建配置目录
 
-创建 `common/config/my_board/` 目录，包含以下文件：
+创建 `config/my_board/` 目录，包含以下文件：
 
 ```
-common/config/my_board/
+config/my_board/
 ├──platfrom_config.h         # 平台硬件定义
 ├── rvmodel_macros.h   # 平台模型参数
 └── platform.mk        # 平台构建配置

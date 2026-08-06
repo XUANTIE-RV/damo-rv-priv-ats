@@ -24,8 +24,8 @@ LOG_LEVEL ?= 3
 COMMON_DIR = ../common
 SCRIPTS_DIR = ../scripts
 
-# Configuration directory
-CONFIG_DIR = $(COMMON_DIR)/config/$(CONFIG)
+# Configuration directory (config/ lives at the project root)
+CONFIG_DIR = $(COMMON_DIR)/../config/$(CONFIG)
 
 # Include configuration-specific build rules (platform.mk may override
 # defaults such as XLEN, CROSS_COMPILER, QEMU_CPU, etc.)
@@ -455,7 +455,7 @@ endif
 
 # --- Whisper ---
 WHISPER ?= whisper
-WHISPER_CONFIG = $(COMMON_DIR)/config/whisper-rv64-max/whisper.json
+WHISPER_CONFIG = $(COMMON_DIR)/../config/whisper-rv64-max/whisper.json
 
 .PHONY: whisper
 

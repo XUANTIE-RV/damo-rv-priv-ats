@@ -707,7 +707,7 @@ include ../common/Makefile.common
 
 #### 链接脚本
 
-基础链接脚本位于各平台配置目录 `common/config/<platform>/link.ld`，定义了通用的段布局（`.text.init`、`.data`、`.bss` 等）。各扩展目录下的 `kernel.ld` 通过 `INCLUDE` 指令继承基础脚本，并添加扩展特定的段（如 `.test_table`、`.pmp_test_region`、`.page_tables` 等）。
+基础链接脚本位于各平台配置目录 `config/<platform>/link.ld`，定义了通用的段布局（`.text.init`、`.data`、`.bss` 等）。各扩展目录下的 `kernel.ld` 通过 `INCLUDE` 指令继承基础脚本，并添加扩展特定的段（如 `.test_table`、`.pmp_test_region`、`.page_tables` 等）。
 
 **典型扩展 kernel.ld 结构：**
 
