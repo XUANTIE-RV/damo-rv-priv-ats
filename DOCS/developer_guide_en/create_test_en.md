@@ -588,10 +588,10 @@ Create `iopmp_test_plan.md` under `DOCS/testplan/`
 
 ### 4.1 Create the configuration directory
 
-Create the `common/config/my_board/` directory with the following files:
+Create the `config/my_board/` directory with the following files:
 
 ```
-common/config/my_board/
+config/my_board/
 ├──platfrom_config.h         # Platform hardware definitions
 ├── rvmodel_macros.h   # Platform model parameters
 └── platform.mk        # Platform build configuration

@@ -166,7 +166,7 @@ sudo apt install llvm lld clang
 
 ### 工作原理
 
-每个配置位于 `common/config/<CONFIG>/`，包含：
+每个配置位于 `config/<CONFIG>/`，包含：
 - **platform.mk** — 构建设置（交叉编译器、内存基址、模拟器选项）
 - **platform_config.h** — 平台层配置（UART 基地址、AIA BASE 地址、TRACE base 地址等硬件定义）
 - **rvtest_config.h** — Core 支持的扩展定义及 ISA parameters（由 riscv-unified-db 自动生成）

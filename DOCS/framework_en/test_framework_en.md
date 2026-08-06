@@ -708,7 +708,7 @@ include ../common/Makefile.common
 
 #### Linker Scripts
 
-Base linker scripts are located in platform configuration directories `common/config/<platform>/link.ld`, defining common section layout (`.text.init`, `.data`, `.bss`, etc.). Each extension directory's `kernel.ld` inherits the base script via `INCLUDE` directive and adds extension-specific sections (e.g., `.test_table`, `.pmp_test_region`, `.page_tables`, etc.).
+Base linker scripts are located in platform configuration directories `config/<platform>/link.ld`, defining common section layout (`.text.init`, `.data`, `.bss`, etc.). Each extension directory's `kernel.ld` inherits the base script via `INCLUDE` directive and adds extension-specific sections (e.g., `.test_table`, `.pmp_test_region`, `.page_tables`, etc.).
 
 **Typical Extension kernel.ld Structure:**
 
