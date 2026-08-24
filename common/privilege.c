@@ -7,6 +7,10 @@
 #include "encoding.h"
 #include "uart.h"
 
+#ifdef ACT4_TRAP_HANDLER
+#include "act4/act4.h"
+#endif
+
 /* ===================================================================
  * Privilege mode definitions are in encoding.h.
  * =================================================================== */
@@ -32,6 +36,14 @@ extern uintptr_t ecall_args[2];
 unsigned get_current_priv(void) {
     return current_priv;
 }
+
+#ifndef ACT4_TRAP_HANDLER
+/* =====================================================================
+ * mret/sret privilege-switch helpers
+ *
+ * Only the suite's own trap handler needs these. With the ACT4 handler
+ * the T-SBI performs every switch, and they have no callers.
+ * ===================================================================== */
 
 /* ===================================================================
  * set_prev_priv - configure mstatus.MPP / sstatus.SPP for mret/sret
@@ -192,6 +204,7 @@ static int priv_cmp(unsigned a, unsigned b) {
     }
 }
 #endif /* ENABLE_HYP */
+#endif /* !ACT4_TRAP_HANDLER */
 
 /* ===================================================================
  * goto_priv - switch to any privilege level (bidirectional)
@@ -216,6 +229,26 @@ void goto_priv(unsigned target) {
     if (target == current_priv)
         return;
 
+#ifdef ACT4_TRAP_HANDLER
+    /* Every direction — up, down, into or out of V=1 — is one T-SBI
+     * GOTO. The handler sets mstatus.MPP and MPV (or sstatus.SPP) and
+     * returns to the instruction after the ecall in the requested mode,
+     * so the caller just carries on.
+     *
+     * The ecall traps at the caller's PC and resumes at PC+4 without
+     * re-translating it, so leaving VS or VU assumes the code page is
+     * mapped at the same address on both sides of the switch. */
+    if (act4_tsbi_goto_op(target) == 0) {
+        printf("ERROR: goto_priv: no T-SBI opcode for priv %u\n", target);
+        return;
+    }
+    /* Track the change while still in the outgoing mode: on the way
+     * down, the incoming mode may not be able to write this. */
+    current_priv = target;
+    act4_tsbi_goto_priv(target);
+    return;
+#else
+
 #ifdef ENABLE_HYP
     if (priv_cmp(target, current_priv) > 0) {
         /* Need to go up: use ecall */
@@ -233,6 +266,7 @@ void goto_priv(unsigned target) {
         lower_priv(target);
     }
 #endif
+#endif /* ACT4_TRAP_HANDLER */
 }
 
 /* ===================================================================
@@ -251,12 +285,15 @@ static uintptr_t _run_result;
 static uintptr_t (*_run_fn)(uintptr_t);
 static uintptr_t _run_arg;
 
+#ifndef ACT4_TRAP_HANDLER
+/* Where the mret/sret path lands in the target mode. */
 __attribute__((used))
 static void _run_trampoline(void) {
     _run_result = _run_fn(_run_arg);
     /* Return to M-mode */
     do_ecall(ECALL_GOTO_PRIV, PRIV_M);
 }
+#endif /* !ACT4_TRAP_HANDLER */
 
 uintptr_t run_in_priv(unsigned priv, uintptr_t (*fn)(uintptr_t), uintptr_t arg) {
     unsigned saved_priv = current_priv;
@@ -264,6 +301,19 @@ uintptr_t run_in_priv(unsigned priv, uintptr_t (*fn)(uintptr_t), uintptr_t arg) 
     _run_fn  = fn;
     _run_arg = arg;
     _run_result = 0;
+
+#ifdef ACT4_TRAP_HANDLER
+    /* A T-SBI GOTO resumes at the instruction after the ecall, so this
+     * is just: switch, call, switch back. The trampoline the mret/sret
+     * path needs — enter the lower mode at a known address, ecall back,
+     * land on a pre-arranged ra — has no purpose here. */
+    if (priv != current_priv)
+        goto_priv(priv);
+    _run_result = fn(arg);
+    if (current_priv != saved_priv)
+        goto_priv(saved_priv);
+    return _run_result;
+#else
 
 #ifdef ENABLE_HYP
     int cmp = priv_cmp(priv, current_priv);
@@ -380,6 +430,7 @@ uintptr_t run_in_priv(unsigned priv, uintptr_t (*fn)(uintptr_t), uintptr_t arg) 
         goto_priv(saved_priv);
 
     return _run_result;
+#endif /* ACT4_TRAP_HANDLER */
 }
 
 /* ===================================================================

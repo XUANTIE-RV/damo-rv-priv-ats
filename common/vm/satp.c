@@ -5,6 +5,9 @@
 
 #include "vm.h"
 #include "uart.h"
+#ifdef ACT4_TRAP_HANDLER
+#include "act4/act4.h"
+#endif
 
 /* ===================================================================
  * External dependencies from privilege.c and trap.c
@@ -234,7 +237,11 @@ uintptr_t vm_run_in_smode(pt_context_t *ctx,
     /*
      * Step 3: Set up S-mode trap vector
      */
+#ifdef ACT4_TRAP_HANDLER
+    CSRW(stvec, act4_stvec_value());
+#else
     CSRW(stvec, (uintptr_t)s_trap_entry);
+#endif
 
     /*
      * Step 4: Enable virtual memory

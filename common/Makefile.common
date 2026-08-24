@@ -162,6 +162,42 @@ ifdef ENABLE_CMO
 CMO_DIR = $(COMMON_DIR)/cmo
 endif
 
+# =====================================================================
+# Trap handler selection
+#
+#   TRAP_HANDLER=damo (default)  the suite's own C trap handler
+#                                (common/trap.c + common/trap_asm.S)
+#   TRAP_HANDLER=act4            the ACT4 (riscv-arch-test) assembly trap
+#                                handler, vendored under common/act4/,
+#                                with T-SBI privilege switching enabled
+#
+# In act4 mode the ACT4 trampolines own mtvec/stvec and answer T-SBI
+# ecalls; the suite's C trap policy in common/trap.c still decides which
+# traps are expected, where to resume, and when to fail. Signature
+# emission is masked (RVTEST_ASSERTION_MODE) because this suite asserts
+# on device instead of comparing against a reference signature.
+#
+# =====================================================================
+TRAP_HANDLER ?= damo
+
+ifeq ($(TRAP_HANDLER),act4)
+ACT4_DIR = $(COMMON_DIR)/act4
+ACT4_OBJS = $(ACT4_DIR)/act4_trap.o $(ACT4_DIR)/act4_glue.o
+COMMON_OBJS += $(ACT4_OBJS)
+ACT4_DEFS = -DACT4_TRAP_HANDLER
+ifdef RVTEST_SIGNATURE_MODE
+# Building the vendored handler in stock ACT4 signature mode needs the rest
+# of ACT4's test scaffolding, which this integration does not vendor: the
+# prolog's handler-owned page tables (rvtest_<M>root_pg_tbl, from
+# rvtest_setup.h) and the per-word description strings the mismatch reporter
+# points at (sv_<M><field>_str, from rvtest_failure_code.h). Say so here
+# rather than emit ~40 undefined-reference errors.
+$(error RVTEST_SIGNATURE_MODE is not buildable yet: it needs rvtest_<MODE>root_pg_tbl and the sv_<MODE>*_str tables from ACT4's rvtest_setup.h / rvtest_failure_code.h, which common/act4/ does not vendor. See DOCS/framework_en/act4_trap_handler_integration_en.md section 8)
+endif
+else ifneq ($(TRAP_HANDLER),damo)
+$(error TRAP_HANDLER must be 'damo' or 'act4', got '$(TRAP_HANDLER)')
+endif
+
 # Compiler flags
 CFLAGS  = -Wall -O0 -g -fno-omit-frame-pointer -ggdb
 CFLAGS += -march=$(MARCH) -mabi=$(ABI) -mcmodel=medany
@@ -215,6 +251,8 @@ ifdef ENABLE_CMO
 CFLAGS += -DENABLE_CMO -I$(CMO_DIR)
 endif
 
+CFLAGS += $(ACT4_DEFS)
+
 # Extra CFLAGS from command line (e.g., make qemu EXTRA_CFLAGS='-DTEST_FILTER="VS-10"')
 CFLAGS += $(EXTRA_CFLAGS)
 
@@ -256,6 +294,8 @@ endif
 ifdef ENABLE_CMO
 ASFLAGS += -DENABLE_CMO -I$(CMO_DIR)
 endif
+
+ASFLAGS += $(ACT4_DEFS)
 
 # Linker flags
 LDFLAGS  = -z max-page-size=4096 -nostartfiles -nostdlib -nodefaultlibs

@@ -7,6 +7,33 @@
 #include "encoding.h"
 #include "uart.h"
 
+#ifdef ACT4_TRAP_HANDLER
+/* ---------------------------------------------------------------------
+ * With the ACT4 trap handler, the handlers below are no longer the trap
+ * entry point: the ACT4 trampoline is, and it calls them once it has
+ * dealt with the architectural part of the trap. By that point it has
+ * advanced xEPC past the trapping instruction, so the trapping state
+ * comes from the record it captured on the way in rather than from the
+ * live CSRs. Everything these handlers write still takes effect, since
+ * they run last.
+ *
+ * The ECALL_GOTO_PRIV and ECALL_PRIV_RESUME branches are unreachable
+ * there — privilege switching goes through the T-SBI, and an ecall that
+ * reaches here is one a test raised deliberately.
+ * ------------------------------------------------------------------- */
+#include "act4/act4.h"
+
+#define ACT4_TRAP_CAUSE()      (act4_trap_entry.cause)
+#define ACT4_TRAP_EPC()        (act4_trap_entry.epc)
+#define ACT4_TRAP_TVAL()       (act4_trap_entry.tval)
+#define ACT4_TRAP_STATUS(csr)  (act4_trap_entry.status)
+#else
+#define ACT4_TRAP_CAUSE()      CSRR(mcause)
+#define ACT4_TRAP_EPC()        CSRR(mepc)
+#define ACT4_TRAP_TVAL()       CSRR(mtval)
+#define ACT4_TRAP_STATUS(csr)  CSRR(csr)
+#endif
+
 /* Halt the machine with a fail status via RVMODEL_HALT_FAIL (entry.S).
  * On QEMU/Spike/Sail this terminates the simulation; on HW it spins. */
 extern void _halt_fail(void) __attribute__((noreturn));
@@ -132,6 +159,9 @@ void trap_probe_mtval2(void) {
     (void)CSRR(CSR_MTVAL2);
     trap_mtval2_present = !trap_was_triggered();
     trap_expect_end();
+#ifdef ACT4_TRAP_HANDLER
+    act4_set_cap_xtval2(trap_mtval2_present);
+#endif
 }
 
 /* Explicit override of the mtval2 availability gate. Tests that
@@ -141,6 +171,12 @@ void trap_probe_mtval2(void) {
  * then re-probe with trap_probe_mtval2() after restoring. */
 void trap_set_mtval2_present(bool present) {
     trap_mtval2_present = present;
+#ifdef ACT4_TRAP_HANDLER
+    /* The handler reads mtval2 on the way into every trap, so it needs
+     * the same answer: without this it would keep reading a CSR the test
+     * has just declared unsafe, and nest a trap inside itself. */
+    act4_set_cap_xtval2(present);
+#endif
 }
 
 static inline void _trace_add(unsigned priv, uintptr_t cause,
@@ -422,9 +458,9 @@ __attribute__((weak)) void trap_m_entry_mtval2_hook(uintptr_t mtval2) {
 }
 
 unsigned m_trap_handler(void) {
-    uintptr_t cause = CSRR(mcause);
-    uintptr_t epc   = CSRR(mepc);
-    uintptr_t tval  = CSRR(mtval);
+    uintptr_t cause = ACT4_TRAP_CAUSE();
+    uintptr_t epc   = ACT4_TRAP_EPC();
+    uintptr_t tval  = ACT4_TRAP_TVAL();
 
     /* mtval2 exists only with the H extension or Ssdbltrp
      * (norm:mtval2_Ssdbltrap); reading it when unimplemented traps
@@ -549,7 +585,7 @@ unsigned m_trap_handler(void) {
             trap_record.cause       = cause;
             trap_record.epc         = epc;
             trap_record.tval        = tval;
-            trap_record.status_snap = CSRR(mstatus);
+            trap_record.status_snap = ACT4_TRAP_STATUS(mstatus);
 #ifdef ENABLE_HYP
             /* Interrupts also write mtval2/mtinst/mstatus.GVA on trap
              * entry (zero per norm:mtval2_trapval and
@@ -579,7 +615,7 @@ unsigned m_trap_handler(void) {
         trap_record.cause       = cause;
         trap_record.epc         = epc;
         trap_record.tval        = tval;
-        trap_record.status_snap = CSRR(mstatus);
+        trap_record.status_snap = ACT4_TRAP_STATUS(mstatus);
 #ifdef ENABLE_HYP
         /* Capture the hardware-written values unconditionally: for
          * non-guest-page-fault traps the spec still mandates specific
@@ -746,9 +782,15 @@ unsigned m_trap_handler(void) {
  * Returns the privilege level to return to (for sret SPP setup).
  * =================================================================== */
 unsigned s_trap_handler(void) {
+#ifdef ACT4_TRAP_HANDLER
+    uintptr_t cause = ACT4_TRAP_CAUSE();
+    uintptr_t epc   = ACT4_TRAP_EPC();
+    uintptr_t tval  = ACT4_TRAP_TVAL();
+#else
     uintptr_t cause = CSRR(scause);
     uintptr_t epc   = CSRR(sepc);
     uintptr_t tval  = CSRR(stval);
+#endif
 
     /* NOTE: do NOT read mtval2 here: mtval2 is an M-mode CSR, so an
      * S-side read may raise an illegal-instruction trap inside the
@@ -838,7 +880,7 @@ unsigned s_trap_handler(void) {
             trap_record.cause       = cause;
             trap_record.epc         = epc;
             trap_record.tval        = tval;
-            trap_record.status_snap = CSRR(sstatus);
+            trap_record.status_snap = ACT4_TRAP_STATUS(sstatus);
 #ifdef ENABLE_HYP
             /* Interrupts into HS-mode also write htval/htinst/GVA
              * (zero per norm:htval_trapval / H_trap_xtinst_interrupt);
@@ -859,7 +901,7 @@ unsigned s_trap_handler(void) {
         trap_record.cause       = cause;
         trap_record.epc         = epc;
         trap_record.tval        = tval;
-        trap_record.status_snap = CSRR(sstatus);
+        trap_record.status_snap = ACT4_TRAP_STATUS(sstatus);
         if (!(cause & CAUSE_INTERRUPT_BIT))
             g_s_deleg_exc_count++;
 #ifdef ENABLE_HYP

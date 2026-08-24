@@ -35,6 +35,8 @@ EXTENSIONS = $(PMP_GROUP) $(SV_GROUP) $(SS_GROUP) $(SM_GROUP) $(HYP_GROUP) $(INT
 
 # Forward all variables to sub-makes
 MAKE_VARS = $(if $(XLEN),XLEN=$(XLEN)) \
+            $(if $(TRAP_HANDLER),TRAP_HANDLER=$(TRAP_HANDLER)) \
+            $(if $(RVTEST_SIGNATURE_MODE),RVTEST_SIGNATURE_MODE=$(RVTEST_SIGNATURE_MODE)) \
             $(if $(CONFIG),CONFIG=$(CONFIG)) \
             $(if $(CROSS_COMPILER),CROSS_COMPILER=$(CROSS_COMPILER)) \
             $(if $(TOOLCHAIN),TOOLCHAIN=$(TOOLCHAIN)) \
@@ -87,6 +89,8 @@ help:
 	@echo "    TOOLCHAIN=gcc|clang   Compiler backend (default: gcc)"
 	@echo "    CONFIG=...            Target configuration"
 	@echo "    LOG_LEVEL=1-6         Verbosity (default: 3)"
+	@echo "    TRAP_HANDLER=damo|act4  Trap handler (default: damo)"
+	@echo "                          act4 = vendored ACT4 handler + T-SBI"
 	@echo ""
 	@echo "  Maintenance:"
 	@echo "    make clean            Clean all build artifacts"

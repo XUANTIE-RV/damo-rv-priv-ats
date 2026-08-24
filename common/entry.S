@@ -73,6 +73,16 @@ _bss_done:
     /* ---- Call platform-specific init (weak symbol, default=nop) ---- */
     call    _platform_init
 
+#ifdef ACT4_TRAP_HANDLER
+    /* ---- Install the ACT4 trap handler ----
+     *
+     * Points mtvec and stvec at the ACT4 trampolines and mscratch and
+     * sscratch at the per-mode save areas, then probes which
+     * hypervisor CSRs it may read. Runs after the BSS clear above.
+     */
+    call    act4_trap_setup
+#endif
+
     /* ---- Jump to C main ---- */
     call    main
 
