@@ -102,6 +102,13 @@
     .global m_trap_entry
 m_trap_entry:
     SAVE_CONTEXT
+#ifdef ACT4_TRAP_HANDLER
+    /* m_trap_handler reads the trapping state from the ACT4 entry
+     * record. Arriving here rather than through the ACT4 trampoline
+     * means a test pointed mtvec at this handler directly, so capture
+     * that state now. */
+    jal     act4_trap_entry_capture_m
+#endif
     jal     m_trap_handler
     j       _trap_return
 
@@ -115,8 +122,37 @@ m_trap_entry:
     .global s_trap_entry
 s_trap_entry:
     SAVE_CONTEXT
+#ifdef ACT4_TRAP_HANDLER
+    jal     act4_trap_entry_capture_s   /* see the note in m_trap_entry */
+#endif
     jal     s_trap_handler
     j       _trap_return
+
+#ifdef ACT4_TRAP_HANDLER
+/* =================================================================
+ * ACT4 policy entry points
+ *
+ * The ACT4 trap handler branches here once the architectural part of
+ * a trap is done: registers saved, trapping state captured,
+ * trap-signature words written. Every register still holds the
+ * interrupted context's value and sp is the interrupted sp, so the
+ * entry sequence is the same as above -- only the state capture is
+ * skipped, the handler having already done it.
+ * ================================================================= */
+    .balign 16
+    .global act4_policy_mret
+act4_policy_mret:
+    SAVE_CONTEXT
+    jal     m_trap_handler
+    j       _trap_return
+
+    .balign 16
+    .global act4_policy_sret
+act4_policy_sret:
+    SAVE_CONTEXT
+    jal     s_trap_handler
+    j       _trap_return
+#endif
 
 /* =================================================================
  * Common return path

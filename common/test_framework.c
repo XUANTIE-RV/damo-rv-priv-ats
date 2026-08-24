@@ -4,6 +4,9 @@
  */
 
 #include "test_framework.h"
+#ifdef ACT4_TRAP_HANDLER
+#include "act4/act4.h"
+#endif
 
 /* Runtime CSR access (defined in csr_accessors.c) */
 extern uintptr_t csr_read(uint16_t csr);
@@ -66,10 +69,14 @@ void reset_state(void) {
     trap_clear_record();
 
     /* Set up trap vectors */
+#ifdef ACT4_TRAP_HANDLER
+    act4_trap_setup();
+#else
     extern void m_trap_entry(void);
     extern void s_trap_entry(void);
     CSRW(mtvec, (uintptr_t)m_trap_entry);
     CSRW(stvec, (uintptr_t)s_trap_entry);
+#endif
 
     /* Detect mtval2 CSR availability (H-extension / double-trap
      * platforms only). Must run after trap vectors are installed.
