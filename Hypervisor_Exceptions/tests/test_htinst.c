@@ -28,12 +28,14 @@
  * norm:H_trap_xtinst_interrupt: on an interrupt, the value written to
  * mtinst/htinst is ALWAYS zero.
  *
- * A real VS software interrupt is injected via hvip.VSSIP. Per
+ * A VS software interrupt is injected via hvip.VSSIP. Per
  * norm:mideleg_acc_h, mideleg bits 2/6/10 are read-only 1, so a
  * VS-level interrupt can never trap to M-mode; with hideleg bit 2
  * clear it is delivered to HS-mode and htinst is observed there.
- * With hideleg[2]=0 the interrupt is enabled via hie.VSSIE and
- * reported in hip (norm:hideleg_hs), not through sie/sip.
+ *
+ * The test installs _hs_trap_entry as the HS-mode stvec handler so
+ * that the interrupt is captured at HS-mode. The HS-mode trap
+ * handler records htinst, cause, htval and SPV for verification.
  * ------------------------------------------------------------------ */
 TEST_REGISTER(htinst_interrupt_zero);
 bool htinst_interrupt_zero(void) {
@@ -48,33 +50,53 @@ bool htinst_interrupt_zero(void) {
     uintptr_t saved_hie;
     asm volatile ("csrr %0, " CSR_STR(CSR_HIE) : "=r"(saved_hie));
 
+    /* Save stvec and install HS-mode trap handler. */
+    uintptr_t saved_stvec;
+    asm volatile ("csrr %0, stvec" : "=r"(saved_stvec));
+    asm volatile ("csrw stvec, %0" :: "r"((uintptr_t)&_hs_trap_entry));
+
+    /* Reset the HS-mode trap record. */
+    hs_trap_record_reset();
+
     /* Enable only VSSIE via hie. */
     CSRW(CSR_HIE, VS_SOFT_INT_BIT);
+
+    /* Ensure vsstatus.SIE=1 so the interrupt fires when V=1. */
+    uintptr_t saved_vsstatus;
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(saved_vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(saved_vsstatus | 0x2));
+
+    /* Set mstatus.MPIE=1 so that after mret to VS-mode, SIE=1. */
+    uintptr_t saved_mstatus;
+    asm volatile ("csrr %0, mstatus" : "=r"(saved_mstatus));
+    asm volatile ("csrs mstatus, %0" :: "r"((1UL << 7)));  /* MPIE */
 
     /* Inject VSSIP; it fires during VS-mode execution. */
     CSRS(CSR_HVIP, VS_SOFT_INT_BIT);
 
-    trap_expect_begin();
+    /* Enter VS-mode. The VSSIP traps to HS-mode (hideleg[2]=0,
+     * mideleg[2]=1). The HS handler records htinst, clears hvip,
+     * and returns via sret. VS-mode then completes the ecall
+     * round-trip back to M-mode. */
     run_in_vs_mode(vs_nop_fn, 0);
-    trap_expect_end();
 
-    /* Restore interrupt state before asserting. */
+    /* Restore state. */
     CSRW(CSR_HVIP, 0);
     CSRW(CSR_HIE, saved_hie);
+    asm volatile ("csrw stvec, %0" :: "r"(saved_stvec));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(saved_vsstatus));
+    asm volatile ("csrw mstatus, %0" :: "r"(saved_mstatus));
     hideleg_write(hideleg);
 
-    TEST_ASSERT("interrupt trap fired", trap_was_triggered());
+    TEST_ASSERT("interrupt trap fired", hs_trap_was_triggered());
     TEST_ASSERT_EQ("cause = VS software interrupt",
-                   trap_get_cause(), CAUSE_INTERRUPT_BIT | IRQ_VS_SOFTWARE);
-    /* Snapshot taken at HS trap entry: hstatus.SPVP is written like
-     * sstatus.SPP when V was 1 (norm:H_trap_hs_csrwrites). Reading
-     * hstatus here would be wrong: sret already cleared SPV/SPVP. */
+                   hs_trap_get_cause(), CAUSE_INTERRUPT_BIT | IRQ_VS_SOFTWARE);
     TEST_ASSERT("trap came from V=1 (hstatus.SPVP at entry)",
-                trap_get_spv_snap());
+                trap_get_spv());
     TEST_ASSERT_EQ("htinst must be 0 on interrupt (strict)",
-                   trap_get_htinst(), 0);
+                   hs_trap_get_htinst(), 0);
     TEST_ASSERT_EQ("htval must be 0 on interrupt (strict)",
-                   trap_get_htval(), 0);
+                   hs_trap_get_htval(), 0);
 
     HYP_TEST_END();
 }

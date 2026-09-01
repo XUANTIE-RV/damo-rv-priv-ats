@@ -9,6 +9,7 @@
 
 #include "hyp_csr.h"
 #include "encoding.h"
+#include "sm_defs.h"          /* CSR_MHPMCOUNTER3 (counter existence probe) */
 #include "test_framework.h"   /* PRIV_S / PRIV_U / PRIV_M */
 
 /* ===================================================================
@@ -543,14 +544,18 @@ uintptr_t csr_warl_probe(unsigned csr_num, uintptr_t value) {
 }
 
 /* ===================================================================
- * Counter implementation detection
- *
- * Strategy: for each counter bit in mcounteren, write the bit, read
- * back. If it sticks, the counter index is considered implemented.
- * This is a conservative probe - some implementations may have
- * writable mcounteren bits without implementing the actual counter.
+ * Counter detection helpers
  * =================================================================== */
 
+/* Probe which mcounteren HPM gate bits (3..31) are WARL-writable.
+ *
+ * NOTE: this measures mcounteren gate-bit stickiness ONLY; it does
+ * NOT prove the corresponding hpmcounter exists. Per
+ * norm:mcounteren_flds_rdonly0 (machine.adoc) a read-only-zero gate
+ * bit only means the counter is inaccessible from lower-privileged
+ * modes, and a writable gate bit carries no existence guarantee
+ * either. Use hpmcounter_is_writable() for counter existence
+ * detection. */
 uint32_t counteren_probe_implemented(void) {
     uintptr_t saved = mcounteren_read();
     uint32_t bitmap = 0;
@@ -567,9 +572,46 @@ uint32_t counteren_probe_implemented(void) {
     return bitmap;
 }
 
+/* Counter existence probe per the Shcounterenw_test_plan.md strategy:
+ * in M-mode, write a non-zero value to mhpmcounterN and read it back.
+ * If the value sticks (non-zero readback) the counter is considered
+ * implemented; a read-only-zero mirror is treated as unimplemented
+ * (norm:mhpmcounter_mhpmevent_rdonly0 permits such mirrors, and they
+ * are indistinguishable from an absent counter for test purposes).
+ *
+ * M-mode access is unaffected by mcounteren, so this probe remains
+ * valid even when the gate bits are read-only zero (unlike the
+ * mcounteren-bit stickiness probe above). The access is trap-armed:
+ * when the mhpmcounter CSR does not exist at all, the access traps
+ * with illegal-instruction and the counter is reported unimplemented. */
 bool hpmcounter_is_writable(int idx) {
-    if (idx < 3 || idx > 31) return false;
-    return (counteren_probe_implemented() & (1U << idx)) != 0;
+    if (idx < 3 || idx > 31)
+        return false;
+
+    uint16_t csr = (uint16_t)(CSR_MHPMCOUNTER3 + (idx - 3));
+    bool trapped;
+
+    trap_expect_begin();
+    uintptr_t saved = csr_read(csr);
+    trapped = trap_was_triggered();
+    trap_expect_end();
+    if (trapped)
+        return false;
+
+    trap_expect_begin();
+    csr_write(csr, 0xDEADBEEFUL);
+    uintptr_t rb = csr_read(csr);
+    trapped = trap_was_triggered();
+    trap_expect_end();
+    if (trapped)
+        return false;
+
+    /* Best-effort restore; a read-only-zero mirror ignores it. */
+    trap_expect_begin();
+    csr_write(csr, saved);
+    trap_expect_end();
+
+    return rb != 0;
 }
 
 /* ===================================================================

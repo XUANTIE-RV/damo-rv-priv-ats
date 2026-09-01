@@ -68,7 +68,7 @@ Standard structure of each extension directory:
 
 ```bash
 # Build a specific extension (e.g. pmp, on default platfrom: QEMU and default toolchain: riscv64-unknown-elf-gcc)
-cd pmp && make clean && make 
+cd pmp && make clean && make
 
 # Build for a different platform
 make clean && make CONFIG=sail-rv64-max
@@ -76,7 +76,7 @@ make clean && make CONFIG=sail-rv64-max
 # Build all extensions (at top level)
 make all CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 
-# Build and Run on simulators (Require Simulator Executable in PATH) 
+# Build and Run on simulators (Require Simulator Executable in PATH)
 make clean && make qemu
 make clean && make spike
 make clean && make sail
@@ -86,11 +86,7 @@ make clean && make whisper
 make pmp XLEN=32
 ```
 
-Run specific tests using `TEST_FILTER`:
-
-```bash
-make qemu-pmp EXTRA_CFLAGS='-DTEST_FILTER="PMP"'
-```
+Note: command-line variable changes do not trigger rebuilds of already-compiled objects, so always run `make clean` before toggling this switch.
 
 ---
 
@@ -102,7 +98,28 @@ Enable it dynamically at build time via `EXTRA_CFLAGS`:
 cd <test_dir>; make clean; make <target> EXTRA_CFLAGS='-DUART_SILENT_MODE'
 ```
 
-Note: command-line variable changes do not trigger rebuilds of already-compiled objects, so always run `make clean` before toggling this switch.
+---
+
+## FAIL FAST Mode
+
+By default, a test suite runs all cases to completion and prints the pass/fail statistics at the end. Building with `FAIL_FAST=1` enables fail-fast mode: **the whole suite halts immediately when any test case fails**, skipping the remaining cases.
+
+```bash
+cd <test_dir>; make clean; make qemu FAIL_FAST=1
+```
+
+Before halting, the framework prints a `[FAIL-FAST]` marker plus a partial summary up to that point, making the stop location easy to identify; the simulator exits with fail status (on HW platforms it spins). Without `FAIL_FAST=1`, behavior is unchanged.
+
+---
+
+## TEST FILTER Mode
+
+Run specific tests using `TEST_FILTER`:
+
+```bash
+make qemu-pmp EXTRA_CFLAGS='-DTEST_FILTER="PMP"'
+```
+
 
 ---
 
@@ -265,7 +282,9 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `Hypervisor_Smmpm` | Hyp + Smmpm (M-mode Pointer Masking) | ✓ |
 | | `Hypervisor_Smnpm` | Hyp + Smnpm (Next-level Pointer Masking) | ✓ |
 | | `Hypervisor_Smstateen` | Hyp + Smstateen | ✓ |
+| | `Hypervisor_Ssccfg` | Hyp + Ssccfg (S-mode counter delegation config) | ✓ |
 | | `Hypervisor_Ssccptr` | Hyp + Ssccptr | ✓ |
+| | `Hypervisor_Sscofpmf` | Hyp + Sscofpmf (counter overflow / mode filtering) | ✓ |
 | | `Hypervisor_Sscsrind` | Hyp + Sscsrind | ✓ |
 | | `Hypervisor_Ssdbltrp` | Hyp + Ssdbltrp | ✓ |
 | | `Hypervisor_Ssnpm` | Hyp + Ssnpm (S-mode Pointer Masking) | ✓ |
@@ -284,6 +303,12 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `Hypervisor_Smcntrpmf` | Hyp + Smcntrpmf | ✓ |
 | | `Hypervisor_Ssqosid` | Hyp + Ssqosid | ✓ |
 | | `Hypervisor_Zkr` | Hyp + Zkr | ✓ |
+| | `Hypervisor_PMP` | Hyp + PMP (PMP and virtualization interaction) | ✓ |
+| | `Hypervisor_Vector` | Hyp + V (vector extension virtualization) | ✓ |
+| | `Hypervisor_Zawrs` | Hyp + Zawrs (wait-on-reservation-set) | ✓ |
+| | `Hypervisor_Zicntr` | Hyp + Zicntr (base counters) | ✓ |
+| | `Hypervisor_Zihintntl` | Hyp + Zihintntl (non-temporal access hints) | ✓ |
+| | `Hypervisor_Zihpm` | Hyp + Zihpm (hardware performance counters) | ✓ |
 | **Machine-mode (Sm\*)** | `Sm_CSR` | M-Mode CSR | |
 | | `Sm_Interrupts` | M-Mode interrupt handling | |
 | | `Sm_Exceptions` | M-Mode exception handling | |

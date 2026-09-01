@@ -1,6 +1,6 @@
 # Ssccfg 扩展测试计划（Supervisor Mode）
 
-> 本文档描述 Ssccfg（Counter Configuration — Supervisor-level）扩展的测试计划。聚焦于 S-mode 通过 `siselect`/`sireg*` 间接访问委托计数器、`scountinhibit` 寄存器、`scountovf` 虚拟化、以及 Hypervisor 场景下的虚拟化行为。M-mode 层面的 Smcdeleg 行为由 `Smcdeleg_test_plan.md` 覆盖。
+> 本文档描述 Ssccfg（Counter Configuration — Supervisor-level）扩展的测试计划。聚焦于 S-mode 通过 `siselect`/`sireg*` 间接访问委托计数器、`scountinhibit` 寄存器、以及 MINH 位行为。M-mode 层面的 Smcdeleg 行为由 `Smcdeleg_test_plan.md` 覆盖；Hypervisor 场景的虚拟化行为（scountovf/scountinhibit 虚拟化、LCOFI 虚拟中断位、vsiselect/vsireg* 访问规则、hstateen0 bit 60 控制）已迁移至 `Hypervisor_Ss_test_plan.md` Group 11。
 >
 > 生成时间：2026-06-25
 
@@ -12,10 +12,8 @@
 
 - **间接 HPM 映射**：`siselect` 0x40-0x5F 范围通过 `sireg*` 访问委托计数器的状态
 - **sireg* 访问规则**：非法访问条件（CDE=0、sireg3/6、sireg4/5 in RV64、未委托计数器、缺少依赖扩展）
-- **scountinhibit 寄存器**：委托计数器的计数抑制控制、非委托位的只读零行为
-- **scountovf 虚拟化**：Hypervisor 场景下 VS/VU-mode 读 `scountovf` 触发 virtual-instruction
-- **LCOFI 虚拟化**：`hvip`/`hvien` bit 13 的实现（Hypervisor 场景）
-- **Hypervisor 交互**：`vsiselect`/`vsireg*` 的访问规则、VS-mode 条件访问
+- **MINH 位行为**：hpmevent/cyclecfg/instretcfg 的 bit 62 经 sireg* 间接访问时只读零（Group 7）
+- **scountinhibit 寄存器**：委托计数器的计数抑制控制、非委托位的只读零行为（Group 3）
 
 ### 不在本文档范围
 
@@ -23,6 +21,7 @@
 - `mstateen0` bit 60 的 M-mode 控制（由 `Smcdeleg_test_plan.md` 覆盖）
 - `mvip`/`mvien` LCOFI 位的 M-mode 验证（由 `Smcdeleg_test_plan.md` 覆盖）
 - 非委托场景下的 `scounteren` 基本行为（由其他扩展测试计划覆盖）
+- Hypervisor 场景的虚拟化行为（VS/VU-mode 读 `scountovf`、访问 `scountinhibit`、`hvip`/`hvien` LCOFI 位、`vsiselect`/`vsireg*` 访问规则、hstateen0 bit 60 VS-mode 控制）— 已迁移至 `Hypervisor_Ss_test_plan.md` Group 11
 
 ---
 
@@ -39,12 +38,12 @@
 | `norm:ssccfg_scountinhibit_delegated_rw` | `smcdeleg.adoc` | For counters delegated to S-mode, the associated `mcountinhibit` bits can be accessed via `scountinhibit`. | 对于委托给 S-mode 的计数器，关联的 `mcountinhibit` 位可通过 `scountinhibit` 访问。 |
 | `norm:ssccfg_scountinhibit_nondelegated_ro` | `smcdeleg.adoc` | For counters not delegated to S-mode, the associated bits in `scountinhibit` are read-only zero. | 对于未委托给 S-mode 的计数器，`scountinhibit` 中关联的位为只读零。 |
 | `norm:ssccfg_illegal_scountinhibit_cde0` | `smcdeleg.adoc` | When `menvcfg`.CDE=0, attempts to access `scountinhibit` raise an illegal-instruction exception. | 当 `menvcfg`.CDE=0 时，访问 `scountinhibit` 触发 illegal-instruction 异常。 |
-| `norm:ssccfg_illegal_scountinhibit_vs_vu` | `smcdeleg.adoc` | When Supervisor Counter Delegation is enabled, attempts to access `scountinhibit` from VS-mode or VU-mode raise a virtual-instruction exception. | 当 Supervisor 计数器委托启用时，从 VS-mode 或 VU-mode 访问 `scountinhibit` 触发 virtual-instruction 异常。 |
-| `norm:ssccfg_virtual_scountovf_vs_vu` | `smcdeleg.adoc` | For implementations that support Smcdeleg/Ssccfg, Sscofpmf, and the H extension, when `menvcfg`.CDE=1, attempts to read `scountovf` from VS-mode or VU-mode raise a virtual-instruction exception. | 对于支持 Smcdeleg/Ssccfg、Sscofpmf 和 H 扩展的实现，当 `menvcfg`.CDE=1 时，从 VS-mode 或 VU-mode 读 `scountovf` 触发 virtual-instruction 异常。 |
-| `norm:ssccfg_lcofi_hvip_hvien` | `smcdeleg.adoc` | For implementations that support Smcdeleg/Ssccfg, Sscofpmf, Smaia/Ssaia, and the H extension, the LCOFI bit (bit 13) in each of `hvip` and `hvien` is implemented and writable. | 对于支持 Smcdeleg/Ssccfg、Sscofpmf、Smaia/Ssaia 和 H 扩展的实现，`hvip` 和 `hvien` 中的 LCOFI 位（bit 13）已实现且可写。 |
-| `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal` | `smcdeleg.adoc` | If the hypervisor (H) extension is also implemented, a virtual-instruction exception is raised for attempts from VS-mode or VU-mode to directly access `vsiselect` or `vsireg*`, or attempts from VU-mode to access `siselect` or `sireg*`. | 若实现了 Hypervisor 扩展，从 VS-mode 或 VU-mode 直接访问 `vsiselect` 或 `vsireg*`，或从 VU-mode 访问 `siselect` 或 `sireg*`，触发 virtual-instruction 异常。 |
-| `norm:ssccfg_hyp_m_s_vsireg_illegal` | `smcdeleg.adoc` | An attempt to access any `vsireg*` from M or S mode raises an illegal-instruction exception while `vsiselect` holds a value in the range 0x40-0x5F. | 当 `vsiselect` 持有 0x40-0x5F 范围的值时，从 M 或 S 模式访问任何 `vsireg*` 触发 illegal-instruction 异常。 |
-| `norm:ssccfg_hyp_vs_access_sireg_conditional` | `smcdeleg.adoc` | An attempt from VS-mode to access any `sireg*` (really `vsireg*`) raises an illegal-instruction exception if `menvcfg`.CDE = 0, or a virtual-instruction exception if `menvcfg`.CDE = 1. | 从 VS-mode 访问任何 `sireg*`（实际为 `vsireg*`），若 `menvcfg`.CDE = 0 触发 illegal-instruction 异常，若 CDE = 1 触发 virtual-instruction 异常。 |
+| `norm:ssccfg_illegal_scountinhibit_vs_vu` | `smcdeleg.adoc` | When Supervisor Counter Delegation is enabled, attempts to access `scountinhibit` from VS-mode or VU-mode raise a virtual-instruction exception. | 当 Supervisor 计数器委托启用时，从 VS-mode 或 VU-mode 访问 `scountinhibit` 触发 virtual-instruction 异常。（**已迁移至 `Hypervisor_Ss_test_plan.md` Group 11**） |
+| `norm:ssccfg_virtual_scountovf_vs_vu` | `smcdeleg.adoc` | For implementations that support Smcdeleg/Ssccfg, Sscofpmf, and the H extension, when `menvcfg`.CDE=1, attempts to read `scountovf` from VS-mode or VU-mode raise a virtual-instruction exception. | 对于支持 Smcdeleg/Ssccfg、Sscofpmf 和 H 扩展的实现，当 `menvcfg`.CDE=1 时，从 VS-mode 或 VU-mode 读 `scountovf` 触发 virtual-instruction 异常。（**已迁移至 `Hypervisor_Ss_test_plan.md` Group 11**） |
+| `norm:ssccfg_lcofi_hvip_hvien` | `smcdeleg.adoc` | For implementations that support Smcdeleg/Ssccfg, Sscofpmf, Smaia/Ssaia, and the H extension, the LCOFI bit (bit 13) in each of `hvip` and `hvien` is implemented and writable. | 对于支持 Smcdeleg/Ssccfg、Sscofpmf、Smaia/Ssaia 和 H 扩展的实现，`hvip` 和 `hvien` 中的 LCOFI 位（bit 13）已实现且可写。（**已迁移至 `Hypervisor_Ss_test_plan.md` Group 11**） |
+| `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal` | `smcdeleg.adoc` | If the hypervisor (H) extension is also implemented, a virtual-instruction exception is raised for attempts from VS-mode or VU-mode to directly access `vsiselect` or `vsireg*`, or attempts from VU-mode to access `siselect` or `sireg*`. | 若实现了 Hypervisor 扩展，从 VS-mode 或 VU-mode 直接访问 `vsiselect` 或 `vsireg*`，或从 VU-mode 访问 `siselect` 或 `sireg*`，触发 virtual-instruction 异常。（**已迁移至 `Hypervisor_Ss_test_plan.md` Group 11**） |
+| `norm:ssccfg_hyp_m_s_vsireg_illegal` | `smcdeleg.adoc` | An attempt to access any `vsireg*` from M or S mode raises an illegal-instruction exception while `vsiselect` holds a value in the range 0x40-0x5F. | 当 `vsiselect` 持有 0x40-0x5F 范围的值时，从 M 或 S 模式访问任何 `vsireg*` 触发 illegal-instruction 异常。（**已迁移至 `Hypervisor_Ss_test_plan.md` Group 11**） |
+| `norm:ssccfg_hyp_vs_access_sireg_conditional` | `smcdeleg.adoc` | An attempt from VS-mode to access any `sireg*` (really `vsireg*`) raises an illegal-instruction exception if `menvcfg`.CDE = 0, or a virtual-instruction exception if `menvcfg`.CDE = 1. | 从 VS-mode 访问任何 `sireg*`（实际为 `vsireg*`），若 `menvcfg`.CDE = 0 触发 illegal-instruction 异常，若 CDE = 1 触发 virtual-instruction 异常。（**已迁移至 `Hypervisor_Ss_test_plan.md` Group 11**） |
 
 ---
 
@@ -166,78 +165,22 @@
 
 ## Group 4. scountovf 虚拟化（Hypervisor 场景）
 
-**规范依据**：
-- `norm:ssccfg_virtual_scountovf_vs_vu`：Smcdeleg/Ssccfg + Sscofpmf + H 扩展下，CDE=1 时 VS/VU-mode 读 scountovf 触发 virtual-instruction
-
-**测试职责**：验证在 Hypervisor 场景下，当 Smcdeleg/Ssccfg + Sscofpmf + H 扩展同时实现且 CDE=1 时，VS-mode 和 VU-mode 读 `scountovf` 触发 virtual-instruction 异常。
-
-| 测试 ID | 测试名称 | 测试描述 | 预期结果 |
-|---------|----------|----------|----------|
-| SSCFG-OVF-01 | VS-mode 读 scountovf（CDE=1）触发 virtual-instruction | CDE=1，VS-mode 读 scountovf | 触发 virtual-instruction 异常 (cause=22) |
-| SSCFG-OVF-02 | VU-mode 读 scountovf（CDE=1）触发 virtual-instruction | CDE=1，VU-mode 读 scountovf | 触发 virtual-instruction 异常 (cause=22) |
-| SSCFG-OVF-03 | HS-mode 读 scountovf（CDE=1）正常 | CDE=1，HS-mode（V=0 的 S-mode）读 scountovf | 访问成功，无异常 |
-| SSCFG-OVF-04 | VS-mode 读 scountovf（CDE=0）行为 | CDE=0，VS-mode 读 scountovf | 行为取决于 Sscofpmf 的基本规则（不受本虚拟化条款约束） |
-
 > [!NOTE]
-> - 本组测试需要 Smcdeleg/Ssccfg、Sscofpmf 和 H 扩展三者同时实现。若任一未实现，应 TEST_SKIP。
-> - `scountovf` 的 CSR 地址为 0xDA0（由 Sscofpmf 定义）。在 Hypervisor 场景下，CDE=1 时 VS/VU-mode 的读取会被虚拟化——触发 virtual-instruction 异常让 hypervisor 介入处理。
-> - HS-mode（V=0 的 S-mode）读 `scountovf` 不受此虚拟化约束。
+> 本组用例（原 SSCFG-OVF-01~04，`norm:ssccfg_virtual_scountovf_vs_vu`）依赖 Hypervisor 扩展，已迁移至 `Hypervisor_Ss_test_plan.md` Group 11（HCROSS-SSCCFG-01~04）。
 
 ---
 
 ## Group 5. LCOFI 虚拟化（Hypervisor 场景）
 
-**规范依据**：
-- `norm:ssccfg_lcofi_hvip_hvien`：Smcdeleg/Ssccfg + Sscofpmf + Smaia/Ssaia + H 扩展下，`hvip`/`hvien` bit 13 已实现且可写
-
-**测试职责**：验证在 Hypervisor 场景下，当所需扩展全部实现时，`hvip` 和 `hvien` 寄存器中 LCOFI 位（bit 13）的实现与可写性。
-
-| 测试 ID | 测试名称 | 测试描述 | 预期结果 |
-|---------|----------|----------|----------|
-| SSCFG-HLCOFI-01 | hvip bit 13（LCOFI）可写性 | HS-mode 写 hvip bit 13 = 1 后读回；再写 0 读回 | bit 13 可写且读回一致 |
-| SSCFG-HLCOFI-02 | hvien bit 13（LCOFI）可写性 | HS-mode 写 hvien bit 13 = 1 后读回；再写 0 读回 | bit 13 可写且读回一致 |
-| SSCFG-HLCOFI-03 | hvip.LCOFI 独立验证 | 写 hvip 全 1 后读回，检查 bit 13 | bit 13 读回为 1 |
-| SSCFG-HLCOFI-04 | hvien.LCOFI 独立验证 | 写 hvien 全 1 后读回，检查 bit 13 | bit 13 读回为 1 |
-| SSCFG-HLCOFI-05 | vsie/vsip LCOFI 位隐含实现 | 验证 vsie bit 13 和 vsip bit 13 的存在性 | vsie bit 13 和 vsip bit 13 应存在（hvip.LCOFI 的实现隐含了这些位的实现） |
-
 > [!NOTE]
-> - 本组测试需要 Smcdeleg/Ssccfg、Sscofpmf、Smaia/Ssaia 和 H 扩展四者同时实现。若任一未实现，应 TEST_SKIP。
-> - `hvip`（Hypervisor Virtual Interrupt Pending）和 `hvien`（Hypervisor Virtual Interrupt Enable）由 H 扩展和 Smaia/Ssaia 定义。
-> - 规范要求：实现 `hvip`.LCOFI 意味着 `vsie` bit 13 和 `vsip` bit 13 也隐含实现。这确保虚拟 LCOFI 中断可以递送到 VS-mode 的 guest OS。
-> - `hvip`/`hvien` 的 CSR 地址分别为 0x645 和 0x648。
+> 本组用例（原 SSCFG-HLCOFI-01~05，`norm:ssccfg_lcofi_hvip_hvien`）依赖 Hypervisor 扩展，已迁移至 `Hypervisor_Ss_test_plan.md` Group 11（HCROSS-SSCCFG-07~11）。
 
 ---
 
 ## Group 6. Hypervisor 交互：vsiselect/vsireg* 访问规则
 
-**规范依据**：
-- `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal`：VS/VU-mode 直接访问 vsiselect/vsireg* 触发 virtual-instruction
-- `norm:ssccfg_hyp_m_s_vsireg_illegal`：M/S-mode 在 vsiselect 0x40-0x5F 时访问 vsireg* 触发 illegal-instruction
-- `norm:ssccfg_hyp_vs_access_sireg_conditional`：VS-mode 访问 sireg*（实际为 vsireg*）的条件异常
-
-**测试职责**：验证 Hypervisor 场景下 vsiselect/vsireg* 的多特权级访问规则。
-
-| 测试 ID | 测试名称 | 测试描述 | 预期结果 |
-|---------|----------|----------|----------|
-| SSCFG-HYP-01 | VS-mode 直接访问 vsiselect 触发 virtual-instruction | VS-mode 尝试直接读写 vsiselect CSR | 触发 virtual-instruction 异常 (cause=22) |
-| SSCFG-HYP-02 | VS-mode 直接访问 vsireg 触发 virtual-instruction | VS-mode 尝试直接读写 vsireg CSR | 触发 virtual-instruction 异常 (cause=22) |
-| SSCFG-HYP-03 | VU-mode 直接访问 vsiselect 触发 virtual-instruction | VU-mode 尝试直接读写 vsiselect CSR | 触发 virtual-instruction 异常 (cause=22) |
-| SSCFG-HYP-04 | VU-mode 直接访问 vsireg 触发 virtual-instruction | VU-mode 尝试直接读写 vsireg CSR | 触发 virtual-instruction 异常 (cause=22) |
-| SSCFG-HYP-05 | VU-mode 访问 siselect 触发 virtual-instruction | VU-mode 尝试读写 siselect CSR | 触发 virtual-instruction 异常 (cause=22) |
-| SSCFG-HYP-06 | VU-mode 访问 sireg 触发 virtual-instruction | VU-mode 尝试读写 sireg CSR | 触发 virtual-instruction 异常 (cause=22) |
-| SSCFG-HYP-07 | M-mode 在 vsiselect 0x40-0x5F 时访问 vsireg 非法 | M-mode 设 vsiselect=0x40，访问 vsireg* | 触发 illegal-instruction 异常 |
-| SSCFG-HYP-08 | S-mode (HS) 在 vsiselect 0x40-0x5F 时访问 vsireg 非法 | HS-mode 设 vsiselect=0x40，访问 vsireg* | 触发 illegal-instruction 异常 |
-| SSCFG-HYP-09 | VS-mode 通过 sireg* 访问（CDE=0）→ illegal-instruction | menvcfg.CDE=0，VS-mode 通过 siselect=0x40 访问 sireg（实际为 vsireg） | 触发 illegal-instruction 异常 |
-| SSCFG-HYP-10 | VS-mode 通过 sireg* 访问（CDE=1）→ virtual-instruction | menvcfg.CDE=1，VS-mode 通过 siselect=0x40 访问 sireg（实际为 vsireg） | 触发 virtual-instruction 异常 |
-
 > [!NOTE]
-> - 本组测试需要 H 扩展实现。若未实现 H 扩展，所有测试应 TEST_SKIP。
-> - VS-mode 和 VU-mode **直接**访问 `vsiselect`/`vsireg*`（使用 CSR 编码）始终触发 virtual-instruction 异常。这是因为这些 CSR 是 hypervisor 管理的，guest 不应直接使用。
-> - VS-mode 通过 `siselect`/`sireg*`（guest 视角的 CSR 名称）访问时，硬件实际映射到 `vsiselect`/`vsireg*`。此时的异常类型取决于 `menvcfg.CDE`：
->   - CDE=0 → illegal-instruction（计数器委托未启用）
->   - CDE=1 → virtual-instruction（委托启用但 hypervisor 需要介入管理）
-> - M-mode 和 HS-mode 不能直接操作 `vsireg*`（当 `vsiselect` 在 0x40-0x5F 范围内时），应通过修改 VS-mode 的 guest 状态间接管理。
-> - `vsiselect` 的 CSR 地址为 0x240，`vsireg` 的 CSR 地址为 0x245。
+> 本组用例（原 SSCFG-HYP-01~10，`norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal`、`norm:ssccfg_hyp_m_s_vsireg_illegal`、`norm:ssccfg_hyp_vs_access_sireg_conditional`）依赖 Hypervisor 扩展，已迁移至 `Hypervisor_Ss_test_plan.md` Group 11（HCROSS-SSCCFG-12~21）。
 
 ---
 
@@ -269,7 +212,6 @@
 
 **规范依据**：
 - `norm:smcdeleg_mstateen0_bit60`：`mstateen0` bit 60 = 0 阻止 S-mode 访问 siselect/sireg*
-- `hstateen0` bit 60 = 0 阻止 VS-mode 访问 vsiselect/vsireg*
 
 **测试职责**：验证 Smstateen 控制位对 S-mode 间接访问 CSR 的影响。
 
@@ -278,15 +220,11 @@
 | SSCFG-STA-01 | mstateen0 bit 60 = 0 阻止 S-mode 写 siselect | mstateen0 bit 60 = 0，S-mode 写 siselect | 触发 illegal-instruction 异常 |
 | SSCFG-STA-02 | mstateen0 bit 60 = 0 阻止 S-mode 读 sireg | mstateen0 bit 60 = 0，S-mode 读 sireg | 触发 illegal-instruction 异常 |
 | SSCFG-STA-03 | mstateen0 bit 60 = 1 允许 S-mode 访问 | mstateen0 bit 60 = 1，CDE=1，mcounteren[0]=1，S-mode 设 siselect=0x40 读 sireg | 访问成功 |
-| SSCFG-STA-04 | hstateen0 bit 60 = 0 阻止 VS-mode 访问 siselect（实际为 vsiselect） | hstateen0 bit 60 = 0，VS-mode 写 siselect | 触发 virtual-instruction 异常 |
-| SSCFG-STA-05 | hstateen0 bit 60 = 0 阻止 VS-mode 读 sireg（实际为 vsireg） | hstateen0 bit 60 = 0，VS-mode 读 sireg | 触发 virtual-instruction 异常 |
-| SSCFG-STA-06 | hstateen0 bit 60 = 1 允许 VS-mode 访问 | hstateen0 bit 60 = 1，VS-mode 访问 siselect/sireg* | 访问成功（但可能触发 virtual-instruction 如果 CDE=1，由 hypervisor 处理） |
 
 > [!NOTE]
 > - 本组测试需要 Smstateen 扩展实现。若未实现，所有测试应 TEST_SKIP。
 > - `mstateen0` bit 60（CSRIND）对 S-mode 的控制优先于 `menvcfg.CDE`。即使 CDE=1，若 bit 60 = 0，S-mode 仍无法使用间接访问机制。
-> - Hypervisor 场景下，`hstateen0` bit 60 控制 VS-mode 对 `vsiselect`/`vsireg*`（在 guest 视角显示为 `siselect`/`sireg*`）的访问。
-> - SSCFG-STA-04~06 需要 H 扩展实现。
+> - hstateen0 bit 60 对 VS-mode 的控制用例（原 SSCFG-STA-04~06）依赖 H 扩展，已迁移至 `Hypervisor_Ss_test_plan.md` Group 11（HCROSS-SSCCFG-22~24）。
 
 ---
 
@@ -298,10 +236,9 @@
 | P0（必须） | Group 3 (scountinhibit) | SSCFG-SINH-01~16 | scountinhibit 是委托计数器的核心控制寄存器 |
 | P1（重要） | Group 1 (映射) | SSCFG-MAP-01~13 | 间接 HPM 映射的正确性是计数器委托功能的基础 |
 | P1（重要） | Group 7 (MINH) | SSCFG-MINH-01~06 | MINH 位只读零是 M-mode 计数控制的安全隔离保证 |
-| P2（建议） | Group 4 (scountovf) | SSCFG-OVF-01~04 | Hypervisor 场景下 scountovf 虚拟化行为 |
-| P2（建议） | Group 5 (LCOFI 虚拟化) | SSCFG-HLCOFI-01~05 | Hypervisor 场景下 LCOFI 中断位虚拟化 |
-| P2（建议） | Group 6 (Hypervisor 交互) | SSCFG-HYP-01~10 | vsiselect/vsireg* 多特权级访问规则 |
-| P3（可选） | Group 8 (Smstateen) | SSCFG-STA-01~06 | Smstateen 交互是安全隔离的补充保证 |
+| P3（可选） | Group 8 (Smstateen) | SSCFG-STA-01~03 | Smstateen 交互是安全隔离的补充保证 |
+
+> 注：原 Group 4（scountovf 虚拟化）、Group 5（LCOFI 虚拟化）、Group 6（Hypervisor 交互）及 Group 8 的 SSCFG-STA-04~06 均依赖 H 扩展，已迁移至 `Hypervisor_Ss_test_plan.md` Group 11（HCROSS-SSCCFG-01~24）。
 
 ---
 
@@ -319,11 +256,8 @@ damo-priv-test/
 │       ├── test_ssccfg_mapping.c      # Group 1: siselect 映射
 │       ├── test_ssccfg_illegal.c      # Group 2: sireg* 非法条件
 │       ├── test_ssccfg_scountinhibit.c # Group 3: scountinhibit
-│       ├── test_ssccfg_scountovf.c    # Group 4: scountovf 虚拟化
-│       ├── test_ssccfg_lcofi_hyp.c    # Group 5: LCOFI 虚拟化
-│       ├── test_ssccfg_hyp_vsireg.c   # Group 6: Hypervisor 交互
 │       ├── test_ssccfg_minh.c         # Group 7: MINH 位
-│       └── test_ssccfg_stateen.c      # Group 8: Smstateen 交互
+│       └── test_ssccfg_stateen.c      # Group 8: Smstateen 交互（S-mode 部分）
 └── common/                             # 复用通用框架
 ```
 
@@ -334,11 +268,6 @@ static bool check_ssccfg_extension(void) {
     /* Probe via siselect CSR existence and menvcfg.CDE */
     if (!check_sscsrind_extension()) return false;
     return check_smcdeleg_extension();  /* Smcdeleg/Ssccfg tandem */
-}
-
-static bool check_h_extension(void) {
-    uint64_t misa = CSRR(misa);
-    return (misa & (1UL << ('H' - 'A'))) != 0;
 }
 
 static bool check_sscofpmf_extension(void) {
@@ -492,65 +421,9 @@ bool test_sscfg_sinh_07(void) {
 }
 ```
 
-#### 模式 3：Hypervisor 场景下的 VS-mode 访问（Group 6）
+#### 模式 3：Hypervisor 场景下的 VS-mode 访问（原 Group 6）
 
-```c
-/* SSCFG-HYP-09: VS-mode sireg access (CDE=0) -> illegal */
-TEST_REGISTER(test_sscfg_hyp_09);
-bool test_sscfg_hyp_09(void) {
-    TEST_BEGIN("SSCFG-HYP-09: VS-mode sireg* access (CDE=0) -> illegal");
-
-    if (!check_ssccfg_extension()) TEST_SKIP("Ssccfg not available");
-    if (!check_h_extension()) TEST_SKIP("H extension not available");
-
-    uintptr_t orig_cde = CSRR(menvcfg);
-
-    /* CDE=0 */
-    CSRW(menvcfg, orig_cde & ~MENVCFG_CDE);
-
-    /* VS-mode: siselect=0x40, read sireg (actually vsireg) */
-    trap_expect_begin();
-    run_in_vs_mode(_vs_siselect_sireg_read, 0x40);
-    TEST_ASSERT("trap triggered", trap_was_triggered());
-    if (trap_was_triggered()) {
-        TEST_ASSERT_EQ("illegal-instruction when CDE=0",
-                       trap_get_cause(), CAUSE_ILLEGAL_INSTRUCTION);
-    }
-    trap_expect_end();
-
-    /* Restore */
-    CSRW(menvcfg, orig_cde);
-    TEST_END();
-}
-
-/* SSCFG-HYP-10: VS-mode sireg access (CDE=1) -> virtual-inst */
-TEST_REGISTER(test_sscfg_hyp_10);
-bool test_sscfg_hyp_10(void) {
-    TEST_BEGIN("SSCFG-HYP-10: VS-mode sireg* access (CDE=1) -> virtual-inst");
-
-    if (!check_ssccfg_extension()) TEST_SKIP("Ssccfg not available");
-    if (!check_h_extension()) TEST_SKIP("H extension not available");
-
-    uintptr_t orig_cde = CSRR(menvcfg);
-
-    /* CDE=1 */
-    CSRW(menvcfg, orig_cde | MENVCFG_CDE);
-
-    /* VS-mode: siselect=0x40, read sireg (actually vsireg) */
-    trap_expect_begin();
-    run_in_vs_mode(_vs_siselect_sireg_read, 0x40);
-    TEST_ASSERT("trap triggered", trap_was_triggered());
-    if (trap_was_triggered()) {
-        TEST_ASSERT_EQ("virtual-instruction when CDE=1",
-                       trap_get_cause(), CAUSE_VIRTUAL_INSTRUCTION);
-    }
-    trap_expect_end();
-
-    /* Restore */
-    CSRW(menvcfg, orig_cde);
-    TEST_END();
-}
-```
+原 SSCFG-HYP-09/10 的 VS-mode 访问示例代码已随用例迁移至 `Hypervisor_Ss_test_plan.md` Group 11（HCROSS-SSCCFG-20/21），本方案不再包含依赖 H 扩展的实现示例。
 
 ### 关键注意事项
 
@@ -568,10 +441,7 @@ bool test_sscfg_hyp_10(void) {
 
 4. **scountinhibit 与 mcountinhibit**：scountinhibit 是 mcountinhibit 的掩码别名。委托计数器的位在两者之间同步。M-mode 修改 mcountinhibit 会反映到 scountinhibit（对委托位），S-mode 修改 scountinhibit 也会反映到 mcountinhibit。
 
-5. **Hypervisor 场景异常类型**：
-   - VS/VU-mode **直接**访问 vsiselect/vsireg* → virtual-instruction
-   - VS-mode 通过 siselect/sireg* 访问（映射到 vsiselect/vsireg*）：CDE=0 → illegal-instruction，CDE=1 → virtual-instruction
-   - M/S-mode 在 vsiselect 0x40-0x5F 时访问 vsireg* → illegal-instruction
+5. **Hypervisor 场景异常类型**：VS/VU-mode 对 vsiselect/vsireg*/scountovf/scountinhibit 的访问规则与异常类型已迁移至 `Hypervisor_Ss_test_plan.md` Group 11，不在本方案实现。
 
 6. **MINH 位**：bit 62 在通过 sireg* 间接访问 hpmeventN/cyclecfg/instretcfg 时为只读零。这是为了防止 S-mode 控制 M-mode 的计数行为。需要 Sscofpmf 或 Smcntrpmf 扩展才能验证。
 
@@ -589,6 +459,7 @@ bool test_sscfg_hyp_10(void) {
 - `SPEC/smstateen.adoc` — Smstateen Extension
 - `SPEC/sscofpmf.adoc` — Sscofpmf Extension (Counter Overflow and Mode Filtering)
 - `SPEC/smcntrpmf.adoc` — Smcntrpmf Extension (Cycle and Instret Mode Filtering)
+- `DOCS/testplan/Hypervisor_Ss_test_plan.md` — Hypervisor 与 Ss* 扩展交叉测试计划（本方案 Hypervisor 用例的迁移目标，Group 11）
 - `SPEC/smaia.adoc` — Smaia Extension (Advanced Interrupt Architecture)
 - `SPEC/hypervisor.adoc` — Hypervisor Extension
 - `DOCS/testplan/Smcdeleg_test_plan.md` — Smcdeleg 扩展测试计划（Machine Mode）

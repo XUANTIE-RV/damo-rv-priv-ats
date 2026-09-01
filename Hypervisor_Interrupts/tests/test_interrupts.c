@@ -1007,6 +1007,12 @@ bool hip_vstip_defined_v0(void)
  * by setting both pending simultaneously and checking SSI is
  * delivered first.
  * ------------------------------------------------------------------ */
+/* Number of empty-loop iterations to wait for the STIP pending bit to
+ * propagate after writing stimecmp.  This is an empirical
+ * synchronization delay; platforms with slower timer clock domains may
+ * need a larger value. */
+#define STIMECMP_SYNC_DELAY_CYCLES 100
+
 TEST_REGISTER(interrupt_priority_ssi_sti);
 bool interrupt_priority_ssi_sti(void)
 {
@@ -1049,6 +1055,12 @@ bool interrupt_priority_ssi_sti(void)
     menvcfg_val |= (1UL << 63);
     asm volatile("csrw " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(menvcfg_val) : "memory");
     asm volatile("csrw " CSR_STR(CSR_STIMECMP) ", zero" ::: "memory");
+
+    /* Allow the timer interrupt pending bit to synchronize after
+     * updating stimecmp before reading mip. */
+    for (volatile int sync_delay = 0;
+         sync_delay < STIMECMP_SYNC_DELAY_CYCLES;
+         sync_delay++) { }
 
     /* Verify both are pending */
     uintptr_t mip_val;

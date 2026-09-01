@@ -2,13 +2,13 @@
 # Hypervisor × Smcsrind Cross Test
 #
 # Tests for Smcsrind extension in Hypervisor scenarios:
-#   Part A (01-08): mstateen0[60] (CSRIND) control over S-mode
+#   Group 1.1 (01-08): mstateen0[60] (CSRIND) control over S-mode
 #                   (HS-mode) access to vsiselect/vsireg*
-#   Part B (09-11): hstateen0[60] (CSRIND) control over VS-mode
+#   Group 1.2 (09-11): hstateen0[60] (CSRIND) control over VS-mode
 #                   access to siselect/sireg*
 #   M-mode access is not affected by mstateen0.
 #
-# See DOCS/testplan/Hypervisor_cross_test_plan.md Group 10
+# See DOCS/testplan/Hypervisor_Sm_test_plan.md Group 1
 # =====================================================================
 
 TARGET     = hypervisor_smcsrind_test.elf

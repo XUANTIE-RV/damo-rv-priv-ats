@@ -87,6 +87,35 @@ static inline unsigned find_first_hpm_counter(void) {
 }
 
 /* ===================================================================
+ * Find the first implemented HPM counter whose mcounteren gate bit
+ * is WARL-writable (write-1 then readback sticks).
+ *
+ * Counter existence and mcounteren bit writability are independent:
+ * norm:mcounteren_flds_rdonly0 permits read-only-zero gate bits even
+ * for implemented counters (the counter is then permanently
+ * inaccessible from lower privilege modes, and VS-mode reads legally
+ * report illegal-instruction). Tests that need mcounteren[N]=1 as a
+ * precondition must use this selector and TEST_SKIP when it returns
+ * 0 ("gate-open" scenario not constructible on the platform).
+ *
+ * Returns 0 if no such counter exists.
+ * =================================================================== */
+static inline unsigned find_first_hpm_counter_gatable(void) {
+    for (unsigned n = SHCNTW_FIRST_HPM; n <= SHCNTW_LAST_HPM; n++) {
+        if (!is_counter_implemented(n))
+            continue;
+        uintptr_t bit = 1UL << n;
+        uintptr_t saved = mcounteren_read();
+        mcounteren_set(bit);
+        bool sticky = (mcounteren_read() & bit) != 0;
+        mcounteren_write(saved);
+        if (sticky)
+            return n;
+    }
+    return 0;
+}
+
+/* ===================================================================
  * H-extension detection
  * =================================================================== */
 static inline bool has_h_extension(void) {

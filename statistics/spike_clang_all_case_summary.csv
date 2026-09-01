@@ -26,7 +26,10 @@ Hypervisor_Smcsrind,11,11,0,0
 Hypervisor_Smmpm,5,5,0,0
 Hypervisor_Smnpm,6,6,0,0
 Hypervisor_Smstateen,14,9,0,5
+Hypervisor_PMP,8,8,0,0
+Hypervisor_Ssccfg,24,8,0,16
 Hypervisor_Ssccptr,4,3,0,1
+Hypervisor_Sscofpmf,6,0,0,6
 Hypervisor_Sscsrind,33,22,0,11
 Hypervisor_Ssdbltrp,24,11,0,13
 Hypervisor_Ssnpm,48,47,0,1
@@ -44,12 +47,17 @@ Hypervisor_Zicboz,15,14,0,1
 Hypervisor_Zicfilp,44,43,0,1
 Hypervisor_Zicfiss,75,74,0,1
 Hypervisor_Zkr,18,18,0,0
+Hypervisor_Zihintntl,7,7,0,0
+Hypervisor_Zicntr,9,9,0,0
+Hypervisor_Zihpm,5,1,0,4
+Hypervisor_Vector,13,13,0,0
+Hypervisor_Zawrs,12,12,0,0
 Ss_CSR,75,55,0,20
 Ss_Exceptions,50,41,0,9
 Ss_Interrupts,0,0,0,0
 Ssccfg,19,0,0,19
 Ssccptr,0,0,0,0
-Sscofpmf,42,1,0,41
+Sscofpmf,39,1,0,38
 Sscounterenw,0,0,0,0
 Sscsrind,14,14,0,0
 Ssctr,0,0,0,0
@@ -73,7 +81,7 @@ Svrsw60t59b,0,0,0,0
 Sdext,104,21,0,83
 Sdtrig,118,85,0,33
 Sm_CSR,224,172,7,45
-Sm_Exceptions,100,88,1,11
+Sm_Exceptions,99,88,1,10
 Sm_Interrupts,0,0,0,0
 Smcdeleg,26,0,0,26
 Smcntrpmf,0,0,0,0
@@ -109,7 +117,7 @@ Ziccif,22,21,0,1
 Zicclsm,35,34,0,1
 Ziccrse,37,25,0,12
 Zkr,55,55,0,0
-Zkt,40,37,0,3
+Zkt,40,38,0,2
 Zcmop,23,21,0,2
 Zcmp,51,49,1,1
 Zcmt,49,45,1,3

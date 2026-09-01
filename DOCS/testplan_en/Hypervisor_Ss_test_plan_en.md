@@ -21,6 +21,8 @@ This plan is based on the following official RISC-V specifications (local paths)
 - `SPEC/riscv-isa-manual/src/priv/smcsrind.adoc` — Smcsrind/Sscsrind: vsiselect/vsireg* indirect CSR access
 - `SPEC/riscv-isa-manual/src/priv/ssdbltrp.adoc` — Ssdbltrp: henvcfg.DTE, vsstatus.SDT, VS-mode double-trap
 - `SPEC/riscv-isa-manual/src/priv/smctr.adoc` — Ssctr: vsctrctl and VS/VU-mode control transfer recording (Ssctr is defined in the same volume as Smctr in this file)
+- `SPEC/riscv-isa-manual/src/priv/sscofpmf.adoc` — Sscofpmf: mhpmevent VSINH/VUINH counting inhibition, dual gating of VS-mode `scountovf`
+- `SPEC/riscv-isa-manual/src/priv/smcdeleg.adoc` — Smcdeleg/Ssccfg: virtualization of scountovf/scountinhibit, hvip/hvien LCOFI bits, vsiselect/vsireg* access rules
 - `SPEC/riscv-ssqosid/sqosid.adoc` — Ssqosid: srmcfg and mstateen0[55] gating
 
 Official repositories:
@@ -43,6 +45,8 @@ Official repositories:
 - **Hypervisor × Ssdbltrp**: `henvcfg.DTE` enable/disable control over VS-mode, `vsstatus.SDT` field behavior and SDT/SIE mutual exclusion, SRET clearing of `vsstatus.SDT`, cross-mode clearing of SDT/vsstatus.SDT by MRET/SRET/MNRET under Hypervisor scenarios
 - **Hypervisor × Ssctr**: `vsctrctl` CSR basic functionality and field verification, VS/VU-mode external trap recording (STE/vsSTE), configuration sources of virtualized mode transitions, VS-mode Freeze behavior (vsctrctl control), VS-mode access restrictions on sctrdepth/SCTRCLR, hstateen0.CTR control over VS-mode CTR access
 - **Hypervisor × Ssqosid**: VS/VU-mode access to `srmcfg` raising virtual-instruction exception when V=1, precedence between mstateen0[55] gating and the V=1 rule, stval/htinst values on virtual-instruction traps
+- **Hypervisor × Sscofpmf**: inhibition of VS/VU-mode counting by the VSINH/VUINH bits of `mhpmevent`, dual gating of VS-mode `scountovf` by `mcounteren`+`hcounteren`
+- **Hypervisor × Smcdeleg/Ssccfg**: VS/VU-mode reads of `scountovf` and virtual-instruction raised by access to `scountinhibit` when CDE=1, implementation and writability of the LCOFI bit (bit 13) of `hvip`/`hvien`, multi-privilege access rules of `vsiselect`/`vsireg*` in the 0x40-0x5F range, hstateen0 bit 60 control over VS-mode
 
 ### Out of Scope for This Document
 
@@ -850,6 +854,180 @@ The tests in this group verify the behavior of the Ssqosid extension under Hyper
 
 ---
 
+## Group 10. Hypervisor × Sscofpmf Cross Tests
+
+**Spec Reference**:
+- `norm:mhpmevent_inh_op`: when each of the five xINH bits is set, event counting in the corresponding privilege mode is inhibited; VSINH/VUINH inhibit VS/VU-mode counting respectively; when the corresponding privilege mode is not implemented, the bit is read-only zero
+- `norm:scountovf_vsmode_read_access`: in VS-mode, `scountovf` bit X is readable if and only if both `mcounteren` bit X and `hcounteren` bit X are set; otherwise it reads as zero
+- `norm:scountovf_smode_read_access_control`: read access to `scountovf` bit X is controlled by the same `mcounteren`/`hcounteren` rules as hpmcounter access
+
+**Test Scope**: Verify the behavior of the Sscofpmf extension under Hypervisor scenarios, including the dual gating of `mcounteren`+`hcounteren` for VS-mode reads of `scountovf`, and the inhibition of VS/VU-mode event counting by the VSINH/VUINH bits of `mhpmevent`.
+
+> **Note**: Cases 01~03 of this group are migrated from `Sscofpmf_test_plan.md` Group 4 (COFPMF-SOV-08~10) and specifically target cases that depend on the H extension; 04~06 supplement the VSINH/VUINH functional cases missing from Group 2 (privilege mode filtering) of the original plan. The H extension and the Sscofpmf extension must both be available (except 06, see below).
+
+### Test ID Mapping Table
+
+| Original ID | New ID | Test Name |
+|-------------|--------|-----------|
+| COFPMF-SOV-08 | HCROSS-SSCOFPMF-01 | VS-mode scountovf dual gate (both allowed) |
+| COFPMF-SOV-09 | HCROSS-SSCOFPMF-02 | VS-mode mcounteren=0 reads zero |
+| COFPMF-SOV-10 | HCROSS-SSCOFPMF-03 | VS-mode hcounteren=0 reads zero |
+| — (new) | HCROSS-SSCOFPMF-04 | VSINH=1 inhibits VS-mode counting |
+| — (new) | HCROSS-SSCOFPMF-05 | VUINH=1 inhibits VU-mode counting |
+| — (new) | HCROSS-SSCOFPMF-06 | VSINH/VUINH read-only zero when H extension is not implemented |
+
+### Test Case List
+
+#### 10.1 VS-mode scountovf Dual Gating (Migrated from Sscofpmf Group 4)
+
+**Spec Reference**: `norm:scountovf_vsmode_read_access`, `norm:scountovf_smode_read_access_control`
+
+| Test ID | Test Name | Test Description | Expected Result | Spec Reference |
+|---------|-----------|------------------|-----------------|----------------|
+| HCROSS-SSCOFPMF-01 | VS-mode scountovf dual gate (both allowed) | mcounteren bit 3 = 1, hcounteren bit 3 = 1, M-mode sets mhpmevent3 OF=1, VS-mode reads scountovf | scountovf bit 3 = 1 (reads the real OF value) | `norm:scountovf_vsmode_read_access` |
+| HCROSS-SSCOFPMF-02 | VS-mode mcounteren=0 reads zero | mcounteren bit 3 = 0 (regardless of hcounteren), OF=1, VS-mode reads scountovf | scountovf bit 3 = 0 | `norm:scountovf_vsmode_read_access` |
+| HCROSS-SSCOFPMF-03 | VS-mode hcounteren=0 reads zero | mcounteren bit 3 = 1, hcounteren bit 3 = 0, OF=1, VS-mode reads scountovf | scountovf bit 3 = 0 | `norm:scountovf_vsmode_read_access` |
+
+#### 10.2 VSINH/VUINH Counting Inhibition (Supplementing the Gap in Group 2 of the Original Plan)
+
+**Spec Reference**: `norm:mhpmevent_inh_op`
+
+| Test ID | Test Name | Test Description | Expected Result | Spec Reference |
+|---------|-----------|------------------|-----------------|----------------|
+| HCROSS-SSCOFPMF-04 | VSINH=1 inhibits VS-mode counting | Set mhpmevent VSINH=1 and configure a retired-instruction event, VS-mode executes a fixed instruction loop, M-mode reads the counter delta | the counter does not increment during VS-mode execution | `norm:mhpmevent_inh_op` |
+| HCROSS-SSCOFPMF-05 | VUINH=1 inhibits VU-mode counting | Set mhpmevent VUINH=1, VU-mode executes a fixed instruction loop, M-mode reads the counter delta | the counter does not increment during VU-mode execution | `norm:mhpmevent_inh_op` |
+| HCROSS-SSCOFPMF-06 | VSINH/VUINH read-only zero when H extension is not implemented | If the H extension is not implemented, write mhpmevent VSINH/VUINH=1 then read back | VSINH/VUINH are read-only zero (TEST_SKIP on platforms with the H extension implemented) | `norm:mhpmevent_inh_op` |
+
+> [!NOTE]
+> - This group of tests verifies the behavior of the Sscofpmf extension under Hypervisor scenarios. HCROSS-SSCOFPMF-01~05 must detect the availability of the H extension at runtime via `HAS_H_EXT()`; if unavailable, TEST_SKIP; HCROSS-SSCOFPMF-06 runs only when the H extension is **not implemented**, and TEST_SKIP when the H extension is implemented.
+> - All cases must first probe whether Sscofpmf is implemented (trap-protected write of the `mhpmevent` OF bit and read back; if the write raises illegal-instruction it is not implemented); if not implemented, the whole group TEST_SKIP; and adopt the dynamic discovery method to probe the target `mhpmcounter` (writing a non-zero value and reading back zero means unimplemented; switch to another counter or TEST_SKIP).
+> - The access control semantics of HCROSS-SSCOFPMF-01~03 are consistent with `hpmcounter`: for VS-mode to read the real OF value of `scountovf` bit X, both `mcounteren[X]` and `hcounteren[X]` must be 1 **simultaneously**; otherwise it reads zero (note that it reads zero rather than raising a trap).
+> - HCROSS-SSCOFPMF-04~05 need to use `goto_priv(PRIV_VS)`/`goto_priv(PRIV_VU)` to enter virtual privilege levels to execute counting loops, and return to M-mode to read the `mhpmcounter` delta; no precise counting assertions are made. Mode switching itself generates instruction counts; MINH=1 can be set to inhibit M-mode counting to eliminate interference (consistent with the handling in the NOTE of `Sscofpmf_test_plan.md` Group 2); the `ENABLE_HYP` macro must be enabled at compile time and two-stage translation configured so that VS/VU-mode can execute.
+> - Relationship with COFPMF-RW-05/06 of `Sscofpmf_test_plan.md`: the original cases verify the positive branch of WARL read/write of VSINH/VUINH (not dependent on the H extension) and remain in the standalone plan; 06 of this group takes over the negative branch of "read-only zero when the H extension is not implemented", and 04~05 take over the counting inhibition functional verification that depends on the H extension. VSINH/VUINH share the same bit encoding (bit 59/58) with the VSINH/VUINH of `mcyclecfg`/`minstretcfg` of Smcntrpmf, but they belong to different registers, with no overlap with `Hypervisor_Sm_test_plan.md` Group 3.
+> - Relationship with Group 11 (Smcdeleg/Ssccfg): this group verifies the `mcounteren`+`hcounteren` gating (read-zero semantics) of VS-mode reads of `scountovf` when **counter delegation is not enabled** (CDE not involved); Group 11 verifies that VS/VU-mode reads of `scountovf` are virtualized when **CDE=1** (virtual-instruction semantics, `norm:ssccfg_virtual_scountovf_vs_vu`). The two are complementary; the precondition state of `menvcfg.CDE` must be noted during implementation.
+
+---
+
+## Group 11. Hypervisor × Smcdeleg/Ssccfg Cross Tests
+
+**Spec Reference**:
+- `norm:ssccfg_virtual_scountovf_vs_vu`: for implementations supporting Smcdeleg/Ssccfg, Sscofpmf, and the H extension, when `menvcfg.CDE=1`, VS/VU-mode reads of `scountovf` raise a virtual-instruction exception
+- `norm:ssccfg_illegal_scountinhibit_vs_vu`: when counter delegation is enabled (CDE=1), VS/VU-mode access to `scountinhibit` raises a virtual-instruction exception
+- `norm:ssccfg_lcofi_hvip_hvien`: for implementations supporting Smcdeleg/Ssccfg, Sscofpmf, Smaia/Ssaia, and the H extension, the LCOFI bit (bit 13) of `hvip` and `hvien` is implemented and writable; this implies that `vsie`/`vsip` bit 13 is also implemented
+- `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal`: when the H extension is implemented, direct VS/VU-mode access to `vsiselect`/`vsireg*`, or VU-mode access to `siselect`/`sireg*`, raises virtual-instruction
+- `norm:ssccfg_hyp_m_s_vsireg_illegal`: when `vsiselect` is in the 0x40-0x5F range, M or S mode access to any `vsireg*` raises illegal-instruction
+- `norm:ssccfg_hyp_vs_access_sireg_conditional`: when VS-mode accesses `sireg*` (actually `vsireg*`), `menvcfg.CDE=0` raises illegal-instruction and CDE=1 raises virtual-instruction
+- `norm:hstateen0_csrind_op`: hstateen0 bit 60 controls VS-mode access to siselect/sireg* (actually vsiselect/vsireg*)
+
+**Test Scope**: Verify the virtualization behavior of the Smcdeleg/Ssccfg counter delegation extension under Hypervisor scenarios, including VS/VU-mode virtualization of `scountovf`/`scountinhibit`, the `hvip`/`hvien` LCOFI virtual interrupt bits, the multi-privilege access rules of `vsiselect`/`vsireg*`, and the cross control of hstateen0 bit 60.
+
+> **Note**: The cases of this group are migrated from `Ssccfg_test_plan.md` Groups 4/5/6/8 (SSCFG-OVF-01~04, SSCFG-HLCOFI-01~05, SSCFG-HYP-01~10, SSCFG-STA-04~06) and specifically target cases that depend on the H extension; 05~06 supplement the gap of no corresponding case for `norm:ssccfg_illegal_scountinhibit_vs_vu` in the original plan. The H extension and Smcdeleg/Ssccfg (including `menvcfg.CDE`) must both be available; some sub-groups require additional extensions (see the description of each sub-group).
+>
+> **Prerequisite configuration**: M-mode must pre-set `menvcfg.CDE` to the desired value and delegate the target counters (the corresponding bits of `mcounteren`).
+
+### Test ID Mapping Table
+
+| Original ID | New ID | Test Name |
+|-------------|--------|-----------|
+| SSCFG-OVF-01 | HCROSS-SSCCFG-01 | VS-mode read of scountovf (CDE=1) raises virtual-instruction |
+| SSCFG-OVF-02 | HCROSS-SSCCFG-02 | VU-mode read of scountovf (CDE=1) raises virtual-instruction |
+| SSCFG-OVF-03 | HCROSS-SSCCFG-03 | HS-mode read of scountovf (CDE=1) succeeds |
+| SSCFG-OVF-04 | HCROSS-SSCCFG-04 | VS-mode read of scountovf (CDE=0) behavior |
+| — (new) | HCROSS-SSCCFG-05 | VS-mode access to scountinhibit (CDE=1) raises virtual-instruction |
+| — (new) | HCROSS-SSCCFG-06 | VU-mode access to scountinhibit (CDE=1) raises virtual-instruction |
+| SSCFG-HLCOFI-01 | HCROSS-SSCCFG-07 | hvip bit 13 (LCOFI) writability |
+| SSCFG-HLCOFI-02 | HCROSS-SSCCFG-08 | hvien bit 13 (LCOFI) writability |
+| SSCFG-HLCOFI-03 | HCROSS-SSCCFG-09 | hvip.LCOFI independent verification |
+| SSCFG-HLCOFI-04 | HCROSS-SSCCFG-10 | hvien.LCOFI independent verification |
+| SSCFG-HLCOFI-05 | HCROSS-SSCCFG-11 | vsie/vsip LCOFI bits implicitly implemented |
+| SSCFG-HYP-01 | HCROSS-SSCCFG-12 | VS-mode direct access to vsiselect raises virtual-instruction |
+| SSCFG-HYP-02 | HCROSS-SSCCFG-13 | VS-mode direct access to vsireg raises virtual-instruction |
+| SSCFG-HYP-03 | HCROSS-SSCCFG-14 | VU-mode direct access to vsiselect raises virtual-instruction |
+| SSCFG-HYP-04 | HCROSS-SSCCFG-15 | VU-mode direct access to vsireg raises virtual-instruction |
+| SSCFG-HYP-05 | HCROSS-SSCCFG-16 | VU-mode access to siselect raises virtual-instruction |
+| SSCFG-HYP-06 | HCROSS-SSCCFG-17 | VU-mode access to sireg raises virtual-instruction |
+| SSCFG-HYP-07 | HCROSS-SSCCFG-18 | M-mode access to vsireg illegal with vsiselect 0x40-0x5F |
+| SSCFG-HYP-08 | HCROSS-SSCCFG-19 | HS-mode access to vsireg illegal with vsiselect 0x40-0x5F |
+| SSCFG-HYP-09 | HCROSS-SSCCFG-20 | VS-mode access via sireg* (CDE=0) → illegal-instruction |
+| SSCFG-HYP-10 | HCROSS-SSCCFG-21 | VS-mode access via sireg* (CDE=1) → virtual-instruction |
+| SSCFG-STA-04 | HCROSS-SSCCFG-22 | hstateen0 bit 60=0 blocks VS-mode write of siselect |
+| SSCFG-STA-05 | HCROSS-SSCCFG-23 | hstateen0 bit 60=0 blocks VS-mode read of sireg |
+| SSCFG-STA-06 | HCROSS-SSCCFG-24 | hstateen0 bit 60=1 allows VS-mode access |
+
+### Test Case List
+
+#### 11.1 scountovf Virtualization (Migrated from Ssccfg Group 4)
+
+**Spec Reference**: `norm:ssccfg_virtual_scountovf_vs_vu`
+
+| Test ID | Test Name | Test Description | Expected Result | Spec Reference |
+|---------|-----------|------------------|-----------------|----------------|
+| HCROSS-SSCCFG-01 | VS-mode read of scountovf (CDE=1) raises virtual-instruction | CDE=1, VS-mode reads scountovf (0xDA0) | virtual-instruction exception raised (cause=22) | `norm:ssccfg_virtual_scountovf_vs_vu` |
+| HCROSS-SSCCFG-02 | VU-mode read of scountovf (CDE=1) raises virtual-instruction | CDE=1, VU-mode reads scountovf | virtual-instruction exception raised (cause=22) | `norm:ssccfg_virtual_scountovf_vs_vu` |
+| HCROSS-SSCCFG-03 | HS-mode read of scountovf (CDE=1) succeeds | CDE=1, HS-mode (S-mode with V=0) reads scountovf | access succeeds, no exception | `norm:ssccfg_virtual_scountovf_vs_vu` |
+| HCROSS-SSCCFG-04 | VS-mode read of scountovf (CDE=0) behavior | CDE=0, VS-mode reads scountovf | not constrained by this virtualization clause; follows the basic Sscofpmf rules (see the gating semantics of Group 10 HCROSS-SSCOFPMF-01~03) | `norm:ssccfg_virtual_scountovf_vs_vu` (negative) |
+
+#### 11.2 scountinhibit VS/VU Virtualization (Supplementing the Gap)
+
+**Spec Reference**: `norm:ssccfg_illegal_scountinhibit_vs_vu`
+
+| Test ID | Test Name | Test Description | Expected Result | Spec Reference |
+|---------|-----------|------------------|-----------------|----------------|
+| HCROSS-SSCCFG-05 | VS-mode access to scountinhibit (CDE=1) raises virtual-instruction | CDE=1, VS-mode reads/writes scountinhibit (0x120) | virtual-instruction exception raised (cause=22) | `norm:ssccfg_illegal_scountinhibit_vs_vu` |
+| HCROSS-SSCCFG-06 | VU-mode access to scountinhibit (CDE=1) raises virtual-instruction | CDE=1, VU-mode reads scountinhibit | virtual-instruction exception raised (cause=22) | `norm:ssccfg_illegal_scountinhibit_vs_vu` |
+
+#### 11.3 LCOFI Virtualization: hvip/hvien bit 13 (Migrated from Ssccfg Group 5)
+
+**Spec Reference**: `norm:ssccfg_lcofi_hvip_hvien`
+
+| Test ID | Test Name | Test Description | Expected Result | Spec Reference |
+|---------|-----------|------------------|-----------------|----------------|
+| HCROSS-SSCCFG-07 | hvip bit 13 (LCOFI) writability | HS-mode writes hvip bit 13 = 1 then reads back, then writes 0 and reads back | bit 13 is writable and reads back consistently | `norm:ssccfg_lcofi_hvip_hvien` |
+| HCROSS-SSCCFG-08 | hvien bit 13 (LCOFI) writability | HS-mode writes hvien bit 13 = 1 then reads back, then writes 0 and reads back | bit 13 is writable and reads back consistently | `norm:ssccfg_lcofi_hvip_hvien` |
+| HCROSS-SSCCFG-09 | hvip.LCOFI independent verification | Write all 1s to hvip then read back, check bit 13 | bit 13 reads back as 1 | `norm:ssccfg_lcofi_hvip_hvien` |
+| HCROSS-SSCCFG-10 | hvien.LCOFI independent verification | Write all 1s to hvien then read back, check bit 13 | bit 13 reads back as 1 | `norm:ssccfg_lcofi_hvip_hvien` |
+| HCROSS-SSCCFG-11 | vsie/vsip LCOFI bits implicitly implemented | Verify the presence of vsie bit 13 and vsip bit 13 (read/write raises no exception) | vsie/vsip bit 13 exist (the implementation of hvip.LCOFI implies the implementation of these bits) | `norm:ssccfg_lcofi_hvip_hvien` |
+
+#### 11.4 vsiselect/vsireg* Multi-Privilege Access Rules (Migrated from Ssccfg Group 6)
+
+**Spec Reference**: `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal`, `norm:ssccfg_hyp_m_s_vsireg_illegal`, `norm:ssccfg_hyp_vs_access_sireg_conditional`
+
+| Test ID | Test Name | Test Description | Expected Result | Spec Reference |
+|---------|-----------|------------------|-----------------|----------------|
+| HCROSS-SSCCFG-12 | VS-mode direct access to vsiselect raises virtual-instruction | VS-mode directly reads/writes vsiselect (0x240) (vsiselect is in 0x40-0x5F) | virtual-instruction exception raised (cause=22) | `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal` |
+| HCROSS-SSCCFG-13 | VS-mode direct access to vsireg raises virtual-instruction | VS-mode directly reads/writes vsireg (0x245) | virtual-instruction exception raised (cause=22) | `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal` |
+| HCROSS-SSCCFG-14 | VU-mode direct access to vsiselect raises virtual-instruction | VU-mode directly reads/writes vsiselect | virtual-instruction exception raised (cause=22) | `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal` |
+| HCROSS-SSCCFG-15 | VU-mode direct access to vsireg raises virtual-instruction | VU-mode directly reads/writes vsireg | virtual-instruction exception raised (cause=22) | `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal` |
+| HCROSS-SSCCFG-16 | VU-mode access to siselect raises virtual-instruction | VU-mode reads/writes siselect | virtual-instruction exception raised (cause=22) | `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal` |
+| HCROSS-SSCCFG-17 | VU-mode access to sireg raises virtual-instruction | VU-mode reads/writes sireg | virtual-instruction exception raised (cause=22) | `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal` |
+| HCROSS-SSCCFG-18 | M-mode access to vsireg illegal with vsiselect 0x40-0x5F | M-mode sets vsiselect=0x40 and accesses vsireg* | illegal-instruction exception raised | `norm:ssccfg_hyp_m_s_vsireg_illegal` |
+| HCROSS-SSCCFG-19 | HS-mode access to vsireg illegal with vsiselect 0x40-0x5F | HS-mode sets vsiselect=0x40 and accesses vsireg* | illegal-instruction exception raised | `norm:ssccfg_hyp_m_s_vsireg_illegal` |
+| HCROSS-SSCCFG-20 | VS-mode access via sireg* (CDE=0) → illegal-instruction | menvcfg.CDE=0, VS-mode accesses sireg (actually vsireg) via siselect=0x40 | illegal-instruction exception raised | `norm:ssccfg_hyp_vs_access_sireg_conditional` |
+| HCROSS-SSCCFG-21 | VS-mode access via sireg* (CDE=1) → virtual-instruction | menvcfg.CDE=1, VS-mode accesses sireg (actually vsireg) via siselect=0x40 | virtual-instruction exception raised | `norm:ssccfg_hyp_vs_access_sireg_conditional` |
+
+#### 11.5 hstateen0 bit 60 Cross Control (Migrated from Ssccfg Group 8)
+
+**Spec Reference**: `norm:hstateen0_csrind_op`
+
+| Test ID | Test Name | Test Description | Expected Result | Spec Reference |
+|---------|-----------|------------------|-----------------|----------------|
+| HCROSS-SSCCFG-22 | hstateen0 bit 60=0 blocks VS-mode write of siselect | mstateen0 bit 60=1, hstateen0 bit 60=0, VS-mode writes siselect | virtual-instruction exception raised | `norm:hstateen0_csrind_op` |
+| HCROSS-SSCCFG-23 | hstateen0 bit 60=0 blocks VS-mode read of sireg | mstateen0 bit 60=1, hstateen0 bit 60=0, VS-mode reads sireg | virtual-instruction exception raised | `norm:hstateen0_csrind_op` |
+| HCROSS-SSCCFG-24 | hstateen0 bit 60=1 allows VS-mode access | mstateen0 bit 60=1, hstateen0 bit 60=1, VS-mode accesses siselect/sireg* | access is not blocked by hstateen0 (when CDE=1 a virtual-instruction may still be raised, covered by HCROSS-SSCCFG-21) | `norm:hstateen0_csrind_op` |
+
+> [!NOTE]
+> - All cases of this group must detect the H extension at runtime via `HAS_H_EXT()` and probe Smcdeleg/Ssccfg (`menvcfg.CDE` writability + `siselect` presence, depending on Sscsrind); if either is unavailable, the whole group TEST_SKIP.
+> - 11.1/11.2 additionally require Sscofpmf to be implemented (`scountovf` present); 11.3 additionally requires Sscofpmf + Smaia/Ssaia (`hvien` present); if missing, the corresponding sub-group TEST_SKIP.
+> - The key distinction between HCROSS-SSCCFG-01~02 and Group 10 (HCROSS-SSCOFPMF-01~03) is `menvcfg.CDE`: with CDE=0, VS-mode reads of `scountovf` read zero per mcounteren+hcounteren gating; with CDE=1, they are virtualized and read access directly raises virtual-instruction, with the hypervisor intervening. The CDE state must be explicitly set before implementing the cases.
+> - HCROSS-SSCCFG-05~06 supplement the gap of no corresponding case for `norm:ssccfg_illegal_scountinhibit_vs_vu` in `Ssccfg_test_plan.md`: the illegal access (illegal-instruction) of `scountinhibit` with CDE=0 is covered by SSCFG-SINH-12/13 of the original plan, and this group covers the VS/VU virtualization branch with CDE=1.
+> - Relationship between HCROSS-SSCCFG-12~17 and Group 6 Sscsrind (HCROSS-SSCSRIND-11~20): the basic behavior of VS/VU direct access to vsiselect/vsireg* raising virtual-instruction belongs to `norm:sscsrind_virtual_inst_fault`; this group verifies the same-source behavior from the Ssccfg perspective when vsiselect is in the delegated counter region (0x40-0x5F); cross-references can be used during implementation to avoid duplication.
+> - HCROSS-SSCCFG-18~19 are newly added rules specific to Ssccfg: when `vsiselect` is in 0x40-0x5F, M/S-mode also **must not** directly access `vsireg*` (illegal-instruction), because the state of this region belongs to VS-mode delegated counters and should be managed indirectly by modifying guest state.
+> - HCROSS-SSCCFG-22~24 verify the same `hstateen0[60]` control as Group 4.4 (HCROSS-SSSTA-27~29) and Group 6.3 (HCROSS-SSCSRIND-24~27); this group supplements it from the Ssccfg delegated counter perspective; cross-references can be used during implementation.
+> - M-mode level `menvcfg.CDE` enabling, `mcounteren` delegation bit settings, and `mvip`/`mvien` LCOFI verification are covered by `Smcdeleg_test_plan.md` and are out of scope for this group.
+> - The CSR address of `vsiselect` is 0x240, `vsireg` is 0x245; `scountinhibit` is 0x120; `scountovf` is 0xDA0; `hvip`/`hvien` are 0x645/0x648 respectively.
+
+---
+
 ## Test Priorities
 
 | Priority | Test Group | Covered Test IDs | Rationale |
@@ -872,6 +1050,8 @@ The tests in this group verify the behavior of the Ssqosid extension under Hyper
 | P2 (Recommended) | Group 8.2 (VS/VU access) | HCROSS-SSCTR-11~14 | VS/VU-mode access restrictions on CTR CSRs |
 | P2 (Recommended) | Group 8.4 (VS Freeze) | HCROSS-SSCTR-21~24 | VS-mode Freeze behavior controlled by vsctrctl |
 | P2 (Recommended) | Group 8.6 (hstateen VS) | HCROSS-SSCTR-30~32 | hstateen0.CTR control over VS-mode CTR access |
+| P2 (Recommended) | Group 10 (Sscofpmf) | HCROSS-SSCOFPMF-01~06 | VS-mode scountovf dual gating and VSINH/VUINH counting inhibition are the guarantee of performance monitoring isolation |
+| P2 (Recommended) | Group 11 (Smcdeleg/Ssccfg) | HCROSS-SSCCFG-01~24 | virtualization of scountovf/scountinhibit, LCOFI virtual interrupt bits, and vsireg* access rules are the guarantee of counter delegation isolation |
 | P3 (Optional) | Group 2 (Ssccptr) | HCROSS-SSCCPTR-01~04 | PMA-level constraints depend on platform guarantees; cases with limited dynamic PMA configuration capability TEST_SKIP per platform capability |
 
 > Note: The test cases of Ssqosid (Group 9) (SRMCFG-19~24) were not assigned individual priorities in the original merged plan; it is recommended to follow the priorities in `Ssqosid_test_plan.md`. The priority of the hstateen control cases (HCROSS-SSSTA-01~50) in Group 4 (Ssstateen) follows the P1 rating of Group 8 in the original merged plan.
@@ -880,7 +1060,7 @@ The tests in this group verify the behavior of the Ssqosid extension under Hyper
 
 ## Key Considerations
 
-1. **Extension detection**: All tests must detect the availability of the required extensions (H, Sstvala, Ssccptr, Sscounterenw, Ssstateen, Sstc, Sscsrind, Ssdbltrp, Ssctr, Ssqosid, etc.) at runtime; if unavailable, TEST_SKIP.
+1. **Extension detection**: All tests must detect the availability of the required extensions (H, Sstvala, Ssccptr, Sscounterenw, Ssstateen, Sstc, Sscsrind, Ssdbltrp, Ssctr, Ssqosid, Sscofpmf, Smcdeleg/Ssccfg, etc.) at runtime; if unavailable, TEST_SKIP.
 
 2. **Sstvala precision requirements**: The Sstvala extension mandates that `stval` be written with the faulting address, not 0. Test assertions must use `TEST_ASSERT_EQ` for precise comparison; fuzzy verification with `TEST_ASSERT(stval != 0)` is not allowed.
 
@@ -904,6 +1084,8 @@ The tests in this group verify the behavior of the Ssqosid extension under Hyper
 - `SPEC/ssdbltrp.adoc` — Ssdbltrp Double Trap Extension
 - `SPEC/ssctr.adoc` — Ssctr (Control Transfer Records - Supervisor-level) Extension
 - `SPEC/riscv-ssqosid/sqosid.adoc` — Ssqosid (QoS Identifiers) Extension Specification
+- `SPEC/sscofpmf.adoc` — Sscofpmf Extension Specification (Count Overflow and Mode-Based Filtering)
+- `SPEC/smcdeleg.adoc` — Smcdeleg and Ssccfg Counter Delegation Extensions
 - `DOCS/testplan/Hypervisor_CSR_test_plan.md` — Hypervisor CSR subset test plan
 - `DOCS/testplan/Hypervisor_Interrupts_test_plan.md` — Hypervisor interrupts subset test plan
 - `DOCS/testplan/Hypervisor_Exceptions_test_plan.md` — Hypervisor exceptions and trap subset test plan
@@ -918,6 +1100,8 @@ The tests in this group verify the behavior of the Ssqosid extension under Hyper
 - `DOCS/testplan/Ssdbltrp_test_plan.md` — Ssdbltrp standalone test plan
 - `DOCS/testplan/Ssctr_test_plan.md` — Ssctr Supervisor Mode test plan
 - `DOCS/testplan/Ssqosid_test_plan.md` — Ssqosid standalone test plan
+- `DOCS/testplan/Sscofpmf_test_plan.md` — Sscofpmf standalone test plan
+- `DOCS/testplan/Ssccfg_test_plan.md` — Ssccfg standalone test plan
 - `ideas/hypervisor_gap.md` — Hypervisor test gap analysis
 
 ---
@@ -994,5 +1178,15 @@ The following table indicates which test cases cover each specification point in
 | `norm:vsiselect_op` | HCROSS-SSCTR-13 |
 | `norm:hstateen_ctr` | HCROSS-SSCTR-30~32 |
 | `norm:hstateen_vs` | HCROSS-SSCTR-30~32 |
+| `norm:mhpmevent_inh_op` | HCROSS-SSCOFPMF-04, HCROSS-SSCOFPMF-05, HCROSS-SSCOFPMF-06 (VSINH/VUINH portion; M/S/U mode filtering is covered by `Sscofpmf_test_plan.md` Group 2) |
+| `norm:scountovf_vsmode_read_access` | HCROSS-SSCOFPMF-01~03 |
+| `norm:scountovf_smode_read_access_control` | HCROSS-SSCOFPMF-01~03 (VS-mode side; S/HS-mode side is covered by `Sscofpmf_test_plan.md` Group 4) |
+| `norm:ssccfg_virtual_scountovf_vs_vu` | HCROSS-SSCCFG-01~04 |
+| `norm:ssccfg_illegal_scountinhibit_vs_vu` | HCROSS-SSCCFG-05, HCROSS-SSCCFG-06 (CDE=1 virtualization branch; the CDE=0 branch is covered by SSCFG-SINH-12/13 of `Ssccfg_test_plan.md`) |
+| `norm:ssccfg_lcofi_hvip_hvien` | HCROSS-SSCCFG-07~11 |
+| `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal` | HCROSS-SSCCFG-12~17 |
+| `norm:ssccfg_hyp_m_s_vsireg_illegal` | HCROSS-SSCCFG-18, HCROSS-SSCCFG-19 |
+| `norm:ssccfg_hyp_vs_access_sireg_conditional` | HCROSS-SSCCFG-20, HCROSS-SSCCFG-21 |
+| `norm:hstateen0_csrind_op` | HCROSS-SSCCFG-22~24 (Ssccfg perspective; see HCROSS-SSSTA-27~29 and HCROSS-SSCSRIND-24~27 for the same-source verification) |
 | `ssqosid_virtinst` (self-decomposed) | SRMCFG-19, SRMCFG-20, SRMCFG-21, SRMCFG-24 |
 | `ssqosid_smstateen_bit55_0` (self-decomposed) | SRMCFG-23 |

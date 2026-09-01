@@ -282,11 +282,13 @@ static uintptr_t _vs_read_sireg(uintptr_t arg)
     return val;
 }
 
-/* VS-mode: write siselect (CSR 0x150, really vsiselect) */
-static uintptr_t _vs_write_siselect(uintptr_t val)
+/* VS-mode: write siselect and read it back (returns final value) */
+static uintptr_t _vs_write_and_read_siselect(uintptr_t val)
 {
     asm volatile("csrw " CSR_STR(CSR_SISELECT) ", %0" :: "r"(val));
-    return 0;
+    uintptr_t rb;
+    asm volatile("csrr %0, " CSR_STR(CSR_SISELECT) : "=r"(rb));
+    return rb;
 }
 
 /* ===================================================================

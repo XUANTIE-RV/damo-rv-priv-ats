@@ -216,6 +216,13 @@ ifdef ENABLE_CMO
 CFLAGS += -DENABLE_CMO -I$(CMO_DIR)
 endif
 
+# Fail-fast mode (FAIL_FAST=1): halt the suite immediately when a test
+# case fails, instead of running the remaining cases. The simulator
+# exits with fail status via RVMODEL_HALT_FAIL; on HW it spins.
+ifeq ($(FAIL_FAST),1)
+CFLAGS += -DTEST_FAIL_FAST
+endif
+
 # Extra CFLAGS from command line (e.g., make qemu EXTRA_CFLAGS='-DTEST_FILTER="VS-10"')
 CFLAGS += $(EXTRA_CFLAGS)
 

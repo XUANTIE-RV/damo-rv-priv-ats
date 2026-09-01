@@ -21,6 +21,8 @@
 - `SPEC/riscv-isa-manual/src/priv/smcsrind.adoc` — Smcsrind/Sscsrind：vsiselect/vsireg* 间接 CSR 访问
 - `SPEC/riscv-isa-manual/src/priv/ssdbltrp.adoc` — Ssdbltrp：henvcfg.DTE、vsstatus.SDT、VS-mode double-trap
 - `SPEC/riscv-isa-manual/src/priv/smctr.adoc` — Ssctr：vsctrctl 与 VS/VU-mode 控制转换录制（Ssctr 定义与 Smctr 合卷于本文件）
+- `SPEC/riscv-isa-manual/src/priv/sscofpmf.adoc` — Sscofpmf：mhpmevent VSINH/VUINH 计数抑制、VS-mode `scountovf` 双重门控
+- `SPEC/riscv-isa-manual/src/priv/smcdeleg.adoc` — Smcdeleg/Ssccfg：scountovf/scountinhibit 虚拟化、hvip/hvien LCOFI 位、vsiselect/vsireg* 访问规则
 - `SPEC/riscv-ssqosid/sqosid.adoc` — Ssqosid：srmcfg 与 mstateen0[55] 门控
 
 官方仓库：
@@ -43,6 +45,8 @@
 - **Hypervisor × Ssdbltrp**：`henvcfg.DTE` 对 VS-mode 的使能/禁用控制、`vsstatus.SDT` 字段行为与 SDT/SIE 互斥、SRET 对 `vsstatus.SDT` 的清除、MRET/SRET/MNRET 在 Hypervisor 场景下对 SDT/vsstatus.SDT 的跨模式清除
 - **Hypervisor × Ssctr**：`vsctrctl` CSR 基本功能与字段验证、VS/VU-mode 外部陷阱录制（STE/vsSTE）、虚拟化模式转换配置来源、VS-mode Freeze 行为（vsctrctl 控制）、VS-mode 对 sctrdepth/SCTRCLR 的访问限制、hstateen0.CTR 对 VS-mode CTR 访问的控制
 - **Hypervisor × Ssqosid**：V=1 时 VS/VU-mode 访问 `srmcfg` 触发 virtual-instruction exception、mstateen0[55] 门控与 V=1 规则的优先级、virtual-instruction trap 时 stval/htinst 值
+- **Hypervisor × Sscofpmf**：`mhpmevent` VSINH/VUINH 对 VS/VU-mode 计数的抑制、VS-mode `scountovf` 的 `mcounteren`+`hcounteren` 双重门控
+- **Hypervisor × Smcdeleg/Ssccfg**：CDE=1 时 VS/VU-mode 读 `scountovf`、访问 `scountinhibit` 触发 virtual-instruction、`hvip`/`hvien` LCOFI 位（bit 13）实现与可写性、`vsiselect`/`vsireg*` 在 0x40-0x5F 范围的多特权级访问规则、hstateen0 bit 60 对 VS-mode 的控制
 
 ### 不在本文档范围
 
@@ -852,6 +856,180 @@
 
 ---
 
+## Group 10. Hypervisor × Sscofpmf 交叉测试
+
+**规范依据**：
+- `norm:mhpmevent_inh_op`：五个 xINH 位中的每一个置位时抑制对应特权模式下的事件计数；VSINH/VUINH 分别抑制 VS/VU-mode 计数；对应特权模式未实现时该位为只读零
+- `norm:scountovf_vsmode_read_access`：VS-mode 下 `scountovf` bit X 可读当且仅当 `mcounteren` bit X 与 `hcounteren` bit X 均置位，否则读为零
+- `norm:scountovf_smode_read_access_control`：`scountovf` bit X 的读取访问受与 hpmcounter 访问相同的 `mcounteren`/`hcounteren` 规则控制
+
+**测试职责**：验证 Sscofpmf 扩展在 Hypervisor 场景下的行为，包括 VS-mode 读取 `scountovf` 的 `mcounteren`+`hcounteren` 双重门控、以及 `mhpmevent` VSINH/VUINH 对 VS/VU-mode 事件计数的抑制。
+
+> **注意**：本组用例中 01~03 从 `Sscofpmf_test_plan.md` Group 4（COFPMF-SOV-08~10）迁移而来，专门针对依赖 H 扩展的用例；04~06 补齐原方案 Group 2（特权模式过滤）缺失的 VSINH/VUINH 功能用例。需要 H 扩展和 Sscofpmf 扩展同时可用（06 除外，见下）。
+
+### 测试 ID 映射表
+
+| 原始 ID | 新 ID | 测试名称 |
+|---------|-------|---------|
+| COFPMF-SOV-08 | HCROSS-SSCOFPMF-01 | VS-mode scountovf 双重 gate（均允许） |
+| COFPMF-SOV-09 | HCROSS-SSCOFPMF-02 | VS-mode mcounteren=0 读为零 |
+| COFPMF-SOV-10 | HCROSS-SSCOFPMF-03 | VS-mode hcounteren=0 读为零 |
+| —（新增） | HCROSS-SSCOFPMF-04 | VSINH=1 抑制 VS-mode 计数 |
+| —（新增） | HCROSS-SSCOFPMF-05 | VUINH=1 抑制 VU-mode 计数 |
+| —（新增） | HCROSS-SSCOFPMF-06 | 未实现 H 扩展时 VSINH/VUINH 只读零 |
+
+### 测试用例清单
+
+#### 10.1 VS-mode scountovf 双重门控（从 Sscofpmf Group 4 迁移）
+
+**规范依据**：`norm:scountovf_vsmode_read_access`、`norm:scountovf_smode_read_access_control`
+
+| 测试 ID | 测试名称 | 测试描述 | 预期结果 | 规范引用 |
+|---------|----------|----------|----------|----------|
+| HCROSS-SSCOFPMF-01 | VS-mode scountovf 双重 gate（均允许） | mcounteren bit 3 = 1, hcounteren bit 3 = 1，M-mode 设 mhpmevent3 OF=1，VS-mode 读 scountovf | scountovf bit 3 = 1（读到真实 OF 值） | `norm:scountovf_vsmode_read_access` |
+| HCROSS-SSCOFPMF-02 | VS-mode mcounteren=0 读为零 | mcounteren bit 3 = 0（不论 hcounteren），OF=1，VS-mode 读 scountovf | scountovf bit 3 = 0 | `norm:scountovf_vsmode_read_access` |
+| HCROSS-SSCOFPMF-03 | VS-mode hcounteren=0 读为零 | mcounteren bit 3 = 1, hcounteren bit 3 = 0，OF=1，VS-mode 读 scountovf | scountovf bit 3 = 0 | `norm:scountovf_vsmode_read_access` |
+
+#### 10.2 VSINH/VUINH 计数抑制（补齐原方案 Group 2 缺失）
+
+**规范依据**：`norm:mhpmevent_inh_op`
+
+| 测试 ID | 测试名称 | 测试描述 | 预期结果 | 规范引用 |
+|---------|----------|----------|----------|----------|
+| HCROSS-SSCOFPMF-04 | VSINH=1 抑制 VS-mode 计数 | 设 mhpmevent VSINH=1 并配置已退休指令事件，VS-mode 执行固定指令循环，M-mode 读取计数器差值 | VS-mode 执行期间计数器不递增 | `norm:mhpmevent_inh_op` |
+| HCROSS-SSCOFPMF-05 | VUINH=1 抑制 VU-mode 计数 | 设 mhpmevent VUINH=1，VU-mode 执行固定指令循环，M-mode 读取计数器差值 | VU-mode 执行期间计数器不递增 | `norm:mhpmevent_inh_op` |
+| HCROSS-SSCOFPMF-06 | 未实现 H 扩展时 VSINH/VUINH 只读零 | 若 H 扩展未实现，写 mhpmevent VSINH/VUINH=1 后读回 | VSINH/VUINH 为只读零（实现 H 扩展的平台 TEST_SKIP） | `norm:mhpmevent_inh_op` |
+
+> [!NOTE]
+> - 本组测试验证 Sscofpmf 扩展在 Hypervisor 场景下的行为。HCROSS-SSCOFPMF-01~05 必须在运行时通过 `HAS_H_EXT()` 检测 H 扩展可用性，不可用时 TEST_SKIP；HCROSS-SSCOFPMF-06 仅在 H 扩展**未实现**时执行，实现 H 扩展时 TEST_SKIP。
+> - 所有用例需先探测 Sscofpmf 是否实现（trap-protected 写 `mhpmevent` OF 位并读回，写触发 illegal-instruction 则未实现），未实现时整组 TEST_SKIP；并采用动态发现法探测目标 `mhpmcounter`（写非零值读回为零则未实现，改用其他计数器或 TEST_SKIP）。
+> - HCROSS-SSCOFPMF-01~03 的访问控制语义与 `hpmcounter` 一致：VS-mode 读 `scountovf` bit X 需 `mcounteren[X]` 与 `hcounteren[X]` **同时**为 1 才读到真实 OF 值，否则读为零（注意是读零而非触发 trap）。
+> - HCROSS-SSCOFPMF-04~05 需使用 `goto_priv(PRIV_VS)`/`goto_priv(PRIV_VU)` 进入虚拟特权级执行计数循环，回到 M-mode 读取 `mhpmcounter` 差值，不做精确计数断言。模式切换本身产生指令计数，可设 MINH=1 抑制 M-mode 计数以排除干扰（与 `Sscofpmf_test_plan.md` Group 2 NOTE 的处理方式一致）；需编译时启用 `ENABLE_HYP` 宏并配置两阶段翻译使 VS/VU-mode 可执行。
+> - 与 `Sscofpmf_test_plan.md` COFPMF-RW-05/06 的关系：原用例验证 VSINH/VUINH 的 WARL 读写正分支（不依赖 H 扩展），保留在独立方案；本组 06 承接"未实现 H 扩展时只读零"负分支，04~05 承接依赖 H 扩展的计数抑制功能验证。VSINH/VUINH 与 Smcntrpmf 的 `mcyclecfg`/`minstretcfg` VSINH/VUINH 共用相同位编码（bit 59/58），但属不同寄存器，与 `Hypervisor_Sm_test_plan.md` Group 3 无重叠。
+> - 与 Group 11（Smcdeleg/Ssccfg）的关系：本组验证**未启用计数器委托**（CDE 不参与）时 VS-mode 读 `scountovf` 的 `mcounteren`+`hcounteren` 门控（读零语义）；Group 11 验证 **CDE=1** 时 VS/VU-mode 读 `scountovf` 被虚拟化（virtual-instruction 语义，`norm:ssccfg_virtual_scountovf_vs_vu`）。两者互补，实现时需注意 `menvcfg.CDE` 的前置状态。
+
+---
+
+## Group 11. Hypervisor × Smcdeleg/Ssccfg 交叉测试
+
+**规范依据**：
+- `norm:ssccfg_virtual_scountovf_vs_vu`：支持 Smcdeleg/Ssccfg、Sscofpmf 与 H 扩展的实现，当 `menvcfg.CDE=1` 时，VS/VU-mode 读 `scountovf` 触发 virtual-instruction 异常
+- `norm:ssccfg_illegal_scountinhibit_vs_vu`：计数器委托启用（CDE=1）时，VS/VU-mode 访问 `scountinhibit` 触发 virtual-instruction 异常
+- `norm:ssccfg_lcofi_hvip_hvien`：支持 Smcdeleg/Ssccfg、Sscofpmf、Smaia/Ssaia 与 H 扩展的实现，`hvip` 和 `hvien` 的 LCOFI 位（bit 13）已实现且可写；隐含 `vsie`/`vsip` bit 13 也实现
+- `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal`：实现 H 扩展时，VS/VU-mode 直接访问 `vsiselect`/`vsireg*`，或 VU-mode 访问 `siselect`/`sireg*`，触发 virtual-instruction
+- `norm:ssccfg_hyp_m_s_vsireg_illegal`：`vsiselect` 在 0x40-0x5F 范围时，M 或 S 模式访问任何 `vsireg*` 触发 illegal-instruction
+- `norm:ssccfg_hyp_vs_access_sireg_conditional`：VS-mode 访问 `sireg*`（实际为 `vsireg*`）时，`menvcfg.CDE=0` 触发 illegal-instruction，CDE=1 触发 virtual-instruction
+- `norm:hstateen0_csrind_op`：hstateen0 bit 60 控制 VS-mode 对 siselect/sireg*（实为 vsiselect/vsireg*）的访问
+
+**测试职责**：验证 Smcdeleg/Ssccfg 计数器委托扩展在 Hypervisor 场景下的虚拟化行为，包括 `scountovf`/`scountinhibit` 的 VS/VU-mode 虚拟化、`hvip`/`hvien` LCOFI 虚拟中断位、`vsiselect`/`vsireg*` 的多特权级访问规则、以及 hstateen0 bit 60 的交叉控制。
+
+> **注意**：本组用例从 `Ssccfg_test_plan.md` Groups 4/5/6/8（SSCFG-OVF-01~04、SSCFG-HLCOFI-01~05、SSCFG-HYP-01~10、SSCFG-STA-04~06）迁移而来，专门针对依赖 H 扩展的用例；05~06 补齐原方案中 `norm:ssccfg_illegal_scountinhibit_vs_vu` 无对应用例的缺口。需要 H 扩展与 Smcdeleg/Ssccfg（含 `menvcfg.CDE`）同时可用，部分子组需额外扩展（见各子组说明）。
+>
+> **前提配置**：M-mode 需预先将 `menvcfg.CDE` 设为所需值，并委托目标计数器（`mcounteren` 对应位）。
+
+### 测试 ID 映射表
+
+| 原始 ID | 新 ID | 测试名称 |
+|---------|-------|---------|
+| SSCFG-OVF-01 | HCROSS-SSCCFG-01 | VS-mode 读 scountovf（CDE=1）触发 virtual-instruction |
+| SSCFG-OVF-02 | HCROSS-SSCCFG-02 | VU-mode 读 scountovf（CDE=1）触发 virtual-instruction |
+| SSCFG-OVF-03 | HCROSS-SSCCFG-03 | HS-mode 读 scountovf（CDE=1）正常 |
+| SSCFG-OVF-04 | HCROSS-SSCCFG-04 | VS-mode 读 scountovf（CDE=0）行为 |
+| —（新增） | HCROSS-SSCCFG-05 | VS-mode 访问 scountinhibit（CDE=1）触发 virtual-instruction |
+| —（新增） | HCROSS-SSCCFG-06 | VU-mode 访问 scountinhibit（CDE=1）触发 virtual-instruction |
+| SSCFG-HLCOFI-01 | HCROSS-SSCCFG-07 | hvip bit 13（LCOFI）可写性 |
+| SSCFG-HLCOFI-02 | HCROSS-SSCCFG-08 | hvien bit 13（LCOFI）可写性 |
+| SSCFG-HLCOFI-03 | HCROSS-SSCCFG-09 | hvip.LCOFI 独立验证 |
+| SSCFG-HLCOFI-04 | HCROSS-SSCCFG-10 | hvien.LCOFI 独立验证 |
+| SSCFG-HLCOFI-05 | HCROSS-SSCCFG-11 | vsie/vsip LCOFI 位隐含实现 |
+| SSCFG-HYP-01 | HCROSS-SSCCFG-12 | VS-mode 直接访问 vsiselect 触发 virtual-instruction |
+| SSCFG-HYP-02 | HCROSS-SSCCFG-13 | VS-mode 直接访问 vsireg 触发 virtual-instruction |
+| SSCFG-HYP-03 | HCROSS-SSCCFG-14 | VU-mode 直接访问 vsiselect 触发 virtual-instruction |
+| SSCFG-HYP-04 | HCROSS-SSCCFG-15 | VU-mode 直接访问 vsireg 触发 virtual-instruction |
+| SSCFG-HYP-05 | HCROSS-SSCCFG-16 | VU-mode 访问 siselect 触发 virtual-instruction |
+| SSCFG-HYP-06 | HCROSS-SSCCFG-17 | VU-mode 访问 sireg 触发 virtual-instruction |
+| SSCFG-HYP-07 | HCROSS-SSCCFG-18 | M-mode 在 vsiselect 0x40-0x5F 时访问 vsireg 非法 |
+| SSCFG-HYP-08 | HCROSS-SSCCFG-19 | HS-mode 在 vsiselect 0x40-0x5F 时访问 vsireg 非法 |
+| SSCFG-HYP-09 | HCROSS-SSCCFG-20 | VS-mode 经 sireg* 访问（CDE=0）→ illegal-instruction |
+| SSCFG-HYP-10 | HCROSS-SSCCFG-21 | VS-mode 经 sireg* 访问（CDE=1）→ virtual-instruction |
+| SSCFG-STA-04 | HCROSS-SSCCFG-22 | hstateen0 bit 60=0 阻止 VS-mode 写 siselect |
+| SSCFG-STA-05 | HCROSS-SSCCFG-23 | hstateen0 bit 60=0 阻止 VS-mode 读 sireg |
+| SSCFG-STA-06 | HCROSS-SSCCFG-24 | hstateen0 bit 60=1 允许 VS-mode 访问 |
+
+### 测试用例清单
+
+#### 11.1 scountovf 虚拟化（从 Ssccfg Group 4 迁移）
+
+**规范依据**：`norm:ssccfg_virtual_scountovf_vs_vu`
+
+| 测试 ID | 测试名称 | 测试描述 | 预期结果 | 规范引用 |
+|---------|----------|----------|----------|----------|
+| HCROSS-SSCCFG-01 | VS-mode 读 scountovf（CDE=1）触发 virtual-instruction | CDE=1，VS-mode 读 scountovf (0xDA0) | 触发 virtual-instruction 异常 (cause=22) | `norm:ssccfg_virtual_scountovf_vs_vu` |
+| HCROSS-SSCCFG-02 | VU-mode 读 scountovf（CDE=1）触发 virtual-instruction | CDE=1，VU-mode 读 scountovf | 触发 virtual-instruction 异常 (cause=22) | `norm:ssccfg_virtual_scountovf_vs_vu` |
+| HCROSS-SSCCFG-03 | HS-mode 读 scountovf（CDE=1）正常 | CDE=1，HS-mode（V=0 的 S-mode）读 scountovf | 访问成功，无异常 | `norm:ssccfg_virtual_scountovf_vs_vu` |
+| HCROSS-SSCCFG-04 | VS-mode 读 scountovf（CDE=0）行为 | CDE=0，VS-mode 读 scountovf | 不受本虚拟化条款约束，按 Sscofpmf 基本规则（见 Group 10 HCROSS-SSCOFPMF-01~03 的门控语义） | `norm:ssccfg_virtual_scountovf_vs_vu`（负向） |
+
+#### 11.2 scountinhibit VS/VU 虚拟化（补齐缺口）
+
+**规范依据**：`norm:ssccfg_illegal_scountinhibit_vs_vu`
+
+| 测试 ID | 测试名称 | 测试描述 | 预期结果 | 规范引用 |
+|---------|----------|----------|----------|----------|
+| HCROSS-SSCCFG-05 | VS-mode 访问 scountinhibit（CDE=1）触发 virtual-instruction | CDE=1，VS-mode 读写 scountinhibit (0x120) | 触发 virtual-instruction 异常 (cause=22) | `norm:ssccfg_illegal_scountinhibit_vs_vu` |
+| HCROSS-SSCCFG-06 | VU-mode 访问 scountinhibit（CDE=1）触发 virtual-instruction | CDE=1，VU-mode 读 scountinhibit | 触发 virtual-instruction 异常 (cause=22) | `norm:ssccfg_illegal_scountinhibit_vs_vu` |
+
+#### 11.3 LCOFI 虚拟化：hvip/hvien bit 13（从 Ssccfg Group 5 迁移）
+
+**规范依据**：`norm:ssccfg_lcofi_hvip_hvien`
+
+| 测试 ID | 测试名称 | 测试描述 | 预期结果 | 规范引用 |
+|---------|----------|----------|----------|----------|
+| HCROSS-SSCCFG-07 | hvip bit 13（LCOFI）可写性 | HS-mode 写 hvip bit 13 = 1 后读回，再写 0 读回 | bit 13 可写且读回一致 | `norm:ssccfg_lcofi_hvip_hvien` |
+| HCROSS-SSCCFG-08 | hvien bit 13（LCOFI）可写性 | HS-mode 写 hvien bit 13 = 1 后读回，再写 0 读回 | bit 13 可写且读回一致 | `norm:ssccfg_lcofi_hvip_hvien` |
+| HCROSS-SSCCFG-09 | hvip.LCOFI 独立验证 | 写 hvip 全 1 后读回，检查 bit 13 | bit 13 读回为 1 | `norm:ssccfg_lcofi_hvip_hvien` |
+| HCROSS-SSCCFG-10 | hvien.LCOFI 独立验证 | 写 hvien 全 1 后读回，检查 bit 13 | bit 13 读回为 1 | `norm:ssccfg_lcofi_hvip_hvien` |
+| HCROSS-SSCCFG-11 | vsie/vsip LCOFI 位隐含实现 | 验证 vsie bit 13 与 vsip bit 13 的存在性（读写不触发异常） | vsie/vsip bit 13 存在（hvip.LCOFI 的实现隐含这些位的实现） | `norm:ssccfg_lcofi_hvip_hvien` |
+
+#### 11.4 vsiselect/vsireg* 多特权级访问规则（从 Ssccfg Group 6 迁移）
+
+**规范依据**：`norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal`、`norm:ssccfg_hyp_m_s_vsireg_illegal`、`norm:ssccfg_hyp_vs_access_sireg_conditional`
+
+| 测试 ID | 测试名称 | 测试描述 | 预期结果 | 规范引用 |
+|---------|----------|----------|----------|----------|
+| HCROSS-SSCCFG-12 | VS-mode 直接访问 vsiselect 触发 virtual-instruction | VS-mode 直接读写 vsiselect (0x240)（vsiselect 在 0x40-0x5F） | 触发 virtual-instruction 异常 (cause=22) | `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal` |
+| HCROSS-SSCCFG-13 | VS-mode 直接访问 vsireg 触发 virtual-instruction | VS-mode 直接读写 vsireg (0x245) | 触发 virtual-instruction 异常 (cause=22) | `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal` |
+| HCROSS-SSCCFG-14 | VU-mode 直接访问 vsiselect 触发 virtual-instruction | VU-mode 直接读写 vsiselect | 触发 virtual-instruction 异常 (cause=22) | `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal` |
+| HCROSS-SSCCFG-15 | VU-mode 直接访问 vsireg 触发 virtual-instruction | VU-mode 直接读写 vsireg | 触发 virtual-instruction 异常 (cause=22) | `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal` |
+| HCROSS-SSCCFG-16 | VU-mode 访问 siselect 触发 virtual-instruction | VU-mode 读写 siselect | 触发 virtual-instruction 异常 (cause=22) | `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal` |
+| HCROSS-SSCCFG-17 | VU-mode 访问 sireg 触发 virtual-instruction | VU-mode 读写 sireg | 触发 virtual-instruction 异常 (cause=22) | `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal` |
+| HCROSS-SSCCFG-18 | M-mode 在 vsiselect 0x40-0x5F 时访问 vsireg 非法 | M-mode 设 vsiselect=0x40，访问 vsireg* | 触发 illegal-instruction 异常 | `norm:ssccfg_hyp_m_s_vsireg_illegal` |
+| HCROSS-SSCCFG-19 | HS-mode 在 vsiselect 0x40-0x5F 时访问 vsireg 非法 | HS-mode 设 vsiselect=0x40，访问 vsireg* | 触发 illegal-instruction 异常 | `norm:ssccfg_hyp_m_s_vsireg_illegal` |
+| HCROSS-SSCCFG-20 | VS-mode 经 sireg* 访问（CDE=0）→ illegal-instruction | menvcfg.CDE=0，VS-mode 经 siselect=0x40 访问 sireg（实际为 vsireg） | 触发 illegal-instruction 异常 | `norm:ssccfg_hyp_vs_access_sireg_conditional` |
+| HCROSS-SSCCFG-21 | VS-mode 经 sireg* 访问（CDE=1）→ virtual-instruction | menvcfg.CDE=1，VS-mode 经 siselect=0x40 访问 sireg（实际为 vsireg） | 触发 virtual-instruction 异常 | `norm:ssccfg_hyp_vs_access_sireg_conditional` |
+
+#### 11.5 hstateen0 bit 60 交叉控制（从 Ssccfg Group 8 迁移）
+
+**规范依据**：`norm:hstateen0_csrind_op`
+
+| 测试 ID | 测试名称 | 测试描述 | 预期结果 | 规范引用 |
+|---------|----------|----------|----------|----------|
+| HCROSS-SSCCFG-22 | hstateen0 bit 60=0 阻止 VS-mode 写 siselect | mstateen0 bit 60=1，hstateen0 bit 60=0，VS-mode 写 siselect | 触发 virtual-instruction 异常 | `norm:hstateen0_csrind_op` |
+| HCROSS-SSCCFG-23 | hstateen0 bit 60=0 阻止 VS-mode 读 sireg | mstateen0 bit 60=1，hstateen0 bit 60=0，VS-mode 读 sireg | 触发 virtual-instruction 异常 | `norm:hstateen0_csrind_op` |
+| HCROSS-SSCCFG-24 | hstateen0 bit 60=1 允许 VS-mode 访问 | mstateen0 bit 60=1，hstateen0 bit 60=1，VS-mode 访问 siselect/sireg* | 访问不因 hstateen0 被阻止（CDE=1 时可能触发 virtual-instruction，由 HCROSS-SSCCFG-21 覆盖） | `norm:hstateen0_csrind_op` |
+
+> [!NOTE]
+> - 本组所有用例必须在运行时通过 `HAS_H_EXT()` 检测 H 扩展、并探测 Smcdeleg/Ssccfg（`menvcfg.CDE` 可写性 + `siselect` 存在性，依赖 Sscsrind），任一不可用时整组 TEST_SKIP。
+> - 11.1/11.2 需额外实现 Sscofpmf（`scountovf` 存在）；11.3 需额外实现 Sscofpmf + Smaia/Ssaia（`hvien` 存在），缺失时对应子组 TEST_SKIP。
+> - HCROSS-SSCCFG-01~02 与 Group 10（HCROSS-SSCOFPMF-01~03）的区分关键在 `menvcfg.CDE`：CDE=0 时 VS-mode 读 `scountovf` 按 mcounteren+hcounteren 门控读零；CDE=1 时被虚拟化，读访问直接触发 virtual-instruction，hypervisor 介入。实现用例前必须显式设置 CDE 状态。
+> - HCROSS-SSCCFG-05~06 补齐 `Ssccfg_test_plan.md` 中 `norm:ssccfg_illegal_scountinhibit_vs_vu` 无对应用例的缺口：`scountinhibit` 的 CDE=0 非法访问（illegal-instruction）由原方案 SSCFG-SINH-12/13 覆盖，本组覆盖 CDE=1 的 VS/VU 虚拟化分支。
+> - HCROSS-SSCCFG-12~17 与 Group 6 Sscsrind（HCROSS-SSCSRIND-11~20）的关系：VS/VU 直接访问 vsiselect/vsireg* 触发 virtual-instruction 的基础行为属 `norm:sscsrind_virtual_inst_fault`，本组从 Ssccfg 角度验证 vsiselect 处于委托计数器区（0x40-0x5F）时的同源行为，实现时可交叉引用避免重复。
+> - HCROSS-SSCCFG-18~19 是 Ssccfg 特有的新增规则：`vsiselect` 在 0x40-0x5F 时，M/S-mode 也**不得**直接访问 `vsireg*`（illegal-instruction），因为该区间状态属于 VS-mode 委托计数器，应通过修改 guest 状态间接管理。
+> - HCROSS-SSCCFG-22~24 与 Group 4.4（HCROSS-SSSTA-27~29）、Group 6.3（HCROSS-SSCSRIND-24~27）验证相同的 `hstateen0[60]` 控制，本组从 Ssccfg 委托计数器角度补充，实现时可交叉引用。
+> - M-mode 层面的 `menvcfg.CDE` 使能、`mcounteren` 委托位设置、`mvip`/`mvien` LCOFI 验证由 `Smcdeleg_test_plan.md` 覆盖，不在本组范围。
+> - `vsiselect` CSR 地址为 0x240，`vsireg` 为 0x245；`scountinhibit` 为 0x120；`scountovf` 为 0xDA0；`hvip`/`hvien` 分别为 0x645/0x648。
+
+---
+
 ## 测试优先级
 
 | 优先级 | 测试组 | 覆盖的测试 ID | 理由 |
@@ -874,6 +1052,8 @@
 | P2（建议） | Group 8.2 (VS/VU access) | HCROSS-SSCTR-11~14 | VS/VU-mode 对 CTR CSR 的访问限制 |
 | P2（建议） | Group 8.4 (VS Freeze) | HCROSS-SSCTR-21~24 | VS-mode Freeze 行为由 vsctrctl 控制 |
 | P2（建议） | Group 8.6 (hstateen VS) | HCROSS-SSCTR-30~32 | hstateen0.CTR 对 VS-mode CTR 访问的控制 |
+| P2（建议） | Group 10 (Sscofpmf) | HCROSS-SSCOFPMF-01~06 | VS-mode scountovf 双重门控与 VSINH/VUINH 计数抑制是性能监控隔离的保证 |
+| P2（建议） | Group 11 (Smcdeleg/Ssccfg) | HCROSS-SSCCFG-01~24 | scountovf/scountinhibit 虚拟化、LCOFI 虚拟中断位与 vsireg* 访问规则是计数器委托隔离的保证 |
 | P3（可选） | Group 2 (Ssccptr) | HCROSS-SSCCPTR-01~04 | PMA 层面的约束依赖平台保证，动态 PMA 配置能力受限的用例按平台能力 TEST_SKIP |
 
 > 注：Ssqosid（Group 9）的测试用例（SRMCFG-19~24）在原始合并方案中未单独标注优先级，建议参照 `Ssqosid_test_plan.md` 的优先级执行。Group 4 (Ssstateen) 的 hstateen 控制用例（HCROSS-SSSTA-01~50）优先级参照原合并方案 Group 8 的 P1 定级。
@@ -882,7 +1062,7 @@
 
 ## 关键注意事项
 
-1. **扩展检测**：所有测试必须在运行时检测所需扩展（H、Sstvala、Ssccptr、Sscounterenw、Ssstateen、Sstc、Sscsrind、Ssdbltrp、Ssctr、Ssqosid 等）的可用性，不可用时 TEST_SKIP。
+1. **扩展检测**：所有测试必须在运行时检测所需扩展（H、Sstvala、Ssccptr、Sscounterenw、Ssstateen、Sstc、Sscsrind、Ssdbltrp、Ssctr、Ssqosid、Sscofpmf、Smcdeleg/Ssccfg 等）的可用性，不可用时 TEST_SKIP。
 
 2. **Sstvala 的精确性要求**：Sstvala 扩展强制要求 `stval` 写入 faulting 地址，而非 0。测试断言必须使用 `TEST_ASSERT_EQ` 精确比较，不能用 `TEST_ASSERT(stval != 0)` 模糊验证。
 
@@ -906,6 +1086,8 @@
 - `SPEC/ssdbltrp.adoc` — Ssdbltrp Double Trap Extension
 - `SPEC/ssctr.adoc` — Ssctr (Control Transfer Records - Supervisor-level) Extension
 - `SPEC/riscv-ssqosid/sqosid.adoc` — Ssqosid (QoS Identifiers) Extension Specification
+- `SPEC/sscofpmf.adoc` — Sscofpmf Extension Specification (Count Overflow and Mode-Based Filtering)
+- `SPEC/smcdeleg.adoc` — Smcdeleg and Ssccfg Counter Delegation Extensions
 - `DOCS/testplan/Hypervisor_CSR_test_plan.md` — Hypervisor CSR 子集测试计划
 - `DOCS/testplan/Hypervisor_Interrupts_test_plan.md` — Hypervisor 中断子集测试计划
 - `DOCS/testplan/Hypervisor_Exceptions_test_plan.md` — Hypervisor 异常与 trap 子集测试计划
@@ -920,6 +1102,8 @@
 - `DOCS/testplan/Ssdbltrp_test_plan.md` — Ssdbltrp 独立测试计划
 - `DOCS/testplan/Ssctr_test_plan.md` — Ssctr Supervisor Mode 测试计划
 - `DOCS/testplan/Ssqosid_test_plan.md` — Ssqosid 独立测试计划
+- `DOCS/testplan/Sscofpmf_test_plan.md` — Sscofpmf 独立测试计划
+- `DOCS/testplan/Ssccfg_test_plan.md` — Ssccfg 独立测试计划
 - `ideas/hypervisor_gap.md` — Hypervisor 测试缺口分析
 
 ---
@@ -996,5 +1180,15 @@
 | `norm:vsiselect_op` | HCROSS-SSCTR-13 |
 | `norm:hstateen_ctr` | HCROSS-SSCTR-30~32 |
 | `norm:hstateen_vs` | HCROSS-SSCTR-30~32 |
+| `norm:mhpmevent_inh_op` | HCROSS-SSCOFPMF-04、HCROSS-SSCOFPMF-05、HCROSS-SSCOFPMF-06（VSINH/VUINH 部分；M/S/U 模式过滤由 `Sscofpmf_test_plan.md` Group 2 覆盖） |
+| `norm:scountovf_vsmode_read_access` | HCROSS-SSCOFPMF-01~03 |
+| `norm:scountovf_smode_read_access_control` | HCROSS-SSCOFPMF-01~03（VS-mode 侧；S/HS-mode 侧由 `Sscofpmf_test_plan.md` Group 4 覆盖） |
+| `norm:ssccfg_virtual_scountovf_vs_vu` | HCROSS-SSCCFG-01~04 |
+| `norm:ssccfg_illegal_scountinhibit_vs_vu` | HCROSS-SSCCFG-05、HCROSS-SSCCFG-06（CDE=1 虚拟化分支；CDE=0 分支由 `Ssccfg_test_plan.md` SSCFG-SINH-12/13 覆盖） |
+| `norm:ssccfg_lcofi_hvip_hvien` | HCROSS-SSCCFG-07~11 |
+| `norm:ssccfg_hyp_vs_or_vu_access_vsireg_illegal` | HCROSS-SSCCFG-12~17 |
+| `norm:ssccfg_hyp_m_s_vsireg_illegal` | HCROSS-SSCCFG-18、HCROSS-SSCCFG-19 |
+| `norm:ssccfg_hyp_vs_access_sireg_conditional` | HCROSS-SSCCFG-20、HCROSS-SSCCFG-21 |
+| `norm:hstateen0_csrind_op` | HCROSS-SSCCFG-22~24（Ssccfg 角度；同源验证见 HCROSS-SSSTA-27~29、HCROSS-SSCSRIND-24~27） |
 | `ssqosid_virtinst`（自行拆解） | SRMCFG-19、SRMCFG-20、SRMCFG-21、SRMCFG-24 |
 | `ssqosid_smstateen_bit55_0`（自行拆解） | SRMCFG-23 |

@@ -89,10 +89,35 @@ _halt:
  */
 .global _halt_pass
 _halt_pass:
+    nop
+    /* .balign 16 inside RVMODEL_HALT_* is encoded as R_RISCV_ALIGN when
+     * GAS relaxation is enabled; GAS may record less NOP slack than the
+     * final layout needs, causing "can't relax section" link errors.
+     * Assemble these macros with norelax so GAS fills the alignment
+     * exactly here. clang is excluded: its integrated assembler fills
+     * code alignment with zeros (illegal unimp) under norelax, which
+     * would trap on the fall-through path before the semihost sequence;
+     * clang/LLD do not have the GAS alignment-record bug. */
+#ifndef __clang__
+    .option push
+    .option norelax
+#endif
     RVMODEL_HALT_PASS
+#ifndef __clang__
+    .option pop
+#endif
 _halt_fail:
+    nop
+#ifndef __clang__
+    .option push
+    .option norelax
+#endif
     RVMODEL_HALT_FAIL
+#ifndef __clang__
+    .option pop
+#endif
 _halt_loop:
+    nop
     wfi
     j       _halt_loop
 

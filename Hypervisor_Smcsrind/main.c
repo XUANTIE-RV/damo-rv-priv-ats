@@ -11,7 +11,7 @@
  *     to vsiselect/vsireg*
  *   - M-mode access not affected by mstateen0
  *
- * See DOCS/testplan/Hypervisor_cross_test_plan.md Group 10.
+ * See DOCS/testplan/Hypervisor_Sm_test_plan.md Group 1.
  */
 
 #include "test_framework.h"

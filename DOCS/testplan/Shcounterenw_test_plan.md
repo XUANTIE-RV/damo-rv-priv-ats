@@ -181,6 +181,14 @@ VU-mode 下访问计数器需同时满足：
 | SHCNTW-ACCESS-07 | hcounteren[N]=1 时 VS-mode 读 hpmcounterN 成功 | 对已实现的 hpmcounterN，设置对应 bit=1，VS-mode 读取 | 无异常 |
 | SHCNTW-ACCESS-08 | hcounteren[N]=0 时 VS-mode 读 hpmcounterN 触发异常 | 对已实现的 hpmcounterN，设置对应 bit=0，VS-mode 读取 | 触发 virtual-instruction exception (cause=22) |
 
+> [!IMPORTANT]
+> **SHCNTW-ACCESS-07/08 与 SHCNTW-TOGGLE-03 前置条件：mcounteren 门控可写性验证**
+> 这些用例以 `mcounteren[N]=1` 为前提，但 `mcounteren` 为 WARL（`norm:mcounteren_flds_rdonly0`，machine.adoc）：任何位可为只读零，表示对应计数器在较低特权级永久不可访问，此时 VS-mode 读取报 illegal-instruction (cause=2) 属合法实现。测试实现必须选取第一个"已实现且 `mcounteren[N]` 可置 1"的 `hpmcounterN`：
+> 1. M-mode 写 `mcounteren[N]=1` 并回读验证；
+> 2. 若所有已实现计数器的 `mcounteren` 位均为只读零，则"门控可开"场景在该平台不可构造，用例执行 `TEST_SKIP("no hpmcounter with openable mcounteren gate")`；
+> 3. 计数器"已实现"探测使用 `mhpmcounterN` 写非零回读，与 `mcounteren` 位可写性无等价关系（存在计数器已实现但 `mcounteren` 位只读零的合法平台，如 whisper：`mhpmcounter3-10` 可写但 `mcounteren` HPM 位只读零），不得以前者推断后者。
+> 注：本前置条件仅针对 HPM 计数器用例；cycle/time/instret 的 ACCESS-01~06 若遇到同样情形（`mcounteren` 位只读零），同样应探测后 TEST_SKIP。
+
 ---
 
 ### Group 3：hcounteren bit 反复切换一致性

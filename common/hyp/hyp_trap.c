@@ -19,6 +19,9 @@
 #include "hyp_csr.h"
 #include "encoding.h"
 
+/* Provided by common/string.c (bare-metal libc replacement). */
+extern void *memset(void *dst, int c, size_t n);
+
 /* ===================================================================
  * HS-mode trap record (captures hypervisor-specific trap info)
  * =================================================================== */
@@ -67,6 +70,16 @@ unsigned hs_trap_handler(void) {
     _hs_trap_record.htinst     = htinst_v;
     _hs_trap_record.gva        = gva;
     _hs_trap_record.spv        = spv;
+
+    /* Interrupts: do NOT advance sepc — the interrupted instruction
+     * must be re-executed after sret.  Clear only the hvip bit of the
+     * interrupt that fired so other pending virtual interrupts (e.g.
+     * VSTIP pending alongside VSSIP) remain deliverable. */
+    if (cause & CAUSE_INTERRUPT_BIT) {
+        uintptr_t irq = cause & ~CAUSE_INTERRUPT_BIT;
+        CSRC(CSR_HVIP, 1UL << irq);
+        return PRIV_S;
+    }
 
     /* Handle specific trap causes */
     uintptr_t cause_code = cause & ~CAUSE_INTERRUPT_BIT; /* mask interrupt bit */
@@ -125,4 +138,33 @@ bool trap_get_spv(void) {
     if (_hs_trap_record.triggered)
         return _hs_trap_record.spv;
     return trap_get_spv_snap();
+}
+
+/* ===================================================================
+ * Accessors for the HS-mode trap record
+ *
+ * These allow tests that install _hs_trap_entry as stvec to read
+ * trap fields (cause, htinst, htval) captured by hs_trap_handler.
+ * =================================================================== */
+
+bool hs_trap_was_triggered(void) {
+    return _hs_trap_record.triggered;
+}
+
+uintptr_t hs_trap_get_cause(void) {
+    return _hs_trap_record.cause;
+}
+
+uintptr_t hs_trap_get_htinst(void) {
+    return _hs_trap_record.htinst;
+}
+
+uintptr_t hs_trap_get_htval(void) {
+    return _hs_trap_record.htval;
+}
+
+void hs_trap_record_reset(void) {
+    /* Zero the entire record (including armed, priv_level and
+     * return_addr) so no stale field survives a reset. */
+    memset(&_hs_trap_record, 0, sizeof(_hs_trap_record));
 }

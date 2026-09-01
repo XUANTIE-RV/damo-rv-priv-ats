@@ -717,6 +717,10 @@ TEST_REGISTER(tret_18_vu_trap_hs_sret_resume);
 bool tret_18_vu_trap_hs_sret_resume(void) {
     TEST_BEGIN("TRET-18: VU ebreak -> HS handler -> SRET resumes VU");
 
+#ifdef SKIP_BREAKPOINT_TESTS
+    TEST_SKIP("platform does not support breakpoint (SKIP_BREAKPOINT_TESTS)");
+#endif
+
     /* Delegate ebreak M->HS only; the trap stays in HS-mode. */
     clear_all_deleg();
     setup_deleg_to_hs(1UL << CAUSE_BREAKPOINT);
@@ -749,6 +753,10 @@ bool tret_18_vu_trap_hs_sret_resume(void) {
 TEST_REGISTER(tret_19_vs_trap_vs_sret_resume);
 bool tret_19_vs_trap_vs_sret_resume(void) {
     TEST_BEGIN("TRET-19: VS ebreak -> VS handler -> SRET resumes VS");
+
+#ifdef SKIP_BREAKPOINT_TESTS
+    TEST_SKIP("platform does not support breakpoint (SKIP_BREAKPOINT_TESTS)");
+#endif
 
     /* Delegate ebreak M->HS->VS so the trap is delivered to VS-mode. */
     clear_all_deleg();

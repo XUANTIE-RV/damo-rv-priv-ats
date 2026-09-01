@@ -752,8 +752,19 @@ _test_table_size = (_test_table_end - _test_table) / (__riscv_xlen / 8);
 | `XLEN` | `64` | 目标架构位宽：`32` 或 `64` |
 | `CONFIG` | `qemu-rv64-max` | 平台配置（可选：`qemu-rv64-max`、`sail-rv64-max`、`spike-rv64-max`等） |
 | `LOG_LEVEL` | `3` | 日志级别：0-6 |
+| `FAIL_FAST` | 未开启 | `1` = 首个失败用例出现后立即终止整个测试集 |
 | `MEM_BASE` | 平台默认 | 内存基地址 |
 | `CROSS_COMPILER` | 平台默认 | 交叉编译器前缀 |
+
+#### Fail-fast 模式（FAIL_FAST=1）
+
+默认情况下，测试集会运行全部用例并在最后打印汇总。编译时传入 `FAIL_FAST=1` 可开启快速失败模式：任意一个用例失败（`TEST_END`/`HYP_TEST_END` 记录到失败断言，或 `TEST_FATAL` 触发）后，框架立即打印截至当前的部分汇总，并通过 `RVMODEL_HALT_FAIL` 以失败状态终止运行（模拟器退出、硬件上自旋），不再执行后续用例。
+
+```bash
+make clean; make qemu FAIL_FAST=1    # 首个失败用例即终止执行
+```
+
+实现位于 `common/test_framework.h` 的 `_test_end_record()`（编译宏 `TEST_FAIL_FAST` 控制），默认行为不受影响。
 
 ---
 

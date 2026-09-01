@@ -194,8 +194,8 @@ bool test_shcounterenw_access_07(void) {
     TEST_BEGIN("SHCNTW-ACCESS-07: VS-mode reads hpmcounterN when hcounteren[N]=1");
     if (!has_h_extension()) TEST_SKIP("H-extension not supported");
 
-    unsigned n = find_first_hpm_counter();
-    if (!n) TEST_SKIP("no hpmcounter3-31 implemented");
+    unsigned n = find_first_hpm_counter_gatable();
+    if (!n) TEST_SKIP("no hpmcounter with openable mcounteren gate");
 
     /* Configure: mcounteren[n]=1, hcounteren[n]=1 */
     uintptr_t saved_mcen = mcounteren_read();
@@ -224,8 +224,8 @@ bool test_shcounterenw_access_08(void) {
     TEST_BEGIN("SHCNTW-ACCESS-08: VS-mode read hpmcounterN traps when hcounteren[N]=0");
     if (!has_h_extension()) TEST_SKIP("H-extension not supported");
 
-    unsigned n = find_first_hpm_counter();
-    if (!n) TEST_SKIP("no hpmcounter3-31 implemented");
+    unsigned n = find_first_hpm_counter_gatable();
+    if (!n) TEST_SKIP("no hpmcounter with openable mcounteren gate");
 
     /* Configure: mcounteren[n]=1, hcounteren[n]=0 */
     uintptr_t saved_mcen = mcounteren_read();

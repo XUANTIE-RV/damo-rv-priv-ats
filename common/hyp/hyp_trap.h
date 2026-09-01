@@ -103,6 +103,18 @@ unsigned hs_trap_handler(void);
  */
 bool trap_get_spv(void);
 
+/**
+ * HS-mode trap record accessors
+ *
+ * Tests that install _hs_trap_entry as stvec can use these to read
+ * trap fields captured by hs_trap_handler.
+ */
+bool hs_trap_was_triggered(void);
+uintptr_t hs_trap_get_cause(void);
+uintptr_t hs_trap_get_htinst(void);
+uintptr_t hs_trap_get_htval(void);
+void hs_trap_record_reset(void);
+
 /* External reference to the HS-mode trap vector entry point (asm) */
 extern void _hs_trap_entry(void);
 

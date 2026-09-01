@@ -68,7 +68,7 @@ damo-priv-test/
 
 ```bash
 # 构建单个扩展（例如 pmp 默认平台:QEMU 默认工具链:riscv64-unknown-elf-gcc）
-cd pmp && make clean && make 
+cd pmp && make clean && make
 
 # 切换到其他平台仅构建 例如:sail-rv64-max
 make clean && make CONFIG=sail-rv64-max
@@ -86,11 +86,8 @@ make all
 make pmp XLEN=32
 ```
 
-使用 `TEST_FILTER` 运行特定测试：
 
-```bash
-make qemu-pmp EXTRA_CFLAGS='-DTEST_FILTER="PMP"'
-```
+注意：命令行变量变化不会触发已编译对象重建，切换该开关前必须先执行 `make clean`。
 
 ---
 
@@ -102,8 +99,27 @@ make qemu-pmp EXTRA_CFLAGS='-DTEST_FILTER="PMP"'
 cd <tests_dir>; make clean; make <target> EXTRA_CFLAGS='-DUART_SILENT_MODE'
 ```
 
-注意：命令行变量变化不会触发已编译对象重建，切换该开关前必须先执行 `make clean`。
+---
 
+## FAIL FAST 模式
+
+默认情况下，测试集会运行完全部用例并在最后打印通过/失败统计。编译时传入 `FAIL_FAST=1` 可开启快速失败模式：**任意一个用例失败后立即终止整个测试集**，不再执行后续用例。
+
+```bash
+cd <test_dir>; make clean; make qemu FAIL_FAST=1
+```
+
+终止前框架会打印 `[FAIL-FAST]` 标记和截至当前的部分汇总，便于定位停止点；模拟器以失败状态退出（硬件平台上自旋）。不传 `FAIL_FAST=1` 时行为与原来完全一致。
+
+---
+
+## TEST FILTER 模式
+
+使用 `TEST_FILTER` 运行特定测试用例：
+
+```bash
+make qemu-pmp EXTRA_CFLAGS='-DTEST_FILTER="PMP"'
+```
 ---
 
 ## 工具链选择
@@ -265,7 +281,9 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `Hypervisor_Smmpm` | Hyp + Smmpm（M-mode Pointer Masking） | ✓ |
 | | `Hypervisor_Smnpm` | Hyp + Smnpm（Next-level Pointer Masking） | ✓ |
 | | `Hypervisor_Smstateen` | Hyp + Smstateen | ✓ |
+| | `Hypervisor_Ssccfg` | Hyp + Ssccfg（S-mode 计数器委托配置） | ✓ |
 | | `Hypervisor_Ssccptr` | Hyp + Ssccptr | ✓ |
+| | `Hypervisor_Sscofpmf` | Hyp + Sscofpmf（计数器溢出/模式过滤） | ✓ |
 | | `Hypervisor_Sscsrind` | Hyp + Sscsrind | ✓ |
 | | `Hypervisor_Ssdbltrp` | Hyp + Ssdbltrp | ✓ |
 | | `Hypervisor_Ssnpm` | Hyp + Ssnpm（S-mode Pointer Masking） | ✓ |
@@ -284,6 +302,12 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `Hypervisor_Smcntrpmf` | Hyp + Smcntrpmf | ✓ |
 | | `Hypervisor_Ssqosid` | Hyp + Ssqosid | ✓ |
 | | `Hypervisor_Zkr` | Hyp + Zkr | ✓ |
+| | `Hypervisor_PMP` | Hyp + PMP（PMP 与虚拟化交互） | ✓ |
+| | `Hypervisor_Vector` | Hyp + V（向量扩展虚拟化） | ✓ |
+| | `Hypervisor_Zawrs` | Hyp + Zawrs（Wait-on-Reservation-Set） | ✓ |
+| | `Hypervisor_Zicntr` | Hyp + Zicntr（基础计数器） | ✓ |
+| | `Hypervisor_Zihintntl` | Hyp + Zihintntl（非临时性访问提示） | ✓ |
+| | `Hypervisor_Zihpm` | Hyp + Zihpm（硬件性能计数器） | ✓ |
 | **Machine-mode (Sm\*)扩展** | `Sm_CSR` | M-Mode CSR | |
 | | `Sm_Interrupts` | M-Mode 中断处理 | |
 | | `Sm_Exceptions` | M-Mode 异常处理 | |

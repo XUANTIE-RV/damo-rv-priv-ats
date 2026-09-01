@@ -118,6 +118,36 @@ static inline const char *_tf_strstr(const char *h, const char *n) {
 #endif
 
 /**
+ * Fail-fast support (build with FAIL_FAST=1, see Makefile.common)
+ *
+ * When TEST_FAIL_FAST is defined, the suite halts immediately after a
+ * test case fails instead of running the remaining cases. A partial
+ * summary is printed before halting so the stop point is visible.
+ * _halt_fail() terminates the simulation with fail status via
+ * RVMODEL_HALT_FAIL (on HW it spins).
+ */
+#ifdef TEST_FAIL_FAST
+int test_print_summary(void);
+extern void _halt_fail(void) __attribute__((noreturn));
+
+static inline void _test_fail_fast(void) {
+    printf("[FAIL-FAST] halting at first failed test\n");
+    test_print_summary();
+    _halt_fail();
+}
+
+/* TEST_FATAL variant: count the aborted test as failed before halting,
+ * so the partial summary reflects it. */
+static inline void _test_fatal_fail_fast(void) {
+    test_results.tests_failed++;
+    _test_fail_fast();
+}
+#define IF_FAIL_FATAL() _test_fatal_fail_fast()
+#else
+#define IF_FAIL_FATAL() ((void)0)
+#endif
+
+/**
  * _test_end_record - Common test-end bookkeeping (statistics + print)
  *
  * Shared by TEST_END() and HYP_TEST_END() to avoid duplicating the
@@ -134,6 +164,9 @@ static inline bool _test_end_record(void) {
                 test_results.current_test_name;
         }
         printf("[FAIL] %s\n\n", test_results.current_test_name);
+#ifdef TEST_FAIL_FAST
+        _test_fail_fast(); /* noreturn */
+#endif
     } else {
         test_results.tests_passed++;
         printf("[PASS] %s\n\n", test_results.current_test_name);
@@ -186,6 +219,7 @@ static inline bool _test_end_record(void) {
     printf("[FATAL] %s: %s\n\n", test_results.current_test_name, (reason)); \
     goto_priv(PRIV_M); \
     reset_state(); \
+    IF_FAIL_FATAL(); \
     return false; \
 } while (0)
 

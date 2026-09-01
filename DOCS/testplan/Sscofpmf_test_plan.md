@@ -21,7 +21,7 @@
 | `hpmcounter3`–`hpmcounter31` | 0xC03–0xC1F | 硬件性能计数器（S/U-mode 只读影子） |
 | `scountovf` | 0xDA0 | 32-bit 只读，OF bit 影子拷贝 |
 | `mcounteren` | 0x306 | M-mode 控制 S-mode 对计数器的访问 |
-| `hcounteren` | 0x606 | HS-mode 控制 VS-mode 对计数器的访问 |
+| `hcounteren` | 0x606 | HS-mode 控制 VS-mode 对计数器的访问（VS-mode 门控用例已迁移至 `Hypervisor_Ss_test_plan.md` Group 10） |
 | `mip` / `sip` | 0x344 / 0x144 | 中断 pending，bit 13 = LCOFIP |
 | `mie` / `sie` | 0x304 / 0x104 | 中断 enable，bit 13 = LCOFIE |
 | `mideleg` | 0x303 | 中断委托，bit 13 控制 LCOFI 委托至 S-mode |
@@ -60,7 +60,7 @@
 | `norm:scountovf_smode_read_access_control` | Read access to bit X is subject to the same mcounteren (or mcounteren and hcounteren) CSRs that mediate access to the hpmcounter CSRs by S-mode (or VS-mode). | 对位 X 的读取访问受与 S 模式（或 VS 模式）访问 hpmcounter CSR 相同的 mcounteren（或 mcounteren 和 hcounteren）CSR 控制。 |
 | `norm:scountovf_mmode_read_access` | In M-mode, scountovf bit X is always readable. | 在 M 模式下，scountovf 位 X 始终可读。 |
 | `norm:scountovf_smode_read_access` | In S/HS-mode, scountovf bit X is readable when mcounteren bit X is set, and otherwise reads as zero. | 在 S/HS 模式下，当 mcounteren 位 X 置位时 scountovf 位 X 可读，否则读为零。 |
-| `norm:scountovf_vsmode_read_access` | Similarly, in VS mode, scountovf bit X is readable when mcounteren bit X and hcounteren bit X are both set, and otherwise reads as zero. | 类似地，在 VS 模式下，当 mcounteren 位 X 和 hcounteren 位 X 都置位时 scountovf 位 X 可读，否则读为零。 |
+| `norm:scountovf_vsmode_read_access` | Similarly, in VS mode, scountovf bit X is readable when mcounteren bit X and hcounteren bit X are both set, and otherwise reads as zero. | 类似地，在 VS 模式下，当 mcounteren 位 X 和 hcounteren 位 X 都置位时 scountovf 位 X 可读，否则读为零。（**已迁移至 `Hypervisor_Ss_test_plan.md` Group 10**） |
 
 ### 不在测试范围内
 
@@ -147,6 +147,9 @@ bool test_cofpmf_of_rw(void) {
 }
 ```
 
+> [!NOTE]
+> COFPMF-RW-05/06 验证 VSINH/VUINH 的 WARL 读写正分支（不依赖 H 扩展）；若平台未实现 H 扩展，这两个位应为 read-only zero（负分支）。依赖 H 扩展的完整语义（VSINH/VUINH 计数抑制、未实现 H 扩展时只读零探测）见 `Hypervisor_Ss_test_plan.md` Group 10（HCROSS-SSCOFPMF-04~06）。
+
 ---
 
 ### Group 2：特权模式过滤
@@ -198,6 +201,8 @@ bool test_cofpmf_minh_inhibit(void) {
 
 > [!NOTE]
 > 特权模式切换（ecall / mret / sret）本身会产生指令计数。测试中通过比较"抑制"和"不抑制"两种场景的计数差异来验证功能，而非验证精确计数值。对于 S/U-mode 测试，应先在 M-mode 禁用计数（MINH=1），切换到目标模式执行后再返回，仅比较目标模式执行期间的计数增量。
+>
+> 本组不覆盖 VSINH/VUINH 的计数抑制功能用例（依赖 H 扩展，需进入 VS/VU-mode 执行），该部分由 `Hypervisor_Ss_test_plan.md` Group 10（HCROSS-SSCOFPMF-04~05）覆盖。
 
 ---
 
@@ -265,7 +270,7 @@ bool test_cofpmf_overflow_sets_of(void) {
 - `norm:scountovf_op`：32-bit 只读，bit X 对应 mhpmevent X 的 OF bit
 - `norm:scountovf_mmode_read_access`：M-mode 始终可读
 - `norm:scountovf_smode_read_access`：S-mode 受 mcounteren 控制
-- `norm:scountovf_vsmode_read_access`：VS-mode 受 mcounteren 和 hcounteren 双重控制
+- `norm:scountovf_vsmode_read_access`：VS-mode 受 mcounteren 和 hcounteren 双重控制（**已迁移**：用例见 `Hypervisor_Ss_test_plan.md` Group 10）
 - `norm:scountovf_smode_read_access_control`：访问控制与 hpmcounter 的 mcounteren/hcounteren 规则一致
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
@@ -277,9 +282,9 @@ bool test_cofpmf_overflow_sets_of(void) {
 | COFPMF-SOV-05 | M-mode 读取不受 mcounteren 限制 | 清除 mcounteren bit 3，M-mode 读 scountovf bit 3 仍可见 | scountovf bit 3 反映真实 OF 值 |
 | COFPMF-SOV-06 | S-mode mcounteren=1 可读 | 设置 mcounteren bit 3 = 1，S-mode 读 scountovf bit 3 | 读到真实 OF 值 |
 | COFPMF-SOV-07 | S-mode mcounteren=0 读为零 | 清除 mcounteren bit 3，S-mode 读 scountovf，bit 3 应为 0（即使 OF=1） | scountovf bit 3 = 0 |
-| COFPMF-SOV-08 | VS-mode 双重 gate（均允许） | mcounteren bit 3 = 1, hcounteren bit 3 = 1，VS-mode 读 scountovf bit 3 | 读到真实 OF 值 |
-| COFPMF-SOV-09 | VS-mode mcounteren=0 读为零 | mcounteren bit 3 = 0（不论 hcounteren），VS-mode 读 scountovf bit 3 | scountovf bit 3 = 0 |
-| COFPMF-SOV-10 | VS-mode hcounteren=0 读为零 | mcounteren bit 3 = 1, hcounteren bit 3 = 0，VS-mode 读 scountovf bit 3 | scountovf bit 3 = 0 |
+
+> [!NOTE]
+> VS-mode scountovf 访问控制用例（原 COFPMF-SOV-08~10，`norm:scountovf_vsmode_read_access`）依赖 Hypervisor 扩展，已迁移至 `Hypervisor_Ss_test_plan.md` Group 10（HCROSS-SSCOFPMF-01~03）。
 
 ```c
 /* COFPMF-SOV-01 示例伪代码 */
@@ -363,9 +368,9 @@ CSRW(mhpmevent3, 0);
 
 `MARGIN` 建议设为 50–100，足够覆盖循环开销。
 
-### 5. scountovf 访问控制测试（Group 4 SOV-06~10）
+### 5. scountovf 访问控制测试（Group 4 SOV-06~07）
 
-需要在不同特权模式下读取 `scountovf`。对于 S-mode 测试，可复用框架的 `goto_priv(PRIV_S)` + `PRIV_DO_NO_TRAP` 模式；VS-mode 测试需要 Hypervisor 扩展支持（`ENABLE_HYP`），使用 `goto_priv(PRIV_VS)` 进入 VS-mode。
+需要在不同特权模式下读取 `scountovf`。对于 S-mode 测试，可复用框架的 `goto_priv(PRIV_S)` + `PRIV_DO_NO_TRAP` 模式。VS-mode 双重门控用例（原 SOV-08~10，依赖 H 扩展）已迁移至 `Hypervisor_Ss_test_plan.md` Group 10，本方案不再包含 VS-mode 测试。
 
 ---
 

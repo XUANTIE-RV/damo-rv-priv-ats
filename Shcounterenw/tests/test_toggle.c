@@ -109,8 +109,8 @@ bool test_shcounterenw_toggle_03_hpm(void) {
     TEST_BEGIN("SHCNTW-TOGGLE-03: hcounteren[N] toggle consistency (hpmcounterN)");
     if (!has_h_extension()) TEST_SKIP("H-extension not supported");
 
-    unsigned n = find_first_hpm_counter();
-    if (!n) TEST_SKIP("no hpmcounter3-31 implemented");
+    unsigned n = find_first_hpm_counter_gatable();
+    if (!n) TEST_SKIP("no hpmcounter with openable mcounteren gate");
 
     /* Ensure mcounteren[n]=1 */
     uintptr_t saved_mcen = mcounteren_read();

@@ -53,8 +53,19 @@ const platform_caps_t *platform_probe(void) {
         _caps.shcounterenw = (rb != 0);
     }
 
-    /* ----- Counter implementation bitmap ----- */
-    _caps.counters_implemented = counteren_probe_implemented();
+    /* ----- Counter implementation bitmap -----
+     * Probe actual counter existence via mhpmcounterN write/readback
+     * (hpmcounter_is_writable), NOT mcounteren gate-bit stickiness:
+     * a read-only-zero mcounteren bit only marks the counter
+     * inaccessible (norm:mcounteren_flds_rdonly0), not absent. */
+    {
+        uint32_t bmp = 0;
+        for (int i = 3; i < 32; i++) {
+            if (hpmcounter_is_writable(i))
+                bmp |= (1U << i);
+        }
+        _caps.counters_implemented = bmp;
+    }
 
     _caps.probed = true;
     return &_caps;
