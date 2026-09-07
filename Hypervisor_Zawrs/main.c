@@ -11,14 +11,14 @@
  * mstatus.TW priority over VTW, and the absence of spurious
  * virtual-instruction exceptions in HS/VS/VU modes.
  *
- * See DOCS/testplan/Hypervisor_Zi_test_plan.md Group 4 for the full
+ * See DOCS/testplan/Hypervisor_Za_test_plan.md Group 6 for the full
  * test plan. Non-hypervisor Zawrs behavior is covered by the Zawrs/
  * suite (DOCS/testplan/Zawrs_test_plan.md).
  *
  * Test ID mapping:
- *   Group 4.1 (normal execution): HZWRS-01~03
- *   Group 4.2 (VTW gating):       HZWRS-04~07
- *   Group 4.3 (TW priority):      HZWRS-08~12
+ *   Group 6.1 (normal execution): HZWRS-01~03
+ *   Group 6.2 (VTW gating):       HZWRS-04~07
+ *   Group 6.3 (TW priority):      HZWRS-08~12
  */
 
 #include "test_framework.h"

@@ -1,5 +1,5 @@
 # RISC-V Privilege Test Framework CI
-# Runs hypervisor extension test suite on Spike/Whisper with GCC and Clang
+# Runs hypervisor extension test suite on Spike/Whisper/Sail with GCC and Clang
 # toolchains.
 # The job FAILS if any statistics/*.csv file is modified after the test run.
 
@@ -111,7 +111,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        simulator: [spike, whisper]
+        simulator: [spike, whisper, sail]
         toolchain: [gcc, clang]
 
     steps:
@@ -191,11 +191,11 @@ jobs:
         if: matrix.simulator == 'whisper'
         run: whisper --version
 
-      - name: Verify toolchain (${{ matrix.toolchain }})
-        run: riscv64-unknown-elf-${{ matrix.toolchain }} --version
-
       # ---- Restore Sail (installed by setup-simulators) ----
+      # Sail is a pre-built binary release, so the cached tree is self-contained
+      # and needs no extra runtime dependencies on this runner.
       - name: Restore Sail cache
+        if: matrix.simulator == 'sail'
         uses: actions/cache/restore@v5
         with:
           path: ${{ github.workspace }}/.sail
@@ -203,10 +203,15 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Add Sail to PATH
+        if: matrix.simulator == 'sail'
         run: echo "${GITHUB_WORKSPACE}/.sail/bin" >> "$GITHUB_PATH"
 
       - name: Verify Sail
+        if: matrix.simulator == 'sail'
         run: sail_riscv_sim --version
+
+      - name: Verify toolchain (${{ matrix.toolchain }})
+        run: riscv64-unknown-elf-${{ matrix.toolchain }} --version
 
       # ----------------------------------------------------------------
       # Run framework test suite.

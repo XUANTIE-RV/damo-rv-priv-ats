@@ -345,4 +345,16 @@ static inline void hstateen_set_bit63(int idx, bool enable) {
 #define SMSTATEEN_AVAILABLE  0
 #endif
 
+#ifdef SSCSRIND_SUPPORTED
+#define SSCSRIND_AVAILABLE   1
+#else
+#define SSCSRIND_AVAILABLE   0
+#endif
+
+#ifdef SMCSRIND_SUPPORTED
+#define SMCSRIND_AVAILABLE   1
+#else
+#define SMCSRIND_AVAILABLE   0
+#endif
+
 #endif /* HYP_CSR_H */

@@ -4,13 +4,13 @@
 #
 # Tests for the Zawrs (Wait-on-Reservation-Set) extension in
 # Hypervisor scenarios, matching
-# DOCS/testplan/Hypervisor_Zi_test_plan.md Group 4:
-#   - 4.1 normal execution of wrs.nto/wrs.sto in HS/VS/VU modes
+# DOCS/testplan/Hypervisor_Za_test_plan.md Group 6:
+#   - 6.1 normal execution of wrs.nto/wrs.sto in HS/VS/VU modes
 #     without spurious virtual-instruction (HZWRS-01~03)
-#   - 4.2 hstatus.VTW gating of wrs.nto in VS/VU-mode:
+#   - 6.2 hstatus.VTW gating of wrs.nto in VS/VU-mode:
 #     virtual-instruction vs legal completion, trap report
 #     (HZWRS-04~07)
-#   - 4.3 mstatus.TW priority over VTW (illegal-instruction),
+#   - 6.3 mstatus.TW priority over VTW (illegal-instruction),
 #     VTW scope limited to wrs.nto, VTW not affecting HS-mode
 #     (HZWRS-08~12)
 #

@@ -29,7 +29,6 @@ implemented_extensions:
   - { name: Smaia, version: "= 1.0.0" }
   - { name: Smcdeleg, version: "= 1.0.0" }
   - { name: Smcntrpmf, version: "= 1.0.0" }
-  - { name: Smcsrind, version: "= 1.0.0" }
   - { name: Smctr, version: "= 1.0.0" }
   - { name: Smdbltrp, version: "= 1.0.0" }
   - { name: Smepmp, version: "= 1.0.0" }
@@ -42,7 +41,6 @@ implemented_extensions:
   - { name: Ssccptr, version: "= 1.0.0" }
   - { name: Sscofpmf, version: "= 1.0.0" }
   - { name: Sscounterenw, version: "= 1.0.0" }
-  - { name: Sscsrind, version: "= 1.0.0" }
   - { name: Ssctr, version: "= 1.0.0" }
   - { name: Ssdbltrp, version: "= 1.0.0" }
   - { name: Ssnpm, version: "= 1.0.0" }

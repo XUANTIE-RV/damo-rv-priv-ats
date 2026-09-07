@@ -4,7 +4,7 @@
  */
 
 /* ===================================================================
- * Group 4.3: TW priority and instruction scope (VS/VU-mode)
+ * Group 6.3: TW priority and instruction scope (VS/VU-mode)
  *
  * HZWRS-08 ~ HZWRS-12
  *

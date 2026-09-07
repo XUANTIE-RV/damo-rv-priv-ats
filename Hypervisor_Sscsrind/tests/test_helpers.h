@@ -327,7 +327,7 @@ static inline bool vsireg_write_safe(uintptr_t val)
 
 /*
  * Verify vsiselect is accessible from the current privilege level.
- * Must be called AFTER goto_priv(PRIV_S) and AFTER platform_has_sscsrind().
+ * Must be called AFTER goto_priv(PRIV_S) and AFTER SSCSRIND_AVAILABLE check.
  * Returns false (and records a FAIL) if vsiselect is not accessible.
  *
  * Usage: if (!vsiselect_accessible()) { goto_priv(PRIV_M); TEST_SKIP(...); }
@@ -342,54 +342,17 @@ static inline bool vsiselect_accessible(void)
 }
 
 /* ===================================================================
- * Platform detection
+ * Platform detection (compile-time, from rvtest_config.h)
  * =================================================================== */
 
 /* Check if H extension is present */
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-/* Check if Sscsrind is implemented (siselect + vsiselect accessible) */
-static inline bool platform_has_sscsrind(void)
-{
-    /* Check S-level siselect */
-    trap_expect_begin();
-    siselect_read();
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-    if (trapped)
-        return false;
-
-#ifdef ENABLE_HYP
-    /*
-     * Check VS-level vsiselect (CSR 0x250).  Some platforms implement
-     * siselect but not the VS-level counterpart (e.g., QEMU max CPU may
-     * expose siselect via Ssaia but leave vsiselect unimplemented).
-     * Access from M-mode is always valid if the CSR exists.
-     */
-    trap_expect_begin();
-    vsiselect_read();
-    trapped = trap_was_triggered();
-    trap_expect_end();
-    if (trapped)
-        return false;
+#ifdef H_SUPPORTED
+#define HAS_H_EXT()  (1)
+#else
+#define HAS_H_EXT()  (0)
 #endif
 
-    return true;
-}
 
-/* Check if Smstateen is implemented (mstateen0 accessible) */
-static inline bool platform_has_smstateen(void)
-{
-    trap_expect_begin();
-    mstateen0_read();
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-    return !trapped;
-}
 
 /* ===================================================================
  * VS-mode trampoline functions (for run_in_vs_mode)

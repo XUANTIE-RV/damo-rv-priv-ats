@@ -2,7 +2,9 @@
 
 # Hypervisor × Z* Extensions Cross Test Plan
 
-> This document describes the test plan for cross-scenarios between the Hypervisor (H) extension and other Z* extension families (including Zk* cryptography extensions). This plan was split out from `Hypervisor_cross_test_plan.md` and retains only the content at the intersection of the Hypervisor and Z* extensions. These test scenarios were originally marked in the standalone test plans of the respective extensions as "covered by the Hypervisor test plan" or "excluded due to the absence of the H extension", but analysis showed that the existing Hypervisor test plans do not fully cover them. Hypervisor × Zawrs cross scenarios (Group 4), Hypervisor × V vector family cross scenarios (Group 5), Hypervisor × Zicntr cross scenarios (Group 6), and Hypervisor × Zihpm cross scenarios (Group 7) were supplemented afterwards.
+> This document describes the test plan for cross-scenarios between the Hypervisor (H) extension and other Z* extension families (including Zk* cryptography extensions). This plan was split out from `Hypervisor_cross_test_plan.md` and retains only the content at the intersection of the Hypervisor and Z* extensions. These test scenarios were originally marked in the standalone test plans of the respective extensions as "covered by the Hypervisor test plan" or "excluded due to the absence of the H extension", but analysis showed that the existing Hypervisor test plans do not fully cover them. Hypervisor × V vector family cross scenarios, Hypervisor × Zicntr cross scenarios, and Hypervisor × Zihpm cross scenarios were supplemented afterwards.
+>
+> The cross scenarios of the two atomic/reservation-set extensions — the former Hypervisor × Zawrs (former Group 4, HZWRS-01~12) and Hypervisor × Zalrsc (former Group 8, HZLRSC-01~40) — have been split out into `Hypervisor_Za_test_plan.md` (the Za atomic extension cross-test center), with case IDs unchanged; the Group numbering in this document is rearranged after the split (V vector family is Group 4, Zicntr is Group 5, Zihpm is Group 6).
 >
 > Generation date: 2026-06-22
 
@@ -16,7 +18,6 @@ This plan is based on the following official RISC-V specifications (local paths)
 - `SPEC/riscv-isa-manual/src/unpriv/zk.adoc` — Zkr entropy source extension: `seed` CSR, `mseccfg.SSEED/USEED` access control
 - `SPEC/riscv-isa-manual/src/unpriv/zihintntl.adoc` — Zihintntl extension: no-architectural-side-effect semantics and trap behavior of NTL HINT instructions
 - `SPEC/riscv-isa-manual/src/unpriv/zcmt.adoc` — Zcmt extension: cm.jt/cm.jalt table jump instructions, jvt CSR, and two-implicit-fetch semantics
-- `SPEC/riscv-isa-manual/src/unpriv/zawrs.adoc` — Zawrs extension: wrs.nto/wrs.sto wait-on-reservation-set instructions, virtual-instruction mechanism gated by hstatus.VTW
 - `SPEC/riscv-isa-manual/src/unpriv/vector-common.adoc` — V vector family common definitions: vsstatus.vs vector context status field, Off gating of vector instructions/vector CSRs and dual Dirty updates when V=1, vsstatus.fs interaction for vector floating point
 - `SPEC/riscv-isa-manual/src/unpriv/zicntr.adoc` — Zicntr extension: cycle/time/instret base counters, the intersection of `rdtime` semantics and the htimedelta time offset, continued control of VU-mode by `scounteren` when V=1 (no corresponding VS CSR)
 - `SPEC/riscv-isa-manual/src/unpriv/zihpm.adoc` — Zihpm extension: gating interaction when V=1 of the access behavior of unimplemented hpmcounter3–31 (illegal-instruction or constant value)
@@ -34,7 +35,6 @@ Official repository:
 - **Hypervisor × Zkr**: `mseccfg.SSEED` control over VS/VU-mode access to the `seed` CSR; distinguishing virtual-instruction from illegal-instruction exception types in VS/VU-mode; SSEED control of HS-mode access to seed; read-only access exceptions taking precedence over virtual-instruction
 - **Hypervisor × Zihintntl**: normal execution of NTL HINTs in HS/VS/VU-mode (must not spuriously raise a virtual-instruction exception); NTL applied to H-extension virtual-machine memory access instructions (HLV/HSV/HLVX); virtual-instruction reporting of NTL + CMO in VS-mode; G-stage guest-page-fault reporting of NTL + target in VS-mode
 - **Hypervisor × Zcmt**: normal execution of table jump instructions (cm.jt/cm.jalt) in HS/VS/VU-mode; jvt CSR access and Smstateen (JVT bit) gating in VS/VU-mode; two-stage translation of JVT entry fetches in VS-mode and G-stage guest instruction page fault reporting
-- **Hypervisor × Zawrs**: normal execution of wrs.nto/wrs.sto in HS/VS/VU-mode (must not spuriously raise a virtual-instruction exception); `hstatus.VTW` virtual-instruction gating of `wrs.nto` in VS/VU-mode; exception type determination with `mstatus.TW` taking precedence over `hstatus.VTW`; the VTW clause applies only to `wrs.nto` and not to `wrs.sto`
 - **Hypervisor × V vector family**: presence and read/write of the `vsstatus.vs` field (bits[10:9]) when the H extension is implemented; illegal-instruction gating of vector instructions and vector CSRs when either `vsstatus.vs` or `mstatus.vs` is Off at V=1; modifying vector state sets both to Dirty; linkage between `vsstatus.sd` and `vsstatus.vs`; `vsstatus.fs` gating and dual Dirty updates for vector floating-point instructions; presence of `vsstatus.vs` when `misa.v` is writable (applicable to all vector extensions sharing `vector-common.adoc`: V, Zve*, Zv*)
 - **Hypervisor × Zicntr**: the `rdtime` instruction returns `time + htimedelta` in VS/VU-mode (instruction-level delta semantics); gating of `cycle`/`time`/`instret` by the CY/TM/IR bits of `hcounteren` (as a precondition and exception type distinction); continued control of VU-mode visibility of base counters by `scounteren` (which has no corresponding VS CSR) when V=1 (including the blocked branch when `hcounteren`=0)
 - **Hypervisor × Zihpm**: access behavior of unimplemented `hpmcounter3–31` at V=1 (both constant value and exception are legal) and its interaction with `hcounteren` HPMn gating; the three-level `mcounteren → hcounteren → scounteren` gating chain for VU-mode access to `hpmcounter`
@@ -47,11 +47,11 @@ Official repository:
 - Zkr non-Hypervisor scenarios (basic control of seed access in M/S/U-mode) — covered by `Zkr_test_plan.md`
 - Zihintntl non-Hypervisor scenarios (basic semantics in M/S/U-mode, encodings, compressed variants, CMO interaction, LR/SC forward progress guarantees, etc.) — covered by `zihintntl_test_plan.md`
 - Zcmt non-Hypervisor scenarios (jvt WARL behavior, encoding and operational semantics, PMP/page-table fault handling, table update visibility and endianness, etc.) — covered by `zcmt_test_plan.md`
-- Zawrs non-Hypervisor scenarios (instruction encoding and availability, stall and resume semantics, mstatus.TW timeout illegal-instruction behavior, etc.) — covered by `Zawrs_test_plan.md`
 - V vector family non-Hypervisor scenarios (vtype/vl behavior, basic semantics of vector instructions, non-virtualized gating of mstatus.vs, etc.) — no standalone test plan currently exists and they are out of scope for this document; `norm:vsstatus_vs_op`/`norm:vsstatus_fs_op` in `hypervisor.adoc` (equivalent to `vector-common.adoc`) are already covered by `Hypervisor_CSR_test_plan.md` (VSST-03~09) and are not duplicated here
 - Zicntr non-Hypervisor scenarios (cycle/time/instret counter semantics, M/S/U-mode counteren control matrix) — covered by `Zicntr_test_plan.md`, `Sm_CSR_test_plan.md`, `Ss_CSR_test_plan.md`
 - Zihpm non-Hypervisor scenarios (hpmcounter semantics and event configuration, M/S/U-mode counteren control matrix) — covered by `Zihpm_test_plan.md`, `Sm_CSR_test_plan.md`, `Ss_CSR_test_plan.md`
-- Bit-level writability of `hcounteren` and the write-back/gating matrix of VS/VU-mode counter access — covered by `Shcounterenw_test_plan.md` and `Hypervisor_Ss_test_plan.md` Group 3 (Hypervisor × Sscounterenw); this document (Group 6/7) only supplements the instruction-level and unimplemented-counter behavior cases not covered there, without re-verifying the gating matrix itself
+- Bit-level writability of `hcounteren` and the write-back/gating matrix of VS/VU-mode counter access — covered by `Shcounterenw_test_plan.md` and `Hypervisor_Ss_test_plan.md` Group 3 (Hypervisor × Sscounterenw); this document (Group 5/6) only supplements the instruction-level and unimplemented-counter behavior cases not covered there, without re-verifying the gating matrix itself
+- **All cross scenarios between the Hypervisor and the Za-series atomic/reservation-set extensions (Zalrsc, Zawrs)** — covered by `Hypervisor_Za_test_plan.md` (the former Group 4 "Hypervisor × Zawrs" and Group 8 "Hypervisor × Zalrsc" of this document have been migrated out entirely, with case IDs HZWRS-01~12 / HZLRSC-01~40 unchanged); the non-Hypervisor scenarios of Zalrsc and Zawrs are covered by `Zalrsc_test_plan.md` and `Zawrs_test_plan.md` respectively, and the main-memory RsrvEventual PMA and the main-memory guarantee of forward progress for constrained LR/SC loops are covered by `Ziccrse_test_plan.md`
 
 ---
 
@@ -72,10 +72,6 @@ The following table lists the specification points covered by this plan. Entries
 | `norm:jvt_base_vm` | `zcmt.adoc` | jvt[base] is a virtual address, whenever virtual memory is enabled. |
 | `norm:Zcmt_fetch` | `zcmt.adoc` | ... the execution of a table jump instruction involves two instruction fetches, the first to read the instruction (cm.jt/cm.jalt) and the second to read from the jump vector table (JVT). Both instruction fetches are _implicit_ reads, and both require execute permission; read permission is irrelevant. |
 | `norm:Zcmt_trap` | `zcmt.adoc` | If an exception occurs on either instruction fetch, xEPC is set to the PC of the table jump instruction, xCAUSE is set as expected for the type of fault and xTVAL (if not set to zero) contains the fetch address which caused the fault. |
-| `norm:Zawrs_exec_resume_rules` | `zawrs.adoc` | The wrs.nto and wrs.sto instructions follow the rules of the wfi instruction for resuming execution on a locally enabled pending interrupt. |
-| `norm:Zawrs_virtual_instr_excp` | `zawrs.adoc` | When executing in VS- or VU-mode, if the vtw bit is set in hstatus, the tw bit in mstatus is clear, and the wrs.nto does not complete within an implementation-specific bounded time limit, the wrs.nto instruction will cause a virtual-instruction exception. |
-| `norm:Zawrs_priv_illegal_instr_excp` | `zawrs.adoc` | When the tw (timeout wait) bit in mstatus is set and wrs.nto is executed in any privilege mode other than M-mode, and it does not complete within an implementation-specific bounded time limit, the wrs.nto instruction will cause an illegal-instruction exception. |
-| `norm:Zawrs_stall_terminate` | `zawrs.adoc` | While stalled, an implementation is permitted to occasionally terminate the stall and complete execution for any reason. |
 | `norm:vsstatus_vs_sz_acc` | `vector-common.adoc` | When the hypervisor extension is present, a vector context status field, vs, is added to vsstatus[10:9]. It is defined analogously to the floating-point context status field, fs. |
 | `norm:vsstatus_vs_mstatus_vs_op_off` | `vector-common.adoc` | When V=1, both vsstatus.vs and mstatus.vs are in effect: attempts to execute any vector instruction, or to access the vector CSRs, raise an illegal-instruction exception when either field is set to Off. |
 | `norm:vsstatus_vs_mstatus_vs_op_active` | `vector-common.adoc` | When V=1 and neither vsstatus.vs nor mstatus.vs is set to Off, executing any instruction that changes vector state, including the vector CSRs, will change both mstatus.vs and vsstatus.vs to Dirty. |
@@ -89,7 +85,6 @@ The following table lists the specification points covered by this plan. Entries
 | `H_scsrs_nomatch_vu_counter` | `hypervisor.adoc` (counter specialization of `norm:H_scsrs_nomatch`) | Some standard supervisor CSRs (senvcfg, scounteren, and scontext, possibly others) have no matching VS CSR. These supervisor CSRs continue to have their usual function and accessibility even when V=1, except with VS-mode and VU-mode substituting for HS-mode and U-mode. |
 | `hcounteren_gate_v1_counter` | `hypervisor.adoc` (specialization of `norm:hcounteren_op`) | When the CY, TM, IR, or HPMn bit in hcounteren is clear, attempts to read the corresponding counter while V=1 will cause a virtual-instruction exception if the same bit in mcounteren is 1. |
 | `norm:stateen0_jvt_op` | `smstateen.adoc` | The JVT bit controls access to the `jvt` CSR provided by the Zcmt extension. |
-| `norm:H_virtinst_xtval` | `hypervisor.adoc` | On a virtual-instruction trap, `mtval` or `stval` is written the same as for an illegal-instruction trap. |
 | `norm:htval_trapval` | `hypervisor.adoc` | htval trap value reporting for guest-page faults (implementation may write zero or the faulting GPA>>2). |
 
 ---
@@ -227,53 +222,7 @@ The following table lists the specification points covered by this plan. Entries
 
 ---
 
-## Group 4. Hypervisor × Zawrs Cross Tests
-
-**Spec Reference**:
-- `norm:Zawrs_virtual_instr_excp`: in VS/VU-mode with `hstatus.VTW`=1, `mstatus.TW`=0, and `wrs.nto` not completing within the implementation-defined time limit → virtual-instruction exception
-- `norm:Zawrs_exec_resume_rules`: wrs instructions follow the locally-enabled-interrupt resume rules of `wfi`; when a locally enabled pending interrupt exists, no stall occurs and the VTW exception path is not triggered (cross-referenced with the `norm:hstatus_vtw_op`/`norm:vtw_virtinstr` WFI semantics in `Hypervisor_CSR_test_plan.md`; `norm:vtw_virtinstr` also permits the implementation to always raise virtual-instruction when VTW=1, even if a globally masked pending interrupt exists, so HZWRS-06 is a recording-type case)
-- `zawrs.adoc` (`norm:Zawrs_priv_illegal_instr_excp`): with `mstatus.TW`=1, non-M-mode execution of `wrs.nto` that does not complete raises illegal-instruction — the TW clause takes precedence over VTW, and VS/VU-mode also report illegal (consistent with the WFI semantics of HSTAT-06)
-- `zawrs.adoc`: the VTW clause names only `wrs.nto`; `wrs.sto` is bounded by its short timeout and is not gated by VTW; wrs instructions are available in all privilege modes, and HS-mode is not constrained by VTW (VTW applies only when V=1)
-
-**Test Scope**: Verify the behavior of Zawrs instructions in virtualization environments: normal execution in HS/VS/VU-mode without spuriously raising a virtual-instruction exception; `hstatus.VTW` virtual-instruction gating of `wrs.nto` in VS/VU-mode; the precedence and exception type distinction between `mstatus.TW` and `hstatus.VTW`; the instruction scope of the VTW clause (only `wrs.nto`). Instructions are injected with raw encoding: `wrs.nto` = 0x00D00073 (SYSTEM opcode=0x73, funct3=0, rd=0, funct12=0x0d), `wrs.sto` = 0x01D00073 (funct12=0x1d).
-
-### 4.1 Normal Execution of wrs Instructions in HS/VS/VU-mode (VTW=0)
-
-| Test ID | Test Name | Test Description | Expected Result |
-|---------|-----------|------------------|-----------------|
-| HZWRS-01 | HS-mode executes wrs.nto/wrs.sto | With `hstatus.VTW`=0, HS-mode establishes a reservation set with `lr` and pre-stages a locally enabled pending software interrupt, then executes `wrs.nto` and `wrs.sto` in sequence (raw encoding) | both complete normally, no exception |
-| HZWRS-02 | VS-mode executes wrs.nto/wrs.sto | With `hstatus.VTW`=0 and `mstatus.TW`=0, VS-mode executes both instructions in the same scenario | both complete normally without spuriously raising a virtual-instruction exception |
-| HZWRS-03 | VU-mode executes wrs.nto/wrs.sto | Same configuration, VU-mode executes both instructions | both complete normally, no exception |
-
-### 4.2 hstatus.VTW Gating (VS/VU-mode wrs.nto)
-
-| Test ID | Test Name | Test Description | Expected Result |
-|---------|-----------|------------------|-----------------|
-| HZWRS-04 | VS-mode VTW=1 wrs.nto raises virtual-instruction | With `hstatus.VTW`=1 and `mstatus.TW`=0, mask all locally enabled interrupts, VS-mode executes `wrs.nto` (trap-armed) | virtual-instruction exception (cause=22) |
-| HZWRS-05 | VU-mode VTW=1 wrs.nto raises virtual-instruction | Same configuration, VU-mode executes `wrs.nto` | virtual-instruction exception (cause=22) |
-| HZWRS-06 | VTW=1 but a locally enabled interrupt is already pending (recording type) | With `hstatus.VTW`=1, after setting and locally enabling an interrupt, VS-mode executes `wrs.nto` | both behaviors are legal: the instruction completes immediately (no stall, `norm:Zawrs_exec_resume_rules`); or reports virtual-instruction (cause=22) per the VTW interception permission of `norm:vtw_virtinstr`. Record the implementation choice; if an exception is raised it must be cause=22, with no mandatory verdict |
-| HZWRS-07 | Trap reporting of the VTW exception | Following the HZWRS-04 scenario, check the HS-mode trap context | cause=22, stval written per the `norm:H_virtinst_xtval` rule (instruction encoding or 0), hstatus.SPV=1, normal recovery after the handler skips |
-
-### 4.3 TW Precedence and Instruction Scope (VS/VU-mode)
-
-| Test ID | Test Name | Test Description | Expected Result |
-|---------|-----------|------------------|-----------------|
-| HZWRS-08 | VS-mode reports illegal when VTW=1 and TW=1 | With `hstatus.VTW`=1 and `mstatus.TW`=1, VS-mode executes `wrs.nto` | illegal-instruction exception (cause=2) (TW clause takes precedence, `norm:Zawrs_priv_illegal_instr_excp`) |
-| HZWRS-09 | VU-mode reports illegal when VTW=1 and TW=1 | Same configuration, VU-mode executes `wrs.nto` | illegal-instruction exception (cause=2) |
-| HZWRS-10 | VTW=1 applies only to wrs.nto | With `hstatus.VTW`=1 and `mstatus.TW`=0, VS-mode executes `wrs.sto` | completes normally after the short timeout, no exception (the VTW clause names only `wrs.nto`) |
-| HZWRS-11 | VTW does not affect HS-mode | With `hstatus.VTW`=1, HS-mode executes `wrs.nto` | completes normally, no exception (VTW applies only when V=1) |
-| HZWRS-12 | TW=1 alone takes effect in VS-mode | With `mstatus.TW`=1 and `hstatus.VTW`=0, VS-mode executes `wrs.nto` | illegal-instruction exception (cause=2) (cross-referenced with the WFI semantics of HSTAT-06 in `Hypervisor_CSR_test_plan.md`) |
-
-> [!NOTE]
-> - All tests in this group must detect the H extension at runtime via `HAS_H_EXT()` and probe Zawrs support with trap-armed raw encoding (if unimplemented, the whole group TEST_SKIP); Zawrs depends on Zalrsc, and cases must first establish a reservation set with `lr`.
-> - As with the WFI/VTW cases (HSTAT-04), there is a timing dependency: the VTW exception requires that `wrs.nto` "does not complete within the implementation-defined time limit". If the implementation terminates the stall prematurely with a very short duration per `norm:Zawrs_stall_terminate` so that the exception is not raised, the case must remain failed and be recorded in the `bugs/` directory; assertions must not be relaxed.
-> - HZWRS-06 is a recording-type case: `norm:vtw_virtinstr` permits the implementation to always raise virtual-instruction when VTW=1 (even if a globally masked pending interrupt exists), so both "completes immediately" and "reports cause=22" are legal implementations; the case only records the implementation choice and constrains the exception type (if raised it must be cause=22), while avoiding any dependency on the implementation's stall duration.
-> - HZWRS-08/09 verify the exception type determination: with `mstatus.TW`=1, illegal-instruction (cause=2) must be reported per `norm:Zawrs_priv_illegal_instr_excp`; virtual-instruction must not be reported. Assertions must use precise cause constants.
-> - Zawrs non-Hypervisor scenarios (encoding and availability, stall and resume, basic TW behavior) are covered by `Zawrs_test_plan.md`.
-
----
-
-## Group 5. Hypervisor × V Vector Family Cross Tests
+## Group 4. Hypervisor × V Vector Family Cross Tests
 
 **Spec Reference**:
 - `norm:vsstatus_vs_sz_acc`: when the H extension is implemented, vsstatus gains the vector context status field vs (bits[10:9]), defined analogously to fs
@@ -287,7 +236,7 @@ The following table lists the specification points covered by this plan. Entries
 
 **Test Scope**: Verify the behavior of the VS-level copies of vector context status (vsstatus.vs) and vector floating-point status (vsstatus.fs) in V=1 scenarios: field presence and read/write, Off gating (instructions and vector CSRs), dual Dirty updates, SD linkage, and vector floating-point gating. Vector/vector floating-point instructions are injected with raw encoding (.word), avoiding a build march dependency on the v extension.
 
-### 5.1 vsstatus.vs Field and Vector Instruction/CSR Gating (VS/VU)
+### 4.1 vsstatus.vs Field and Vector Instruction/CSR Gating (VS/VU)
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
@@ -300,7 +249,7 @@ The following table lists the specification points covered by this plan. Entries
 | HVEC-07 | Linkage between vsstatus.sd and vs | HS-mode writes `vsstatus.vs`=Dirty and reads `vsstatus.sd`; then writes `vsstatus.vs`=Initial (other context fields not Dirty) and reads again | vs=Dirty → sd=1; vs=Initial → sd=0 (`norm:vsstatus_sd_op_vs`) |
 | HVEC-08 | (Recording type) the implementation may promote Clean to Dirty at any time | Set both to Clean (0b02), VS-mode executes a vector instruction then reads both fields back | staying Clean or being promoted to Dirty are both legal (`norm:hw_mstatus_vs_dirty_update`); record the implementation behavior with no mandatory verdict |
 
-### 5.2 Vector Floating-Point Gating (vsstatus.fs, VS/VU)
+### 4.2 Vector Floating-Point Gating (vsstatus.fs, VS/VU)
 
 **Precondition**: F extension (`misa.f`) and vector floating-point instruction support (trap-armed raw encoding probe); if not satisfied, the whole subsection TEST_SKIP.
 
@@ -311,7 +260,7 @@ The following table lists the specification points covered by this plan. Entries
 | HVEC-11 | VU-mode vector floating-point gating | With `vsstatus.fs`=Off, VU-mode executes a vector floating-point instruction | illegal-instruction exception (cause=2) |
 | HVEC-12 | Modifying floating-point state sets both to Dirty | Set both to Initial, VS-mode executes a vector floating-point instruction that modifies floating-point state | `mstatus.fs`=3 (Dirty) and `vsstatus.fs`=3 (Dirty) |
 
-### 5.3 Conditional Cases (misa.v writable)
+### 4.3 Conditional Cases (misa.v writable)
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
@@ -322,12 +271,12 @@ The following table lists the specification points covered by this plan. Entries
 > - Vector/vector floating-point instructions are injected with raw encoding (.word) (e.g., fixed encodings of vsetivli/vadd.vv/vfadd.vv), avoiding toolchain dependencies.
 > - The exception type of Off gating is fixed as illegal-instruction (cause=2): this is extension context status gating, not the virtual-instruction (cause=22) of Hypervisor controlled access; assertions must not confuse the two.
 > - HVEC-08/HVEC-13 are recording-type cases: `norm:hw_mstatus_vs_dirty_update`/`norm:vsstatus_vs_exists` are both implementation-permissive behaviors, with no mandatory verdict.
-> - Interrupt environment: VS/VU cases execute in a zero-pending-interrupt environment (same principle as Group 4, avoiding interrupt delivery polluting trap records).
+> - Interrupt environment: VS/VU cases execute in a zero-pending-interrupt environment (same principle as the Zawrs cases in Group 2 of `Hypervisor_Za_test_plan.md`, avoiding interrupt delivery polluting trap records).
 > - Non-virtualized scenarios of the V vector family (vtype/vl, basic semantics) have no standalone test plan and are out of scope for this group.
 
 ---
 
-## Group 6. Hypervisor × Zicntr Cross Tests
+## Group 5. Hypervisor × Zicntr Cross Tests
 
 **Intersection points with the Hypervisor**:
 1. **`time` read offset**: when V=1, VS/VU-mode reads of `time` (including the `rdtime` instruction) return `time + htimedelta` (`norm:htimedelta_sz_acc_op`); CSR-level semantics are already covered by HTDLT-01~05 of `Hypervisor_CSR_test_plan.md`, and this group supplements the instruction-level (raw encoding) path
@@ -343,7 +292,7 @@ The following table lists the specification points covered by this plan. Entries
 
 **Test Scope**: Verify the instruction-level time offset semantics of `rdtime` and the continued control of VU-mode by `scounteren` (`cycle`/`time`/`instret`) when V=1. Counter instructions are injected with raw encoding (`rdcycle`=0xC0002xx3, `rdtime`=0xC0102xx3, `rdinstret`=0xC0202xx3, funct3=2 SYSTEM/csrrs rd, csr, x0), avoiding toolchain alias interference.
 
-### 6.1 Instruction-Level htimedelta Semantics of rdtime (VS/VU)
+### 5.1 Instruction-Level htimedelta Semantics of rdtime (VS/VU)
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
@@ -354,7 +303,7 @@ The following table lists the specification points covered by this plan. Entries
 | HZCNT-05 | VS-mode rdtime raises virtual-instruction with hcounteren.TM=0 | With `mcounteren.TM`=1 and `hcounteren.TM`=0, VS-mode executes `rdtime` (trap-armed) | virtual-instruction exception (cause=22) (`hcounteren_gate_v1_counter`) |
 | HZCNT-06 | VS-mode rdtime reports illegal with mcounteren.TM=0 | With `mcounteren.TM`=0 and `hcounteren.TM`=0, VS-mode executes `rdtime` | illegal-instruction exception (cause=2) (`mcounteren` level precondition; must not report cause=22) |
 
-### 6.2 Continued Control of VU-mode by scounteren when V=1 (cycle)
+### 5.2 Continued Control of VU-mode by scounteren when V=1 (cycle)
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
@@ -372,7 +321,7 @@ The following table lists the specification points covered by this plan. Entries
 
 ---
 
-## Group 7. Hypervisor × Zihpm Cross Tests
+## Group 6. Hypervisor × Zihpm Cross Tests
 
 **Intersection points with the Hypervisor**:
 1. **hcounteren HPMn gating**: when bit N of `hcounteren` is clear and the same bit of `mcounteren` is 1, reading `hpmcounterN` while V=1 raises virtual-instruction (`norm:hcounteren_op`); the gating matrix is covered by `Shcounterenw_test_plan.md`, and this group only uses it as a precondition (exception: HZHPM-03 verifies that with gating closed the exception is triggered by gating, regardless of whether the counter is implemented)
@@ -387,7 +336,7 @@ The following table lists the specification points covered by this plan. Entries
 
 **Test Scope**: Verify the legal behavior space of unimplemented `hpmcounter` when V=1 and the VU three-level gating chain of `hpmcounter`. `hpmcounterN` access is injected with raw encoding (CSR 0xC00+N, csrrs rd, csr, x0 form), avoiding toolchain alias interference.
 
-### 7.1 Behavior of Unimplemented hpmcounter when V=1
+### 6.1 Behavior of Unimplemented hpmcounter when V=1
 
 **Precondition**: probe by writing a non-zero value to `mhpmcounterN` in M-mode and reading it back (following the probing strategy of `Shcounterenw_test_plan.md`), selecting one unimplemented (read-only zero) `hpmcounterN` (N∈3..31); if the platform implements all of them, the whole subsection TEST_SKIP.
 
@@ -398,7 +347,7 @@ The following table lists the specification points covered by this plan. Entries
 | HZHPM-03 | hcounteren[N]=0 blocks an unimplemented counter | Attempt to set `mcounteren[N]`=1; clear `hcounteren[N]`, VS-mode executes `csrr hpmcounterN` | with gating closed the exception is triggered by gating, regardless of whether the counter is implemented: with `mcounteren[N]`=1, virtual-instruction (cause=22); with `mcounteren[N]` read-only zero, illegal-instruction (cause=2) reported by the `mcounteren` level precondition |
 | HZHPM-04 | Recording type: read-back value consistency | Repeat the access of HZHPM-01 several times | if the implementation returns a constant value, multiple read-backs are consistent; if the implementation reports an exception, the exception cause is consistent each time. Record the implementation behavior with no mandatory verdict |
 
-### 7.2 VU Three-Level Gating Chain of hpmcounter (Implemented Counters)
+### 6.2 VU Three-Level Gating Chain of hpmcounter (Implemented Counters)
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
@@ -423,15 +372,15 @@ The following table lists the specification points covered by this plan. Entries
 
 4. **Distinguishing virtual-instruction from illegal-instruction**: When VS/VU-mode accesses a controlled CSR, HS-qualified read-write with SSEED=1 raises virtual-instruction (cause=22); SSEED=0 or read-only access raises illegal-instruction (cause=2).
 
-5. **Zawrs timing dependency**: The `wrs.nto` cases of Group 4 depend on the timing condition of "does not complete within the implementation-defined time limit" (same style as the WFI/VTW case HSTAT-04 of `Hypervisor_CSR_test_plan.md`). If the implementation terminates the stall prematurely per `norm:Zawrs_stall_terminate`, the case must remain failed and be recorded in `bugs/`; assertions must not be relaxed.
+5. **Vector instruction injection and context gating**: The vector/vector floating-point instructions of Group 4 are injected with raw encoding; Off gating of `vsstatus.vs`/`vsstatus.fs` reports illegal-instruction (cause=2), not virtual-instruction; the implementation is permitted to promote Initial/Clean to Dirty at any time (`norm:hw_mstatus_vs_dirty_update`), and the related cases are recording type — they must not be judged failed on the grounds that "state was promoted".
 
-6. **Vector instruction injection and context gating**: The vector/vector floating-point instructions of Group 5 are injected with raw encoding; Off gating of `vsstatus.vs`/`vsstatus.fs` reports illegal-instruction (cause=2), not virtual-instruction; the implementation is permitted to promote Initial/Clean to Dirty at any time (`norm:hw_mstatus_vs_dirty_update`), and the related cases are recording type — they must not be judged failed on the grounds that "state was promoted".
+6. **Group 4 vector context gating key points**: platform V/F support follows the `V_SUPPORTED`/`F_SUPPORTED` macros of `config/<platform>/rvtest_config.h` (no runtime probing); `misa.v` writability must be probed at runtime, and HVEC-13 is conditionally TEST_SKIPped when it is not writable. HVEC-07 (`vsstatus.sd` must be set to 1 when `vsstatus.vs`=Dirty, `norm:vsstatus_sd_op_vs`) and HVEC-12 (a vector floating-point instruction that modifies floating-point state must set both `mstatus.fs` and `vsstatus.fs` to Dirty, `norm:vsstatus_mstatus_FS_dirty_hypervisor_V_fp`) are **mandatory assertions**: any platform that fails to satisfy them violates the SPEC, the case remains FAIL and is recorded in the `bugs/` directory, and assertions must not be relaxed or special-cased to pass the test.
 
-7. **Group 5 implementation and platform verification status** (implementation: `Hypervisor_Vector/` suite, 13 cases): platform V/F support follows the `V_SUPPORTED`/`F_SUPPORTED` macros of `config/<platform>/rvtest_config.h` (no runtime probing). Spike (`rv64imafdcvh_zicsr_zifencei`) passes 13/13; QEMU (qemu-rv64-max, `-cpu max`) shows 10 PASS / 2 FAIL / 1 SKIP: HVEC-07 (`vsstatus.sd` is not set to 1 when `vsstatus.vs`=Dirty, `norm:vsstatus_sd_op_vs`) and HVEC-12 (a vector floating-point instruction that modifies floating-point state does not set both `fs` fields to Dirty, `norm:vsstatus_mstatus_FS_dirty_hypervisor_V_fp`) are QEMU implementation defects (Spike passes as a reference), archived in `bugs/qemu_hypervisor_vector_bugs.md`, and the cases remain failed; HVEC-13 is conditionally SKIPped because QEMU `misa.v` is not writable (actually executed and passed on Spike).
+7. **Group 5/6 counter intersection key points**: `rdtime`/counter accesses are injected with raw encoding; clock comparisons use a difference interval rather than exact equality; both the constant-value and exception behaviors of unimplemented `hpmcounter` are legal implementations (recording-type cases — neither relaxed nor misjudged); the cause distinction of gating exceptions (cause=22 vs cause=2) is a mandatory assertion; the gating matrix itself is not re-verified (covered by `Shcounterenw_test_plan.md`). Note: the assertion of negative-offset `rdtime` must use a signed difference rather than an unsigned comparison — early after boot, when the real `time` is smaller than the offset magnitude, truncation wrap-around makes an unsigned comparison invalid (implementation key point of HZCNT-04).
 
-8. **Group 6/7 counter intersection key points**: `rdtime`/counter accesses are injected with raw encoding; clock comparisons use a difference interval rather than exact equality; both the constant-value and exception behaviors of unimplemented `hpmcounter` are legal implementations (recording-type cases — neither relaxed nor misjudged); the cause distinction of gating exceptions (cause=22 vs cause=2) is a mandatory assertion; the gating matrix itself is not re-verified (covered by `Shcounterenw_test_plan.md`). Note: the assertion of negative-offset `rdtime` must use a signed difference rather than an unsigned comparison — early after boot, when the real `time` is smaller than the offset magnitude, truncation wrap-around makes an unsigned comparison invalid (implementation key point of HZCNT-04).
+8. **Group 5/6 counter probing and branch coverage key points**: the implemented/unimplemented counter probe is M-mode writing a non-zero value to `mhpmcounterN` and reading it back; it **must not** be replaced by read-back probing of `mcounteren` bits (the latter only reflects gating-bit writability and, per `norm:mcounteren_flds_rdonly0`, is not equivalent to counter existence). A read-only-zero `mhpmcounterN` mirror is a legal implementation permitted by the SPEC (`norm:mhpmcounter_mhpmevent_rdonly0`) and is treated as "unimplemented" per the convention of this plan. Case design must cover two legal branches: the `mcounteren` level precondition path when `mcounteren[N]` is read-only zero (reporting illegal-instruction, cause=2), and the dual-legal "constant value / exception" path when gating can be opened; when a platform lacks the precondition of one branch (e.g., gating cannot be opened, or no implemented counter exists), the corresponding case is compliantly TEST_SKIPped. Both branches are legal paths, and success or failure must not be judged by which branch a platform hits.
 
-9. **Group 6/7 implementation and platform verification status** (implementation: `Hypervisor_Zicntr/` suite with 9 cases, `Hypervisor_Zihpm/` suite with 5 cases): QEMU (qemu-rv64-max, `-cpu max`): Zicntr 9/9 PASS; Zihpm 4 PASS / 1 SKIP (QEMU implements `hpmcounter3-18`, `mhpmcounter19-31` are read-only zero; the probe selected `hpmcounter19` whose `mcounteren[19]` is read-only zero, HZHPM-01~03 verify per the `mcounteren` level precondition path and report cause=2; HZHPM-04 is compliantly SKIPped because gating cannot be opened; HZHPM-05 verifies the three-level gating chain on the implemented `hpmcounter3` and passes). Spike (`rv64imach_zicsr_zifencei_zicntr`/`_zihpm`): Zicntr 9/9 PASS; Zihpm 4 PASS / 1 SKIP (Spike's `mhpmcounter3-31` mirrors are read-only zero, permitted by `norm:mhpmcounter_mhpmevent_rdonly0` and treated as unimplemented per the convention of this plan; HZHPM-01~04 execute in the gating-open branch, and both reading back the constant value 0 and reporting cause=22 with gating closed are legal paths; HZHPM-05 is compliantly SKIPped because no implemented counter exists). The two platforms cover the `mcounteren` precondition branch and the gating-open constant-value branch respectively, 0 FAIL. The implemented/unimplemented counter probe is M-mode writing a non-zero value to `mhpmcounterN` and reading it back (not read-back probing of `mcounteren` bits: the latter only tests gating bit writability and, per `norm:mcounteren_flds_rdonly0`, is not equivalent to counter existence).
+9. **Atomic/reservation-set extension cross tests migrated out**: the cross cases of Hypervisor × Zalrsc (HZLRSC-01~40) and Hypervisor × Zawrs (HZWRS-01~12) have been migrated entirely to `Hypervisor_Za_test_plan.md` (as Group 1 and Group 2 of that document respectively), with **case IDs unchanged**, and their specification points, coverage matrix, and key considerations migrated out together. This document no longer covers any virtualization behavior of LR/SC and wrs instructions; the cross-reference in the Group 4 (V vector family) NOTE regarding the interrupt-environment principle points to Group 2 of that document. Subsequent cross scenarios of the remaining Za-series extensions (Zaamo, Zabha, Zacas, Zalasr) with the Hypervisor should be added directly to that document and not return to this document.
 
 ---
 
@@ -447,7 +396,7 @@ The following table lists the specification points covered by this plan. Entries
 - `DOCS/testplan/Zkr_test_plan.md` — Zkr standalone test plan
 - `DOCS/testplan/zihintntl_test_plan.md` — Zihintntl standalone test plan
 - `DOCS/testplan/zcmt_test_plan.md` — Zcmt standalone test plan
-- `DOCS/testplan/Zawrs_test_plan.md` — Zawrs standalone test plan (non-Hypervisor scenarios)
+- `DOCS/testplan/Hypervisor_Za_test_plan.md` — Hypervisor × Za atomic extension cross test plan (the Hypervisor × Zalrsc and Hypervisor × Zawrs cross scenarios split out from this plan, including HZLRSC-01~40 and HZWRS-01~12)
 - `DOCS/testplan/Hypervisor_CSR_test_plan.md` — Hypervisor CSR subset test plan
 - `DOCS/testplan/Hypervisor_Interrupts_test_plan.md` — Hypervisor interrupts subset test plan
 - `DOCS/testplan/Hypervisor_Exceptions_test_plan.md` — Hypervisor exceptions and trap subset test plan
@@ -479,11 +428,6 @@ The following table indicates which test cases cover each specification point in
 | `norm:Zcmt_trap` | HZCMT-08, HZCMT-09 |
 | `norm:stateen0_jvt_op` | HZCMT-04 ~ HZCMT-06 |
 | `norm:htval_trapval` | HZCMT-09 |
-| `norm:Zawrs_exec_resume_rules` | HZWRS-01 ~ HZWRS-03, HZWRS-06 (HZWRS-06 is recording type: both legal behaviors are accepted) |
-| `norm:Zawrs_virtual_instr_excp` | HZWRS-04, HZWRS-05, HZWRS-06, HZWRS-07 |
-| `norm:Zawrs_priv_illegal_instr_excp` | HZWRS-08, HZWRS-09, HZWRS-12 |
-| `norm:Zawrs_stall_terminate` | — (implementation-permitted premature stall termination behavior, used as the failure-handling basis of the Group 4 NOTE and Key Consideration 5, no direct case) |
-| `norm:H_virtinst_xtval` | HZWRS-07 |
 | `norm:vsstatus_vs_sz_acc` | HVEC-01 |
 | `norm:vsstatus_vs_mstatus_vs_op_off` | HVEC-02, HVEC-03, HVEC-04 |
 | `norm:vsstatus_vs_mstatus_vs_op_active` | HVEC-05, HVEC-06 |

@@ -4,7 +4,7 @@
  */
 
 /* ===================================================================
- * Group 4.1: HS/VS/VU-mode wrs normal execution (VTW=0)
+ * Group 6.1: HS/VS/VU-mode wrs normal execution (VTW=0)
  *
  * HZWRS-01 ~ HZWRS-03
  *

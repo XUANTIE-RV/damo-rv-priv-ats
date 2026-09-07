@@ -4,7 +4,7 @@
  */
 
 /* ===================================================================
- * Group 4.2: hstatus.VTW gating (VS/VU-mode wrs.nto)
+ * Group 6.2: hstatus.VTW gating (VS/VU-mode wrs.nto)
  *
  * HZWRS-04 ~ HZWRS-07
  *

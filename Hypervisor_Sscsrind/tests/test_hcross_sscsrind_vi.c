@@ -24,9 +24,10 @@ bool test_hcross_sscsrind_11(void)
     TEST_BEGIN("HCROSS-SSCSRIND-11: VS-mode read vsiselect → virtual-inst");
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
     /* Enable state-enable bits to isolate virtual-inst behavior */
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_set(MSTATEEN0_CSRIND);
         hstateen0_set(HSTATEEN0_CSRIND);
     }
@@ -47,8 +48,9 @@ bool test_hcross_sscsrind_12(void)
     TEST_BEGIN("HCROSS-SSCSRIND-12: VS-mode write vsiselect → virtual-inst");
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_set(MSTATEEN0_CSRIND);
         hstateen0_set(HSTATEEN0_CSRIND);
     }
@@ -69,8 +71,9 @@ bool test_hcross_sscsrind_13(void)
     TEST_BEGIN("HCROSS-SSCSRIND-13: VS-mode read vsireg → virtual-inst");
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_set(MSTATEEN0_CSRIND);
         hstateen0_set(HSTATEEN0_CSRIND);
     }
@@ -91,8 +94,9 @@ bool test_hcross_sscsrind_14(void)
     TEST_BEGIN("HCROSS-SSCSRIND-14: VS-mode read vsireg2~6 → virtual-inst");
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    if (platform_has_smstateen())
+    if (SMSTATEEN_AVAILABLE)
     {
         mstateen0_set(MSTATEEN0_CSRIND);
         hstateen0_set(HSTATEEN0_CSRIND);
@@ -136,8 +140,9 @@ bool test_hcross_sscsrind_15(void)
     TEST_BEGIN("HCROSS-SSCSRIND-15: VS-mode write vsireg → virtual-inst");
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_set(MSTATEEN0_CSRIND);
         hstateen0_set(HSTATEEN0_CSRIND);
     }
@@ -158,8 +163,9 @@ bool test_hcross_sscsrind_16(void)
     TEST_BEGIN("HCROSS-SSCSRIND-16: VU-mode read vsiselect → virtual-inst");
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_set(MSTATEEN0_CSRIND);
         hstateen0_set(HSTATEEN0_CSRIND);
     }
@@ -180,8 +186,9 @@ bool test_hcross_sscsrind_17(void)
     TEST_BEGIN("HCROSS-SSCSRIND-17: VU-mode read vsireg → virtual-inst");
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_set(MSTATEEN0_CSRIND);
         hstateen0_set(HSTATEEN0_CSRIND);
     }
@@ -202,8 +209,9 @@ bool test_hcross_sscsrind_18(void)
     TEST_BEGIN("HCROSS-SSCSRIND-18: VU-mode read siselect → virtual-inst");
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_set(MSTATEEN0_CSRIND);
         hstateen0_set(HSTATEEN0_CSRIND);
     }
@@ -224,8 +232,9 @@ bool test_hcross_sscsrind_19(void)
     TEST_BEGIN("HCROSS-SSCSRIND-19: VU-mode read sireg → virtual-inst");
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_set(MSTATEEN0_CSRIND);
         hstateen0_set(HSTATEEN0_CSRIND);
     }
@@ -246,8 +255,9 @@ bool test_hcross_sscsrind_20(void)
     TEST_BEGIN("HCROSS-SSCSRIND-20: VU-mode write siselect → virtual-inst");
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_set(MSTATEEN0_CSRIND);
         hstateen0_set(HSTATEEN0_CSRIND);
     }
@@ -268,7 +278,7 @@ bool test_hcross_sscsrind_21(void)
     TEST_BEGIN("HCROSS-SSCSRIND-21: HS-level vsiselect → VS-mode virtual-inst");
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-    if (!platform_has_sscsrind()) TEST_SKIP("Sscsrind not implemented");
+    if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
     /*
      * If vsiselect holds a value implemented at HS-level but not VS-level,
@@ -290,7 +300,7 @@ bool test_hcross_sscsrind_21(void)
     uintptr_t orig_m = 0, orig_h = 0;
 
     /* Enable access */
-    if (platform_has_smstateen())
+    if (SMSTATEEN_AVAILABLE)
     {
         orig_m = mstateen0_read();
         orig_h = hstateen0_read();
@@ -305,7 +315,7 @@ bool test_hcross_sscsrind_21(void)
     if (!vsiselect_write_safe(0x80))
     {
         vsiselect_write_safe(orig_sel);
-        if (platform_has_smstateen())
+        if (SMSTATEEN_AVAILABLE)
         {
             mstateen0_write(orig_m);
             hstateen0_write(orig_h);
@@ -318,7 +328,7 @@ bool test_hcross_sscsrind_21(void)
     {
         /* Platform doesn't support this vsiselect value */
         vsiselect_write_safe(orig_sel);
-        if (platform_has_smstateen())
+        if (SMSTATEEN_AVAILABLE)
         {
             mstateen0_write(orig_m);
             hstateen0_write(orig_h);
@@ -345,7 +355,7 @@ bool test_hcross_sscsrind_21(void)
     trap_expect_end();
 
     vsiselect_write_safe(orig_sel);
-    if (platform_has_smstateen())
+    if (SMSTATEEN_AVAILABLE)
     {
         mstateen0_write(orig_m);
         hstateen0_write(orig_h);

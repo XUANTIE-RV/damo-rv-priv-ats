@@ -17,8 +17,12 @@ ENABLE_HYP = 1
 # QEMU virt: explicitly request RV64 + H extension support.
 QEMU_CPU   = max
 
-# Spike: explicitly request RV64 + H extension + Sscsrind.
-SPIKE_ISA = rv64imach_zicsr_zifencei_sscsrind
+# Spike: explicitly request RV64 + H extension + Smcsrind + Sscsrind + Smstateen.
+# These must be in the launch ISA because rvtest_config.h declares
+# SMCSRIND_SUPPORTED / SSCSRIND_SUPPORTED / SMSTATEEN_SUPPORTED; the tests
+# gate miselect/mireg, vsiselect/vsireg and mstateen0/hstateen0 access on the
+# compile-time *_AVAILABLE macros, so the CSRs must actually exist.
+SPIKE_ISA = rv64imach_zicsr_zifencei_smcsrind_sscsrind_smstateen
 
 EXT_OBJS = \
     main.o \
