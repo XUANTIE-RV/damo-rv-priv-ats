@@ -30,7 +30,7 @@
 TEST_REGISTER(test_hcfi_ss_01);
 bool test_hcfi_ss_01(void) {
     TEST_BEGIN("HCFI-SS-01: henvcfg.SSE basic read/write");
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t orig = henvcfg_read();
     henvcfg_write(orig | HENVCFG_SSE);
@@ -55,8 +55,8 @@ bool test_hcfi_ss_01(void) {
 TEST_REGISTER(test_hcfi_ss_02);
 bool test_hcfi_ss_02(void) {
     TEST_BEGIN("HCFI-SS-02: henvcfg.SSE=1, VS-mode SSPUSH executes");
-    H_REQUIRED_OR_SKIP();
-    ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -83,8 +83,8 @@ bool test_hcfi_ss_02(void) {
 TEST_REGISTER(test_hcfi_ss_03);
 bool test_hcfi_ss_03(void) {
     TEST_BEGIN("HCFI-SS-03: henvcfg.SSE=0, 32-bit SS instruction reverts to Zimop");
-    H_REQUIRED_OR_SKIP();
-    ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -106,8 +106,8 @@ bool test_hcfi_ss_03(void) {
 TEST_REGISTER(test_hcfi_ss_04);
 bool test_hcfi_ss_04(void) {
     TEST_BEGIN("HCFI-SS-04: henvcfg.SSE=0, 16-bit SS instruction reverts to Zcmop");
-    H_REQUIRED_OR_SKIP();
-    ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
     /* KNOWN GAP (not implemented): C.SSPUSH/C.SSPOPCHK are 16-bit
      * compressed instructions; their Zcmop reversion is not directly
      * tested here. The 16-bit instructions share the same functional
@@ -121,8 +121,8 @@ bool test_hcfi_ss_04(void) {
 TEST_REGISTER(test_hcfi_ss_05);
 bool test_hcfi_ss_05(void) {
     TEST_BEGIN("HCFI-SS-05: henvcfg.SSE=0, pte.xwr=010 reserved");
-    H_REQUIRED_OR_SKIP();
-    ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -147,8 +147,8 @@ bool test_hcfi_ss_05(void) {
 TEST_REGISTER(test_hcfi_ss_06);
 bool test_hcfi_ss_06(void) {
     TEST_BEGIN("HCFI-SS-06: henvcfg.SSE=0, senvcfg.SSE read-only zero");
-    H_REQUIRED_OR_SKIP();
-    ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -180,8 +180,8 @@ bool test_hcfi_ss_06(void) {
 TEST_REGISTER(test_hcfi_ss_07);
 bool test_hcfi_ss_07(void) {
     TEST_BEGIN("HCFI-SS-07: henvcfg.SSE=0, senvcfg.SSE write no effect");
-    H_REQUIRED_OR_SKIP();
-    ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -210,8 +210,8 @@ bool test_hcfi_ss_07(void) {
 TEST_REGISTER(test_hcfi_ss_08);
 bool test_hcfi_ss_08(void) {
     TEST_BEGIN("HCFI-SS-08: henvcfg.SSE=1, senvcfg.SSE writable");
-    H_REQUIRED_OR_SKIP();
-    ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -241,8 +241,8 @@ bool test_hcfi_ss_08(void) {
 TEST_REGISTER(test_hcfi_ss_09);
 bool test_hcfi_ss_09(void) {
     TEST_BEGIN("HCFI-SS-09: henvcfg.SSE=0+menvcfg.SSE=1, SSAMOSWAP triggers virtual-inst");
-    H_REQUIRED_OR_SKIP();
-    ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -263,8 +263,8 @@ bool test_hcfi_ss_09(void) {
 TEST_REGISTER(test_hcfi_ss_10);
 bool test_hcfi_ss_10(void) {
     TEST_BEGIN("HCFI-SS-10: henvcfg.SSE=1, VS-mode SSAMOSWAP.W executes");
-    H_REQUIRED_OR_SKIP();
-    ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -293,8 +293,8 @@ bool test_hcfi_ss_10(void) {
 TEST_REGISTER(test_hcfi_ss_11);
 bool test_hcfi_ss_11(void) {
     TEST_BEGIN("HCFI-SS-11: henvcfg.SSE=0+menvcfg.SSE=0, SSAMOSWAP -> illegal-inst");
-    H_REQUIRED_OR_SKIP();
-    ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -315,8 +315,8 @@ bool test_hcfi_ss_11(void) {
 TEST_REGISTER(test_hcfi_ss_12);
 bool test_hcfi_ss_12(void) {
     TEST_BEGIN("HCFI-SS-12: VU-mode xSSE controlled by senvcfg.SSE=0");
-    H_REQUIRED_OR_SKIP();
-    ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -338,9 +338,11 @@ bool test_hcfi_ss_12(void) {
 TEST_REGISTER(test_hcfi_ss_13);
 bool test_hcfi_ss_13(void) {
     TEST_BEGIN("HCFI-SS-13: henvcfg.SSE not implemented, read-only zero");
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    if (detect_zicfiss()) {
+    /* Zicfiss is config-declared, so henvcfg.SSE is writable and this
+     * read-only-zero test does not apply. */
+    if (ZICFISS_AVAILABLE) {
         printf("    Zicfiss is implemented, SSE is writable\n");
         TEST_SKIP("Zicfiss is implemented, skip read-only-zero test");
     }
@@ -358,8 +360,8 @@ bool test_hcfi_ss_13(void) {
 TEST_REGISTER(test_hcfi_ss_14);
 bool test_hcfi_ss_14(void) {
     TEST_BEGIN("HCFI-SS-14: henvcfg.SSE=0, pte.xwr=010 triggers page-fault");
-    H_REQUIRED_OR_SKIP();
-    ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();

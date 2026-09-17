@@ -21,7 +21,7 @@ bool test_hcross_ssdbltrp_17(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-17: menvcfg.DTE=0, vsstatus.SDT read-only zero");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     uintptr_t orig_m = menvcfg_read_csr();
@@ -60,7 +60,7 @@ bool test_hcross_ssdbltrp_18(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-18: menvcfg.DTE=0, henvcfg.DTE read-only zero");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     uintptr_t orig_m = menvcfg_read_csr();

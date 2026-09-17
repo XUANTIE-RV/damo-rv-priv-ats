@@ -26,7 +26,7 @@
 TEST_REGISTER(test_hzpm_cap_01);
 bool test_hzpm_cap_01(void) {
     TEST_BEGIN("HZPM-CAP-01: probe henvcfg.PMM implementation");
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     bool ssnpm = detect_ssnpm();
 
@@ -55,7 +55,7 @@ bool test_hzpm_cap_01(void) {
 TEST_REGISTER(test_hzpm_cap_02);
 bool test_hzpm_cap_02(void) {
     TEST_BEGIN("HZPM-CAP-02: probe hstatus.HUPMM implementation");
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     bool ssnpm = detect_ssnpm();
 
@@ -82,7 +82,8 @@ bool test_hzpm_cap_02(void) {
 TEST_REGISTER(test_hzpm_cap_03);
 bool test_hzpm_cap_03(void) {
     TEST_BEGIN("HZPM-CAP-03: henvcfg.PMM supported PMLEN");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
 
     pm_set_vsmode(PMM_PMLEN7);
     bool pmlen7 = (pm_get_vsmode() == PMM_PMLEN7);
@@ -104,7 +105,8 @@ bool test_hzpm_cap_03(void) {
 TEST_REGISTER(test_hzpm_cap_04);
 bool test_hzpm_cap_04(void) {
     TEST_BEGIN("HZPM-CAP-04: hstatus.HUPMM supported PMLEN");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
 
     pm_set_hupmm(PMM_PMLEN7);
     bool pmlen7 = (pm_get_hupmm() == PMM_PMLEN7);
@@ -124,7 +126,8 @@ bool test_hzpm_cap_04(void) {
 TEST_REGISTER(test_hzpm_cap_05);
 bool test_hzpm_cap_05(void) {
     TEST_BEGIN("HZPM-CAP-05: henvcfg.PMM reserved value rejected");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
 
     /* norm:pmlen_illegal_warl: writing the reserved encoding is an
      * illegal write and follows WARL semantics -- the field must end
@@ -151,7 +154,8 @@ bool test_hzpm_cap_05(void) {
 TEST_REGISTER(test_hzpm_cap_06);
 bool test_hzpm_cap_06(void) {
     TEST_BEGIN("HZPM-CAP-06: hstatus.HUPMM reserved value rejected");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
 
     /* norm:pmlen_illegal_warl: WARL semantics -- the field must
      * hold a legal value after the illegal write, never 0b01. */
@@ -176,7 +180,8 @@ bool test_hzpm_cap_06(void) {
 TEST_REGISTER(test_hzpm_cap_07);
 bool test_hzpm_cap_07(void) {
     TEST_BEGIN("HZPM-CAP-07: henvcfg.PMM field isolation");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
 
     uintptr_t before = henvcfg_read();
     pm_set_vsmode(PMM_PMLEN7);
@@ -195,7 +200,8 @@ bool test_hzpm_cap_07(void) {
 TEST_REGISTER(test_hzpm_cap_08);
 bool test_hzpm_cap_08(void) {
     TEST_BEGIN("HZPM-CAP-08: hstatus.HUPMM field isolation");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
 
     uintptr_t before = hstatus_read();
     pm_set_hupmm(PMM_PMLEN7);
@@ -213,7 +219,7 @@ bool test_hzpm_cap_08(void) {
 TEST_REGISTER(test_hzpm_cap_09);
 bool test_hzpm_cap_09(void) {
     TEST_BEGIN("HZPM-CAP-09: PMM/HUPMM read-only zero without Ssnpm");
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     if (detect_ssnpm())
         TEST_SKIP("Ssnpm implemented, read-only-zero case N/A");
@@ -240,7 +246,8 @@ bool test_hzpm_cap_09(void) {
 TEST_REGISTER(test_hzpm_cap_10);
 bool test_hzpm_cap_10(void) {
     TEST_BEGIN("HZPM-CAP-10: VS-mode henvcfg access traps (cause=22)");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
 
     /* norm:H_virtinst_vu_vs_nonhigh_allowedhs_tvm0: when V=1, any
      * access to a hypervisor CSR raises a virtual-instruction

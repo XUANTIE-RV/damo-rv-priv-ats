@@ -37,7 +37,28 @@ TEST_REGISTER(test_hzlasr_01_hs_exec);
 bool test_hzlasr_01_hs_exec(void)
 {
     TEST_BEGIN("HZLASR-01: HS-mode load-acquire/store-release execute normally");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
+
+    /* First case ONLY: config declares Zalasr, so probe the DUT to
+     * confirm it really implements load-acquire (aligned with the
+     * ZALASR_SUPPORTED declaration). A trap-armed lw.aq in M-mode
+     * raising illegal-instruction would mean the DUT does NOT implement
+     * Zalasr despite the config. No other case probes. */
+    {
+        static volatile uint64_t hzlasr_probe_slot;
+        uintptr_t paddr = (uintptr_t)&hzlasr_probe_slot;
+        uintptr_t pr = 0;
+        hzlasr_store_le32(paddr, 0x00005678u);
+        M_TRAP_EXPECT_BEGIN();
+        ZALASR_LOAD(ZALASR_F3_W, ZALASR_F7_LD_AQ, pr, paddr);
+        bool ptrapped = trap_was_triggered();
+        uintptr_t pcause = ptrapped ? trap_get_cause() : 0;
+        trap_expect_end();
+        (void)pr;
+        TEST_ASSERT("DUT really implements Zalasr (aligned with config)",
+                    !(ptrapped && pcause == CAUSE_ILLEGAL_INST));
+    }
 
     uintptr_t addr = (uintptr_t)&hzlasr_hs_slot[0];
     hzlasr_store_le64(addr, 0x0011223344556677ULL);
@@ -79,7 +100,8 @@ TEST_REGISTER(test_hzlasr_02_vs_exec_no_cause22);
 bool test_hzlasr_02_vs_exec_no_cause22(void)
 {
     TEST_BEGIN("HZLASR-02: VS-mode load-acquire/store-release, never cause=22");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -112,7 +134,8 @@ TEST_REGISTER(test_hzlasr_03_vu_exec_no_cause22);
 bool test_hzlasr_03_vu_exec_no_cause22(void)
 {
     TEST_BEGIN("HZLASR-03: VU-mode load-acquire/store-release, never cause=22");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -160,7 +183,8 @@ TEST_REGISTER(test_hzlasr_04_vs_hs_semantic_parity);
 bool test_hzlasr_04_vs_hs_semantic_parity(void)
 {
     TEST_BEGIN("HZLASR-04: VS-mode Zalasr semantics == HS-mode");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

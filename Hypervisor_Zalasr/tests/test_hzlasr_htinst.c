@@ -41,7 +41,8 @@ TEST_REGISTER(test_hzlasr_18_load_acq_htinst_transformed);
 bool test_hzlasr_18_load_acq_htinst_transformed(void)
 {
     TEST_BEGIN("HZLASR-18: load-acquire explicit G-stage fault htinst");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -80,7 +81,8 @@ TEST_REGISTER(test_hzlasr_19_store_rel_htinst_transformed);
 bool test_hzlasr_19_store_rel_htinst_transformed(void)
 {
     TEST_BEGIN("HZLASR-19: store-release explicit G-stage fault htinst");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -156,7 +158,8 @@ TEST_REGISTER(test_hzlasr_20_htinst_funct5_aqrl);
 bool test_hzlasr_20_htinst_funct5_aqrl(void)
 {
     TEST_BEGIN("HZLASR-20: htinst retains funct5 (load/store) + aq/rl bits");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -177,7 +180,8 @@ TEST_REGISTER(test_hzlasr_21_addr_offset_zero);
 bool test_hzlasr_21_addr_offset_zero(void)
 {
     TEST_BEGIN("HZLASR-21: Zalasr htinst Addr. Offset == 0");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -229,7 +233,8 @@ TEST_REGISTER(test_hzlasr_22_implicit_walk_cause);
 bool test_hzlasr_22_implicit_walk_cause(void)
 {
     TEST_BEGIN("HZLASR-22: implicit VS-walk fault -> load 21 (rec) / store 23");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -336,7 +341,8 @@ TEST_REGISTER(test_hzlasr_23_adue_write_pseudo);
 bool test_hzlasr_23_adue_write_pseudo(void)
 {
     TEST_BEGIN("HZLASR-23: ADUE=1 A/D-update fault -> write pseudoinst");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -365,7 +371,8 @@ TEST_REGISTER(test_hzlasr_24_explicit_vs_implicit);
 bool test_hzlasr_24_explicit_vs_implicit(void)
 {
     TEST_BEGIN("HZLASR-24: htinst disambiguates explicit vs implicit (23)");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

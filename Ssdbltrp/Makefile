@@ -7,7 +7,6 @@ TARGET = ssdbltrp_test.elf
 # QEMU xt-c930v-cp CPU implements Ssdbltrp extension
 QEMU_CPU   = xt-c930v-cp
 
-SPIKE_ISA_EXT = _ssdbltrp
 
 # The double-trap machinery interacts with Smdbltrp semantics: on
 # trap entry into M-mode the hart may set mstatus.MDT, and while

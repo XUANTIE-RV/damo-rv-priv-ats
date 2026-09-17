@@ -100,53 +100,13 @@ static inline void henvcfg_set_cbze(unsigned en)
 }
 
 /* ===================================================================
- * H extension detection
- * =================================================================== */
-static bool check_h_extension(void)
-{
-    uint64_t misa_val = CSRR(misa);
-    return (misa_val & (1UL << ('H' - 'A'))) != 0;
-}
-
-#define H_REQUIRED_OR_SKIP() do { \
-    if (!check_h_extension()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-/* ===================================================================
- * Zicbom detection
+ * Zicbom availability
  *
- * Probe by checking if menvcfg.CBIE is writable (non-zero after write).
+ * Zicbom support is config-declaration driven: gate on the compile-time
+ * ZICBOM_AVAILABLE macro (normalized in common/capabilities.h from
+ * ZICBOM_SUPPORTED in rvtest_config.h). Do NOT probe menvcfg.CBIE
+ * writability at runtime.
  * =================================================================== */
-static bool zicbom_detected = false;
-static bool zicbom_detection_done = false;
-
-static bool check_zicbom_extension(void)
-{
-    if (zicbom_detection_done)
-        return zicbom_detected;
-
-    /* Try writing CBIE=11 to menvcfg, read back */
-    uintptr_t orig = menvcfg_read();
-    menvcfg_set_cbie(CBIE_INVAL);
-    uintptr_t val = menvcfg_get_cbie();
-    if (val == CBIE_INVAL) {
-        zicbom_detected = true;
-    } else {
-        zicbom_detected = false;
-    }
-    /* Restore */
-    menvcfg_write(orig);
-    zicbom_detection_done = true;
-    return zicbom_detected;
-}
-
-#define ZICBOM_REQUIRED_OR_SKIP() do { \
-    if (!check_zicbom_extension()) { \
-        TEST_SKIP("Zicbom not available"); \
-    } \
-} while (0)
 
 /* ===================================================================
  * CBO instruction trampolines for VS/VU-mode

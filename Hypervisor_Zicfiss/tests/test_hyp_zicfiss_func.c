@@ -17,7 +17,8 @@
 TEST_REGISTER(test_hcfi_ss_59);
 bool test_hcfi_ss_59(void) {
     TEST_BEGIN("HCFI-SS-59: VS-mode SSPUSH/SSPOPCHK basic flow");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -40,7 +41,8 @@ bool test_hcfi_ss_59(void) {
 TEST_REGISTER(test_hcfi_ss_60);
 bool test_hcfi_ss_60(void) {
     TEST_BEGIN("HCFI-SS-60: VS-mode C.SSPUSH/C.SSPOPCHK flow");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
     /* KNOWN GAP (not implemented): compressed SS instructions
      * (C.SSPUSH/C.SSPOPCHK) are not directly tested; they share the
      * same functional path as the 32-bit forms (HCFI-SS-59). */
@@ -52,7 +54,8 @@ bool test_hcfi_ss_60(void) {
 TEST_REGISTER(test_hcfi_ss_61);
 bool test_hcfi_ss_61(void) {
     TEST_BEGIN("HCFI-SS-61: VS-mode SSAMOSWAP.W atomic exchange");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -75,7 +78,8 @@ bool test_hcfi_ss_61(void) {
 TEST_REGISTER(test_hcfi_ss_62);
 bool test_hcfi_ss_62(void) {
     TEST_BEGIN("HCFI-SS-62: VS-mode SSAMOSWAP.D atomic exchange");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -98,7 +102,8 @@ bool test_hcfi_ss_62(void) {
 TEST_REGISTER(test_hcfi_ss_63);
 bool test_hcfi_ss_63(void) {
     TEST_BEGIN("HCFI-SS-63: VS SSPOPCHK mismatch -> software-check");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -127,7 +132,8 @@ bool test_hcfi_ss_63(void) {
 TEST_REGISTER(test_hcfi_ss_64);
 bool test_hcfi_ss_64(void) {
     TEST_BEGIN("HCFI-SS-64: VS SSPUSH guard page -> access-fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -153,7 +159,8 @@ bool test_hcfi_ss_64(void) {
 TEST_REGISTER(test_hcfi_ss_65);
 bool test_hcfi_ss_65(void) {
     TEST_BEGIN("HCFI-SS-65: VS SS on non-idempotent memory -> access-fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     /* KNOWN GAP (not implemented): non-idempotent memory (device MMIO)
      * cannot be tested without a device memory region mapped as
@@ -167,7 +174,8 @@ bool test_hcfi_ss_65(void) {
 TEST_REGISTER(test_hcfi_ss_66);
 bool test_hcfi_ss_66(void) {
     TEST_BEGIN("HCFI-SS-66: VS SSAMOSWAP on non-AMOSwap memory -> access-fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     /* KNOWN GAP (not implemented): SSAMOSWAP on memory without
      * AMOSwap-level PMA support cannot be tested without a dedicated
@@ -181,7 +189,8 @@ bool test_hcfi_ss_66(void) {
 TEST_REGISTER(test_hcfi_ss_67);
 bool test_hcfi_ss_67(void) {
     TEST_BEGIN("HCFI-SS-67: VU-mode SSPUSH/SSPOPCHK flow");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -203,7 +212,8 @@ bool test_hcfi_ss_67(void) {
 TEST_REGISTER(test_hcfi_ss_68);
 bool test_hcfi_ss_68(void) {
     TEST_BEGIN("HCFI-SS-68: VS-mode ssp persists across traps");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();

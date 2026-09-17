@@ -114,7 +114,8 @@ static uintptr_t hzpm_vs_ebreak_recovery(uintptr_t unused) {
 TEST_REGISTER(test_hzpm_trap_01);
 bool test_hzpm_trap_01(void) {
     TEST_BEGIN("HZPM-TRAP-01: vstval contains transformed address");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
@@ -150,7 +151,8 @@ bool test_hzpm_trap_01(void) {
 TEST_REGISTER(test_hzpm_trap_02);
 bool test_hzpm_trap_02(void) {
     TEST_BEGIN("HZPM-TRAP-02: stval contains transformed GVA");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
@@ -189,7 +191,8 @@ bool test_hzpm_trap_03(void) {
 #ifdef SKIP_BREAKPOINT_TESTS
     TEST_SKIP("platform does not support breakpoint (SKIP_BREAKPOINT_TESTS)");
 #endif
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
@@ -223,7 +226,8 @@ bool test_hzpm_trap_04(void) {
 #ifdef SKIP_BREAKPOINT_TESTS
     TEST_SKIP("platform does not support breakpoint (SKIP_BREAKPOINT_TESTS)");
 #endif
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
@@ -268,7 +272,8 @@ bool test_hzpm_trap_04(void) {
 TEST_REGISTER(test_hzpm_trap_05);
 bool test_hzpm_trap_05(void) {
     TEST_BEGIN("HZPM-TRAP-05: MXR suppresses PM in VS-mode");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
@@ -304,7 +309,8 @@ bool test_hzpm_trap_05(void) {
 TEST_REGISTER(test_hzpm_trap_06);
 bool test_hzpm_trap_06(void) {
     TEST_BEGIN("HZPM-TRAP-06: instruction fetch not masked (VS-mode)");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");

@@ -44,7 +44,7 @@ TEST_REGISTER(test_ntl_hyp_06);
 bool test_ntl_hyp_06(void)
 {
     TEST_BEGIN("NTL-HYP-06: ntl.p1 + ld G-stage guest-page-fault report");
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;

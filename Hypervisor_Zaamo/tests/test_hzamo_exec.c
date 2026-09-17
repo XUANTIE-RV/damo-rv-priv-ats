@@ -54,7 +54,30 @@ TEST_REGISTER(test_hzamo_01_hs_exec);
 bool test_hzamo_01_hs_exec(void)
 {
     TEST_BEGIN("HZAMO-01: HS-mode all 9 AMOs (.w/.d) execute normally");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
+
+    /* First case ONLY: config declares Zaamo/A, so probe the DUT to
+     * confirm it really implements the AMO instructions (aligned with
+     * the ZAAMO_SUPPORTED/A_SUPPORTED declaration). A trap-armed
+     * amoadd.w in M-mode raising illegal-instruction would mean the DUT
+     * does NOT implement it despite the config. No other case probes. */
+    {
+        static volatile uint64_t hzamo_probe_slot;
+        uintptr_t paddr = (uintptr_t)&hzamo_probe_slot;
+        uintptr_t pold;
+        M_TRAP_EXPECT_BEGIN();
+        asm volatile(
+            ".option push\n\t.option norvc\n\t"
+            "amoadd.w %0, %2, (%1)\n\t"
+            ".option pop\n\t"
+            : "=r"(pold) : "r"(paddr), "r"(1UL) : "memory");
+        bool ptrapped = trap_was_triggered();
+        uintptr_t pcause = ptrapped ? trap_get_cause() : 0;
+        trap_expect_end();
+        TEST_ASSERT("DUT really implements Zaamo/A (aligned with config)",
+                    !(ptrapped && pcause == CAUSE_ILLEGAL_INST));
+    }
 
     uintptr_t waddr = (uintptr_t)&hzamo_hs_slot[0];
     *(volatile uint32_t *)waddr = 0x1000u;
@@ -100,7 +123,8 @@ TEST_REGISTER(test_hzamo_02_vs_exec_no_cause22);
 bool test_hzamo_02_vs_exec_no_cause22(void)
 {
     TEST_BEGIN("HZAMO-02: VS-mode AMOs execute, never cause=22");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -131,7 +155,8 @@ TEST_REGISTER(test_hzamo_03_vu_exec_no_cause22);
 bool test_hzamo_03_vu_exec_no_cause22(void)
 {
     TEST_BEGIN("HZAMO-03: VU-mode AMOs execute, never cause=22");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -163,7 +188,8 @@ TEST_REGISTER(test_hzamo_04_vs_hs_semantic_parity);
 bool test_hzamo_04_vs_hs_semantic_parity(void)
 {
     TEST_BEGIN("HZAMO-04: VS-mode AMO semantics == HS-mode");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

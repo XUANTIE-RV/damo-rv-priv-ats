@@ -18,7 +18,7 @@
 TEST_REGISTER(test_shcounterenw_wr_01_cycle);
 bool test_shcounterenw_wr_01_cycle(void) {
     TEST_BEGIN("SHCNTW-WR-01: hcounteren[0] writable (cycle)");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
 
     if (!is_counter_implemented(0))
         TEST_SKIP("cycle counter not implemented");
@@ -47,7 +47,7 @@ bool test_shcounterenw_wr_01_cycle(void) {
 TEST_REGISTER(test_shcounterenw_wr_02_time);
 bool test_shcounterenw_wr_02_time(void) {
     TEST_BEGIN("SHCNTW-WR-02: hcounteren[1] writable (time)");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
 
     if (!is_counter_implemented(1))
         TEST_SKIP("time counter not implemented");
@@ -76,7 +76,7 @@ bool test_shcounterenw_wr_02_time(void) {
 TEST_REGISTER(test_shcounterenw_wr_03_instret);
 bool test_shcounterenw_wr_03_instret(void) {
     TEST_BEGIN("SHCNTW-WR-03: hcounteren[2] writable (instret)");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
 
     if (!is_counter_implemented(2))
         TEST_SKIP("instret counter not implemented");
@@ -105,7 +105,7 @@ bool test_shcounterenw_wr_03_instret(void) {
 TEST_REGISTER(test_shcounterenw_wr_04_hpm);
 bool test_shcounterenw_wr_04_hpm(void) {
     TEST_BEGIN("SHCNTW-WR-04: hcounteren[3:31] writable (hpmcounters)");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
 
     uintptr_t saved = hcounteren_read();
     bool found_any = false;
@@ -147,7 +147,7 @@ bool test_shcounterenw_wr_04_hpm(void) {
 TEST_REGISTER(test_shcounterenw_wr_05_width);
 bool test_shcounterenw_wr_05_width(void) {
     TEST_BEGIN("SHCNTW-WR-05: hcounteren upper 32 bits read-only zero");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
 #if __riscv_xlen == 64
     uintptr_t saved = hcounteren_read();
 

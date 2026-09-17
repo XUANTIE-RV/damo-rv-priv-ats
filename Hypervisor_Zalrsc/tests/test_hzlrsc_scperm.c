@@ -52,7 +52,8 @@ TEST_REGISTER(test_hzlrsc_22_sc_valid_res_no_write);
 bool test_hzlrsc_22_sc_valid_res_no_write(void)
 {
     TEST_BEGIN("HZLRSC-22: SC (valid reservation) to W=0 -> store pf (15)");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -81,7 +82,8 @@ TEST_REGISTER(test_hzlrsc_23_failed_sc_no_write);
 bool test_hzlrsc_23_failed_sc_no_write(void)
 {
     TEST_BEGIN("HZLRSC-23: failed SC to W=0 -> still store pf (15)");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -112,7 +114,8 @@ TEST_REGISTER(test_hzlrsc_24_failed_sc_gstage);
 bool test_hzlrsc_24_failed_sc_gstage(void)
 {
     TEST_BEGIN("HZLRSC-24: failed SC G-stage W=0 -> store guest-pf (23)");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -162,7 +165,8 @@ TEST_REGISTER(test_hzlrsc_25_lr_read_only_ok);
 bool test_hzlrsc_25_lr_read_only_ok(void)
 {
     TEST_BEGIN("HZLRSC-25: LR to R=1/W=0 page executes normally");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -194,7 +198,8 @@ TEST_REGISTER(test_hzlrsc_26_sc_unreadable_store_class);
 bool test_hzlrsc_26_sc_unreadable_store_class(void)
 {
     TEST_BEGIN("HZLRSC-26: SC to R=0 page -> store pf (15), not load (13)");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

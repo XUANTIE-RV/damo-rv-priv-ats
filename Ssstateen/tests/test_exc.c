@@ -126,7 +126,7 @@ bool test_ss_exc_umode_write_illegal(void) {
 TEST_REGISTER(test_ss_exc_vumode_virtual_inst);
 bool test_ss_exc_vumode_virtual_inst(void) {
     TEST_BEGIN("SS-EXC-04: VU-mode blocked access => virtual-inst (cause=22)");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_mstateen0 = mstateen_read(0);
     mstateen_write(0, saved_mstateen0 | STATEEN0_SE0 | STATEEN0_JVT);

@@ -34,7 +34,7 @@ TEST_REGISTER(test_hzhpM_01);
 bool test_hzhpM_01(void)
 {
     TEST_BEGIN("HZHPM-01: VS unimplemented hpmcounter (gate open)");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     unsigned n = hzhpM_find_unimplemented();
     if (n == 0)
@@ -102,7 +102,7 @@ TEST_REGISTER(test_hzhpM_02);
 bool test_hzhpM_02(void)
 {
     TEST_BEGIN("HZHPM-02: VU unimplemented hpmcounter (gates open)");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     unsigned n = hzhpM_find_unimplemented();
     if (n == 0)
@@ -171,7 +171,7 @@ TEST_REGISTER(test_hzhpM_03);
 bool test_hzhpM_03(void)
 {
     TEST_BEGIN("HZHPM-03: hcounteren[N]=0 blocks unimplemented hpm (cause=22)");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     unsigned n = hzhpM_find_unimplemented();
     if (n == 0)
@@ -222,7 +222,7 @@ TEST_REGISTER(test_hzhpM_04);
 bool test_hzhpM_04(void)
 {
     TEST_BEGIN("HZHPM-04: repeated access consistency (recording)");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     unsigned n = hzhpM_find_unimplemented();
     if (n == 0)

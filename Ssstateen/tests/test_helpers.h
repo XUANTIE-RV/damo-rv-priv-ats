@@ -28,23 +28,11 @@
  * Feature detection
  * =================================================================== */
 
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
 #define HAS_MISA_F() ({ \
     uintptr_t _misa; \
     asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
     (_misa & (1UL << ('F' - 'A'))) != 0; \
 })
-
-#define REQUIRE_H_EXT() do { \
-    if (!HAS_H_EXT()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
 
 /* ===================================================================
  * sstateen direct CSR access (inline asm, CSR 0x10C-0x10F)

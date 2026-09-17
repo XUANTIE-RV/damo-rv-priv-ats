@@ -10,7 +10,6 @@ TARGET = ssccptr_test.elf
 ENABLE_VM = 1
 
 # Spike ISA extensions: enable ssccptr for this test
-SPIKE_ISA_EXT = _ssccptr
 
 # We need pmp_cfg.o for PMP API but NOT pmp_init.o (which references
 # __pmp_test_code/__pmp_test_nomap symbols we don't define).

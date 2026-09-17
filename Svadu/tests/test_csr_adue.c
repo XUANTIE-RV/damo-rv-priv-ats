@@ -43,7 +43,7 @@ bool test_svadu_csr01(void) {
 TEST_REGISTER(test_svadu_csr02);
 bool test_svadu_csr02(void) {
     TEST_BEGIN("SVADU-CSR-02: menvcfg.ADUE writable 1->0");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
     TEST_ASSERT("ADUE set to 1 precondition", get_menvcfg_adue() == 1);
@@ -57,7 +57,7 @@ bool test_svadu_csr02(void) {
 TEST_REGISTER(test_svadu_csr03);
 bool test_svadu_csr03(void) {
     TEST_BEGIN("SVADU-CSR-03: toggling ADUE does not disturb other menvcfg bits");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     /* Mask of the ADUE bit; all other bits should stay unchanged. */
     const uintptr_t ADUE_MASK = MENVCFG_ADUE;

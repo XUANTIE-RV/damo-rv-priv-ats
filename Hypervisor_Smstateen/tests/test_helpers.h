@@ -120,7 +120,7 @@ static inline void sstateen3_write(uintptr_t v) {
  * hstateen0-3 CSR access helpers (HS-mode, CSR 0x60C-0x60F)
  *
  * Always compiled (not gated by ENABLE_HYP) because tests use
- * runtime HAS_H_EXT() detection and TEST_SKIP when H ext is absent.
+ * compile-time H_AVAILABLE gating and TEST_SKIP when H ext is absent.
  * Access from M-mode uses raw CSR addresses and does not require
  * the H extension ISA string in -march.
  * =================================================================== */
@@ -182,13 +182,6 @@ static inline void senvcfg_write(uintptr_t v) {
 /* ===================================================================
  * Feature detection helpers
  * =================================================================== */
-
-/* Check if H extension is available via misa */
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
 
 /* Check if misa.F (standard floating-point) is set */
 #define HAS_MISA_F() ({ \

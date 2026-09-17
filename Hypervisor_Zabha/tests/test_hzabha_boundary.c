@@ -26,7 +26,7 @@ TEST_REGISTER(test_hzabha_38_no_guest_bh_atomic_equivalent);
 bool test_hzabha_38_no_guest_bh_atomic_equivalent(void)
 {
     TEST_BEGIN("HZABHA-38: (record) HLV.B/H + HSV.B/H exist, no atomic equiv");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -81,7 +81,7 @@ TEST_REGISTER(test_hzabha_39_hlv_hsv_not_atomic);
 bool test_hzabha_39_hlv_hsv_not_atomic(void)
 {
     TEST_BEGIN("HZABHA-39: (record) HLV+HSV cannot replace byte/half AMO atomicity");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     TEST_SKIP(HZABHA_SMP_SKIP_REASON);
     HYP_TEST_END();
 }

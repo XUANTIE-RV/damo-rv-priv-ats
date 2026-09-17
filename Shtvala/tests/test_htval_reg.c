@@ -29,7 +29,7 @@ static inline void htval_write(uintptr_t v) {
 TEST_REGISTER(test_htval_reg_01_reset_zero);
 bool test_htval_reg_01_reset_zero(void) {
     TEST_BEGIN("HTVAL-REG-01: M-mode write/read htval (WARL subset)");
-    SHTVALA_REQUIRE();
+    if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
     hyp_reset_state();
 
     /* Write a known pattern and read back. */
@@ -53,7 +53,7 @@ bool test_htval_reg_01_reset_zero(void) {
 TEST_REGISTER(test_htval_reg_02_writable);
 bool test_htval_reg_02_writable(void) {
     TEST_BEGIN("HTVAL-REG-02: htval is writable, readback preserves GPA>>2");
-    SHTVALA_REQUIRE();
+    if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
 
     /* Write 0 must be preserved. */
     htval_write(0);
@@ -72,7 +72,7 @@ bool test_htval_reg_02_writable(void) {
 TEST_REGISTER(test_htval_reg_03_all_ones_warl);
 bool test_htval_reg_03_all_ones_warl(void) {
     TEST_BEGIN("HTVAL-REG-03: htval all-ones write probes WARL subset");
-    SHTVALA_REQUIRE();
+    if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
     htval_write((uintptr_t)-1);
     uintptr_t got = htval_read();
     /* htval is WARL: readback must be a subset of the written value
@@ -99,7 +99,7 @@ static uintptr_t vs_csrr_htval(uintptr_t arg) {
 TEST_REGISTER(test_htval_reg_04_vs_vu_access);
 bool test_htval_reg_04_vs_vu_access(void) {
     TEST_BEGIN("HTVAL-REG-04: VS/VU-mode access to htval traps");
-    SHTVALA_REQUIRE();
+    if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
 
     /* VS-mode: csrr htval -> virtual-instruction (cause=22).
      * htval (0x643) is an HS-level CSR; accessing from VS-mode with

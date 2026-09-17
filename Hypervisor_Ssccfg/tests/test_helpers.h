@@ -164,13 +164,6 @@ static inline void hstateen0_clear(uintptr_t bits)
  * Platform detection
  * =================================================================== */
 
-/* Check if H extension is present (misa.H) */
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
 /*
  * Check whether menvcfg.CDE can actually be set to 1.
  * The virtualization clauses under test (norm:ssccfg_virtual_scountovf_vs_vu,
@@ -189,35 +182,9 @@ static inline bool cde_settable(void)
     return !trapped && ((rb & MENVCFG_CDE) != 0);
 }
 
-/* Check if Sscofpmf is implemented (scountovf readable from M-mode) */
-static inline bool platform_has_sscofpmf(void)
-{
-    trap_expect_begin();
-    scountovf_read();
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-    return !trapped;
-}
-
-/* Check if Smaia/Ssaia is implemented (hvien accessible) */
-static inline bool platform_has_hvien(void)
-{
-    trap_expect_begin();
-    hvien_read();
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-    return !trapped;
-}
-
-/* Check if Smstateen is implemented (mstateen0 accessible) */
-static inline bool platform_has_smstateen(void)
-{
-    trap_expect_begin();
-    mstateen0_read();
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-    return !trapped;
-}
+/* Smaia/Ssaia (hvien) support is config-declaration driven: gate on the
+ * compile-time SMAIA_AVAILABLE macro (common/capabilities.h). Do NOT
+ * trap-probe hvien at runtime. */
 
 /*
  * Lift mstateen0[60]/hstateen0[60] (CSRIND) gating when Smstateen is
@@ -226,7 +193,7 @@ static inline bool platform_has_smstateen(void)
  */
 static inline void stateen_allow_csrind(void)
 {
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_set(STATEEN0_CSRIND);
         hstateen0_set(STATEEN0_CSRIND);
     }

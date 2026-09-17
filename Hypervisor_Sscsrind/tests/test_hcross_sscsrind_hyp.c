@@ -20,7 +20,7 @@ bool test_hcross_sscsrind_28(void)
 {
     TEST_BEGIN("HCROSS-SSCSRIND-28: VS-mode sireg → vsireg remapping");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
@@ -105,7 +105,7 @@ bool test_hcross_sscsrind_29(void)
 {
     TEST_BEGIN("HCROSS-SSCSRIND-29: VS-mode siselect → vsiselect remapping");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
@@ -168,7 +168,7 @@ bool test_hcross_sscsrind_30(void)
 {
     TEST_BEGIN("HCROSS-SSCSRIND-30: vsireg R/W with legal vsiselect");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
     uintptr_t orig_sel;
@@ -226,7 +226,7 @@ bool test_hcross_sscsrind_31(void)
 {
     TEST_BEGIN("HCROSS-SSCSRIND-31: vsireg with unimplemented vsiselect");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
     uintptr_t orig_sel;
@@ -276,7 +276,7 @@ bool test_hcross_sscsrind_32(void)
 {
     TEST_BEGIN("HCROSS-SSCSRIND-32: HS/VS-mode select space independence");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 

@@ -43,7 +43,8 @@ TEST_REGISTER(test_hzlasr_12_load_acq_gstage_fault);
 bool test_hzlasr_12_load_acq_gstage_fault(void)
 {
     TEST_BEGIN("HZLASR-12: load-acquire G-stage fault -> HS-mode (record cause)");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -78,7 +79,8 @@ TEST_REGISTER(test_hzlasr_13_store_rel_gstage_fault);
 bool test_hzlasr_13_store_rel_gstage_fault(void)
 {
     TEST_BEGIN("HZLASR-13: store-release G-stage fault -> guest-pf (23)");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -118,7 +120,8 @@ TEST_REGISTER(test_hzlasr_14_gva_spv);
 bool test_hzlasr_14_gva_spv(void)
 {
     TEST_BEGIN("HZLASR-14: guest Zalasr trap -> GVA=1 and SPV=1");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -178,7 +181,8 @@ TEST_REGISTER(test_hzlasr_15_htval_gpa);
 bool test_hzlasr_15_htval_gpa(void)
 {
     TEST_BEGIN("HZLASR-15: guest Zalasr G-stage fault -> htval == GPA>>2 or 0");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -211,7 +215,8 @@ TEST_REGISTER(test_hzlasr_16_vs_stage_htval_zero);
 bool test_hzlasr_16_vs_stage_htval_zero(void)
 {
     TEST_BEGIN("HZLASR-16: VS-stage store-release fault -> htval == 0");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -245,7 +250,7 @@ TEST_REGISTER(test_hzlasr_17_hlv_hsv_spv0_gva1);
 bool test_hzlasr_17_hlv_hsv_spv0_gva1(void)
 {
     TEST_BEGIN("HZLASR-17: HLV.W/HSV.W explicit access -> SPV=0 but GVA=1");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

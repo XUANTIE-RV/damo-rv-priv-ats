@@ -27,7 +27,9 @@ TEST_REGISTER(test_hzabha_32_amocas_bh_exec);
 bool test_hzabha_32_amocas_bh_exec(void)
 {
     TEST_BEGIN("HZABHA-32: VS/VU amocas.b/h execute, no cause=22");
-    REQUIRE_HZABHA_CAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented (amocas.b/h sub-group)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -94,7 +96,9 @@ TEST_REGISTER(test_hzabha_33_amocas_bh_write_perm);
 bool test_hzabha_33_amocas_bh_write_perm(void)
 {
     TEST_BEGIN("HZABHA-33: amocas.b/h to W=0 -> store pf (15), both paths");
-    REQUIRE_HZABHA_CAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented (amocas.b/h sub-group)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -142,7 +146,9 @@ TEST_REGISTER(test_hzabha_34_amocas_h_gstage);
 bool test_hzabha_34_amocas_h_gstage(void)
 {
     TEST_BEGIN("HZABHA-34: amocas.h G-stage W=0 -> store guest-pf (23)");
-    REQUIRE_HZABHA_CAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented (amocas.b/h sub-group)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -183,7 +189,9 @@ TEST_REGISTER(test_hzabha_35_amocas_bh_htinst);
 bool test_hzabha_35_amocas_bh_htinst(void)
 {
     TEST_BEGIN("HZABHA-35: amocas.b/h htinst retains funct5 + funct3");
-    REQUIRE_HZABHA_CAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented (amocas.b/h sub-group)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -246,7 +254,9 @@ TEST_REGISTER(test_hzabha_36_amocas_h_misaligned);
 bool test_hzabha_36_amocas_h_misaligned(void)
 {
     TEST_BEGIN("HZABHA-36: misaligned amocas.h -> cause 6/7 (or MAG relax)");
-    REQUIRE_HZABHA_CAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented (amocas.b/h sub-group)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

@@ -47,7 +47,6 @@ MARCH      = rv$(XLEN)imac_zicsr_zifencei_svadu
 # Spike: MARCH is passed to spike --isa directly; append the Zalasr and
 # Zama16b suffixes so spike decodes the raw-encoded load-acquire /
 # store-release and models the declared misaligned atomicity granule.
-SPIKE_ISA_EXT = _zalasr_zama16b
 
 # QEMU virt: enable Zalasr and Zama16b explicitly (max does not enable
 # zalasr by default).

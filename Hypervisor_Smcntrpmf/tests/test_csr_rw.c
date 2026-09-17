@@ -19,13 +19,13 @@ bool test_pmf_csr_05_vsinh_vuinh_no_h(void)
 {
     TEST_BEGIN("PMF-CSR-05: VSINH/VUINH read-only zero without H ext");
 
-    if (!smcntrpmf_implemented())
+    if (!SMCNTRPMF_AVAILABLE)
         TEST_SKIP("Smcntrpmf not implemented");
 
     /* This test only applies when the H extension is NOT implemented.
      * On an H-enabled platform VSINH/VUINH are writable and functional
      * (covered by PMF-CYC-08/09 and PMF-INS-06/07). */
-    if (HAS_H_EXT())
+    if (H_AVAILABLE)
         TEST_SKIP("H extension implemented; VSINH/VUINH may be writable");
 
     /* Without H extension, VSINH and VUINH must be read-only zero

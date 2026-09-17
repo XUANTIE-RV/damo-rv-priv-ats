@@ -21,7 +21,7 @@ LOGDIR="${SCRIPT_DIR}/statistics"
 # ---------------------------------------------------------------------
 # Supervisor extensions
 EXT_SS="Ss_CSR Ss_Exceptions Ss_Interrupts Ssccfg Ssccptr Sscofpmf Sscounterenw Sscsrind Ssctr Ssdbltrp Ssstateen Sstc Sstvala Sstvecd Ssu64xl"
-EXT_SV="Sv39 Sv48 Sv57 Svbare Svade Svadu Svnapot Svinval Svpbmt Svvptc Svrsw60t59b"
+EXT_SV="Sv39 Sv48 Sv57 Svbare Svade Svadu Svnapot Svinval Svpbmt Svvptc"
 # Debug extensions
 EXT_SD="Sdext Sdtrig"
 
@@ -79,12 +79,10 @@ resolve_suite()
 {
     local s="$1"
     case "$s" in
-        all)  echo "${ALL_SUITES}" ;;
-        hyp)  echo "${EXT_HYP} ${EXT_HYP_VM} ${EXT_HYP_SM} ${EXT_HYP_SS} ${EXT_HYP_SV} ${EXT_HYP_ZI} ${EXT_HYP_ZA}" ${EXT_HYP_ZC} ;;
-        ss)   echo "${EXT_SS}" ;;
-        sv)   echo "${EXT_SV}" ;;
-        sd)   echo "${EXT_SD}" ;;
-        sm)   echo "${EXT_SM}" ;;
+        all)    echo "${ALL_SUITES}" ;;
+        hyp)    echo "${EXT_HYP} ${EXT_HYP_VM} ${EXT_HYP_SM} ${EXT_HYP_SS} ${EXT_HYP_SV} ${EXT_HYP_ZI} ${EXT_HYP_ZA} ${EXT_HYP_ZC}" ;;
+        priv)   echo "${EXT_SS} ${EXT_SV} ${EXT_SM} ${EXT_ZPM} ${EXT_PMP}" ;;
+        unpriv) echo "${EXT_ZI} ${EXT_ZK} ${EXT_ZC} ${EXT_ZA} ${EXT_CMO} ${EXT_CFI}" ;;
         *)
             if [ -d "${SCRIPT_DIR}/${s}" ]; then
                 echo "$s"

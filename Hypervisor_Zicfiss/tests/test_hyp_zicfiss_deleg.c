@@ -17,7 +17,8 @@
 TEST_REGISTER(test_hcfi_ss_49);
 bool test_hcfi_ss_49(void) {
     TEST_BEGIN("HCFI-SS-49: VS SSPOPCHK mismatch -> SS Fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -47,7 +48,8 @@ bool test_hcfi_ss_49(void) {
 TEST_REGISTER(test_hcfi_ss_50);
 bool test_hcfi_ss_50(void) {
     TEST_BEGIN("HCFI-SS-50: SS Fault delegated to VS-mode");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -78,7 +80,8 @@ bool test_hcfi_ss_50(void) {
 TEST_REGISTER(test_hcfi_ss_51);
 bool test_hcfi_ss_51(void) {
     TEST_BEGIN("HCFI-SS-51: SS Fault delegated to HS-mode");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -106,7 +109,8 @@ bool test_hcfi_ss_51(void) {
 TEST_REGISTER(test_hcfi_ss_52);
 bool test_hcfi_ss_52(void) {
     TEST_BEGIN("HCFI-SS-52: SS Fault delegated to M-mode");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -134,7 +138,8 @@ bool test_hcfi_ss_52(void) {
 TEST_REGISTER(test_hcfi_ss_53);
 bool test_hcfi_ss_53(void) {
     TEST_BEGIN("HCFI-SS-53: SS access-fault delegated to VS");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -158,7 +163,8 @@ bool test_hcfi_ss_53(void) {
 TEST_REGISTER(test_hcfi_ss_54);
 bool test_hcfi_ss_54(void) {
     TEST_BEGIN("HCFI-SS-54: SS access-fault delegated to HS");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -178,7 +184,8 @@ bool test_hcfi_ss_54(void) {
 TEST_REGISTER(test_hcfi_ss_55);
 bool test_hcfi_ss_55(void) {
     TEST_BEGIN("HCFI-SS-55: SS page-fault delegated to VS");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -203,7 +210,8 @@ bool test_hcfi_ss_55(void) {
 TEST_REGISTER(test_hcfi_ss_56);
 bool test_hcfi_ss_56(void) {
     TEST_BEGIN("HCFI-SS-56: SS guest-page-fault traps to HS (not VS)");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -232,7 +240,8 @@ bool test_hcfi_ss_56(void) {
 TEST_REGISTER(test_hcfi_ss_57);
 bool test_hcfi_ss_57(void) {
     TEST_BEGIN("HCFI-SS-57: SS Fault to VS, vsepc correct");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -267,7 +276,8 @@ bool test_hcfi_ss_57(void) {
 TEST_REGISTER(test_hcfi_ss_58);
 bool test_hcfi_ss_58(void) {
     TEST_BEGIN("HCFI-SS-58: SS access-fault to HS, sepc/scause correct");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();

@@ -23,7 +23,7 @@
 TEST_REGISTER(test_shcounterenw_hier_01);
 bool test_shcounterenw_hier_01(void) {
     TEST_BEGIN("SHCNTW-HIER-01: mcounteren[0]=0 blocks VS-mode cycle (cause=2)");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
     if (!is_counter_implemented(0)) TEST_SKIP("cycle not implemented");
 
     /* mcounteren[0]=0, hcounteren[0]=1 */
@@ -54,7 +54,7 @@ bool test_shcounterenw_hier_01(void) {
 TEST_REGISTER(test_shcounterenw_hier_02);
 bool test_shcounterenw_hier_02(void) {
     TEST_BEGIN("SHCNTW-HIER-02: mcounteren[0]=1, hcounteren[0]=1 allows VS-mode cycle");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
     if (!is_counter_implemented(0)) TEST_SKIP("cycle not implemented");
 
     /* mcounteren[0]=1, hcounteren[0]=1 */
@@ -81,7 +81,7 @@ bool test_shcounterenw_hier_02(void) {
 TEST_REGISTER(test_shcounterenw_hier_03);
 bool test_shcounterenw_hier_03(void) {
     TEST_BEGIN("SHCNTW-HIER-03: VU-mode reads cycle (mcen=1,hcen=1,scen=1)");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
     if (!is_counter_implemented(0)) TEST_SKIP("cycle not implemented");
 
     /* mcounteren[0]=1, hcounteren[0]=1, scounteren[0]=1 */
@@ -111,7 +111,7 @@ bool test_shcounterenw_hier_03(void) {
 TEST_REGISTER(test_shcounterenw_hier_04);
 bool test_shcounterenw_hier_04(void) {
     TEST_BEGIN("SHCNTW-HIER-04: VU-mode cycle blocked by hcounteren[0]=0 (cause=22)");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
     if (!is_counter_implemented(0)) TEST_SKIP("cycle not implemented");
 
     /* mcounteren[0]=1, hcounteren[0]=0, scounteren[0]=1 */
@@ -145,7 +145,7 @@ bool test_shcounterenw_hier_04(void) {
 TEST_REGISTER(test_shcounterenw_hier_05);
 bool test_shcounterenw_hier_05(void) {
     TEST_BEGIN("SHCNTW-HIER-05: VU-mode cycle blocked by scounteren[0]=0 (cause=22)");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
     if (!is_counter_implemented(0)) TEST_SKIP("cycle not implemented");
 
     /* Pre-check: verify scounteren[0] is writable (can be cleared) */

@@ -25,22 +25,6 @@
 #include "hyp/hyp_trap.h"
 
 /* ===================================================================
- * Feature detection
- * =================================================================== */
-
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-#define REQUIRE_H_EXT() do { \
-    if (!HAS_H_EXT()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-/* ===================================================================
  * Probe helper: check if a bit of hstateen0 is writable.
  * =================================================================== */
 

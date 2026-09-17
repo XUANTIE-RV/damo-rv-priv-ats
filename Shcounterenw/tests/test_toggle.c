@@ -17,7 +17,7 @@
 TEST_REGISTER(test_shcounterenw_toggle_01_cycle);
 bool test_shcounterenw_toggle_01_cycle(void) {
     TEST_BEGIN("SHCNTW-TOGGLE-01: hcounteren[0] toggle consistency (cycle)");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
     if (!is_counter_implemented(0)) TEST_SKIP("cycle not implemented");
 
     /* Ensure mcounteren[0]=1 so hcounteren layer controls access */
@@ -62,7 +62,7 @@ bool test_shcounterenw_toggle_01_cycle(void) {
 TEST_REGISTER(test_shcounterenw_toggle_02_instret);
 bool test_shcounterenw_toggle_02_instret(void) {
     TEST_BEGIN("SHCNTW-TOGGLE-02: hcounteren[2] toggle consistency (instret)");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
     if (!is_counter_implemented(2)) TEST_SKIP("instret not implemented");
 
     /* Ensure mcounteren[2]=1 */
@@ -107,7 +107,7 @@ bool test_shcounterenw_toggle_02_instret(void) {
 TEST_REGISTER(test_shcounterenw_toggle_03_hpm);
 bool test_shcounterenw_toggle_03_hpm(void) {
     TEST_BEGIN("SHCNTW-TOGGLE-03: hcounteren[N] toggle consistency (hpmcounterN)");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
 
     unsigned n = find_first_hpm_counter_gatable();
     if (!n) TEST_SKIP("no hpmcounter with openable mcounteren gate");

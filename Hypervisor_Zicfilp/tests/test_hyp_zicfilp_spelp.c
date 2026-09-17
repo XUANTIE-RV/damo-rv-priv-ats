@@ -35,8 +35,8 @@ TEST_REGISTER(test_hcfi_lp_11);
 bool test_hcfi_lp_11(void) {
     TEST_BEGIN("HCFI-LP-11: vsstatus.SPELP basic read/write");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     uintptr_t orig = vsstatus_read();
 
@@ -71,8 +71,8 @@ TEST_REGISTER(test_hcfi_lp_12);
 bool test_hcfi_lp_12(void) {
     TEST_BEGIN("HCFI-LP-12: VS-mode trap to VS-mode, SPELP saves ELP");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -131,8 +131,8 @@ TEST_REGISTER(test_hcfi_lp_13);
 bool test_hcfi_lp_13(void) {
     TEST_BEGIN("HCFI-LP-13: VS-mode SRET restores ELP (VSLPE=1)");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -202,8 +202,8 @@ TEST_REGISTER(test_hcfi_lp_14);
 bool test_hcfi_lp_14(void) {
     TEST_BEGIN("HCFI-LP-14: VS-mode SRET clears SPELP (VSLPE=0)");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -263,8 +263,8 @@ TEST_REGISTER(test_hcfi_lp_15);
 bool test_hcfi_lp_15(void) {
     TEST_BEGIN("HCFI-LP-15: VS-mode trap to HS-mode, mstatus.SPELP saves ELP");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -331,8 +331,8 @@ TEST_REGISTER(test_hcfi_lp_16);
 bool test_hcfi_lp_16(void) {
     TEST_BEGIN("HCFI-LP-16: HS-mode SRET returns VS, restores ELP (VSLPE=1)");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -402,8 +402,8 @@ TEST_REGISTER(test_hcfi_lp_17);
 bool test_hcfi_lp_17(void) {
     TEST_BEGIN("HCFI-LP-17: HS-mode SRET returns VS, clears SPELP (VSLPE=0)");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -464,8 +464,8 @@ TEST_REGISTER(test_hcfi_lp_18);
 bool test_hcfi_lp_18(void) {
     TEST_BEGIN("HCFI-LP-18: VS-mode trap to M-mode, mstatus.MPELP saves ELP");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -519,8 +519,8 @@ TEST_REGISTER(test_hcfi_lp_19);
 bool test_hcfi_lp_19(void) {
     TEST_BEGIN("HCFI-LP-19: M-mode MRET returns VS, restores ELP (VSLPE=1)");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -588,8 +588,8 @@ TEST_REGISTER(test_hcfi_lp_20);
 bool test_hcfi_lp_20(void) {
     TEST_BEGIN("HCFI-LP-20: M-mode MRET returns VS, clears MPELP (VSLPE=0)");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -648,8 +648,8 @@ TEST_REGISTER(test_hcfi_lp_21);
 bool test_hcfi_lp_21(void) {
     TEST_BEGIN("HCFI-LP-21: ELP=NO_LP_EXPECTED, trap saves SPELP=0");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -704,8 +704,8 @@ TEST_REGISTER(test_hcfi_lp_22);
 bool test_hcfi_lp_22(void) {
     TEST_BEGIN("HCFI-LP-22: VS-mode SRET to VU-mode, ELP restored (VULPE=1)");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -779,8 +779,8 @@ TEST_REGISTER(test_hcfi_lp_23);
 bool test_hcfi_lp_23(void) {
     TEST_BEGIN("HCFI-LP-23: VS-mode SRET to VU-mode, VULPE=0");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -847,8 +847,8 @@ TEST_REGISTER(test_hcfi_lp_24);
 bool test_hcfi_lp_24(void) {
     TEST_BEGIN("HCFI-LP-24: V=0, vsstatus.SPELP does not affect behavior");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     /* Enable HS-level xLPE (menvcfg.LPE); set vsstatus.SPELP=1 as
      * noise that must be ignored while V=0; keep mstatus.SPELP=0. */

@@ -53,7 +53,8 @@ TEST_REGISTER(test_hzca_07_c_lw_htinst);
 bool test_hzca_07_c_lw_htinst(void)
 {
     TEST_BEGIN("HZCA-07: c.lw load guest-page-fault htinst = 0/transformed");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     hzca_htinst_case("cause == load guest-page-fault (21)",
@@ -66,7 +67,8 @@ TEST_REGISTER(test_hzca_08_c_sw_htinst);
 bool test_hzca_08_c_sw_htinst(void)
 {
     TEST_BEGIN("HZCA-08: c.sw store guest-page-fault htinst (store branch)");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     hzca_htinst_case("cause == store/AMO guest-page-fault (23)",
@@ -79,8 +81,9 @@ TEST_REGISTER(test_hzca_09_c_ld_htinst);
 bool test_hzca_09_c_ld_htinst(void)
 {
     TEST_BEGIN("HZCA-09: c.ld load guest-page-fault htinst (RV64)");
-    REQUIRE_HZCA();
-    HZCA_REQUIRE_RV64();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
+    if (__riscv_xlen != 64) TEST_SKIP("RV64-only compressed doubleword instruction");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     hzca_htinst_case("cause == load guest-page-fault (21)",
@@ -93,8 +96,9 @@ TEST_REGISTER(test_hzca_10_c_sd_htinst);
 bool test_hzca_10_c_sd_htinst(void)
 {
     TEST_BEGIN("HZCA-10: c.sd store guest-page-fault htinst (RV64)");
-    REQUIRE_HZCA();
-    HZCA_REQUIRE_RV64();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
+    if (__riscv_xlen != 64) TEST_SKIP("RV64-only compressed doubleword instruction");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     hzca_htinst_case("cause == store/AMO guest-page-fault (23)",
@@ -116,7 +120,8 @@ TEST_REGISTER(test_hzca_11_c_lwsp_htinst);
 bool test_hzca_11_c_lwsp_htinst(void)
 {
     TEST_BEGIN("HZCA-11: c.lwsp load guest-page-fault htinst");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     hzca_htinst_case("cause == load guest-page-fault (21)",
@@ -129,7 +134,8 @@ TEST_REGISTER(test_hzca_12_c_swsp_htinst);
 bool test_hzca_12_c_swsp_htinst(void)
 {
     TEST_BEGIN("HZCA-12: c.swsp store guest-page-fault htinst");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     hzca_htinst_case("cause == store/AMO guest-page-fault (23)",
@@ -142,8 +148,9 @@ TEST_REGISTER(test_hzca_13_c_ldsp_htinst);
 bool test_hzca_13_c_ldsp_htinst(void)
 {
     TEST_BEGIN("HZCA-13: c.ldsp load guest-page-fault htinst (RV64)");
-    REQUIRE_HZCA();
-    HZCA_REQUIRE_RV64();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
+    if (__riscv_xlen != 64) TEST_SKIP("RV64-only compressed doubleword instruction");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     hzca_htinst_case("cause == load guest-page-fault (21)",
@@ -156,8 +163,9 @@ TEST_REGISTER(test_hzca_14_c_sdsp_htinst);
 bool test_hzca_14_c_sdsp_htinst(void)
 {
     TEST_BEGIN("HZCA-14: c.sdsp store guest-page-fault htinst (RV64)");
-    REQUIRE_HZCA();
-    HZCA_REQUIRE_RV64();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
+    if (__riscv_xlen != 64) TEST_SKIP("RV64-only compressed doubleword instruction");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     hzca_htinst_case("cause == store/AMO guest-page-fault (23)",
@@ -177,7 +185,8 @@ TEST_REGISTER(test_hzca_15_load_store_format);
 bool test_hzca_15_load_store_format(void)
 {
     TEST_BEGIN("HZCA-15: compressed load vs store transformed format");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -238,7 +247,8 @@ TEST_REGISTER(test_hzca_16_fields_match_expanded);
 bool test_hzca_16_fields_match_expanded(void)
 {
     TEST_BEGIN("HZCA-16: transformed fields == expanded 32-bit instruction");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -293,7 +303,8 @@ TEST_REGISTER(test_hzca_17_compressed_marker_contrast);
 bool test_hzca_17_compressed_marker_contrast(void)
 {
     TEST_BEGIN("HZCA-17: bits[1:0]=01 (compressed) vs 11 (non-compressed)");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -335,7 +346,8 @@ TEST_REGISTER(test_hzca_18_addr_offset_zero);
 bool test_hzca_18_addr_offset_zero(void)
 {
     TEST_BEGIN("HZCA-18: aligned compressed load/store Addr. Offset == 0");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -369,7 +381,8 @@ TEST_REGISTER(test_hzca_19_htinst_may_be_zero);
 bool test_hzca_19_htinst_may_be_zero(void)
 {
     TEST_BEGIN("HZCA-19: htinst == 0 (legal) or exactly golden");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -405,7 +418,8 @@ TEST_REGISTER(test_hzca_20_misaligned_record);
 bool test_hzca_20_misaligned_record(void)
 {
     TEST_BEGIN("HZCA-20: (recording) misaligned c.lw Addr. Offset");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

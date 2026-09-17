@@ -25,9 +25,9 @@ bool test_pmf_ins_06_vsinh_inhibit(void)
 {
     TEST_BEGIN("PMF-INS-06: VSINH=1 inhibits VS-mode instret");
 
-    if (!HAS_H_EXT())
+    if (!H_AVAILABLE)
         TEST_SKIP("H extension not available");
-    if (!smcntrpmf_implemented())
+    if (!SMCNTRPMF_AVAILABLE)
         TEST_SKIP("Smcntrpmf not implemented");
     if (!instret_counter_functional())
         TEST_SKIP("instret counter not functional");
@@ -58,9 +58,9 @@ bool test_pmf_ins_07_vuinh_inhibit(void)
 {
     TEST_BEGIN("PMF-INS-07: VUINH=1 inhibits VU-mode instret");
 
-    if (!HAS_H_EXT())
+    if (!H_AVAILABLE)
         TEST_SKIP("H extension not available");
-    if (!smcntrpmf_implemented())
+    if (!SMCNTRPMF_AVAILABLE)
         TEST_SKIP("Smcntrpmf not implemented");
     if (!instret_counter_functional())
         TEST_SKIP("instret counter not functional");

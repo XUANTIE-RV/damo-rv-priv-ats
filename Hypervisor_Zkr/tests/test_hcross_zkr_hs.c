@@ -24,8 +24,8 @@ TEST_REGISTER(test_zkr_hyp_01);
 bool test_zkr_hyp_01(void)
 {
     TEST_BEGIN("ZKR-HYP-01: SSEED=1 HS-mode csrrw access seed OK");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();
@@ -52,8 +52,8 @@ TEST_REGISTER(test_zkr_hyp_13);
 bool test_zkr_hyp_13(void)
 {
     TEST_BEGIN("ZKR-HYP-13: SSEED=1 HS-mode csrrs x0 (RO) -> illegal");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();
@@ -73,8 +73,8 @@ TEST_REGISTER(test_zkr_hyp_02);
 bool test_zkr_hyp_02(void)
 {
     TEST_BEGIN("ZKR-HYP-02: SSEED=0 HS-mode csrrw triggers illegal");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();

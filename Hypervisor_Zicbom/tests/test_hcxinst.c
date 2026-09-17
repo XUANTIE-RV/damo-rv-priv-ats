@@ -19,8 +19,8 @@ bool test_hcxinst_01(void)
 {
     TEST_BEGIN("HCXINST-01: cbo.clean page-fault htinst");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;
@@ -60,8 +60,8 @@ bool test_hcxinst_02(void)
 {
     TEST_BEGIN("HCXINST-02: cbo.flush page-fault htinst");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;
@@ -98,8 +98,8 @@ bool test_hcxinst_03(void)
 {
     TEST_BEGIN("HCXINST-03: cbo.inval page-fault htinst");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;
@@ -136,8 +136,8 @@ bool test_hcxinst_07(void)
 {
     TEST_BEGIN("HCXINST-07: cbo.inval virtual-inst htinst");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -173,8 +173,8 @@ bool test_hcxinst_08(void)
 {
     TEST_BEGIN("HCXINST-08: cbo.clean virtual-inst htinst");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -210,8 +210,8 @@ bool test_hcxinst_10(void)
 {
     TEST_BEGIN("HCXINST-10: VU-mode cbo.inval virtual-inst htinst");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);

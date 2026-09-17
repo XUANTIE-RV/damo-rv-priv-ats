@@ -55,35 +55,10 @@ extern uintptr_t csr_read(uint16_t csr);
  * Feature detection
  * =================================================================== */
 
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-#define REQUIRE_H_EXT() do { \
-    if (!HAS_H_EXT()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-/* Non-asserting Zicntr detection: trap-armed read of the time CSR
- * from M-mode. */
-static inline bool check_zicntr(void)
-{
-    clear_mdt();
-    trap_expect_begin();
-    (void)csr_read(CSR_TIME);
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-    return !trapped;
-}
-
-#define REQUIRE_ZICNTR() do { \
-    if (!check_zicntr()) { \
-        TEST_SKIP("Zicntr not implemented (time CSR traps in M-mode)"); \
-    } \
-} while (0)
+/* Zicntr support is config-declaration driven: gate on the compile-time
+ * ZICNTR_AVAILABLE macro (normalized in common/capabilities.h from
+ * ZICNTR_SUPPORTED in rvtest_config.h). Do NOT trap-probe the time CSR
+ * at runtime. Inline `if (!ZICNTR_AVAILABLE) TEST_SKIP(...)` per case. */
 
 /* ===================================================================
  * VS/VU-mode counter read payloads (invoked via run_in_vs/vu_mode)

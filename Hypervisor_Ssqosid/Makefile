@@ -16,7 +16,6 @@ ENABLE_VM = 1
 ENABLE_TWO_STAGE = 1
 
 # Spike ISA extensions
-SPIKE_ISA = rv64imach_zicsr_zifencei_ssqosid_smstateen
 
 # Extension-specific object files
 EXT_OBJS = \

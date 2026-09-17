@@ -22,9 +22,7 @@ TEST_REGISTER(test_shlcofideleg_vs_lcofip_visible);
 bool test_shlcofideleg_vs_lcofip_visible(void) {
     TEST_BEGIN("LCFIDLG-VS-01: VS-mode sees LCOFIP when hideleg[13]=1");
 
-    if (!shlcofideleg_check_available()) {
-        TEST_SKIP("Shlcofideleg not implemented");
-    }
+    if (!SHLCOFIDELEG_AVAILABLE) TEST_SKIP("Shlcofideleg not implemented");
 
     uintptr_t saved_hideleg = hideleg_read();
     uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);
@@ -53,9 +51,7 @@ TEST_REGISTER(test_shlcofideleg_vs_lcofip_hidden);
 bool test_shlcofideleg_vs_lcofip_hidden(void) {
     TEST_BEGIN("LCFIDLG-VS-02: VS-mode cannot see LCOFIP when hideleg[13]=0");
 
-    if (!shlcofideleg_check_available()) {
-        TEST_SKIP("Shlcofideleg not implemented");
-    }
+    if (!SHLCOFIDELEG_AVAILABLE) TEST_SKIP("Shlcofideleg not implemented");
 
     uintptr_t saved_hideleg = hideleg_read();
     uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);
@@ -84,9 +80,7 @@ TEST_REGISTER(test_shlcofideleg_vs_lcofie_visible);
 bool test_shlcofideleg_vs_lcofie_visible(void) {
     TEST_BEGIN("LCFIDLG-VS-03: VS-mode sees LCOFIE when hideleg[13]=1");
 
-    if (!shlcofideleg_check_available()) {
-        TEST_SKIP("Shlcofideleg not implemented");
-    }
+    if (!SHLCOFIDELEG_AVAILABLE) TEST_SKIP("Shlcofideleg not implemented");
 
     uintptr_t saved_hideleg = hideleg_read();
     uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);
@@ -117,9 +111,7 @@ TEST_REGISTER(test_shlcofideleg_vs_lcofie_hidden);
 bool test_shlcofideleg_vs_lcofie_hidden(void) {
     TEST_BEGIN("LCFIDLG-VS-04: VS-mode cannot see LCOFIE when hideleg[13]=0");
 
-    if (!shlcofideleg_check_available()) {
-        TEST_SKIP("Shlcofideleg not implemented");
-    }
+    if (!SHLCOFIDELEG_AVAILABLE) TEST_SKIP("Shlcofideleg not implemented");
 
     uintptr_t saved_hideleg = hideleg_read();
     uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);
@@ -149,9 +141,7 @@ TEST_REGISTER(test_shlcofideleg_vs_write_sie_delegated);
 bool test_shlcofideleg_vs_write_sie_delegated(void) {
     TEST_BEGIN("LCFIDLG-VS-05: VS-mode write sie.LCOFIE propagates when hideleg[13]=1");
 
-    if (!shlcofideleg_check_available()) {
-        TEST_SKIP("Shlcofideleg not implemented");
-    }
+    if (!SHLCOFIDELEG_AVAILABLE) TEST_SKIP("Shlcofideleg not implemented");
 
     uintptr_t saved_hideleg = hideleg_read();
     uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);
@@ -183,9 +173,7 @@ TEST_REGISTER(test_shlcofideleg_vs_write_sie_not_delegated);
 bool test_shlcofideleg_vs_write_sie_not_delegated(void) {
     TEST_BEGIN("LCFIDLG-VS-06: VS-mode write sie.LCOFIE no effect when hideleg[13]=0");
 
-    if (!shlcofideleg_check_available()) {
-        TEST_SKIP("Shlcofideleg not implemented");
-    }
+    if (!SHLCOFIDELEG_AVAILABLE) TEST_SKIP("Shlcofideleg not implemented");
 
     uintptr_t saved_hideleg = hideleg_read();
     uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);

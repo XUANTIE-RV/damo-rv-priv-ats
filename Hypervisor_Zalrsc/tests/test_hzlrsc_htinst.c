@@ -39,7 +39,8 @@ TEST_REGISTER(test_hzlrsc_15_lr_htinst_transformed);
 bool test_hzlrsc_15_lr_htinst_transformed(void)
 {
     TEST_BEGIN("HZLRSC-15: LR explicit G-stage fault htinst = 0/transformed");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -75,7 +76,8 @@ TEST_REGISTER(test_hzlrsc_16_sc_htinst_transformed);
 bool test_hzlrsc_16_sc_htinst_transformed(void)
 {
     TEST_BEGIN("HZLRSC-16: SC explicit G-stage fault htinst keeps funct5=SC");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -141,7 +143,8 @@ TEST_REGISTER(test_hzlrsc_17_htinst_aqrl);
 bool test_hzlrsc_17_htinst_aqrl(void)
 {
     TEST_BEGIN("HZLRSC-17: htinst preserves aq/rl bits");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -169,7 +172,8 @@ TEST_REGISTER(test_hzlrsc_18_addr_offset_zero);
 bool test_hzlrsc_18_addr_offset_zero(void)
 {
     TEST_BEGIN("HZLRSC-18: LR/SC htinst Addr. Offset == 0");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -202,7 +206,8 @@ TEST_REGISTER(test_hzlrsc_19_implicit_walk_pseudo);
 bool test_hzlrsc_19_implicit_walk_pseudo(void)
 {
     TEST_BEGIN("HZLRSC-19: implicit VS-walk LR fault -> read pseudoinst");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -240,7 +245,8 @@ TEST_REGISTER(test_hzlrsc_20_adue_write_pseudo);
 bool test_hzlrsc_20_adue_write_pseudo(void)
 {
     TEST_BEGIN("HZLRSC-20: ADUE=1 SC D-update fault -> write pseudoinst");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -298,7 +304,8 @@ TEST_REGISTER(test_hzlrsc_21_explicit_vs_implicit);
 bool test_hzlrsc_21_explicit_vs_implicit(void)
 {
     TEST_BEGIN("HZLRSC-21: htinst disambiguates explicit vs implicit (21)");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

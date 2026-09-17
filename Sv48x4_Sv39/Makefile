@@ -12,7 +12,6 @@ ENABLE_PMP = 1
 ENABLE_TWO_STAGE = 1
 
 QEMU_CPU   = max
-SPIKE_ISA  = rv64imach_zicsr_zifencei_svadu_svinval_svpbmt
 
 EXT_OBJS = \
     main.o \

@@ -38,8 +38,8 @@ bool test_hvinst_01(void)
 {
     TEST_BEGIN("HVINST-01: cbo.inval virtual-inst stval");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -76,8 +76,8 @@ bool test_hvinst_02(void)
 {
     TEST_BEGIN("HVINST-02: cbo.clean virtual-inst stval");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -112,8 +112,8 @@ bool test_hvinst_03(void)
 {
     TEST_BEGIN("HVINST-03: cbo.flush virtual-inst stval");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -148,8 +148,8 @@ bool test_hvinst_05(void)
 {
     TEST_BEGIN("HVINST-05: VU-mode cbo.inval virtual-inst stval");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);

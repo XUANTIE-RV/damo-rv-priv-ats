@@ -296,7 +296,7 @@ bool test_ss_uctl_umode_write_cause2(void) {
 TEST_REGISTER(test_ss_uctl_vumode_cause22);
 bool test_ss_uctl_vumode_cause22(void) {
     TEST_BEGIN("SS-UCTL-09: VU-mode blocked access triggers cause=22");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_mstateen0 = mstateen_read(0);
     mstateen_write(0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);

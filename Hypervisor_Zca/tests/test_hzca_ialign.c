@@ -54,7 +54,8 @@ TEST_REGISTER(test_hzca_25_vs_jump_2byte_aligned);
 bool test_hzca_25_vs_jump_2byte_aligned(void)
 {
     TEST_BEGIN("HZCA-25: VS-mode jump to 2-byte-aligned compressed, no cause=0");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -95,7 +96,8 @@ TEST_REGISTER(test_hzca_26_vu_jump_2byte_aligned);
 bool test_hzca_26_vu_jump_2byte_aligned(void)
 {
     TEST_BEGIN("HZCA-26: VU-mode jump to 2-byte-aligned address, no cause=0");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -133,7 +135,8 @@ TEST_REGISTER(test_hzca_27_32bit_on_16bit_boundary);
 bool test_hzca_27_32bit_on_16bit_boundary(void)
 {
     TEST_BEGIN("HZCA-27: 32-bit instruction on a 16-bit boundary, no cause=0");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

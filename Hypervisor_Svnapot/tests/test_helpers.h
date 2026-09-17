@@ -78,20 +78,6 @@ extern uint8_t __vm_test_region_end[];
 #define MAGIC_WRITE         0xDEADBEEF12345678UL
 
 /* ===================================================================
- * H extension detection
- * =================================================================== */
-static bool check_h_extension(void) {
-    uint64_t misa_val = CSRR(misa);
-    return (misa_val & (1UL << ('H' - 'A'))) != 0;
-}
-
-#define H_REQUIRED_OR_SKIP() do { \
-    if (!check_h_extension()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-/* ===================================================================
  * NAPOT PTE Construction Functions
  * =================================================================== */
 
@@ -126,83 +112,14 @@ static inline uintptr_t napot_make_reserved_pte(uintptr_t pa,
 }
 
 /* ===================================================================
- * Svnapot detection
+ * Svnapot availability
  *
- * QEMU's "max" CPU implements Svnapot but does not set misa.N.
- * We use a two-step detection:
- *   1. Check misa.N (standard signal)
- *   2. If misa.N is 0, probe by installing a NAPOT PTE in S-mode
- *      page table and verifying translation from S-mode.
+ * Svnapot support is config-declaration driven: gate on the compile-time
+ * SVNAPOT_AVAILABLE macro (normalized in common/capabilities.h from
+ * SVNAPOT_SUPPORTED in rvtest_config.h). Do NOT probe misa.N or install
+ * a NAPOT PTE at runtime -- QEMU's "max" CPU implements Svnapot while
+ * leaving misa.N clear, so a runtime probe yields a false negative.
  * =================================================================== */
-static bool svnapot_detected = false;
-static bool svnapot_detection_done = false;
-
-static bool check_svnapot_extension(void) {
-    if (svnapot_detection_done)
-        return svnapot_detected;
-
-    /* Step 1: Check misa.N */
-    uint64_t misa_val = CSRR(misa);
-    if (misa_val & (1UL << ('N' - 'A'))) {
-        svnapot_detected = true;
-        svnapot_detection_done = true;
-        return true;
-    }
-
-    /* Step 2: Probe by installing NAPOT PTE and testing from S-mode.
-     * This handles QEMU "max" which implements Svnapot but omits misa.N. */
-    pt_pool_reset();
-    pt_context_t probe_ctx;
-    pt_init(&probe_ctx, SATP_MODE_SV39);
-
-    uintptr_t probe_va = NAPOT_TEST_REGION_0;
-    uintptr_t probe_pa = probe_va;
-
-    /* Create page table path, then overwrite with NAPOT PTE */
-    pt_map_page(&probe_ctx, probe_va, probe_pa,
-                PTE_V | PTE_R | PTE_W | PTE_A | PTE_D, PT_LEVEL_4K);
-    uintptr_t *l0_pte = pt_get_pte(&probe_ctx, probe_va, PT_LEVEL_4K);
-    if (l0_pte) {
-        uintptr_t napot_pte = napot_make_pte(probe_pa,
-                                              PTE_V | PTE_R | PTE_W |
-                                              PTE_A | PTE_D);
-        for (int i = 0; i < NAPOT_64K_PAGES; i++) {
-            l0_pte[i] = napot_pte;
-        }
-    }
-
-    /* Map UART for S-mode trap handler printf */
-    pt_map_page(&probe_ctx, PLATFORM_UART0_BASE, PLATFORM_UART0_BASE,
-                PTE_V | PTE_R | PTE_W | PTE_A | PTE_D, PT_LEVEL_4K);
-
-    /* Map code region for S-mode execution (1GB identity) */
-    uintptr_t code_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
-    pt_setup_identity_mapping(&probe_ctx, code_base, PAGE_SIZE_1G,
-                              PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D,
-                              PT_LEVEL_1G);
-
-    /* Enable S-mode VM */
-    vm_enable(&probe_ctx, 0);
-
-    /* Switch to S-mode and probe NAPOT access */
-    goto_priv(PRIV_S);
-    PRIV_DO(*(volatile uintptr_t *)probe_va = 0xDEADBEEFUL);
-    volatile uintptr_t _probe_val;
-    PRIV_DO(_probe_val = *(volatile uintptr_t *)probe_va);
-    goto_priv(PRIV_M);
-
-    vm_disable();
-
-    svnapot_detected = !trap_was_triggered();
-    svnapot_detection_done = true;
-    return svnapot_detected;
-}
-
-#define SVNAPOOT_REQUIRED_OR_SKIP() do { \
-    if (!check_svnapot_extension()) { \
-        TEST_SKIP("Svnapot not available"); \
-    } \
-} while (0)
 
 /* ===================================================================
  * G-stage NAPOT PTE Installation

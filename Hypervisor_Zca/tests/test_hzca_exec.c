@@ -155,7 +155,8 @@ TEST_REGISTER(test_hzca_01_exec_all_modes);
 bool test_hzca_01_exec_all_modes(void)
 {
     TEST_BEGIN("HZCA-01: HS/VS/VU compressed comp+jump execute, no cause=22");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -212,7 +213,8 @@ TEST_REGISTER(test_hzca_02_vs_hs_lwsw_parity);
 bool test_hzca_02_vs_hs_lwsw_parity(void)
 {
     TEST_BEGIN("HZCA-02: VS-mode c.lw/c.sw semantics == HS-mode");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -256,7 +258,8 @@ TEST_REGISTER(test_hzca_03_vu_lwsw_exec);
 bool test_hzca_03_vu_lwsw_exec(void)
 {
     TEST_BEGIN("HZCA-03: VU-mode c.lw/c.sw execute, never cause=22");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -294,7 +297,8 @@ TEST_REGISTER(test_hzca_04_vs_sp_based);
 bool test_hzca_04_vs_sp_based(void)
 {
     TEST_BEGIN("HZCA-04: VS-mode sp-based compressed access normal");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -327,8 +331,9 @@ TEST_REGISTER(test_hzca_05_rv64_doubleword);
 bool test_hzca_05_rv64_doubleword(void)
 {
     TEST_BEGIN("HZCA-05: RV64 c.ld/c.sd/c.ldsp/c.sdsp normal");
-    REQUIRE_HZCA();
-    HZCA_REQUIRE_RV64();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
+    if (__riscv_xlen != 64) TEST_SKIP("RV64-only compressed doubleword instruction");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -364,7 +369,8 @@ TEST_REGISTER(test_hzca_06_vs_mixed_seq);
 bool test_hzca_06_vs_mixed_seq(void)
 {
     TEST_BEGIN("HZCA-06: VS-mode mixed 16/32-bit sequence == HS-mode");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

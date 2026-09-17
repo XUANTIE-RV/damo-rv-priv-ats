@@ -14,13 +14,13 @@ bool test_sscsrind_scsr_01(void)
 {
     TEST_BEGIN("SSCSRIND-SCSR-01: siselect readable from S-mode");
 
-    if (!platform_has_sscsrind()) {
+    if (!SSCSRIND_AVAILABLE) {
         TEST_SKIP("Sscsrind not implemented");
     }
 
     /* Enable S-mode access via mstateen0 if Smstateen exists */
     uintptr_t orig_mstateen0 = 0;
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         orig_mstateen0 = mstateen0_read();
         mstateen0_set(MSTATEEN0_CSRIND);
     }
@@ -30,7 +30,7 @@ bool test_sscsrind_scsr_01(void)
     goto_priv(PRIV_M);
     CHECK_NO_TRAP("S-mode siselect read");
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_write(orig_mstateen0);
     }
     TEST_END();
@@ -42,12 +42,12 @@ bool test_sscsrind_scsr_02(void)
 {
     TEST_BEGIN("SSCSRIND-SCSR-02: siselect writable from S-mode");
 
-    if (!platform_has_sscsrind()) {
+    if (!SSCSRIND_AVAILABLE) {
         TEST_SKIP("Sscsrind not implemented");
     }
 
     uintptr_t orig_mstateen0 = 0;
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         orig_mstateen0 = mstateen0_read();
         mstateen0_set(MSTATEEN0_CSRIND);
     }
@@ -59,7 +59,7 @@ bool test_sscsrind_scsr_02(void)
     CHECK_NO_TRAP("S-mode siselect write 0");
     TEST_ASSERT_EQ("siselect write 0 reads back 0", rb, (uintptr_t)0);
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_write(orig_mstateen0);
     }
     TEST_END();
@@ -71,12 +71,12 @@ bool test_sscsrind_scsr_03(void)
 {
     TEST_BEGIN("SSCSRIND-SCSR-03: siselect minimum range 0..0xFFF");
 
-    if (!platform_has_sscsrind()) {
+    if (!SSCSRIND_AVAILABLE) {
         TEST_SKIP("Sscsrind not implemented");
     }
 
     uintptr_t orig_mstateen0 = 0;
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         orig_mstateen0 = mstateen0_read();
         mstateen0_set(MSTATEEN0_CSRIND);
     }
@@ -98,7 +98,7 @@ bool test_sscsrind_scsr_03(void)
         TEST_ASSERT("siselect accepts 0..0xFFF range", 1);
     }
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_write(orig_mstateen0);
     }
     TEST_END();
@@ -110,12 +110,12 @@ bool test_sscsrind_scsr_04(void)
 {
     TEST_BEGIN("SSCSRIND-SCSR-04: siselect MSB=1 custom region");
 
-    if (!platform_has_sscsrind()) {
+    if (!SSCSRIND_AVAILABLE) {
         TEST_SKIP("Sscsrind not implemented");
     }
 
     uintptr_t orig_mstateen0 = 0;
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         orig_mstateen0 = mstateen0_read();
         mstateen0_set(MSTATEEN0_CSRIND);
     }
@@ -127,7 +127,7 @@ bool test_sscsrind_scsr_04(void)
     goto_priv(PRIV_M);
     CHECK_NO_TRAP("S-mode siselect MSB=1 write");
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_write(orig_mstateen0);
     }
     TEST_END();
@@ -139,12 +139,12 @@ bool test_sscsrind_scsr_05(void)
 {
     TEST_BEGIN("SSCSRIND-SCSR-05: siselect MSB=0 standard reserved");
 
-    if (!platform_has_sscsrind()) {
+    if (!SSCSRIND_AVAILABLE) {
         TEST_SKIP("Sscsrind not implemented");
     }
 
     uintptr_t orig_mstateen0 = 0;
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         orig_mstateen0 = mstateen0_read();
         mstateen0_set(MSTATEEN0_CSRIND);
     }
@@ -154,7 +154,7 @@ bool test_sscsrind_scsr_05(void)
     goto_priv(PRIV_M);
     CHECK_NO_TRAP("S-mode siselect MSB=0 write");
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_write(orig_mstateen0);
     }
     TEST_END();
@@ -166,12 +166,12 @@ bool test_sscsrind_scsr_06(void)
 {
     TEST_BEGIN("SSCSRIND-SCSR-06: sireg accessible from S-mode");
 
-    if (!platform_has_sscsrind()) {
+    if (!SSCSRIND_AVAILABLE) {
         TEST_SKIP("Sscsrind not implemented");
     }
 
     uintptr_t orig_mstateen0 = 0;
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         orig_mstateen0 = mstateen0_read();
         mstateen0_set(MSTATEEN0_CSRIND);
     }
@@ -185,7 +185,7 @@ bool test_sscsrind_scsr_06(void)
      * may trap (illegal-inst) or return RO0. Both acceptable. */
     TEST_ASSERT("sireg at siselect=0: behavior recorded", 1);
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_write(orig_mstateen0);
     }
     TEST_END();
@@ -197,12 +197,12 @@ bool test_sscsrind_scsr_07(void)
 {
     TEST_BEGIN("SSCSRIND-SCSR-07: sireg2-6 accessible from S-mode");
 
-    if (!platform_has_sscsrind()) {
+    if (!SSCSRIND_AVAILABLE) {
         TEST_SKIP("Sscsrind not implemented");
     }
 
     uintptr_t orig_mstateen0 = 0;
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         orig_mstateen0 = mstateen0_read();
         mstateen0_set(MSTATEEN0_CSRIND);
     }
@@ -218,7 +218,7 @@ bool test_sscsrind_scsr_07(void)
 
     TEST_ASSERT("sireg2-6 at siselect=0: behavior recorded", 1);
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_write(orig_mstateen0);
     }
     TEST_END();
@@ -230,7 +230,7 @@ bool test_sscsrind_scsr_08(void)
 {
     TEST_BEGIN("SSCSRIND-SCSR-08: siselect/sireg width = current XLEN");
 
-    if (!platform_has_sscsrind()) {
+    if (!SSCSRIND_AVAILABLE) {
         TEST_SKIP("Sscsrind not implemented");
     }
 
@@ -247,12 +247,12 @@ bool test_sscsrind_scsr_09(void)
 {
     TEST_BEGIN("SSCSRIND-SCSR-09: siselect WARL all-ones write");
 
-    if (!platform_has_sscsrind()) {
+    if (!SSCSRIND_AVAILABLE) {
         TEST_SKIP("Sscsrind not implemented");
     }
 
     uintptr_t orig_mstateen0 = 0;
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         orig_mstateen0 = mstateen0_read();
         mstateen0_set(MSTATEEN0_CSRIND);
     }
@@ -264,7 +264,7 @@ bool test_sscsrind_scsr_09(void)
     goto_priv(PRIV_M);
     CHECK_NO_TRAP("S-mode siselect WARL all-ones write");
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_write(orig_mstateen0);
     }
     TEST_END();
@@ -276,7 +276,7 @@ bool test_sscsrind_scsr_10(void)
 {
     TEST_BEGIN("SSCSRIND-SCSR-10: sireg* with legal siselect");
 
-    if (!platform_has_sscsrind()) {
+    if (!SSCSRIND_AVAILABLE) {
         TEST_SKIP("Sscsrind not implemented");
     }
 
@@ -284,7 +284,7 @@ bool test_sscsrind_scsr_10(void)
     uintptr_t orig_menvcfg = 0;
     uintptr_t orig_mcounteren = 0;
 
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         orig_mstateen0 = mstateen0_read();
         mstateen0_set(MSTATEEN0_CSRIND);
     }
@@ -306,7 +306,7 @@ bool test_sscsrind_scsr_10(void)
 
     menvcfg_write(orig_menvcfg);
     mcounteren_write(orig_mcounteren);
-    if (platform_has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_write(orig_mstateen0);
     }
     TEST_END();

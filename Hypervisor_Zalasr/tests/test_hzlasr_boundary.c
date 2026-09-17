@@ -30,7 +30,7 @@ TEST_REGISTER(test_hzlasr_35_no_atomic_ordered_guest_equiv);
 bool test_hzlasr_35_no_atomic_ordered_guest_equiv(void)
 {
     TEST_BEGIN("HZLASR-35: (record) no atomic-ordered guest equiv; HLV/HSV copy data");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -80,7 +80,7 @@ TEST_REGISTER(test_hzlasr_36_hlv_hsv_not_atomic);
 bool test_hzlasr_36_hlv_hsv_not_atomic(void)
 {
     TEST_BEGIN("HZLASR-36: (record) HLV/HSV cannot replicate Zalasr atomicity/RCsc");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     TEST_SKIP(HZLASR_SMP_SKIP_REASON);
     HYP_TEST_END();
 }

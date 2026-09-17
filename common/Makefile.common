@@ -152,6 +152,13 @@ IOPMP_OBJS = $(IOPMP_DIR)/iopmp_cfg.o $(IOPMP_DIR)/iopmp_init.o
 COMMON_OBJS += $(IOPMP_OBJS)
 endif
 
+# SMMTT support (conditional, set ENABLE_SMMTT=1 in extension Makefile)
+ifdef ENABLE_SMMTT
+SMMTT_DIR = $(COMMON_DIR)/smmtt
+SMMTT_OBJS = $(SMMTT_DIR)/mpt_table.o
+COMMON_OBJS += $(SMMTT_OBJS)
+endif
+
 # N-Trace (Nexus-based Trace) support (conditional, set ENABLE_NTRACE=1 in extension Makefile)
 ifdef ENABLE_NTRACE
 NTRACE_DIR = $(COMMON_DIR)/trace
@@ -173,6 +180,9 @@ CFLAGS += -I$(COMMON_DIR) -I.
 CFLAGS += -include $(CONFIG_PLATFORM_HEADER)
 CFLAGS += -include $(CONFIG_MODEL_HEADER)
 CFLAGS += -include $(CONFIG_RVTEST_HEADER)
+# capabilities.h: normalize <EXT>_SUPPORTED -> <EXT>_AVAILABLE 1/0 flags.
+# Must be force-included AFTER rvtest_config.h (it reads those flags).
+CFLAGS += -include $(COMMON_DIR)/capabilities.h
 CFLAGS += -D LOG_LEVEL=$(LOG_LEVEL)
 CFLAGS += -D MEM_BASE=$(MEM_BASE)
 CFLAGS += -MMD -MP
@@ -207,6 +217,11 @@ ifdef ENABLE_IOPMP
 CFLAGS += -DENABLE_IOPMP -I$(IOPMP_DIR)
 endif
 
+# Conditional CFLAGS for SMMTT support
+ifdef ENABLE_SMMTT
+CFLAGS += -DENABLE_SMMTT -I$(SMMTT_DIR)
+endif
+
 # Conditional CFLAGS for N-Trace support
 ifdef ENABLE_NTRACE
 CFLAGS += -DENABLE_NTRACE -I$(NTRACE_DIR)
@@ -234,7 +249,13 @@ ASFLAGS += -I$(COMMON_DIR) -I.
 # platform_config.h is NOT included in ASFLAGS (C-only)
 ASFLAGS += -include $(CONFIG_MODEL_HEADER)
 ASFLAGS += -include $(CONFIG_RVTEST_HEADER)
+# capabilities.h: normalize <EXT>_SUPPORTED -> <EXT>_AVAILABLE 1/0 flags.
+# Must be force-included AFTER rvtest_config.h (it reads those flags).
+ASFLAGS += -include $(COMMON_DIR)/capabilities.h
 ASFLAGS += -D MEM_BASE=$(MEM_BASE)
+
+# Extra ASFLAGS from command line (e.g., make qemu EXTRA_ASFLAGS='-DRVMODEL_HALT_EBREAK')
+ASFLAGS += $(EXTRA_ASFLAGS)
 
 # Conditional ASFLAGS for PMP support
 ifdef ENABLE_PMP
@@ -254,6 +275,11 @@ endif
 # Conditional ASFLAGS for IOPMP support
 ifdef ENABLE_IOPMP
 ASFLAGS += -DENABLE_IOPMP -I$(IOPMP_DIR)
+endif
+
+# Conditional ASFLAGS for SMMTT support
+ifdef ENABLE_SMMTT
+ASFLAGS += -DENABLE_SMMTT -I$(SMMTT_DIR)
 endif
 
 # Conditional ASFLAGS for N-Trace support
@@ -339,6 +365,7 @@ $(1): $$($(call _varname,$(basename $(1)))_OBJS) $$(COMMON_OBJS) kernel.ld
 	$$(CC) $$(LDFLAGS) $$(LINK_T) -o $(1) $$($(call _varname,$(basename $(1)))_OBJS) $$(COMMON_OBJS)
 	$$(OBJDUMP) -S $(1) > $(basename $(1)).asm
 	$$(OBJDUMP) -t $(1) | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$$$/ d' > $(basename $(1)).sym
+	$$(OBJCOPY) -O binary $(1) $(basename $(1)).bin
 endef
 
 $(foreach target,$(TARGETS),$(eval $(call MULTI_TARGET_RULE,$(target))))
@@ -349,7 +376,7 @@ _ALL_EXT_OBJS = $(sort $(foreach t,$(TARGETS),$($(call _varname,$(basename $(t))
 clean:
 	rm -f $(_ALL_EXT_OBJS) $(_ALL_EXT_OBJS:.o=.d)
 	rm -f $(TARGETS)
-	rm -f $(foreach t,$(TARGETS),$(basename $(t)).asm $(basename $(t)).sym)
+	rm -f $(foreach t,$(TARGETS),$(basename $(t)).asm $(basename $(t)).sym $(basename $(t)).bin)
 	rm -f $(foreach t,$(TARGETS),$(basename $(t)).trace $(basename $(t)).rvvi)
 	find $(COMMON_DIR) \( -name "*.o" -o -name "*.d" \) -type f -delete
 
@@ -371,10 +398,11 @@ $(TARGET): $(ALL_OBJS) kernel.ld
 	$(CC) $(LDFLAGS) $(LINK_T) -o $(TARGET) $(ALL_OBJS)
 	$(OBJDUMP) -S $(TARGET) > $(TARGET_BASE).asm
 	$(OBJDUMP) -t $(TARGET) | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(TARGET_BASE).sym
+	$(OBJCOPY) -O binary $(TARGET) $(TARGET_BASE).bin
 
 clean:
 	rm -f $(ALL_OBJS) $(ALL_OBJS:.o=.d)
-	rm -f $(TARGET) $(TARGET_BASE).asm $(TARGET_BASE).sym
+	rm -f $(TARGET) $(TARGET_BASE).asm $(TARGET_BASE).sym $(TARGET_BASE).bin
 	rm -f $(TARGET_BASE).trace $(TARGET_BASE).rvvi
 	find $(COMMON_DIR) \( -name "*.o" -o -name "*.d" \) -type f -delete
 
@@ -452,8 +480,26 @@ endif
 # --- Spike ---
 SPIKE ?= spike
 
-SPIKE_ISA_EXT ?=
-SPIKE_ISA     ?= $(MARCH)$(SPIKE_ISA_EXT)
+# Unified Spike ISA string.
+#
+# Every suite launches Spike with this single fixed --isa string instead of
+# declaring its own per-suite extensions. It is the union of all extensions
+# the suites exercise, restricted to tokens this Spike build actually accepts.
+# Notes:
+#   - 'h' (Hypervisor) is always included so the Hypervisor/Sv*x4/Sh* suites
+#     work; the spike-rv64-max config declares H_SUPPORTED anyway.
+#   - Behavioural extensions that Spike does not accept as ISA tokens
+#     (smctr, ssctr, ssccptr, sscounterenw, sstvala, sstvecd, ssu64xl,
+#     svrsw60t59b) are intentionally omitted; those suites are gated at
+#     compile time via config *_SUPPORTED and detect behaviour at runtime.
+#   - Zcmp/Zcmt are architecturally incompatible with Zcd (implied by 'd'),
+#     so they cannot live in this string. Those two suites override SPIKE_ISA
+#     with their own no-'d' string before including this file (SPIKE_ISA uses
+#     ?= here so a suite-level override is preserved).
+#   - Smrnmi is deliberately excluded: enabling RNMI globally changes the
+#     reset/trap behaviour of unrelated suites (e.g. Zicsr hangs at reset).
+#     Only the Smrnmi suite overrides SPIKE_ISA to add _smrnmi.
+SPIKE_ISA ?= rv64imafdcbvh_zicbom_zicboz_zicbop_zicfilp_zicfiss_zicond_zicsr_zicntr_zicclsm_ziccif_ziccid_zifencei_zihintntl_zihintpause_zihpm_zimop_zcmop_zabha_zacas_zawrs_zalasr_zama16b_zfa_zfbfmin_zfh_zfhmin_zcb_zbc_zkn_zks_zkr_zkt_zvfbfmin_zvfbfwma_zvfh_zvbb_zvbc_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_sscofpmf_smcntrpmf_sstc_svinval_svade_svadu_svnapot_svpbmt_svvptc_smstateen_ssnpm_smmpm_smnpm_smdbltrp_ssdbltrp_smcsrind_sscsrind_smcdeleg_ssccfg_ssqosid_smepmp
 
 .PHONY: spike
 

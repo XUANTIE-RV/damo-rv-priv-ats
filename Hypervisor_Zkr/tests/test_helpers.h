@@ -43,22 +43,6 @@
 #define MSECCFG_SSEED       (1UL << 9)
 
 /* ===================================================================
- * Feature detection
- * =================================================================== */
-
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-#define REQUIRE_H_EXT() do { \
-    if (!HAS_H_EXT()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-/* ===================================================================
  * M-mode seed CSR access helpers
  *
  * IMPORTANT: seed CSR can ONLY be accessed with read-write CSR
@@ -103,23 +87,10 @@ static inline void mseccfg_clear_bits(uintptr_t bits)
  * Detection helpers
  * =================================================================== */
 
-/* Non-asserting Zkr detection: probe seed CSR in M-mode. */
-static inline bool check_zkr(void)
-{
-    clear_mdt();
-    trap_expect_begin();
-    uintptr_t v;
-    asm volatile("csrrw %0, " CSR_STR(CSR_SEED) ", x0" : "=r"(v) :: "memory");
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-    return !trapped;
-}
-
-#define REQUIRE_ZKR() do { \
-    if (!check_zkr()) { \
-        TEST_SKIP("Zkr not implemented (seed CSR traps in M-mode)"); \
-    } \
-} while (0)
+/* Zkr support is config-declaration driven: gate on the compile-time
+ * ZKR_AVAILABLE macro (normalized in common/capabilities.h from
+ * ZKR_SUPPORTED in rvtest_config.h). Do NOT trap-probe the seed CSR at
+ * runtime. Inline `if (!ZKR_AVAILABLE) TEST_SKIP(...)` in each case. */
 
 /* Check if mseccfg.SSEED is writable. */
 static inline bool sseed_writable(void)

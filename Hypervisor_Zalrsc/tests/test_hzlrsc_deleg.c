@@ -24,7 +24,7 @@ TEST_REGISTER(test_hzlrsc_05_hedeleg_bits);
 bool test_hzlrsc_05_hedeleg_bits(void)
 {
     TEST_BEGIN("HZLRSC-05: hedeleg 4/5/6/7/13/15 writable, 21/23 RO-0");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t vs_bits = (1UL << 4) | (1UL << 5) | (1UL << 6) | (1UL << 7) |
                         (1UL << 13) | (1UL << 15);
@@ -51,7 +51,8 @@ TEST_REGISTER(test_hzlrsc_06_lr_vs_load_fault);
 bool test_hzlrsc_06_lr_vs_load_fault(void)
 {
     TEST_BEGIN("HZLRSC-06: LR VS-stage R=0 -> load page-fault (13) to VS");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -99,7 +100,8 @@ TEST_REGISTER(test_hzlrsc_07_sc_vs_store_fault);
 bool test_hzlrsc_07_sc_vs_store_fault(void)
 {
     TEST_BEGIN("HZLRSC-07: SC VS-stage R=1/W=0 -> store page-fault (15) to VS");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -138,7 +140,8 @@ TEST_REGISTER(test_hzlrsc_08_hedeleg0_not_to_vs);
 bool test_hzlrsc_08_hedeleg0_not_to_vs(void)
 {
     TEST_BEGIN("HZLRSC-08: hedeleg=0 -> LR/SC faults stay at HS/M (13/15)");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

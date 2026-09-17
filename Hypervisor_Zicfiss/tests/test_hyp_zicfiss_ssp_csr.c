@@ -29,7 +29,8 @@
 TEST_REGISTER(test_hcfi_ss_15);
 bool test_hcfi_ss_15(void) {
     TEST_BEGIN("HCFI-SS-15: VS + henvcfg.SSE=0, ssp access -> virtual-inst");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -46,7 +47,8 @@ bool test_hcfi_ss_15(void) {
 TEST_REGISTER(test_hcfi_ss_16);
 bool test_hcfi_ss_16(void) {
     TEST_BEGIN("HCFI-SS-16: VS + all SSE=1, ssp access normal");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -66,7 +68,8 @@ bool test_hcfi_ss_16(void) {
 TEST_REGISTER(test_hcfi_ss_17);
 bool test_hcfi_ss_17(void) {
     TEST_BEGIN("HCFI-SS-17: VS + menvcfg.SSE=0, ssp access -> illegal-inst");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -83,7 +86,8 @@ bool test_hcfi_ss_17(void) {
 TEST_REGISTER(test_hcfi_ss_18);
 bool test_hcfi_ss_18(void) {
     TEST_BEGIN("HCFI-SS-18: VU + henvcfg.SSE=0, ssp access -> virtual-inst");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -101,7 +105,8 @@ bool test_hcfi_ss_18(void) {
 TEST_REGISTER(test_hcfi_ss_19);
 bool test_hcfi_ss_19(void) {
     TEST_BEGIN("HCFI-SS-19: VU + senvcfg.SSE=0, ssp access -> virtual-inst");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -120,7 +125,8 @@ bool test_hcfi_ss_19(void) {
 TEST_REGISTER(test_hcfi_ss_20);
 bool test_hcfi_ss_20(void) {
     TEST_BEGIN("HCFI-SS-20: VU + all SSE=1, ssp access normal");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -142,7 +148,8 @@ bool test_hcfi_ss_20(void) {
 TEST_REGISTER(test_hcfi_ss_21);
 bool test_hcfi_ss_21(void) {
     TEST_BEGIN("HCFI-SS-21: VU + menvcfg.SSE=0, ssp access -> illegal-inst");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -159,7 +166,8 @@ bool test_hcfi_ss_21(void) {
 TEST_REGISTER(test_hcfi_ss_22);
 bool test_hcfi_ss_22(void) {
     TEST_BEGIN("HCFI-SS-22: VS-mode write ssp, HS-mode reads same value");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -185,7 +193,8 @@ bool test_hcfi_ss_22(void) {
 TEST_REGISTER(test_hcfi_ss_23);
 bool test_hcfi_ss_23(void) {
     TEST_BEGIN("HCFI-SS-23: VS-mode ssp misaligned triggers access-fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();

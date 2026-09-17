@@ -77,21 +77,6 @@ static inline void henvcfg_set_cbze(unsigned en)
 }
 
 /* ===================================================================
- * H extension detection
- * =================================================================== */
-static bool check_h_extension(void)
-{
-    uint64_t misa_val = CSRR(misa);
-    return (misa_val & (1UL << ('H' - 'A'))) != 0;
-}
-
-#define H_REQUIRED_OR_SKIP() do { \
-    if (!check_h_extension()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-/* ===================================================================
  * Prefetch instruction trampolines for VS/VU-mode
  *
  * These functions run inside VS/VU-mode. They execute a single

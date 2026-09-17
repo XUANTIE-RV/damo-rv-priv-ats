@@ -30,8 +30,8 @@ TEST_REGISTER(test_hcfi_lp_25);
 bool test_hcfi_lp_25(void) {
     TEST_BEGIN("HCFI-LP-25: VS-mode legal indirect call to LPAD target");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -65,8 +65,8 @@ TEST_REGISTER(test_hcfi_lp_26);
 bool test_hcfi_lp_26(void) {
     TEST_BEGIN("HCFI-LP-26: VS-mode illegal indirect call triggers LP Fault");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -102,8 +102,8 @@ TEST_REGISTER(test_hcfi_lp_27);
 bool test_hcfi_lp_27(void) {
     TEST_BEGIN("HCFI-LP-27: VS-mode legal indirect jump to LPAD target");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -137,8 +137,8 @@ TEST_REGISTER(test_hcfi_lp_28);
 bool test_hcfi_lp_28(void) {
     TEST_BEGIN("HCFI-LP-28: VS-mode illegal indirect jump triggers LP Fault");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -178,8 +178,8 @@ TEST_REGISTER(test_hcfi_lp_29);
 bool test_hcfi_lp_29(void) {
     TEST_BEGIN("HCFI-LP-29: LP Fault vs instruction access-fault priority");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -222,8 +222,8 @@ TEST_REGISTER(test_hcfi_lp_30);
 bool test_hcfi_lp_30(void) {
     TEST_BEGIN("HCFI-LP-30: LP Fault vs illegal-instruction priority");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -273,8 +273,8 @@ TEST_REGISTER(test_hcfi_lp_31);
 bool test_hcfi_lp_31(void) {
     TEST_BEGIN("HCFI-LP-31: interrupt during indirect jump, ELP saved");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     /* KNOWN GAP (proxy verification): injecting an asynchronous
      * interrupt into the narrow JALR->LPAD decode window is
@@ -339,8 +339,8 @@ TEST_REGISTER(test_hcfi_lp_32);
 bool test_hcfi_lp_32(void) {
     TEST_BEGIN("HCFI-LP-32: VS-mode C.JALR illegal jump triggers LP Fault");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -380,8 +380,8 @@ TEST_REGISTER(test_hcfi_lp_33);
 bool test_hcfi_lp_33(void) {
     TEST_BEGIN("HCFI-LP-33: VS-mode C.JR illegal jump triggers LP Fault");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();

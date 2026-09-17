@@ -24,7 +24,7 @@
 /* Preconditions: H + Smcdeleg/Ssccfg + Sscofpmf + Smaia/Ssaia */
 static bool lcofi_preconditions(const char **skip_reason)
 {
-    if (!HAS_H_EXT()) {
+    if (!H_AVAILABLE) {
         *skip_reason = "H extension not supported";
         return false;
     }
@@ -32,12 +32,12 @@ static bool lcofi_preconditions(const char **skip_reason)
         *skip_reason = "menvcfg.CDE not writable (Smcdeleg/Ssccfg unavailable)";
         return false;
     }
-    if (!platform_has_sscofpmf()) {
+    if (!SSCOFPMF_AVAILABLE) {
         *skip_reason = "Sscofpmf not supported";
         return false;
     }
-    if (!platform_has_hvien()) {
-        *skip_reason = "Smaia/Ssaia not supported (hvien inaccessible)";
+    if (!SMAIA_AVAILABLE) {
+        *skip_reason = "Smaia/Ssaia not supported";
         return false;
     }
     return true;

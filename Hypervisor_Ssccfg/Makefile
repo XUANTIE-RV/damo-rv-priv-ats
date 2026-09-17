@@ -20,7 +20,6 @@ QEMU_CPU   = max
 # Spike: request RV64 + H extension + indirect CSR access + counter
 # delegation + Sscofpmf (needed by the scountovf virtualization
 # sub-group).
-SPIKE_ISA_EXT = _sscsrind_ssccfg_sscofpmf
 
 EXT_OBJS = \
     main.o \

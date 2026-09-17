@@ -51,73 +51,19 @@
 #define HZ_GMODE    SUITE_HGATP_MODE
 
 /* ===================================================================
- * Feature detection
+ * Feature availability
+ *
+ * Zabha support is config-DECLARATION driven: every case gates with
+ *   if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+ *   if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
+ * using the compile-time ZABHA_AVAILABLE macro normalized in
+ * common/capabilities.h from ZABHA_SUPPORTED. The amocas.b/h sub-group
+ * (HZABHA-32~36) additionally gates on ZACAS_AVAILABLE (Zacas is a
+ * config declaration too). No wrapper macro is provided. Only the first
+ * case (HZABHA-01) additionally probes the DUT (trap-armed amoadd.b in
+ * M-mode) to verify alignment with the config declaration; no other
+ * case probes.
  * =================================================================== */
-
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-#define REQUIRE_H_EXT() do { \
-    if (!HAS_H_EXT()) { TEST_SKIP("H extension not available"); } \
-} while (0)
-
-/* Zabha detection: config macro plus a trap-armed M-mode amoadd.b probe. */
-static int hz_zabha_cached = -1;
-static volatile uint64_t hz_zabha_probe_slot;
-
-static inline bool hz_zabha_present(void)
-{
-    if (hz_zabha_cached < 0)
-    {
-#ifndef ZABHA_SUPPORTED
-        hz_zabha_cached = 0;
-#else
-        uintptr_t addr = (uintptr_t)&hz_zabha_probe_slot;
-        uintptr_t r;
-        M_TRAP_EXPECT_BEGIN();
-        asm volatile(
-            ".option push\n\t.option norvc\n\t"
-            "amoadd.b %0, %2, (%1)\n\t"
-            ".option pop\n\t"
-            : "=r"(r) : "r"(addr), "r"(1UL) : "memory");
-        bool trapped = trap_was_triggered();
-        uintptr_t cause = trapped ? trap_get_cause() : 0;
-        trap_expect_end();
-        hz_zabha_cached =
-            (trapped && cause == CAUSE_ILLEGAL_INST) ? 0 : 1;
-#endif
-    }
-    return hz_zabha_cached == 1;
-}
-
-#define REQUIRE_ZABHA() do { \
-    if (!hz_zabha_present()) { \
-        TEST_SKIP("Zabha not implemented (amoadd.b probe raised " \
-                  "illegal-instruction, or ZABHA_SUPPORTED undefined)"); \
-    } \
-} while (0)
-
-#define REQUIRE_HZABHA() do { REQUIRE_H_EXT(); REQUIRE_ZABHA(); } while (0)
-
-/* Zacas gate for the amocas.b/h sub-group (HZABHA-32~36). */
-static inline bool hz_zacas_present_bh(void)
-{
-#ifdef ZACAS_SUPPORTED
-    return true;
-#else
-    return false;
-#endif
-}
-
-#define REQUIRE_HZABHA_CAS() do { \
-    REQUIRE_ZABHA(); \
-    if (!hz_zacas_present_bh()) { \
-        TEST_SKIP("Zacas not implemented (amocas.b/h sub-group skipped)"); \
-    } \
-} while (0)
 
 #define HZABHA_SMP_SKIP_REASON \
     "multi-hart: common/entry.S parks every hart except hart 0, so no " \

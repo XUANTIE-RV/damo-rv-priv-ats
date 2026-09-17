@@ -18,10 +18,8 @@ ENABLE_PM  = 1
 QEMU_CPU   = max
 
 # Spike: request H + pointer-masking extensions + Smstateen.
-SPIKE_ISA_EXT = _ssnpm_smnpm_smmpm_smstateen
 
 # Spike: request H + pointer-masking extensions + Smstateen.
-SPIKE_ISA_EXT = _ssnpm_smnpm_smmpm_smstateen
 
 EXT_OBJS = \
     main.o \

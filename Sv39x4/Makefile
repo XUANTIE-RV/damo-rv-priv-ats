@@ -17,7 +17,6 @@ ENABLE_TWO_STAGE = 1
 QEMU_CPU   = max
 
 # Spike: explicitly request RV64 + H extension support.
-SPIKE_ISA = rv64imach_zicsr_zifencei
 
 EXT_OBJS = \
     main.o \

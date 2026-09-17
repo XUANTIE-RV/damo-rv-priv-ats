@@ -41,7 +41,7 @@ TEST_REGISTER(test_hcross_smsta_13);
 bool test_hcross_smsta_13(void) {
     TEST_BEGIN("HCROSS-SMSTA-13: VS-mode access -> virtual-instruction");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
 #ifdef ENABLE_HYP
     uintptr_t orig = mstateen0_read();
@@ -84,7 +84,7 @@ TEST_REGISTER(test_hcross_smsta_14);
 bool test_hcross_smsta_14(void) {
     TEST_BEGIN("HCROSS-SMSTA-14: VU-mode access -> virtual-instruction");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
 #ifdef ENABLE_HYP
     uintptr_t orig = mstateen0_read();

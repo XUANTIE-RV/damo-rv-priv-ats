@@ -34,7 +34,8 @@ TEST_REGISTER(test_hzca_21_mtinst_load);
 bool test_hzca_21_mtinst_load(void)
 {
     TEST_BEGIN("HZCA-21: c.lw fault into M-mode -> mtinst 0/transformed");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -61,7 +62,8 @@ TEST_REGISTER(test_hzca_22_mtinst_store);
 bool test_hzca_22_mtinst_store(void)
 {
     TEST_BEGIN("HZCA-22: c.sw fault into M-mode -> mtinst 0/transformed");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -92,7 +94,8 @@ TEST_REGISTER(test_hzca_23_mtinst_htinst_consistent);
 bool test_hzca_23_mtinst_htinst_consistent(void)
 {
     TEST_BEGIN("HZCA-23: mtinst and htinst transformed values consistent");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -139,7 +142,8 @@ TEST_REGISTER(test_hzca_24_mtinst_interrupt_zero);
 bool test_hzca_24_mtinst_interrupt_zero(void)
 {
     TEST_BEGIN("HZCA-24: mtinst == 0 on M-mode interrupt (V=1 context)");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

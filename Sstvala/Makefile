@@ -18,7 +18,6 @@ ENABLE_VM = 1
 ENABLE_PMP = 1
 
 # Spike ISA extensions
-SPIKE_ISA_EXT = _sstvala
 
 EXT_OBJS = \
     main.o \

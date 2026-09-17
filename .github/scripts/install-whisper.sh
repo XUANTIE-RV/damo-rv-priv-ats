@@ -10,7 +10,7 @@ INSTALL_DIR="${1:?Usage: install-whisper.sh <install-dir>}"
 # Pinned to the latest main-branch commit (2026-08-11). Tag 1.861 is not used
 # because it contains known bugs fixed afterwards (e.g. menvcfg/henvcfg.DTE
 # wrongly exposed when Ssdbltrp is disabled).
-WHISPER_COMMIT="d5c62d9d71f8ffb8e9a6bf8aa230be0ad170d183"
+WHISPER_COMMIT="90cf05c42c3432f8d10d7a8cd262337a0851f968"
 
 # ---- Build dependencies ------------------------------------------------------
 # g++ >= 11 (whisper builds with -std=c++20), Boost headers + program_options,

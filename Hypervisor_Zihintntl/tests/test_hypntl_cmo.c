@@ -47,8 +47,8 @@ TEST_REGISTER(test_ntl_hyp_05a);
 bool test_ntl_hyp_05a(void)
 {
     TEST_BEGIN("NTL-HYP-05a: ntl + cbo.inval virtual-instruction report");
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     /* henvcfg.CBIE=0 and CBCFE=0 (hyp_reset_state wrote henvcfg=0);
      * menvcfg.CBIE enables the HS-level path per the cmo.adoc
@@ -96,8 +96,8 @@ TEST_REGISTER(test_ntl_hyp_05b);
 bool test_ntl_hyp_05b(void)
 {
     TEST_BEGIN("NTL-HYP-05b: ntl + cbo.clean virtual-instruction report");
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     /* norm:cbo-clean_cbo-flush pseudocode: the illegal-instruction
      * check on menvcfg.CBCFE precedes the virtual-instruction check

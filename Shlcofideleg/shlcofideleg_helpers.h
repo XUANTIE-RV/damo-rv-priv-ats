@@ -9,8 +9,10 @@
 /* ===================================================================
  * Shlcofideleg test helpers
  *
- * Shared constants, forward declarations, VS-mode trampolines, and
- * platform capability checks for the Shlcofideleg compliance tests.
+ * Shared constants, forward declarations, and VS-mode trampolines for
+ * the Shlcofideleg compliance tests. Extension availability is gated
+ * inline via the compile-time SHLCOFIDELEG_AVAILABLE macro from
+ * capabilities.h.
  * =================================================================== */
 
 #include "test_framework.h"
@@ -30,17 +32,6 @@ extern void csr_write(uint16_t csr, uintptr_t val);
  * LCOFI bit constant
  * =================================================================== */
 #define LCOFI_BIT  (1UL << IRQ_LCOFI)   /* bit 13 */
-
-/* ===================================================================
- * Platform capability check
- *
- * Returns true if:
- *   1. Sscofpmf is implemented (mip/mie bit 13 is accessible)
- *   2. Shlcofideleg is implemented (hideleg[13] is writable)
- *
- * When returning false, the caller should TEST_SKIP.
- * =================================================================== */
-bool shlcofideleg_check_available(void);
 
 /* ===================================================================
  * VS-mode trampoline functions

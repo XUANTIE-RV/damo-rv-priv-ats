@@ -44,12 +44,12 @@ TEST_REGISTER(test_srmcfg_19);
 bool test_srmcfg_19(void) {
     TEST_BEGIN("SRMCFG-19: VS-mode read srmcfg -> virtual-instruction");
 
-    if (!has_ssqosid()) TEST_SKIP("Ssqosid not implemented");
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!SSQOSID_AVAILABLE) TEST_SKIP("Ssqosid not implemented");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
 #ifdef ENABLE_HYP
     /* Ensure mstateen0[55]=1 if Smstateen is present */
-    if (has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_set(MSTATEEN0_BIT55);
     }
 
@@ -68,12 +68,12 @@ TEST_REGISTER(test_srmcfg_20);
 bool test_srmcfg_20(void) {
     TEST_BEGIN("SRMCFG-20: VS-mode write srmcfg -> virtual-instruction");
 
-    if (!has_ssqosid()) TEST_SKIP("Ssqosid not implemented");
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!SSQOSID_AVAILABLE) TEST_SKIP("Ssqosid not implemented");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
 #ifdef ENABLE_HYP
     /* Ensure mstateen0[55]=1 if Smstateen is present */
-    if (has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_set(MSTATEEN0_BIT55);
     }
 
@@ -92,12 +92,12 @@ TEST_REGISTER(test_srmcfg_21);
 bool test_srmcfg_21(void) {
     TEST_BEGIN("SRMCFG-21: VU-mode access srmcfg -> virtual-instruction");
 
-    if (!has_ssqosid()) TEST_SKIP("Ssqosid not implemented");
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!SSQOSID_AVAILABLE) TEST_SKIP("Ssqosid not implemented");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
 #ifdef ENABLE_HYP
     /* Ensure mstateen0[55]=1 if Smstateen is present */
-    if (has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_set(MSTATEEN0_BIT55);
     }
 
@@ -130,12 +130,12 @@ TEST_REGISTER(test_srmcfg_22);
 bool test_srmcfg_22(void) {
     TEST_BEGIN("SRMCFG-22: V=0 HS-mode normal access srmcfg");
 
-    if (!has_ssqosid()) TEST_SKIP("Ssqosid not implemented");
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!SSQOSID_AVAILABLE) TEST_SKIP("Ssqosid not implemented");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
 #ifdef ENABLE_HYP
     /* Ensure mstateen0[55]=1 if Smstateen is present */
-    if (has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_set(MSTATEEN0_BIT55);
     }
 
@@ -158,9 +158,9 @@ TEST_REGISTER(test_srmcfg_23);
 bool test_srmcfg_23(void) {
     TEST_BEGIN("SRMCFG-23: mstateen0[55]=0 VS-mode -> illegal-inst");
 
-    if (!has_ssqosid()) TEST_SKIP("Ssqosid not implemented");
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
-    if (!has_smstateen()) TEST_SKIP("Smstateen not implemented");
+    if (!SSQOSID_AVAILABLE) TEST_SKIP("Ssqosid not implemented");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not implemented");
 
 #ifdef ENABLE_HYP
     uintptr_t orig = mstateen0_read();
@@ -194,12 +194,12 @@ TEST_REGISTER(test_srmcfg_24);
 bool test_srmcfg_24(void) {
     TEST_BEGIN("SRMCFG-24: virtual-inst trap stval/htinst values");
 
-    if (!has_ssqosid()) TEST_SKIP("Ssqosid not implemented");
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!SSQOSID_AVAILABLE) TEST_SKIP("Ssqosid not implemented");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
 #ifdef ENABLE_HYP
     /* Ensure mstateen0[55]=1 if Smstateen is present */
-    if (has_smstateen()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen0_set(MSTATEEN0_BIT55);
     }
 

@@ -34,7 +34,8 @@ TEST_REGISTER(test_hzamo_15_amo_htinst_transformed);
 bool test_hzamo_15_amo_htinst_transformed(void)
 {
     TEST_BEGIN("HZAMO-15: AMO explicit G-stage fault htinst = 0/transformed");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -94,7 +95,8 @@ TEST_REGISTER(test_hzamo_16_htinst_aqrl);
 bool test_hzamo_16_htinst_aqrl(void)
 {
     TEST_BEGIN("HZAMO-16: htinst preserves AMO aq/rl bits");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -113,7 +115,8 @@ TEST_REGISTER(test_hzamo_17_addr_offset_zero);
 bool test_hzamo_17_addr_offset_zero(void)
 {
     TEST_BEGIN("HZAMO-17: AMO htinst Addr. Offset == 0");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -146,7 +149,8 @@ TEST_REGISTER(test_hzamo_18_implicit_walk_cause23);
 bool test_hzamo_18_implicit_walk_cause23(void)
 {
     TEST_BEGIN("HZAMO-18: implicit VS-walk AMO fault -> cause 23 + read pseudo");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -182,7 +186,8 @@ TEST_REGISTER(test_hzamo_19_adue_write_pseudo);
 bool test_hzamo_19_adue_write_pseudo(void)
 {
     TEST_BEGIN("HZAMO-19: ADUE=1 AMO D-update fault -> write pseudoinst");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -243,7 +248,8 @@ TEST_REGISTER(test_hzamo_20_explicit_vs_implicit);
 bool test_hzamo_20_explicit_vs_implicit(void)
 {
     TEST_BEGIN("HZAMO-20: htinst disambiguates explicit vs implicit (23)");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

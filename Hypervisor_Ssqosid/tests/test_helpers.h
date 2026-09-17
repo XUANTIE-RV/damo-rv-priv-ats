@@ -71,35 +71,13 @@ static inline void mstateen0_clear(uintptr_t bits) {
 }
 
 /* ===================================================================
- * Feature detection helpers
+ * Smstateen / Ssqosid availability
+ *
+ * Both are config-declaration driven: gate on the compile-time
+ * SMSTATEEN_AVAILABLE / SSQOSID_AVAILABLE macros (normalized in
+ * common/capabilities.h from *_SUPPORTED in rvtest_config.h). Do NOT
+ * trap-probe mstateen0 / srmcfg at runtime.
  * =================================================================== */
-
-/* Check if H extension is available via misa */
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-/* ===================================================================
- * Smstateen detection
- * =================================================================== */
-static inline bool has_smstateen(void) {
-    M_TRAP_EXPECT_BEGIN();
-    uintptr_t v = mstateen0_read();
-    (void)v;
-    return !trap_was_triggered();
-}
-
-/* ===================================================================
- * Ssqosid detection
- * =================================================================== */
-static inline bool has_ssqosid(void) {
-    M_TRAP_EXPECT_BEGIN();
-    uintptr_t v = srmcfg_read();
-    (void)v;
-    return !trap_was_triggered();
-}
 
 /* ===================================================================
  * Helper: test that S-mode CSR access succeeds (no trap)

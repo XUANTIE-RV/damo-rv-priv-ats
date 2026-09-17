@@ -22,9 +22,7 @@ bool test_shlcofideleg_hideleg_bit13_writable(void) {
     TEST_BEGIN("LCFIDLG-WR: hideleg[13] writable");
 
     /* Skip if Shlcofideleg is not implemented. */
-    if (!shlcofideleg_check_available()) {
-        TEST_SKIP("Shlcofideleg not implemented");
-    }
+    if (!SHLCOFIDELEG_AVAILABLE) TEST_SKIP("Shlcofideleg not implemented");
 
     uintptr_t saved = hideleg_read();
 

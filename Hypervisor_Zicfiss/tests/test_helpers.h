@@ -117,63 +117,6 @@ static inline void ssp_write(uintptr_t val) {
     asm volatile("csrw " CSR_STR(CSR_SSP) ", %0" :: "r"(val) : "memory");
 }
 
-/* ===================================================================
- * H extension detection
- * =================================================================== */
-static bool check_h_extension(void) {
-    uint64_t misa = CSRR(misa);
-    return (misa & (1UL << ('H' - 'A'))) != 0;
-}
-
-#define H_REQUIRED_OR_SKIP() do { \
-    if (!check_h_extension()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-/* ===================================================================
- * Zicfiss detection (via henvcfg.SSE writability)
- * =================================================================== */
-static bool zicfiss_detected = false;
-static bool zicfiss_detection_done = false;
-
-static bool detect_zicfiss(void) {
-    if (zicfiss_detection_done)
-        return zicfiss_detected;
-
-    /* Try setting henvcfg.SSE */
-    uintptr_t orig = henvcfg_read();
-    henvcfg_write(orig | HENVCFG_SSE);
-    uintptr_t val = henvcfg_read();
-    if (val & HENVCFG_SSE) {
-        henvcfg_write(orig);
-        zicfiss_detected = true;
-        zicfiss_detection_done = true;
-        return true;
-    }
-    henvcfg_write(orig);
-
-    /* Also try menvcfg.SSE as fallback */
-    orig = menvcfg_read();
-    menvcfg_set(MENVCFG_SSE);
-    val = menvcfg_read();
-    if (val & MENVCFG_SSE) {
-        menvcfg_clear(MENVCFG_SSE);
-        zicfiss_detected = true;
-        zicfiss_detection_done = true;
-        return true;
-    }
-
-    zicfiss_detected = false;
-    zicfiss_detection_done = true;
-    return false;
-}
-
-#define ZICFISS_REQUIRED_OR_SKIP() do { \
-    if (!detect_zicfiss()) { \
-        TEST_SKIP("Zicfiss not implemented"); \
-    } \
-} while (0)
 
 /* ===================================================================
  * Smstateen gate setup
@@ -190,20 +133,15 @@ static bool detect_zicfiss(void) {
  * Smstateen gating behavior itself is covered by the Smstateen test
  * suites; this suite opens the gates so the henvcfg/senvcfg-based
  * Zicfiss tests are not blocked by them. Safe to call when Smstateen
- * is not implemented (detected via an armed CSR probe).
+ * is not implemented (gated by the compile-time SMSTATEEN_AVAILABLE).
  * =================================================================== */
 void smstateen_open_envcfg_gates(void)
 {
-    /* Armed probe: accessing mstateen0 raises illegal-instruction
-     * when Smstateen is not implemented. */
-    trap_expect_begin();
-    uintptr_t v = mstateen_read(0);
-    trap_expect_end();
-    if (trap_was_triggered()) {
-        (void)v;
+    /* Smstateen support is config-declaration driven: gate on the
+     * compile-time SMSTATEEN_AVAILABLE macro (common/capabilities.h).
+     * Do NOT trap-probe mstateen0 at runtime. */
+    if (!SMSTATEEN_AVAILABLE)
         return;
-    }
-    (void)v;
 
     /* Set SE0 first so hstateen0 becomes accessible from HS-mode,
      * then open the ENVCFG gates at both levels. */

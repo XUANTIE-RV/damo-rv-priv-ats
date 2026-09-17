@@ -97,7 +97,7 @@ TEST_REGISTER(test_hzlasr_05_hedeleg_bits);
 bool test_hzlasr_05_hedeleg_bits(void)
 {
     TEST_BEGIN("HZLASR-05: hedeleg 4/5/13/6/7/15 writable, 21/23 RO-0");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t load_bits  = (1UL << 4) | (1UL << 5) | (1UL << 13);
     uintptr_t store_bits = (1UL << 6) | (1UL << 7) | (1UL << 15);
@@ -127,7 +127,8 @@ TEST_REGISTER(test_hzlasr_06_load_acq_ro_page_executes);
 bool test_hzlasr_06_load_acq_ro_page_executes(void)
 {
     TEST_BEGIN("HZLASR-06: load-acquire to R=1/W=0 VS page executes (read ok)");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -163,7 +164,8 @@ TEST_REGISTER(test_hzlasr_07_load_acq_r0_record);
 bool test_hzlasr_07_load_acq_r0_record(void)
 {
     TEST_BEGIN("HZLASR-07: load-acquire to R=0 VS page -> fault (record cause)");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -186,7 +188,8 @@ TEST_REGISTER(test_hzlasr_08_store_rel_w0_store_fault);
 bool test_hzlasr_08_store_rel_w0_store_fault(void)
 {
     TEST_BEGIN("HZLASR-08: store-release to R=1/W=0 -> store pf (15) to VS");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -213,7 +216,8 @@ TEST_REGISTER(test_hzlasr_09_store_rel_unreadable_store_class);
 bool test_hzlasr_09_store_rel_unreadable_store_class(void)
 {
     TEST_BEGIN("HZLASR-09: store-release to R=0 -> store pf (15), not load");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -234,7 +238,8 @@ TEST_REGISTER(test_hzlasr_10_load_vs_store_permission);
 bool test_hzlasr_10_load_vs_store_permission(void)
 {
     TEST_BEGIN("HZLASR-10: same R=1/W=0 page: lw.aq ok, sw.rl -> store pf (15)");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -269,7 +274,8 @@ TEST_REGISTER(test_hzlasr_11_hedeleg0_to_hs);
 bool test_hzlasr_11_hedeleg0_to_hs(void)
 {
     TEST_BEGIN("HZLASR-11: hedeleg=0 -> load/store-release VS fault at HS/M");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

@@ -90,20 +90,6 @@
 #define HZ_GMODE    SUITE_HGATP_MODE
 
 /* ===================================================================
- * Feature detection
- * =================================================================== */
-
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-#define REQUIRE_H_EXT() do { \
-    if (!HAS_H_EXT()) { TEST_SKIP("H extension not available"); } \
-} while (0)
-
-/* ===================================================================
  * Zalasr instruction field constants (string literals for .insn r).
  * =================================================================== */
 
@@ -214,68 +200,20 @@ static inline void hzlasr_store_le64(uintptr_t addr, uint64_t val)
 #endif
 
 /* ===================================================================
- * Zalasr availability detection.
+ * Zalasr availability.
  *
- * Gated statically on the platform-config ZALASR_SUPPORTED macro and
- * confirmed at runtime by executing one valid load-acquire and one valid
- * store-release trap-armed in M-mode. Because the simulators differ in
- * how they treat an unimplemented instruction, the reserved-encoding case
- * (HZLASR-34) only asserts cause=2 when the matching valid form executed,
- * so a platform without Zalasr cannot pass "for the wrong reason".
- *
- * Zalasr may be implemented independently of Zaamo/Zalrsc/Zabha
- * (norm:zalasr_builds_on_amo), so detection does NOT gate on any A-ext
- * macro (unlike Groups 2/3/4).
+ * Zalasr support is config-DECLARATION driven: every case gates with
+ *   if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+ *   if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
+ * using the compile-time ZALASR_AVAILABLE macro normalized in
+ * common/capabilities.h from ZALASR_SUPPORTED. Zalasr may be
+ * implemented independently of Zaamo/Zalrsc/Zabha
+ * (norm:zalasr_builds_on_amo), so the gate does NOT depend on any
+ * A-extension macro (unlike Groups 2/3/4). No wrapper macro is
+ * provided. Only the first case (HZLASR-01) additionally probes the
+ * DUT (trap-armed load-acquire in M-mode) to verify alignment with the
+ * config declaration; no other case probes.
  * =================================================================== */
-static int  hz_zalasr_cached = -1;
-static bool hz_zalasr_load_ok;
-static bool hz_zalasr_store_ok;
-static volatile uint64_t hz_zalasr_probe_slot;
-
-static inline bool hz_zalasr_present(void)
-{
-    if (hz_zalasr_cached < 0)
-    {
-#ifndef ZALASR_SUPPORTED
-        hz_zalasr_load_ok  = false;
-        hz_zalasr_store_ok = false;
-        hz_zalasr_cached   = 0;
-#else
-        uintptr_t addr = (uintptr_t)&hz_zalasr_probe_slot;
-        uintptr_t r = 0;
-
-        hzlasr_store_le32(addr, 0x00005678u);
-
-        M_TRAP_EXPECT_BEGIN();
-        ZALASR_LOAD(ZALASR_F3_W, ZALASR_F7_LD_AQ, r, addr);
-        bool ld_trap   = trap_was_triggered();
-        uintptr_t ld_c = ld_trap ? trap_get_cause() : 0;
-        trap_expect_end();
-        (void)r;
-        hz_zalasr_load_ok = !(ld_trap && ld_c == CAUSE_ILLEGAL_INST);
-
-        M_TRAP_EXPECT_BEGIN();
-        ZALASR_STORE(ZALASR_F3_W, ZALASR_F7_ST_RL, addr, (uintptr_t)0x9abc);
-        bool st_trap   = trap_was_triggered();
-        uintptr_t st_c = st_trap ? trap_get_cause() : 0;
-        trap_expect_end();
-        hz_zalasr_store_ok = !(st_trap && st_c == CAUSE_ILLEGAL_INST);
-
-        hz_zalasr_cached =
-            (hz_zalasr_load_ok && hz_zalasr_store_ok) ? 1 : 0;
-#endif
-    }
-    return hz_zalasr_cached == 1;
-}
-
-#define REQUIRE_ZALASR() do { \
-    if (!hz_zalasr_present()) { \
-        TEST_SKIP("Zalasr not implemented (load-acquire/store-release probe " \
-                  "raised illegal-instruction, or ZALASR_SUPPORTED undefined)"); \
-    } \
-} while (0)
-
-#define REQUIRE_HZLASR() do { REQUIRE_H_EXT(); REQUIRE_ZALASR(); } while (0)
 
 #define HZLASR_SMP_SKIP_REASON \
     "multi-hart: common/entry.S parks every hart except hart 0, so no " \

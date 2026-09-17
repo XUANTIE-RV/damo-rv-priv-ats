@@ -34,8 +34,8 @@ TEST_REGISTER(test_hcross_svinval_01);
 bool test_hcross_svinval_01(void) {
     TEST_BEGIN("HCROSS-SINVAL-01: HINVAL.VVMA basic functionality");
 
-    H_REQUIRED_OR_SKIP();
-    SVINVAL_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVINVAL_AVAILABLE) TEST_SKIP("Platform does not implement Svinval");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -75,8 +75,8 @@ TEST_REGISTER(test_hcross_svinval_02);
 bool test_hcross_svinval_02(void) {
     TEST_BEGIN("HCROSS-SINVAL-02: HINVAL.GVMA basic functionality");
 
-    H_REQUIRED_OR_SKIP();
-    SVINVAL_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVINVAL_AVAILABLE) TEST_SKIP("Platform does not implement Svinval");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -117,8 +117,8 @@ TEST_REGISTER(test_hcross_svinval_03);
 bool test_hcross_svinval_03(void) {
     TEST_BEGIN("HCROSS-SINVAL-03: HINVAL.VVMA + SFENCE combo");
 
-    H_REQUIRED_OR_SKIP();
-    SVINVAL_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVINVAL_AVAILABLE) TEST_SKIP("Platform does not implement Svinval");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -159,8 +159,8 @@ TEST_REGISTER(test_hcross_svinval_04);
 bool test_hcross_svinval_04(void) {
     TEST_BEGIN("HCROSS-SINVAL-04: HINVAL.GVMA + SFENCE combo");
 
-    H_REQUIRED_OR_SKIP();
-    SVINVAL_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVINVAL_AVAILABLE) TEST_SKIP("Platform does not implement Svinval");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -203,8 +203,8 @@ TEST_REGISTER(test_hcross_svinval_05);
 bool test_hcross_svinval_05(void) {
     TEST_BEGIN("HCROSS-SINVAL-05: HINVAL.GVMA with VMID=5");
 
-    H_REQUIRED_OR_SKIP();
-    SVINVAL_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVINVAL_AVAILABLE) TEST_SKIP("Platform does not implement Svinval");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -244,8 +244,8 @@ TEST_REGISTER(test_hcross_svinval_06);
 bool test_hcross_svinval_06(void) {
     TEST_BEGIN("HCROSS-SINVAL-06: HINVAL.GVMA with VMID=0");
 
-    H_REQUIRED_OR_SKIP();
-    SVINVAL_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVINVAL_AVAILABLE) TEST_SKIP("Platform does not implement Svinval");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -289,8 +289,8 @@ TEST_REGISTER(test_hcross_svinval_07);
 bool test_hcross_svinval_07(void) {
     TEST_BEGIN("HCROSS-SINVAL-07: VS-mode HINVAL.VVMA -> virtual-inst");
 
-    H_REQUIRED_OR_SKIP();
-    SVINVAL_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVINVAL_AVAILABLE) TEST_SKIP("Platform does not implement Svinval");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -320,8 +320,8 @@ TEST_REGISTER(test_hcross_svinval_08);
 bool test_hcross_svinval_08(void) {
     TEST_BEGIN("HCROSS-SINVAL-08: VS-mode HINVAL.GVMA -> virtual-inst");
 
-    H_REQUIRED_OR_SKIP();
-    SVINVAL_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVINVAL_AVAILABLE) TEST_SKIP("Platform does not implement Svinval");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -351,8 +351,8 @@ TEST_REGISTER(test_hcross_svinval_09);
 bool test_hcross_svinval_09(void) {
     TEST_BEGIN("HCROSS-SINVAL-09: VU-mode HINVAL.VVMA -> virtual-inst");
 
-    H_REQUIRED_OR_SKIP();
-    SVINVAL_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVINVAL_AVAILABLE) TEST_SKIP("Platform does not implement Svinval");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -382,8 +382,8 @@ TEST_REGISTER(test_hcross_svinval_10);
 bool test_hcross_svinval_10(void) {
     TEST_BEGIN("HCROSS-SINVAL-10: VU-mode HINVAL.GVMA -> virtual-inst");
 
-    H_REQUIRED_OR_SKIP();
-    SVINVAL_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVINVAL_AVAILABLE) TEST_SKIP("Platform does not implement Svinval");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -413,8 +413,8 @@ TEST_REGISTER(test_hcross_svinval_11);
 bool test_hcross_svinval_11(void) {
     TEST_BEGIN("HCROSS-SINVAL-11: VU-mode SFENCE.W.INVAL -> virtual-inst");
 
-    H_REQUIRED_OR_SKIP();
-    SVINVAL_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVINVAL_AVAILABLE) TEST_SKIP("Platform does not implement Svinval");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -444,8 +444,8 @@ TEST_REGISTER(test_hcross_svinval_12);
 bool test_hcross_svinval_12(void) {
     TEST_BEGIN("HCROSS-SINVAL-12: VU-mode SFENCE.INVAL.IR -> virtual-inst");
 
-    H_REQUIRED_OR_SKIP();
-    SVINVAL_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVINVAL_AVAILABLE) TEST_SKIP("Platform does not implement Svinval");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -475,8 +475,8 @@ TEST_REGISTER(test_hcross_svinval_13);
 bool test_hcross_svinval_13(void) {
     TEST_BEGIN("HCROSS-SINVAL-13: VS-mode SFENCE.W.INVAL (VTVM=0)");
 
-    H_REQUIRED_OR_SKIP();
-    SVINVAL_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVINVAL_AVAILABLE) TEST_SKIP("Platform does not implement Svinval");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -507,8 +507,8 @@ TEST_REGISTER(test_hcross_svinval_14);
 bool test_hcross_svinval_14(void) {
     TEST_BEGIN("HCROSS-SINVAL-14: VS-mode SFENCE.INVAL.IR (VTVM=0)");
 
-    H_REQUIRED_OR_SKIP();
-    SVINVAL_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVINVAL_AVAILABLE) TEST_SKIP("Platform does not implement Svinval");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -541,8 +541,8 @@ TEST_REGISTER(test_hcross_svinval_15);
 bool test_hcross_svinval_15(void) {
     TEST_BEGIN("HCROSS-SINVAL-15: VU-mode SINVAL.VMA -> virtual-inst");
 
-    H_REQUIRED_OR_SKIP();
-    SVINVAL_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVINVAL_AVAILABLE) TEST_SKIP("Platform does not implement Svinval");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();

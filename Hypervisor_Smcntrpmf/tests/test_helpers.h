@@ -120,34 +120,13 @@ static inline void execute_nops(unsigned count)
 }
 
 /* ===================================================================
- * H extension detection
- * =================================================================== */
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-/* ===================================================================
- * Smcntrpmf detection
+ * Smcntrpmf availability
  *
- * Probe by writing/reading the MINH bit of mcyclecfg. If the access
- * traps or the bit does not stick, the extension is not implemented.
+ * Smcntrpmf support is config-declaration driven: gate on the
+ * compile-time SMCNTRPMF_AVAILABLE macro (normalized in
+ * common/capabilities.h from SMCNTRPMF_SUPPORTED in rvtest_config.h).
+ * Do NOT probe mcyclecfg.MINH writability at runtime.
  * =================================================================== */
-static inline bool smcntrpmf_implemented(void)
-{
-    trap_expect_begin();
-    mcyclecfg_write(CYCLECFG_MINH);
-    if (trap_was_triggered()) {
-        trap_expect_end();
-        return false;
-    }
-    uintptr_t val = mcyclecfg_read();
-    trap_expect_end();
-
-    mcyclecfg_write(0);
-    return (val & CYCLECFG_MINH) != 0;
-}
 
 /* ===================================================================
  * Check if cycle / instret counters are functional

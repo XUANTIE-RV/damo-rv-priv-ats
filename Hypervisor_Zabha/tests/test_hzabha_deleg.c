@@ -65,7 +65,7 @@ TEST_REGISTER(test_hzabha_05_hedeleg_bits);
 bool test_hzabha_05_hedeleg_bits(void)
 {
     TEST_BEGIN("HZABHA-05: hedeleg 6/7/15 writable, 23 RO-0");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t vs_bits = (1UL << 6) | (1UL << 7) | (1UL << 15);
     uintptr_t g_bits  = (1UL << 23);
@@ -91,7 +91,8 @@ TEST_REGISTER(test_hzabha_06_bh_amo_vs_store_fault);
 bool test_hzabha_06_bh_amo_vs_store_fault(void)
 {
     TEST_BEGIN("HZABHA-06: byte/half AMO to W=0 -> store pf (15) to VS");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -116,7 +117,8 @@ TEST_REGISTER(test_hzabha_07_bh_amo_unreadable_store_class);
 bool test_hzabha_07_bh_amo_unreadable_store_class(void)
 {
     TEST_BEGIN("HZABHA-07: byte/half AMO to R=0 -> store pf (15), not load");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -141,7 +143,8 @@ TEST_REGISTER(test_hzabha_08_hedeleg0_to_hs);
 bool test_hzabha_08_hedeleg0_to_hs(void)
 {
     TEST_BEGIN("HZABHA-08: hedeleg[15]=0 -> byte/half AMO fault at HS/M (15)");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -162,7 +165,8 @@ TEST_REGISTER(test_hzabha_09_width_independent_permission);
 bool test_hzabha_09_width_independent_permission(void)
 {
     TEST_BEGIN("HZABHA-09: .b/.h/.w all -> store pf (15) on R=1/W=0");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

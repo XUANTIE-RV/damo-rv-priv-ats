@@ -123,6 +123,40 @@ make qemu-pmp EXTRA_CFLAGS='-DTEST_FILTER="PMP"'
 
 ---
 
+## Compile-flag Injection (EXTRA_CFLAGS / EXTRA_ASFLAGS)
+
+`common/Makefile.common` lets you inject extra compile-time macros from the command line, targeting the C and assembly compilation units respectively:
+
+| Variable | Injected into | Visible to | Typical use |
+|----------|--------------|-----------|-------------|
+| `EXTRA_CFLAGS` | `CFLAGS` | C compilation units | Macros consumed in C code, e.g. `TEST_FILTER` |
+| `EXTRA_ASFLAGS` | `ASFLAGS` | Assembly compilation units | Macros consumed in `.S` assembly |
+
+Both are command-line variables and are automatically forwarded to sub-makes, so they work both from the top level (`make qemu-<ext> ...`) and inside a subdirectory (`make ...`). Rule of thumb: **use `EXTRA_CFLAGS` for macros consumed in C code, and `EXTRA_ASFLAGS` for macros consumed in `.S` assembly.**
+
+### Example: selecting the halt instruction
+
+Some platforms let their `rvmodel_macros.h` pick the first instruction of the `RVMODEL_HALT_PASS` / `RVMODEL_HALT_FAIL` loop body via compile-time macros:
+
+- default (no macro defined): `wfi`
+- `RVMODEL_HALT_EBREAK` defined: `ebreak`
+- `RVMODEL_HALT_NOP_WFI` defined: `nop` + `wfi`
+- `RVMODEL_HALT_NOP` defined: plain `nop` (busy spin, no `wfi`)
+
+These macros expand in the assembly file `common/entry.S`, so they must be passed via `EXTRA_ASFLAGS` (using `EXTRA_CFLAGS` never reaches the assembly compile and thus has no effect):
+
+```bash
+# ebreak variant
+cd <test_dir>; make clean; make EXTRA_ASFLAGS='-DRVMODEL_HALT_EBREAK'
+
+# nop + wfi variant
+cd <test_dir>; make clean; make EXTRA_ASFLAGS='-DRVMODEL_HALT_NOP_WFI'
+```
+
+> **Note**: `common/*.o` are prebuilt objects shared across suites. If `entry.o` is already newer than `entry.S`, changing only `EXTRA_ASFLAGS` will not trigger recompilation; you must run `make clean` first for it to take effect.
+
+---
+
 ## Toolchain Selection
 
 The framework supports both **GCC** and **LLVM/Clang** toolchains, switched via the `TOOLCHAIN` variable. GCC is the default for full backward compatibility.

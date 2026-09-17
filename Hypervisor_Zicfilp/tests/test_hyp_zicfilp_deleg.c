@@ -31,8 +31,8 @@ TEST_REGISTER(test_hcfi_lp_34);
 bool test_hcfi_lp_34(void) {
     TEST_BEGIN("HCFI-LP-34: hedeleg[18] writability");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     uintptr_t orig = hedeleg_read();
 
@@ -66,8 +66,8 @@ TEST_REGISTER(test_hcfi_lp_35);
 bool test_hcfi_lp_35(void) {
     TEST_BEGIN("HCFI-LP-35: LP Fault delegated to VS-mode");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -119,8 +119,8 @@ TEST_REGISTER(test_hcfi_lp_36);
 bool test_hcfi_lp_36(void) {
     TEST_BEGIN("HCFI-LP-36: LP Fault delegated to HS-mode (hedeleg=0)");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -173,8 +173,8 @@ TEST_REGISTER(test_hcfi_lp_37);
 bool test_hcfi_lp_37(void) {
     TEST_BEGIN("HCFI-LP-37: LP Fault delegated to M-mode (medeleg=0)");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -216,8 +216,8 @@ TEST_REGISTER(test_hcfi_lp_38);
 bool test_hcfi_lp_38(void) {
     TEST_BEGIN("HCFI-LP-38: LP Fault to VS-mode, vsepc correct");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -265,8 +265,8 @@ TEST_REGISTER(test_hcfi_lp_39);
 bool test_hcfi_lp_39(void) {
     TEST_BEGIN("HCFI-LP-39: LP Fault to VS-mode, GVA=0");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -316,8 +316,8 @@ TEST_REGISTER(test_hcfi_lp_40);
 bool test_hcfi_lp_40(void) {
     TEST_BEGIN("HCFI-LP-40: LP Fault to HS-mode, sepc correct");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -373,8 +373,8 @@ TEST_REGISTER(test_hcfi_lp_41);
 bool test_hcfi_lp_41(void) {
     TEST_BEGIN("HCFI-LP-41: LP Fault to M-mode, MPV=1");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();

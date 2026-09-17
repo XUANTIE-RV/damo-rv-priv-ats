@@ -38,7 +38,6 @@ ENABLE_VM = 1
 QEMU_CPU = max
 
 # Spike: canonical ISA string with V before H.
-SPIKE_ISA = rv64imafdcvh_zicsr_zifencei
 
 EXT_OBJS = \
     main.o \

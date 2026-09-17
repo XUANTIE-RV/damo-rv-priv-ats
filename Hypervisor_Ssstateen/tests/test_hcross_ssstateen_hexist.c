@@ -23,7 +23,7 @@ TEST_REGISTER(test_hcross_sssta_01);
 bool test_hcross_sssta_01(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-01: hstateen0 readable in HS-mode");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_mstateen0 = mstateen_read(0);
     mstateen_set_bit63(0, true);
@@ -42,7 +42,7 @@ TEST_REGISTER(test_hcross_sssta_02);
 bool test_hcross_sssta_02(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-02: hstateen0 writable in HS-mode");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_mstateen0 = mstateen_read(0);
     mstateen_set_bit63(0, true);
@@ -62,7 +62,7 @@ TEST_REGISTER(test_hcross_sssta_03);
 bool test_hcross_sssta_03(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-03: hstateen1 readable/writable in HS-mode");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved = mstateen_read(1);
     mstateen_set_bit63(1, true);
@@ -87,7 +87,7 @@ TEST_REGISTER(test_hcross_sssta_04);
 bool test_hcross_sssta_04(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-04: hstateen2 readable/writable in HS-mode");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved = mstateen_read(2);
     mstateen_set_bit63(2, true);
@@ -112,7 +112,7 @@ TEST_REGISTER(test_hcross_sssta_05);
 bool test_hcross_sssta_05(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-05: hstateen3 readable/writable in HS-mode");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved = mstateen_read(3);
     mstateen_set_bit63(3, true);
@@ -137,7 +137,7 @@ TEST_REGISTER(test_hcross_sssta_06);
 bool test_hcross_sssta_06(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-06: hstateen0h readable/writable (RV32)");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
 #if __riscv_xlen == 32
     uintptr_t saved_mstateen0 = mstateen_read(0);

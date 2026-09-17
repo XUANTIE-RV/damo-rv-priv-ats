@@ -26,7 +26,6 @@ QEMU_CPU   = max
 # derive the intra-granule expectation from it. config/spike-rv64-max declares
 # Zama16b, so launch Spike with it enabled to exercise the declared platform
 # (mirrors Zaamo/Makefile SPIKE_ISA_EXT).
-SPIKE_ISA  = rv64imach_zicsr_zifencei_svadu_zama16b
 
 EXT_OBJS = \
     main.o \

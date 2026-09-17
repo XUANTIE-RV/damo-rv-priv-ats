@@ -17,7 +17,7 @@ TEST_REGISTER(test_hcross_smsta_02);
 bool test_hcross_smsta_02(void) {
     TEST_BEGIN("HCROSS-SMSTA-02: mstateen0 zero bit propagates to hstateen0");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t orig = mstateen0_read();
 

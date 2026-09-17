@@ -25,7 +25,30 @@ TEST_REGISTER(test_hzabha_01_hs_exec);
 bool test_hzabha_01_hs_exec(void)
 {
     TEST_BEGIN("HZABHA-01: HS-mode all 9 AMOs (.b/.h) execute normally");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
+
+    /* First case ONLY: config declares Zabha, so probe the DUT to
+     * confirm it really implements byte/halfword AMOs (aligned with the
+     * ZABHA_SUPPORTED declaration). A trap-armed amoadd.b in M-mode
+     * raising illegal-instruction would mean the DUT does NOT implement
+     * Zabha despite the config. No other case probes. */
+    {
+        static volatile uint64_t hzabha_probe_slot;
+        uintptr_t paddr = (uintptr_t)&hzabha_probe_slot;
+        uintptr_t pr;
+        M_TRAP_EXPECT_BEGIN();
+        asm volatile(
+            ".option push\n\t.option norvc\n\t"
+            "amoadd.b %0, %2, (%1)\n\t"
+            ".option pop\n\t"
+            : "=r"(pr) : "r"(paddr), "r"(1UL) : "memory");
+        bool ptrapped = trap_was_triggered();
+        uintptr_t pcause = ptrapped ? trap_get_cause() : 0;
+        trap_expect_end();
+        TEST_ASSERT("DUT really implements Zabha (aligned with config)",
+                    !(ptrapped && pcause == CAUSE_ILLEGAL_INST));
+    }
 
     uintptr_t addr = (uintptr_t)&hzabha_hs_slot[0];
     *(volatile uint64_t *)addr = 0x0011223344556677ULL;
@@ -62,7 +85,8 @@ TEST_REGISTER(test_hzabha_02_vs_exec_no_cause22);
 bool test_hzabha_02_vs_exec_no_cause22(void)
 {
     TEST_BEGIN("HZABHA-02: VS-mode byte/half AMOs execute, never cause=22");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -94,7 +118,8 @@ TEST_REGISTER(test_hzabha_03_vu_exec_no_cause22);
 bool test_hzabha_03_vu_exec_no_cause22(void)
 {
     TEST_BEGIN("HZABHA-03: VU-mode byte/half AMOs execute, never cause=22");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -142,7 +167,8 @@ TEST_REGISTER(test_hzabha_04_vs_hs_semantic_parity);
 bool test_hzabha_04_vs_hs_semantic_parity(void)
 {
     TEST_BEGIN("HZABHA-04: VS-mode byte/half AMO semantics == HS-mode");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

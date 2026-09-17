@@ -40,7 +40,8 @@ TEST_REGISTER(test_hzabha_15_bh_amo_htinst_transformed);
 bool test_hzabha_15_bh_amo_htinst_transformed(void)
 {
     TEST_BEGIN("HZABHA-15: byte/half AMO explicit G-stage fault htinst");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -74,7 +75,8 @@ TEST_REGISTER(test_hzabha_16_htinst_funct3_width);
 bool test_hzabha_16_htinst_funct3_width(void)
 {
     TEST_BEGIN("HZABHA-16: htinst retains funct3 width (.b=000/.h=001)");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -158,7 +160,8 @@ TEST_REGISTER(test_hzabha_17_htinst_aqrl);
 bool test_hzabha_17_htinst_aqrl(void)
 {
     TEST_BEGIN("HZABHA-17: htinst preserves byte/half AMO aq/rl bits");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -177,7 +180,8 @@ TEST_REGISTER(test_hzabha_18_addr_offset_zero);
 bool test_hzabha_18_addr_offset_zero(void)
 {
     TEST_BEGIN("HZABHA-18: byte/half AMO htinst Addr. Offset == 0");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -211,7 +215,8 @@ TEST_REGISTER(test_hzabha_19_implicit_walk_cause23);
 bool test_hzabha_19_implicit_walk_cause23(void)
 {
     TEST_BEGIN("HZABHA-19: implicit VS-walk byte AMO fault -> cause 23");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -247,7 +252,8 @@ TEST_REGISTER(test_hzabha_20_adue_write_pseudo);
 bool test_hzabha_20_adue_write_pseudo(void)
 {
     TEST_BEGIN("HZABHA-20: ADUE=1 byte AMO D-update fault -> write pseudoinst");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -309,7 +315,8 @@ TEST_REGISTER(test_hzabha_21_explicit_vs_implicit);
 bool test_hzabha_21_explicit_vs_implicit(void)
 {
     TEST_BEGIN("HZABHA-21: htinst disambiguates explicit vs implicit (23)");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

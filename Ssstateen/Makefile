@@ -17,7 +17,6 @@ ENABLE_HYP = 1
 ENABLE_VM = 1
 
 # Spike ISA extensions
-SPIKE_ISA_EXT = _smstateen
 
 # Extension-specific object files
 EXT_OBJS = \

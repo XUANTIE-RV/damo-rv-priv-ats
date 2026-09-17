@@ -31,7 +31,7 @@ TEST_REGISTER(test_hcross_sssta_16);
 bool test_hcross_sssta_16(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-16: hstateen0.C=0 => VS sstateen0.C is ROZ");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_mstateen0 = mstateen_read(0);
     mstateen_write(0, saved_mstateen0 | STATEEN0_SE0 | STATEEN0_C);
@@ -72,7 +72,7 @@ TEST_REGISTER(test_hcross_sssta_17);
 bool test_hcross_sssta_17(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-17: hstateen0.C=1 => VS sstateen0.C writable");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_mstateen0 = mstateen_read(0);
     mstateen_write(0, saved_mstateen0 | STATEEN0_SE0 | STATEEN0_C);
@@ -119,7 +119,7 @@ TEST_REGISTER(test_hcross_sssta_18);
 bool test_hcross_sssta_18(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-18: hstateen0.JVT=0 => VS sstateen0.JVT ROZ");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_mstateen0 = mstateen_read(0);
     mstateen_write(0, saved_mstateen0 | STATEEN0_SE0 | STATEEN0_JVT);
@@ -157,7 +157,7 @@ TEST_REGISTER(test_hcross_sssta_19);
 bool test_hcross_sssta_19(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-19: hstateen0 multiple bits propagate to VS");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_mstateen0 = mstateen_read(0);
     mstateen_write(0, ~0UL);  /* Open all mstateen0 bits */
@@ -197,7 +197,7 @@ TEST_REGISTER(test_hcross_sssta_20);
 bool test_hcross_sssta_20(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-20: hstateen0.C toggle 0->1 releases VS ROZ");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_mstateen0 = mstateen_read(0);
     mstateen_write(0, saved_mstateen0 | STATEEN0_SE0 | STATEEN0_C);

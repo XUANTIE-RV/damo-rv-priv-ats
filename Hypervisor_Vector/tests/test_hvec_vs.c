@@ -31,8 +31,8 @@ TEST_REGISTER(test_hvec_01);
 bool test_hvec_01(void)
 {
     TEST_BEGIN("HVEC-01: vsstatus.vs field read/write");
-    H_REQUIRED_OR_SKIP();
-    V_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
 
     /* Bits [10:9] must be writable/readable when H is present. */
     unsigned vals[3] = { CTX_DIRTY, CTX_INITIAL, CTX_OFF };
@@ -51,8 +51,8 @@ TEST_REGISTER(test_hvec_02);
 bool test_hvec_02(void)
 {
     TEST_BEGIN("HVEC-02: vsstatus.vs=Off gates vector instructions");
-    H_REQUIRED_OR_SKIP();
-    V_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
 
     hvec_mstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
     hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_OFF);
@@ -81,8 +81,8 @@ TEST_REGISTER(test_hvec_03);
 bool test_hvec_03(void)
 {
     TEST_BEGIN("HVEC-03: mstatus.vs=Off gates vector instructions");
-    H_REQUIRED_OR_SKIP();
-    V_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
 
     hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
     hvec_mstatus_set_field(HVEC_VS_SHIFT, CTX_OFF);
@@ -109,8 +109,8 @@ TEST_REGISTER(test_hvec_04);
 bool test_hvec_04(void)
 {
     TEST_BEGIN("HVEC-04: vsstatus.vs=Off gates vector CSR access");
-    H_REQUIRED_OR_SKIP();
-    V_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
 
     hvec_mstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
     hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_OFF);
@@ -137,8 +137,8 @@ TEST_REGISTER(test_hvec_05);
 bool test_hvec_05(void)
 {
     TEST_BEGIN("HVEC-05: both non-Off -> VS/VU normal execution");
-    H_REQUIRED_OR_SKIP();
-    V_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
 
     hvec_mstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
     hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
@@ -165,8 +165,8 @@ TEST_REGISTER(test_hvec_06);
 bool test_hvec_06(void)
 {
     TEST_BEGIN("HVEC-06: vector state change sets both fields Dirty");
-    H_REQUIRED_OR_SKIP();
-    V_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
 
     hvec_mstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
     hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
@@ -193,8 +193,8 @@ TEST_REGISTER(test_hvec_07);
 bool test_hvec_07(void)
 {
     TEST_BEGIN("HVEC-07: vsstatus.sd linkage with vsstatus.vs");
-    H_REQUIRED_OR_SKIP();
-    V_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
 
     /* Zero the other VS-visible context fields so SD reflects VS. */
     hvec_vsstatus_set_field(HVEC_FS_SHIFT, CTX_OFF);
@@ -216,8 +216,8 @@ TEST_REGISTER(test_hvec_08);
 bool test_hvec_08(void)
 {
     TEST_BEGIN("HVEC-08: (record) Initial/Clean -> Dirty promotion");
-    H_REQUIRED_OR_SKIP();
-    V_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
 
     /* norm:hw_mstatus_vs_dirty_update permits the implementation to
      * promote Initial/Clean to Dirty at any time, even without a

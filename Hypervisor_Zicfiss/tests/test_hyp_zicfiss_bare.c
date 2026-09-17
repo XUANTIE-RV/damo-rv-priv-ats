@@ -16,7 +16,8 @@
 TEST_REGISTER(test_hcfi_ss_43);
 bool test_hcfi_ss_43(void) {
     TEST_BEGIN("HCFI-SS-43: vsatp.mode=Bare, VS SSPUSH -> access-fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -36,7 +37,8 @@ bool test_hcfi_ss_43(void) {
 TEST_REGISTER(test_hcfi_ss_44);
 bool test_hcfi_ss_44(void) {
     TEST_BEGIN("HCFI-SS-44: vsatp.mode=Bare, VS SSPOPCHK -> access-fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -55,7 +57,8 @@ bool test_hcfi_ss_44(void) {
 TEST_REGISTER(test_hcfi_ss_45);
 bool test_hcfi_ss_45(void) {
     TEST_BEGIN("HCFI-SS-45: vsatp.mode=Bare, VS SSAMOSWAP -> access-fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -73,7 +76,8 @@ bool test_hcfi_ss_45(void) {
 TEST_REGISTER(test_hcfi_ss_46);
 bool test_hcfi_ss_46(void) {
     TEST_BEGIN("HCFI-SS-46: vsatp.mode=Bare, VU SSPUSH -> access-fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -94,7 +98,8 @@ bool test_hcfi_ss_46(void) {
 TEST_REGISTER(test_hcfi_ss_47);
 bool test_hcfi_ss_47(void) {
     TEST_BEGIN("HCFI-SS-47: vsatp.mode=Sv39, SS instructions normal");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -114,7 +119,8 @@ bool test_hcfi_ss_47(void) {
 TEST_REGISTER(test_hcfi_ss_48);
 bool test_hcfi_ss_48(void) {
     TEST_BEGIN("HCFI-SS-48: vsatp.mode=Bare, ssp CSR still accessible");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();

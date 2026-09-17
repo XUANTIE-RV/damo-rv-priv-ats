@@ -21,28 +21,6 @@
 #include "pm/pm_addr.h"
 
 /* ===================================================================
- * Capability gates
- * =================================================================== */
-
-static bool check_h_extension(void) {
-    uint64_t misa_val = CSRR(misa);
-    return (misa_val & (1UL << ('H' - 'A'))) != 0;
-}
-
-#define H_REQUIRED_OR_SKIP() do { \
-    if (!check_h_extension()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-#define SMNPM_REQUIRED_OR_SKIP() do { \
-    H_REQUIRED_OR_SKIP(); \
-    if (!detect_smnpm()) { \
-        TEST_SKIP("Smnpm (menvcfg.PMM) not implemented"); \
-    } \
-} while (0)
-
-/* ===================================================================
  * Scratch data addresses (inside .vm_test_region, used by the
  * VS/VU cross-checks via two_stage helpers)
  * =================================================================== */

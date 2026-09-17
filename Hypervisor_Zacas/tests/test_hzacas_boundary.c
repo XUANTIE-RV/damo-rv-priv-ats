@@ -23,7 +23,7 @@ TEST_REGISTER(test_hzacas_34_no_guest_cas_equivalent);
 bool test_hzacas_34_no_guest_cas_equivalent(void)
 {
     TEST_BEGIN("HZACAS-34: (record) HLV/HSV exist, no guest-amocas equivalent");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -70,7 +70,7 @@ TEST_REGISTER(test_hzacas_35_hlv_hsv_not_atomic);
 bool test_hzacas_35_hlv_hsv_not_atomic(void)
 {
     TEST_BEGIN("HZACAS-35: (record) HLV+HSV cannot replace amocas atomicity");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     TEST_SKIP(HZACAS_SMP_SKIP_REASON);
     HYP_TEST_END();
 }

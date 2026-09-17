@@ -40,7 +40,8 @@ TEST_REGISTER(test_hzlrsc_27_misaligned_lr);
 bool test_hzlrsc_27_misaligned_lr(void)
 {
     TEST_BEGIN("HZLRSC-27: misaligned LR -> cause 4/5, deleg per hedeleg");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -88,7 +89,8 @@ TEST_REGISTER(test_hzlrsc_28_misaligned_sc);
 bool test_hzlrsc_28_misaligned_sc(void)
 {
     TEST_BEGIN("HZLRSC-28: misaligned SC -> cause 6/7, deleg per hedeleg");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -138,7 +140,8 @@ TEST_REGISTER(test_hzlrsc_29_misaligned_trap_context);
 bool test_hzlrsc_29_misaligned_trap_context(void)
 {
     TEST_BEGIN("HZLRSC-29: misaligned LR/SC HS-mode trap context");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

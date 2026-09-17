@@ -28,13 +28,6 @@ extern test_func_t _test_table_end[];
 #define PLATFORM_MTIMECMP_ADDR  (PLATFORM_CLINT_BASE + 0x4000UL)
 #endif
 
-static bool hzihintntl_misa_h(void)
-{
-    uintptr_t misa;
-    asm volatile ("csrr %0, misa" : "=r"(misa));
-    return (misa & (1UL << ('H' - 'A'))) != 0;
-}
-
 int main(void)
 {
     uart_init();
@@ -66,8 +59,8 @@ int main(void)
 
     /* Clean H-ext baseline before the first test. Only safe when the
      * H extension is actually implemented; each case re-checks via
-     * H_REQUIRED_OR_SKIP. */
-    if (hzihintntl_misa_h())
+     * an inline `if (!H_AVAILABLE) TEST_SKIP(...)`. */
+    if (H_AVAILABLE)
     {
         hyp_reset_state();
     }

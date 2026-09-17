@@ -22,7 +22,7 @@ bool test_hcross_sscsrind_22(void)
 {
     TEST_BEGIN("HCROSS-SSCSRIND-22: mstateen0[60]=0 blocks HS-mode vsiselect");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
 
     uintptr_t orig_m = mstateen0_read();
@@ -58,7 +58,7 @@ bool test_hcross_sscsrind_23(void)
 {
     TEST_BEGIN("HCROSS-SSCSRIND-23: mstateen0[60]=0 blocks HS-mode vsireg");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
 
     uintptr_t orig_m = mstateen0_read();
@@ -91,7 +91,7 @@ bool test_hcross_sscsrind_24(void)
 {
     TEST_BEGIN("HCROSS-SSCSRIND-24: hstateen0[60]=0 → VS-mode virtual-inst");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
@@ -130,7 +130,7 @@ bool test_hcross_sscsrind_25(void)
 {
     TEST_BEGIN("HCROSS-SSCSRIND-25: hstateen0[60]=0 → VS-mode sireg virtual-inst");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
@@ -166,7 +166,7 @@ bool test_hcross_sscsrind_26(void)
 {
     TEST_BEGIN("HCROSS-SSCSRIND-26: hstateen0[60]=1 → VS-mode access OK");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
@@ -229,7 +229,7 @@ bool test_hcross_sscsrind_27(void)
 {
     TEST_BEGIN("HCROSS-SSCSRIND-27: Exception type virtual-inst not illegal-inst");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 

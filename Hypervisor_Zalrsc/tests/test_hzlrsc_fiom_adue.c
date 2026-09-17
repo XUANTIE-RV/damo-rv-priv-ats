@@ -76,7 +76,8 @@ TEST_REGISTER(test_hzlrsc_30_fiom1);
 bool test_hzlrsc_30_fiom1(void)
 {
     TEST_BEGIN("HZLRSC-30: FIOM=1 VS-mode lr.w.aq/sc.w.rl executable");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     hzlrsc_fiom_case(1);
@@ -92,7 +93,8 @@ TEST_REGISTER(test_hzlrsc_31_fiom0);
 bool test_hzlrsc_31_fiom0(void)
 {
     TEST_BEGIN("HZLRSC-31: FIOM=0 control VS-mode lr.w.aq/sc.w.rl");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     hzlrsc_fiom_case(0);
@@ -108,7 +110,8 @@ TEST_REGISTER(test_hzlrsc_32_failed_sc_d_side_effect);
 bool test_hzlrsc_32_failed_sc_d_side_effect(void)
 {
     TEST_BEGIN("HZLRSC-32: (record) ADUE=1 failed-SC VS-stage D side effect");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -156,7 +159,8 @@ TEST_REGISTER(test_hzlrsc_33_failed_sc_gstage_d_side_effect);
 bool test_hzlrsc_33_failed_sc_gstage_d_side_effect(void)
 {
     TEST_BEGIN("HZLRSC-33: (record) ADUE=1 failed-SC G-stage D side effect");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -207,7 +211,8 @@ TEST_REGISTER(test_hzlrsc_34_adue0_svade);
 bool test_hzlrsc_34_adue0_svade(void)
 {
     TEST_BEGIN("HZLRSC-34: ADUE=0 + A=0 -> Svade pf (LR 13 / SC 15)");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

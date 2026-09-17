@@ -122,6 +122,40 @@ make qemu-pmp EXTRA_CFLAGS='-DTEST_FILTER="PMP"'
 ```
 ---
 
+## 编译宏注入（EXTRA_CFLAGS / EXTRA_ASFLAGS）
+
+`common/Makefile.common` 支持在命令行注入额外编译宏，分别作用于 C 与汇编编译单元：
+
+| 变量 | 注入目标 | 可见范围 | 典型用途 |
+|------|---------|---------|---------|
+| `EXTRA_CFLAGS` | `CFLAGS` | C 编译单元 | C 代码消费的宏，如 `TEST_FILTER` |
+| `EXTRA_ASFLAGS` | `ASFLAGS` | 汇编编译单元 | `.S` 汇编消费的宏 |
+
+两者均为命令行变量，会自动透传给子 make，因此顶层 `make qemu-<ext> ...` 与进入子目录 `make ...` 均可使用。选择原则：**宏在 C 代码中消费用 `EXTRA_CFLAGS`，在 `.S` 汇编中消费用 `EXTRA_ASFLAGS`**。
+
+### 示例：选择 halt 指令
+
+部分平台的 `rvmodel_macros.h` 允许通过编译期宏选择 `RVMODEL_HALT_PASS` / `RVMODEL_HALT_FAIL` 循环体的第一条指令：
+
+- 默认（不定义任何宏）：`wfi`
+- 定义 `RVMODEL_HALT_EBREAK`：`ebreak`
+- 定义 `RVMODEL_HALT_NOP_WFI`：`nop` + `wfi`
+- 定义 `RVMODEL_HALT_NOP`：纯 `nop`（忙等自旋，不含 `wfi`）
+
+这些宏在汇编文件 `common/entry.S` 中展开，因此必须通过 `EXTRA_ASFLAGS` 传入（用 `EXTRA_CFLAGS` 不会进入汇编编译，因而不生效）：
+
+```bash
+# ebreak 变体
+cd <test_dir>; make clean; make EXTRA_ASFLAGS='-DRVMODEL_HALT_EBREAK'
+
+# nop + wfi 变体
+cd <test_dir>; make clean; make EXTRA_ASFLAGS='-DRVMODEL_HALT_NOP_WFI'
+```
+
+> **注意**：`common/*.o` 是跨套件预构建的共享对象。若 `entry.o` 已比 `entry.S` 新，仅改变 `EXTRA_ASFLAGS` 不会触发重编译，必须先 `make clean` 才能生效。
+
+---
+
 ## 工具链选择
 
 框架同时支持 **GCC** 和 **LLVM/Clang** 两种工具链，通过 `TOOLCHAIN` 变量切换。默认使用 GCC，保持完全向后兼容。

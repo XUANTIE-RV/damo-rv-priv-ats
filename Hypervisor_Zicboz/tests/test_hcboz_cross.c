@@ -19,8 +19,8 @@ bool test_hcxinst_04(void)
 {
     TEST_BEGIN("HCXINST-04: cbo.zero page-fault htinst");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOZ_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOZ_AVAILABLE) TEST_SKIP("Zicboz not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;
@@ -57,8 +57,8 @@ bool test_hcxinst_09(void)
 {
     TEST_BEGIN("HCXINST-09: cbo.zero virtual-inst htinst");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOZ_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOZ_AVAILABLE) TEST_SKIP("Zicboz not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -93,8 +93,8 @@ bool test_hcxinst_11(void)
 {
     TEST_BEGIN("HCXINST-11: VU-mode cbo.zero virtual-inst htinst");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOZ_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOZ_AVAILABLE) TEST_SKIP("Zicboz not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -129,8 +129,8 @@ bool test_hcgstage_04(void)
 {
     TEST_BEGIN("HCGSTAGE-04: cbo.zero G-stage read-only GPF");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOZ_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOZ_AVAILABLE) TEST_SKIP("Zicboz not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;
@@ -166,8 +166,8 @@ bool test_hcgstage_06(void)
 {
     TEST_BEGIN("HCGSTAGE-06: cbo.zero G-stage GPF stval=rs1");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOZ_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOZ_AVAILABLE) TEST_SKIP("Zicboz not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;
@@ -203,8 +203,8 @@ bool test_hcgstage_07(void)
 {
     TEST_BEGIN("HCGSTAGE-07: cbo.zero G-stage GPF htval");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOZ_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOZ_AVAILABLE) TEST_SKIP("Zicboz not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;
@@ -243,8 +243,8 @@ bool test_hcgstage_10(void)
 {
     TEST_BEGIN("HCGSTAGE-10: cbo.zero read-only G-stage GPF");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOZ_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOZ_AVAILABLE) TEST_SKIP("Zicboz not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;
@@ -281,8 +281,8 @@ bool test_hvinst_04(void)
 {
     TEST_BEGIN("HVINST-04: cbo.zero virtual-inst stval");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOZ_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOZ_AVAILABLE) TEST_SKIP("Zicboz not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);

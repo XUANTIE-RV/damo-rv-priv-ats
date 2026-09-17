@@ -17,7 +17,7 @@ TEST_REGISTER(test_hcross_smsta_01);
 bool test_hcross_smsta_01(void) {
     TEST_BEGIN("HCROSS-SMSTA-01: hstateen0 zeroed after mstateen0 modification");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     /* Set mstateen0.SE0 to allow hstateen0 access, plus some bits */
     uintptr_t orig = mstateen0_read();

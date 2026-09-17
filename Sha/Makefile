@@ -17,7 +17,6 @@ QEMU_CPU   = max
 
 # Spike: explicitly request RV64 + H extension support.
 # smcsrind_sscsrind needed for SHA-HCTL-05 (hstateen0 CSRIND gate test).
-SPIKE_ISA = rv64imach_zicsr_zifencei_smstateen_zicntr_smcsrind_sscsrind
 
 EXT_OBJS = \
     main.o \

@@ -14,7 +14,14 @@ ENABLE_HYP = 1
 QEMU_CPU   = max
 
 # Spike: explicitly request RV64 + H extension support.
-SPIKE_ISA = rv64imach_zicsr_zifencei_zicntr_sstc_svinval
+# The runtime ISA string MUST carry every extension that config/spike-rv64-max
+# declares and the tests exercise, otherwise a capability-gated test still runs
+# (F_AVAILABLE/V_AVAILABLE are compile-time from the config) but the underlying
+# CSR/instruction is unimplemented on Spike:
+#   - f/d/v: the vsstatus FS/VS Dirty tests (VSST-06/09) execute real FP/vector
+#     instructions (emitted as raw .4byte); without f/d/v they trap illegal.
+#   - zicfilp/zicfiss: they define the "software check" exception (cause 18), so
+#     hedeleg[18] must be writable (DELEG-01); without them Spike hardwires it 0.
 
 EXT_OBJS = \
     main.o \

@@ -74,6 +74,17 @@
 #define MSECCFG_PMM_OFF  32             /* PMM field offset in mseccfg */
 #define MSECCFG_PMM_MASK (3ULL << 32)   /* PMM field mask [33:32] (Smmpm) */
 
+/* ----- SMMTT / Supervisor Domain Access Protection (Smsd) -----
+ * mmpt: M-mode Memory Protection Table configuration (SDID/PPN/MODE).
+ * msdcfg: M-mode supervisor-domain configuration (Smsdia/Smsdqosid).
+ * Field layouts, MODE encodings and MPTE formats are in smmtt/smmtt_defs.h. */
+#ifndef CSR_MMPT
+#define CSR_MMPT        0x382
+#endif
+#ifndef CSR_MSDCFG
+#define CSR_MSDCFG      0x74E
+#endif
+
 /* ===================================================================
  * mstatus field offsets and masks
  * =================================================================== */

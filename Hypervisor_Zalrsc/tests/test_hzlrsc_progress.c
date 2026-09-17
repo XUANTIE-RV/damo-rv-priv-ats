@@ -71,7 +71,8 @@ TEST_REGISTER(test_hzlrsc_35_constrained_forward_progress);
 bool test_hzlrsc_35_constrained_forward_progress(void)
 {
     TEST_BEGIN("HZLRSC-35: VS-mode constrained LR/SC loop forward progress");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -107,7 +108,8 @@ TEST_REGISTER(test_hzlrsc_36_constrained_with_hyp_intervention);
 bool test_hzlrsc_36_constrained_with_hyp_intervention(void)
 {
     TEST_BEGIN("HZLRSC-36: constrained loop compliant under hyp intervention");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -181,7 +183,8 @@ TEST_REGISTER(test_hzlrsc_37_unconstrained_record);
 bool test_hzlrsc_37_unconstrained_record(void)
 {
     TEST_BEGIN("HZLRSC-37: (record) unconstrained LR/SC sequence");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -217,7 +220,8 @@ TEST_REGISTER(test_hzlrsc_38_reservation_survival_record);
 bool test_hzlrsc_38_reservation_survival_record(void)
 {
     TEST_BEGIN("HZLRSC-38: (record) reservation survival across trap round-trip");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

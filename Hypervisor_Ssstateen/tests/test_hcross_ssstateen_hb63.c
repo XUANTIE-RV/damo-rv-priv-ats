@@ -22,7 +22,7 @@ TEST_REGISTER(test_hcross_sssta_07);
 bool test_hcross_sssta_07(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-07: hstateen0 bit 63 writable (write 0)");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_mstateen0 = mstateen_read(0);
     mstateen_set_bit63(0, true);
@@ -44,7 +44,7 @@ TEST_REGISTER(test_hcross_sssta_08);
 bool test_hcross_sssta_08(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-08: hstateen0 bit 63 writable (write 1)");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_mstateen0 = mstateen_read(0);
     mstateen_set_bit63(0, true);
@@ -66,7 +66,7 @@ TEST_REGISTER(test_hcross_sssta_09);
 bool test_hcross_sssta_09(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-09: hstateen0.SE0=0 blocks VS-mode read sstateen0");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_mstateen0 = mstateen_read(0);
     mstateen_set_bit63(0, true);
@@ -89,7 +89,7 @@ TEST_REGISTER(test_hcross_sssta_10);
 bool test_hcross_sssta_10(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-10: hstateen0.SE0=1 allows VS-mode read sstateen0");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_mstateen0 = mstateen_read(0);
     mstateen_set_bit63(0, true);
@@ -112,7 +112,7 @@ TEST_REGISTER(test_hcross_sssta_11);
 bool test_hcross_sssta_11(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-11: hstateen0.SE0=0 blocks VS-mode write sstateen0");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_mstateen0 = mstateen_read(0);
     mstateen_set_bit63(0, true);
@@ -135,7 +135,7 @@ TEST_REGISTER(test_hcross_sssta_12);
 bool test_hcross_sssta_12(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-12: hstateen1 bit 63 writable");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved = mstateen_read(1);
     mstateen_set_bit63(1, true);
@@ -177,7 +177,7 @@ TEST_REGISTER(test_hcross_sssta_13);
 bool test_hcross_sssta_13(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-13: hstateen1 bit63=0 blocks VS-mode sstateen1");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(1);
     mstateen_set_bit63(1, true);
@@ -217,7 +217,7 @@ TEST_REGISTER(test_hcross_sssta_14);
 bool test_hcross_sssta_14(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-14: hstateen2 bit 63 controls sstateen2");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(2);
     mstateen_set_bit63(2, true);
@@ -262,7 +262,7 @@ TEST_REGISTER(test_hcross_sssta_15);
 bool test_hcross_sssta_15(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-15: hstateen3 bit 63 controls sstateen3");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(3);
     mstateen_set_bit63(3, true);

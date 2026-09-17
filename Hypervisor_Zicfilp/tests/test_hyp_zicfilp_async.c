@@ -30,8 +30,8 @@ TEST_REGISTER(test_hcfi_lp_42);
 bool test_hcfi_lp_42(void) {
     TEST_BEGIN("HCFI-LP-42: VS-mode JALR async interrupt saves ELP");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     /* KNOWN GAP (proxy verification): injecting an asynchronous
      * interrupt into the narrow JALR->LPAD decode window is
@@ -102,8 +102,8 @@ TEST_REGISTER(test_hcfi_lp_43);
 bool test_hcfi_lp_43(void) {
     TEST_BEGIN("HCFI-LP-43: interrupt return restores ELP, continues LP check");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     /* KNOWN GAP (proxy verification): the interrupt-return path is
      * verified via the synchronous software-check exception's trap
@@ -164,8 +164,8 @@ TEST_REGISTER(test_hcfi_lp_44);
 bool test_hcfi_lp_44(void) {
     TEST_BEGIN("HCFI-LP-44: VS-mode JALR high-priority exception saves ELP");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();

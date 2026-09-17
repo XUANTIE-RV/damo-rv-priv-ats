@@ -36,7 +36,7 @@ TEST_REGISTER(test_hzamo_05_hedeleg_bits);
 bool test_hzamo_05_hedeleg_bits(void)
 {
     TEST_BEGIN("HZAMO-05: hedeleg 6/7/15 writable, 23 RO-0");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t vs_bits = (1UL << 6) | (1UL << 7) | (1UL << 15);
     uintptr_t g_bits  = (1UL << 23);
@@ -62,7 +62,8 @@ TEST_REGISTER(test_hzamo_06_amo_vs_store_fault);
 bool test_hzamo_06_amo_vs_store_fault(void)
 {
     TEST_BEGIN("HZAMO-06: AMO VS-stage R=1/W=0 -> store pf (15) to VS");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -95,7 +96,8 @@ TEST_REGISTER(test_hzamo_07_amo_unreadable_store_class);
 bool test_hzamo_07_amo_unreadable_store_class(void)
 {
     TEST_BEGIN("HZAMO-07: AMO to R=0 page -> store pf (15), not load (13)");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -127,7 +129,8 @@ TEST_REGISTER(test_hzamo_08_hedeleg0_to_hs);
 bool test_hzamo_08_hedeleg0_to_hs(void)
 {
     TEST_BEGIN("HZAMO-08: hedeleg[15]=0 -> AMO fault stays at HS/M (15)");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -161,7 +164,8 @@ TEST_REGISTER(test_hzamo_09_lr_vs_amo_permission);
 bool test_hzamo_09_lr_vs_amo_permission(void)
 {
     TEST_BEGIN("HZAMO-09: LR executes but AMO faults on R=1/W=0 page");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

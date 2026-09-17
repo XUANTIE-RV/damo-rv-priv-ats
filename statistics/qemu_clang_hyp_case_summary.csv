@@ -5,7 +5,7 @@ Hypervisor_Exceptions,129,113,12,4
 Sha,28,28,0,0
 Shcounterenw,22,22,0,0
 Shgatpa,21,21,0,0
-Shlcofideleg,14,10,4,0
+Shlcofideleg,14,0,0,14
 Shtvala,50,44,4,2
 Shvstvala,22,19,0,3
 Shvsatpa,19,19,0,0
@@ -33,7 +33,7 @@ Hypervisor_Sscofpmf,6,2,1,3
 Hypervisor_Sscsrind,33,28,3,2
 Hypervisor_Ssdbltrp,24,11,0,13
 Hypervisor_Ssnpm,48,3,0,45
-Hypervisor_Ssqosid,6,2,4,0
+Hypervisor_Ssqosid,6,0,0,6
 Hypervisor_Ssstateen,50,43,0,7
 Hypervisor_Sstc,15,14,1,0
 Hypervisor_Sstvala,8,8,0,0

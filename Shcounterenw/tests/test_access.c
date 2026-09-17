@@ -18,7 +18,7 @@
 TEST_REGISTER(test_shcounterenw_access_01);
 bool test_shcounterenw_access_01(void) {
     TEST_BEGIN("SHCNTW-ACCESS-01: VS-mode reads cycle when hcounteren[0]=1");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
     if (!is_counter_implemented(0)) TEST_SKIP("cycle not implemented");
 
     /* Configure: mcounteren[0]=1, hcounteren[0]=1 */
@@ -45,7 +45,7 @@ bool test_shcounterenw_access_01(void) {
 TEST_REGISTER(test_shcounterenw_access_02);
 bool test_shcounterenw_access_02(void) {
     TEST_BEGIN("SHCNTW-ACCESS-02: VS-mode read cycle traps when hcounteren[0]=0");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
     if (!is_counter_implemented(0)) TEST_SKIP("cycle not implemented");
 
     /* Configure: mcounteren[0]=1, hcounteren[0]=0 */
@@ -76,7 +76,7 @@ bool test_shcounterenw_access_02(void) {
 TEST_REGISTER(test_shcounterenw_access_03);
 bool test_shcounterenw_access_03(void) {
     TEST_BEGIN("SHCNTW-ACCESS-03: VS-mode reads time when hcounteren[1]=1");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
     if (!is_counter_implemented(1)) TEST_SKIP("time not implemented");
 
     /* Configure: mcounteren[1]=1, hcounteren[1]=1 */
@@ -103,7 +103,7 @@ bool test_shcounterenw_access_03(void) {
 TEST_REGISTER(test_shcounterenw_access_04);
 bool test_shcounterenw_access_04(void) {
     TEST_BEGIN("SHCNTW-ACCESS-04: VS-mode read time traps when hcounteren[1]=0");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
     if (!is_counter_implemented(1)) TEST_SKIP("time not implemented");
 
     /* Configure: mcounteren[1]=1, hcounteren[1]=0 */
@@ -134,7 +134,7 @@ bool test_shcounterenw_access_04(void) {
 TEST_REGISTER(test_shcounterenw_access_05);
 bool test_shcounterenw_access_05(void) {
     TEST_BEGIN("SHCNTW-ACCESS-05: VS-mode reads instret when hcounteren[2]=1");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
     if (!is_counter_implemented(2)) TEST_SKIP("instret not implemented");
 
     /* Configure: mcounteren[2]=1, hcounteren[2]=1 */
@@ -161,7 +161,7 @@ bool test_shcounterenw_access_05(void) {
 TEST_REGISTER(test_shcounterenw_access_06);
 bool test_shcounterenw_access_06(void) {
     TEST_BEGIN("SHCNTW-ACCESS-06: VS-mode read instret traps when hcounteren[2]=0");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
     if (!is_counter_implemented(2)) TEST_SKIP("instret not implemented");
 
     /* Configure: mcounteren[2]=1, hcounteren[2]=0 */
@@ -192,7 +192,7 @@ bool test_shcounterenw_access_06(void) {
 TEST_REGISTER(test_shcounterenw_access_07);
 bool test_shcounterenw_access_07(void) {
     TEST_BEGIN("SHCNTW-ACCESS-07: VS-mode reads hpmcounterN when hcounteren[N]=1");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
 
     unsigned n = find_first_hpm_counter_gatable();
     if (!n) TEST_SKIP("no hpmcounter with openable mcounteren gate");
@@ -222,7 +222,7 @@ bool test_shcounterenw_access_07(void) {
 TEST_REGISTER(test_shcounterenw_access_08);
 bool test_shcounterenw_access_08(void) {
     TEST_BEGIN("SHCNTW-ACCESS-08: VS-mode read hpmcounterN traps when hcounteren[N]=0");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
 
     unsigned n = find_first_hpm_counter_gatable();
     if (!n) TEST_SKIP("no hpmcounter with openable mcounteren gate");

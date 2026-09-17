@@ -20,8 +20,8 @@ bool test_hcbie_01(void)
 {
     TEST_BEGIN("HCBIE-01: VS-mode henvcfg.CBIE=00 virtual-instruction");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -53,8 +53,8 @@ bool test_hcbie_02(void)
 {
     TEST_BEGIN("HCBIE-02: VS-mode henvcfg.CBIE=01 executes flush");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -82,8 +82,8 @@ bool test_hcbie_03(void)
 {
     TEST_BEGIN("HCBIE-03: VS-mode henvcfg.CBIE=11 executes invalidate");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -111,8 +111,8 @@ bool test_hcbie_04(void)
 {
     TEST_BEGIN("HCBIE-04: VU-mode henvcfg.CBIE=00 virtual-instruction");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -144,8 +144,8 @@ bool test_hcbie_05(void)
 {
     TEST_BEGIN("HCBIE-05: VU-mode senvcfg.CBIE=00 virtual-instruction");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -178,8 +178,8 @@ bool test_hcbie_06(void)
 {
     TEST_BEGIN("HCBIE-06: VU-mode two-level CBIE non-zero executes");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -208,8 +208,8 @@ bool test_hcbie_07(void)
 {
     TEST_BEGIN("HCBIE-07: VU-mode henvcfg.CBIE=01 executes flush");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -238,8 +238,8 @@ bool test_hcbie_08(void)
 {
     TEST_BEGIN("HCBIE-08: VU-mode senvcfg.CBIE=01 executes flush");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -268,8 +268,8 @@ bool test_hcbie_09(void)
 {
     TEST_BEGIN("HCBIE-09: henvcfg.CBIE WARL reserved encoding 10");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     /* Write CBIE=10 (reserved), read back - should not retain 10 */
     henvcfg_set_cbie(CBIE_RESERVED);
@@ -292,9 +292,9 @@ bool test_hcbie_10(void)
 {
     TEST_BEGIN("HCBIE-10: henvcfg.CBIE read-only zero (no Zicbom)");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    if (check_zicbom_extension()) {
+    if (ZICBOM_AVAILABLE) {
         TEST_SKIP("Zicbom implemented, cannot test read-only-zero");
     }
 
@@ -314,8 +314,8 @@ bool test_hcbie_11(void)
 {
     TEST_BEGIN("HCBIE-11: menvcfg.CBIE=01 forces VS-mode flush");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -344,8 +344,8 @@ bool test_hcbie_12(void)
 {
     TEST_BEGIN("HCBIE-12: menvcfg.CBIE=01 forces VU-mode flush");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -374,8 +374,8 @@ bool test_hcbie_13(void)
 {
     TEST_BEGIN("HCBIE-13: henvcfg.CBIE does not affect others");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     /* Set menvcfg.CBIE=11, senvcfg.CBIE=11 first */
     menvcfg_set_cbie(CBIE_INVAL);

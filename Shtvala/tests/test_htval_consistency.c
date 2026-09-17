@@ -61,7 +61,7 @@ static bool _check_recon_strict(uintptr_t target)
 TEST_REGISTER(test_htval_con_01_load_low_bits);
 bool test_htval_con_01_load_low_bits(void) {
     TEST_BEGIN("HTVAL-CON-01: (htval<<2)|(stval&3) == GPA, low2=0b11");
-    SHTVALA_REQUIRE();
+    if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t page = (uintptr_t)test_fault_page;
@@ -89,7 +89,7 @@ bool test_htval_con_01_load_low_bits(void) {
 TEST_REGISTER(test_htval_con_02_store_low_bits);
 bool test_htval_con_02_store_low_bits(void) {
     TEST_BEGIN("HTVAL-CON-02: (htval<<2)|(stval&3) == GPA, low2=0b01");
-    SHTVALA_REQUIRE();
+    if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     uintptr_t page = (uintptr_t)test_fault_page;
@@ -126,7 +126,7 @@ bool test_htval_con_02_store_low_bits(void) {
 TEST_REGISTER(test_htval_con_03_implicit_low_bits);
 bool test_htval_con_03_implicit_low_bits(void) {
     TEST_BEGIN("HTVAL-CON-03: implicit GPF, (htval<<2) low 2 bits == 0");
-    SHTVALA_REQUIRE();
+    if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     /* Test VA must be in a different 1GB region from kernel. */

@@ -3,6 +3,7 @@
 *.asm
 *.sym
 *.elf
+*.bin
 .aone_copilot
 *.log
 *.rvvi
@@ -10,3 +11,4 @@
 ideas
 **/__pycache__
 tmp
+*.bin

@@ -21,7 +21,6 @@ ENABLE_VM = 1
 #       are also satisfied by stock RISC-V implementations; only the
 #       high-bit BASE holding tests (STVEC-BASE-04 / STVEC-BASE-07)
 #       may differ.
-SPIKE_ISA_EXT = _sstvecd
 
 EXT_OBJS = \
     main.o \

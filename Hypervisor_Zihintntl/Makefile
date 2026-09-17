@@ -34,7 +34,6 @@ ENABLE_CMO = 1
 QEMU_CPU = max
 
 # Spike: add Zicbom for the CMO cross case (NTL-HYP-05).
-SPIKE_ISA_EXT = _zicbom
 
 EXT_OBJS = \
     main.o \

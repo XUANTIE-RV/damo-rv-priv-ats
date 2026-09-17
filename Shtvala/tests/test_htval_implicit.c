@@ -47,7 +47,7 @@
 TEST_REGISTER(test_htval_imp_01_l1_invalid);
 bool test_htval_imp_01_l1_invalid(void) {
     TEST_BEGIN("HTVAL-IMP-01: implicit VS-stage L1 PTE GPF (V=0)");
-    SHTVALA_REQUIRE();
+    if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     two_stage_ctx_t ctx;
@@ -100,7 +100,7 @@ bool test_htval_imp_01_l1_invalid(void) {
 TEST_REGISTER(test_htval_imp_02_l0_invalid);
 bool test_htval_imp_02_l0_invalid(void) {
     TEST_BEGIN("HTVAL-IMP-02: implicit VS-stage L0 PTE GPF (V=0)");
-    SHTVALA_REQUIRE();
+    if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     two_stage_ctx_t ctx;
@@ -138,7 +138,7 @@ bool test_htval_imp_02_l0_invalid(void) {
 TEST_REGISTER(test_htval_imp_03_l0_perm);
 bool test_htval_imp_03_l0_perm(void) {
     TEST_BEGIN("HTVAL-IMP-03: implicit VS-stage L0 PTE GPF (R=0)");
-    SHTVALA_REQUIRE();
+    if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     two_stage_ctx_t ctx;
@@ -178,7 +178,7 @@ bool test_htval_imp_03_l0_perm(void) {
 TEST_REGISTER(test_htval_imp_04_store_walk);
 bool test_htval_imp_04_store_walk(void) {
     TEST_BEGIN("HTVAL-IMP-04: implicit VS-stage L0 PTE GPF on store walk");
-    SHTVALA_REQUIRE();
+    if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     two_stage_ctx_t ctx;
@@ -223,7 +223,7 @@ bool test_htval_imp_04_store_walk(void) {
 TEST_REGISTER(test_htval_imp_05_htinst_read);
 bool test_htval_imp_05_htinst_read(void) {
     TEST_BEGIN("HTVAL-IMP-05: implicit PTE read GPF, htinst == read pseudoinstruction");
-    SHTVALA_REQUIRE();
+    if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     two_stage_ctx_t ctx;
@@ -266,7 +266,7 @@ bool test_htval_imp_05_htinst_read(void) {
 TEST_REGISTER(test_htval_imp_04_fetch_walk);
 bool test_htval_imp_04_fetch_walk(void) {
     TEST_BEGIN("HTVAL-IMP-04f: implicit VS-stage L0 PTE GPF on fetch walk");
-    SHTVALA_REQUIRE();
+    if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     two_stage_ctx_t ctx;
@@ -310,7 +310,7 @@ bool test_htval_imp_04_fetch_walk(void) {
 TEST_REGISTER(test_htval_imp_06_implicit_write);
 bool test_htval_imp_06_implicit_write(void) {
     TEST_BEGIN("HTVAL-IMP-06: implicit PTE write GPF (A-bit update, D=0 in G-stage)");
-    SHTVALA_REQUIRE();
+    if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     two_stage_ctx_t ctx;
@@ -363,7 +363,7 @@ bool test_htval_imp_06_implicit_write(void) {
 TEST_REGISTER(test_htval_imp_07_sv48x4);
 bool test_htval_imp_07_sv48x4(void) {
     TEST_BEGIN("HTVAL-IMP-07: implicit VS-stage L0 PTE GPF under Sv48x4");
-    SHTVALA_REQUIRE();
+    if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV48X4);
 
     two_stage_ctx_t ctx;

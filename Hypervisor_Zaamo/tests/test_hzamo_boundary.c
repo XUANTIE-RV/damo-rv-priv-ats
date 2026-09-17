@@ -24,7 +24,7 @@ TEST_REGISTER(test_hzamo_30_no_guest_amo_equivalent);
 bool test_hzamo_30_no_guest_amo_equivalent(void)
 {
     TEST_BEGIN("HZAMO-30: (record) HLV/HSV exist, no guest-AMO equivalent");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -70,7 +70,7 @@ TEST_REGISTER(test_hzamo_31_hlv_hsv_not_atomic);
 bool test_hzamo_31_hlv_hsv_not_atomic(void)
 {
     TEST_BEGIN("HZAMO-31: (record) HLV+HSV cannot replace AMO atomicity");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     TEST_SKIP(HZAMO_SMP_SKIP_REASON);
     HYP_TEST_END();
 }

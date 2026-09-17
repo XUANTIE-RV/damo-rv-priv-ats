@@ -34,29 +34,9 @@
 #define SSTATUS_UXL_SHIFT  32
 #define SSTATUS_UXL_MASK   (3UL << SSTATUS_UXL_SHIFT)
 
-/* misa extension bits for platform capability detection */
-#ifndef MISA_F
-#define MISA_F  (1UL << ('F' - 'A'))
-#define MISA_V  (1UL << ('V' - 'A'))
-#endif
-
-/* ===================================================================
- * Platform capability detection
- * =================================================================== */
-
-static bool platform_has_f_ext(void)
-{
-    uintptr_t misa;
-    asm volatile ("csrr %0, misa" : "=r"(misa));
-    return (misa & MISA_F) != 0;
-}
-
-static bool platform_has_v_ext(void)
-{
-    uintptr_t misa;
-    asm volatile ("csrr %0, misa" : "=r"(misa));
-    return (misa & MISA_V) != 0;
-}
+/* F/V extension availability is a compile-time platform capability, taken
+ * from F_AVAILABLE / V_AVAILABLE (common/capabilities.h, force-included and
+ * derived from config/<platform>/rvtest_config.h). No runtime misa probing. */
 
 /* ===================================================================
  * VS-mode trampoline: floating-point instruction
@@ -172,7 +152,7 @@ bool vsst_03_fs_off_fp_illegal(void)
 {
     TEST_BEGIN("VSST-03: vsstatus.FS=0 FP triggers illegal-inst");
 
-    if (!platform_has_f_ext())
+    if (!F_AVAILABLE)
         TEST_SKIP("F extension not available");
 
     uintptr_t saved_mstatus;
@@ -207,7 +187,7 @@ bool vsst_04_sstatus_fs_off_fp_illegal(void)
 {
     TEST_BEGIN("VSST-04: sstatus.FS=0 FP triggers illegal-inst");
 
-    if (!platform_has_f_ext())
+    if (!F_AVAILABLE)
         TEST_SKIP("F extension not available");
 
     uintptr_t saved_mstatus;
@@ -242,7 +222,7 @@ bool vsst_05_both_fs_nonzero_fp_ok(void)
 {
     TEST_BEGIN("VSST-05: both FS non-zero, FP executes normally");
 
-    if (!platform_has_f_ext())
+    if (!F_AVAILABLE)
         TEST_SKIP("F extension not available");
 
     uintptr_t saved_mstatus;
@@ -277,7 +257,7 @@ bool vsst_06_fp_makes_both_fs_dirty(void)
 {
     TEST_BEGIN("VSST-06: FP write makes both FS Dirty");
 
-    if (!platform_has_f_ext())
+    if (!F_AVAILABLE)
         TEST_SKIP("F extension not available");
 
     uintptr_t saved_mstatus;
@@ -324,7 +304,7 @@ bool vsst_07_vs_off_vector_illegal(void)
 {
     TEST_BEGIN("VSST-07: vsstatus.VS=0 Vector triggers illegal-inst");
 
-    if (!platform_has_v_ext())
+    if (!V_AVAILABLE)
         TEST_SKIP("V extension not available");
 
     uintptr_t saved_mstatus;
@@ -359,7 +339,7 @@ bool vsst_08_sstatus_vs_off_vector_illegal(void)
 {
     TEST_BEGIN("VSST-08: sstatus.VS=0 Vector triggers illegal-inst");
 
-    if (!platform_has_v_ext())
+    if (!V_AVAILABLE)
         TEST_SKIP("V extension not available");
 
     uintptr_t saved_mstatus;
@@ -394,7 +374,7 @@ bool vsst_09_vector_makes_both_vs_dirty(void)
 {
     TEST_BEGIN("VSST-09: Vector write makes both VS Dirty");
 
-    if (!platform_has_v_ext())
+    if (!V_AVAILABLE)
         TEST_SKIP("V extension not available");
 
     uintptr_t saved_mstatus;
@@ -468,7 +448,7 @@ bool vsst_10_sd_reflects_vs_view(void)
                    readback & SSTATUS_SD_BIT, SSTATUS_SD_BIT);
 
     /* Set vsstatus.FS = Off, vsstatus.VS = Dirty → SD should be 1. */
-    if (platform_has_v_ext()) {
+    if (V_AVAILABLE) {
         vsstatus = (readback & ~(SSTATUS_FS_MASK | SSTATUS_VS_MASK))
                    | SSTATUS_FS_OFF | SSTATUS_VS_DIRTY;
         asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));

@@ -51,55 +51,17 @@
 static volatile uintptr_t hz_wrs_slot;
 
 /* ===================================================================
- * Feature detection
+ * Feature availability
+ *
+ * Zawrs support is config-DECLARATION driven: every case gates with
+ *   if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
+ * using the compile-time ZAWRS_AVAILABLE macro normalized in
+ * common/capabilities.h from ZAWRS_SUPPORTED (rvtest_config.h). No
+ * wrapper macro is provided. Only the first case (HZWRS-01)
+ * additionally probes the DUT (trap-armed wrs.sto in M-mode) to verify
+ * the runtime behavior is aligned with the config declaration; no
+ * other case probes.
  * =================================================================== */
-
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-#define REQUIRE_H_EXT() do { \
-    if (!HAS_H_EXT()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-/* Non-asserting Zawrs detection: execute wrs.sto in M-mode with a
- * locally enabled pending M-software-free wake (SSIP + SSIE) so the
- * instruction completes deterministically; an illegal-instruction
- * trap means the encoding is not implemented. */
-static int hz_zawrs_cached = -1;
-
-static inline bool hz_zawrs_present(void)
-{
-    if (hz_zawrs_cached < 0)
-    {
-        CSRS(mip, (1UL << 1));   /* SSIP */
-        CSRS(mie, (1UL << 1));   /* SSIE */
-
-        M_TRAP_EXPECT_BEGIN();
-        EXEC_WRS_STO();
-        bool trapped = trap_was_triggered();
-        uintptr_t cause = trap_get_cause();
-        trap_expect_end();
-
-        CSRC(mip, (1UL << 1));
-        CSRC(mie, (1UL << 1));
-
-        hz_zawrs_cached =
-            (trapped && cause == CAUSE_ILLEGAL_INST) ? 0 : 1;
-    }
-    return hz_zawrs_cached == 1;
-}
-
-#define REQUIRE_ZAWRS() do { \
-    if (!hz_zawrs_present()) { \
-        TEST_SKIP("Zawrs not implemented (raw wrs encoding raises " \
-                  "illegal-instruction in M-mode probe)"); \
-    } \
-} while (0)
 
 /* ===================================================================
  * Reservation set (Zawrs requires LR, from Zalrsc)
@@ -116,6 +78,31 @@ static inline uintptr_t hz_reserve(void)
     return v;
 }
 
+/* Write MTIMECMP safely across XLENs. On RV64 a single 64-bit store
+ * is atomic. On RV32 a naive low-then-high halfword split can leave
+ * an intermediate value below mtime and raise a spurious MTIP; park
+ * the high half at the maximum first (same sequence as
+ * sm_mtimecmp_write in Sm_Interrupts), then set the low half and the
+ * real high half so every intermediate value stays above mtime.
+ *
+ * The machine timer addresses come from the platform config
+ * (PLATFORM_MTIMECMP_ADDR / PLATFORM_MTIME_ADDR). Every config/
+ * entry defines them, so no local fallback is provided: a platform
+ * missing the macros fails the build instead of silently using the
+ * legacy centralized CLINT layout (per-hart MTIMER platforms do not
+ * follow that layout). */
+static inline void hz_write_mtimecmp(uint64_t v)
+{
+#if __riscv_xlen == 64
+    *(volatile uint64_t *)PLATFORM_MTIMECMP_ADDR = v;
+#else
+    *(volatile uint32_t *)(PLATFORM_MTIMECMP_ADDR + 4) = 0xFFFFFFFFu;
+    *(volatile uint32_t *)PLATFORM_MTIMECMP_ADDR = (uint32_t)v;
+    *(volatile uint32_t *)(PLATFORM_MTIMECMP_ADDR + 4) = (uint32_t)(v >> 32);
+    asm volatile("fence" ::: "memory");
+#endif
+}
+
 /* ===================================================================
  * Interrupt quiescing (for VTW/TW illegal/virtual-instruction cases)
  *
@@ -125,10 +112,6 @@ static inline uintptr_t hz_reserve(void)
  * enable, and return the previous mie for restoration.
  * =================================================================== */
 
-#ifndef PLATFORM_MTIMECMP_ADDR
-#define PLATFORM_MTIMECMP_ADDR  (PLATFORM_CLINT_BASE + 0x4000UL)
-#endif
-
 static inline uintptr_t hz_quiet_interrupts(void)
 {
     uintptr_t saved_mie = CSRR(mie);
@@ -136,7 +119,7 @@ static inline uintptr_t hz_quiet_interrupts(void)
     CSRC(mip, (1UL << 1));       /* SSIP */
     hvip_write(0);
     vsie_write(0);
-    *(volatile uint64_t *)PLATFORM_MTIMECMP_ADDR = (uint64_t)-1;
+    hz_write_mtimecmp((uint64_t)-1);
     return saved_mie;
 }
 
@@ -166,25 +149,55 @@ static inline void hz_suppress_globals(void)
  * immediate completion.
  * =================================================================== */
 
-static inline void hz_set_m_soft_pending(void)
+static inline uintptr_t hz_set_m_soft_pending(void)
 {
+    /* Delegate the SSIP to S-level first: an undelegated SSIP targets
+     * M-mode and is taken immediately once the hart drops below M
+     * (e.g. right after the mret that enters HS-mode), and the handler
+     * clears it before the wrs instruction executes (machine.adoc
+     * norm:intr_mip_mie_op condition (a): privilege lower than the
+     * target). Delegated, it only traps when sstatus.SIE=1, which
+     * hz_suppress_globals() keeps 0, so it stays pending. */
+    /* The previous mideleg is returned so the paired
+     * hz_clear_m_soft_pending() can restore it, mirroring
+     * zawrs_delegate_ssip()/zawrs_restore_mideleg() in
+     * Zawrs/tests/zawrs_helper.h: no delegation state leaks into
+     * later cases even when a case fails in between. */
+    uintptr_t saved_mideleg = CSRR(mideleg);
+    CSRS(mideleg, (1UL << 1));
     CSRS(mip, (1UL << 1));       /* SSIP */
     CSRS(mie, (1UL << 1));       /* SSIE */
+    return saved_mideleg;
 }
 
-static inline void hz_clear_m_soft_pending(void)
+static inline void hz_clear_m_soft_pending(uintptr_t saved_mideleg)
 {
     CSRC(mip, (1UL << 1));
     CSRC(mie, (1UL << 1));
+    CSRW(mideleg, saved_mideleg);
 }
 
-/* VS-level: hvip.VSSIP injected, hideleg[1] routes the VS software
+/* VS-level: hvip.VSSIP injected, hideleg bit 2 routes the VS software
  * interrupt to VS-level, vsie.SSIE locally enables it - a locally
  * enabled pending interrupt for VS/VU-mode per the wfi resume rules.
- * Used by the record-only VTW case (HZWRS-06). */
+ * Used by the record-only VTW case (HZWRS-06).
+ *
+ * Bit-numbering per hypervisor.adoc: VSSIP is VS-level interrupt
+ * cause 2, so the delegation bit is hideleg[2] (norm:hideleg_acc:
+ * bits 10/6/2 are writable, bits 12/9/5/1 are read-only zeros).
+ * With hideleg[2]=1, vsip.SSIP and vsie.SSIE (bit 1) are aliases of
+ * hip.VSSIP and hie.VSSIE (norm:vsip_vsie_ssi); with hideleg[2]=0
+ * they are read-only zeros, so the delegation must be programmed
+ * before enabling vsie.SSIE.
+ *
+ * Bug fix: this constant previously used bit 1 (the S-level
+ * delegation bit, read-only zero per norm:hideleg_acc), so the write
+ * was silently dropped by hardware, vsie.SSIE stayed read-only zero
+ * and the VS wake source never became pending - HZWRS-02 then hit a
+ * legal unbounded wrs.nto stall. */
 
 #define HZ_HVIP_VSSIP     (1UL << 2)
-#define HZ_HIDELEG_VSSI   (1UL << 1)
+#define HZ_HIDELEG_VSSI   (1UL << 2)
 #define HZ_VSIE_SSIE      (1UL << 1)
 
 static inline void hz_set_vs_soft_pending(void)
@@ -199,6 +212,78 @@ static inline void hz_clear_vs_soft_pending(void)
     hvip_write(hvip_read() & ~HZ_HVIP_VSSIP);
     vsie_write(vsie_read() & ~HZ_VSIE_SSIE);
     hideleg_write(hideleg_read() & ~HZ_HIDELEG_VSSI);
+}
+
+/* ===================================================================
+ * Watchdog harness (bounded stall for the VU normal-execution cases)
+ *
+ * A pending locally enabled interrupt always targets VS or above and
+ * is taken on VU-mode entry, so a pending-interrupt wake source cannot
+ * be maintained in VU-mode. Instead arm an M-timer with MTIE and
+ * global MIE set: if the implementation stalls, the watchdog
+ * interrupt terminates the stall (norm:Zawrs_exec_resume_rules) and
+ * the framework M-mode handler disarms the source. A recorded trap
+ * holding the M-timer interrupt cause is a legitimate outcome; a
+ * synchronous cause means the wrs instruction itself trapped.
+ * =================================================================== */
+
+/* HZ_WATCHDOG_TICKS: the stall bound, in timer ticks. Typical
+ * timebases are 10-25 MHz, so 200000 ticks is 8-20 ms - long enough
+ * that a wrs which completes without stalling finishes (and disarms
+ * the watchdog) well before it fires, and short enough to bound a
+ * real stall far below any test timeout. The exact value is not
+ * critical: any millisecond-order bound satisfies both edges. Kept
+ * in sync with WRS_WATCHDOG_TICKS in Zawrs/tests/zawrs_helper.h. */
+#define HZ_WATCHDOG_TICKS 200000UL
+
+/* Arm the M-timer watchdog. Returns the previous mie so the caller
+ * can pass it to hz_disarm_watchdog(); while armed, mie is fully
+ * owned by the watchdog (all other enables cleared so the armed
+ * window records at most the M-timer interrupt). */
+static inline uintptr_t hz_arm_watchdog(void)
+{
+    uintptr_t saved_mie = CSRR(mie);
+    CSRW(mie, 0);
+    CSRC(mip, (1UL << 1));       /* SSIP */
+    hvip_write(0);
+    hz_write_mtimecmp(*(volatile uint64_t *)PLATFORM_MTIME_ADDR +
+                      HZ_WATCHDOG_TICKS);
+    CSRS(mie, (1UL << IRQ_M_TIMER));
+    CSRS(mstatus, MSTATUS_MIE_BIT);
+    return saved_mie;
+}
+
+/* Disarm the watchdog and restore the mie snapshot taken by
+ * hz_arm_watchdog(). mip.MTIP is driven by the MTIMER compare: the
+ * max-value MTIMECMP write below clears a pending MTIP automatically
+ * (a CSRC(mip, MTIP) would be ignored - the bit is read-only while
+ * an MTIMER backs it). */
+static inline void hz_disarm_watchdog(uintptr_t saved_mie)
+{
+    CSRC(mstatus, MSTATUS_MIE_BIT);
+    CSRW(mie, saved_mie);
+    hz_write_mtimecmp((uint64_t)-1);
+}
+
+/* True when the armed trap record is either empty or holds only the
+ * watchdog M-timer interrupt (asynchronous, no epc advance). Any
+ * synchronous cause - or any asynchronous cause other than the
+ * M-timer - returns false and fails the test case; nothing is
+ * silently accepted, so an unexpected interrupt or a corrupted
+ * record surfaces as a FAIL instead of a pass. */
+static inline bool hz_trap_is_watchdog_only(void)
+{
+    if (!trap_was_triggered())
+        return true;
+    uintptr_t c = trap_get_cause();
+    bool watchdog = (c & CAUSE_INTERRUPT_BIT) != 0 &&
+                    (c & ~CAUSE_INTERRUPT_BIT) == IRQ_M_TIMER;
+    if (!watchdog)
+        printf("  NON-WATCHDOG TRAP: cause=0x%lx epc=0x%lx tval=0x%lx\n",
+               (unsigned long)c,
+               (unsigned long)trap_get_epc(),
+               (unsigned long)trap_get_tval());
+    return watchdog;
 }
 
 /* ===================================================================

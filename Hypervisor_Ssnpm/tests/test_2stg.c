@@ -25,7 +25,8 @@
 TEST_REGISTER(test_hzpm_2stg_01);
 bool test_hzpm_2stg_01(void) {
     TEST_BEGIN("HZPM-2STG-01: GPA extra bits masked (Sv48x4+PMLEN16)");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV48X4);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN16))
         TEST_SKIP("PMLEN=16 not supported for VS-mode");
@@ -70,7 +71,8 @@ bool test_hzpm_2stg_01(void) {
 TEST_REGISTER(test_hzpm_2stg_02);
 bool test_hzpm_2stg_02(void) {
     TEST_BEGIN("HZPM-2STG-02: VA sign-extend with two-stage active");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
@@ -98,7 +100,8 @@ bool test_hzpm_2stg_02(void) {
 TEST_REGISTER(test_hzpm_2stg_03);
 bool test_hzpm_2stg_03(void) {
     TEST_BEGIN("HZPM-2STG-03: PMM change sync via HFENCE.GVMA (48x4)");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV48X4);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN16))
         TEST_SKIP("PMLEN=16 not supported for VS-mode");
@@ -131,7 +134,8 @@ bool test_hzpm_2stg_03(void) {
 TEST_REGISTER(test_hzpm_2stg_04);
 bool test_hzpm_2stg_04(void) {
     TEST_BEGIN("HZPM-2STG-04: PMM change sync via HFENCE.GVMA (57x4)");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV57X4);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
@@ -163,7 +167,8 @@ bool test_hzpm_2stg_04(void) {
 TEST_REGISTER(test_hzpm_2stg_05);
 bool test_hzpm_2stg_05(void) {
     TEST_BEGIN("HZPM-2STG-05: G-stage walk unaffected by PM");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");

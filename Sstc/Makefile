@@ -13,7 +13,6 @@ TARGET = sstc_test.elf
 ENABLE_VM  = 1
 
 # Spike: explicitly request RV64 + Sstc (+H preserved for compatibility) support.
-SPIKE_ISA = rv64imach_zicsr_zifencei_sstc
 
 # Extension-specific object files
 EXT_OBJS = \

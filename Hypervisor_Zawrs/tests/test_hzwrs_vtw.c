@@ -30,8 +30,8 @@ TEST_REGISTER(test_hzwrs_04);
 bool test_hzwrs_04(void)
 {
     TEST_BEGIN("HZWRS-04: VS-mode VTW=1 wrs.nto -> virtual-instruction");
-    REQUIRE_H_EXT();
-    REQUIRE_ZAWRS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     uintptr_t saved_mie = hz_quiet_interrupts();
     hz_clear_tw();
@@ -52,8 +52,8 @@ TEST_REGISTER(test_hzwrs_05);
 bool test_hzwrs_05(void)
 {
     TEST_BEGIN("HZWRS-05: VU-mode VTW=1 wrs.nto -> virtual-instruction");
-    REQUIRE_H_EXT();
-    REQUIRE_ZAWRS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     uintptr_t saved_mie = hz_quiet_interrupts();
     hz_clear_tw();
@@ -74,8 +74,8 @@ TEST_REGISTER(test_hzwrs_06);
 bool test_hzwrs_06(void)
 {
     TEST_BEGIN("HZWRS-06: VTW=1 + pending locally enabled IRQ (record)");
-    REQUIRE_H_EXT();
-    REQUIRE_ZAWRS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     /* Record-only case (norm:vtw_virtinstr): both completing
      * immediately (norm:Zawrs_exec_resume_rules) and trapping with
@@ -83,7 +83,7 @@ bool test_hzwrs_06(void)
      * implementations. Record the choice; constrain only the trap
      * type when a trap is taken. The wake source is a VS-level
      * software interrupt: hvip.VSSIP injected, routed to VS-level by
-     * hideleg[1] and locally enabled by vsie.SSIE. */
+     * hideleg[2] and locally enabled by vsie.SSIE. */
     uintptr_t saved_mie = hz_quiet_interrupts();
     hz_clear_tw();
     hz_set_vtw();
@@ -122,8 +122,8 @@ TEST_REGISTER(test_hzwrs_07);
 bool test_hzwrs_07(void)
 {
     TEST_BEGIN("HZWRS-07: VTW trap report (cause=22, stval, SPV=1)");
-    REQUIRE_H_EXT();
-    REQUIRE_ZAWRS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     /* Delegate virtual-instruction to HS-mode so hstatus.SPV is
      * written by hardware on trap entry (SPV is only written for

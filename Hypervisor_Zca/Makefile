@@ -43,7 +43,6 @@ ENABLE_PMP = 1
 QEMU_CPU   = max
 
 # Spike: RV64 + H + C (Zca is the integer subset of 'c', already in imach).
-SPIKE_ISA  = rv64imach_zicsr_zifencei
 
 EXT_OBJS = \
     main.o \

@@ -20,7 +20,7 @@ bool test_hcross_sstc_01(void)
 {
     TEST_BEGIN("HCROSS-SSTC-01: henvcfg.STCE read-write round-trip");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t orig_m = menvcfg_read();
     uintptr_t orig_h = henvcfg_read();
@@ -52,7 +52,7 @@ bool test_hcross_sstc_02(void)
 {
     TEST_BEGIN("HCROSS-SSTC-02: henvcfg.STCE constrained by menvcfg.STCE");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t orig_m = menvcfg_read();
     uintptr_t orig_h = henvcfg_read();

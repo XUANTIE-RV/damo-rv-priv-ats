@@ -17,7 +17,6 @@ QEMU_CPU   = max
 QEMU_MCH   = virt,aia=none
 
 # Spike: explicitly request RV64 + H extension support.
-SPIKE_ISA = rv64imach_zicsr_zifencei
 
 EXT_OBJS = \
     main.o \

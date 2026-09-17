@@ -79,22 +79,6 @@
     ({ asm volatile(".word 0xCD827057" ::: "memory"); })
 
 /* ===================================================================
- * H extension detection
- * =================================================================== */
-
-static bool hvec_check_h(void)
-{
-    uintptr_t misa = CSRR(misa);
-    return (misa & (1UL << ('H' - 'A'))) != 0;
-}
-
-#define H_REQUIRED_OR_SKIP() do { \
-    if (!hvec_check_h()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-/* ===================================================================
  * Platform support gates
  *
  * Whether the platform implements V / F is declared by the
@@ -102,22 +86,6 @@ static bool hvec_check_h(void)
  * config/<platform>/rvtest_config.h (auto-generated from the
  * platform ISA description). No runtime probing is used.
  * =================================================================== */
-
-#ifdef V_SUPPORTED
-#define V_REQUIRED_OR_SKIP() do { } while (0)
-#else
-#define V_REQUIRED_OR_SKIP() \
-    TEST_SKIP("V not supported: V_SUPPORTED not defined in rvtest_config.h")
-#endif
-
-/* Vector FP cases need F plus V. */
-#if defined(V_SUPPORTED) && defined(F_SUPPORTED)
-#define VF_REQUIRED_OR_SKIP() do { } while (0)
-#else
-#define VF_REQUIRED_OR_SKIP() \
-    TEST_SKIP("vector FP not supported: V_SUPPORTED/F_SUPPORTED not " \
-              "defined in rvtest_config.h")
-#endif
 
 /* ===================================================================
  * vsstatus / mstatus context-field accessors

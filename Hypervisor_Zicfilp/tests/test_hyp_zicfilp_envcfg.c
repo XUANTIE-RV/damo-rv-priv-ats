@@ -29,7 +29,7 @@ TEST_REGISTER(test_hcfi_lp_01);
 bool test_hcfi_lp_01(void) {
     TEST_BEGIN("HCFI-LP-01: henvcfg.LPE basic read/write");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t orig = henvcfg_read();
 
@@ -69,8 +69,8 @@ TEST_REGISTER(test_hcfi_lp_02);
 bool test_hcfi_lp_02(void) {
     TEST_BEGIN("HCFI-LP-02: henvcfg.LPE=0, VS-mode ELP not updated");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -110,8 +110,8 @@ TEST_REGISTER(test_hcfi_lp_03);
 bool test_hcfi_lp_03(void) {
     TEST_BEGIN("HCFI-LP-03: henvcfg.LPE=1, VS-mode ELP updated");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -151,8 +151,8 @@ TEST_REGISTER(test_hcfi_lp_04);
 bool test_hcfi_lp_04(void) {
     TEST_BEGIN("HCFI-LP-04: henvcfg.LPE=0, VS-mode LPAD as no-op");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -183,8 +183,8 @@ TEST_REGISTER(test_hcfi_lp_05);
 bool test_hcfi_lp_05(void) {
     TEST_BEGIN("HCFI-LP-05: henvcfg.LPE=1, VS-mode illegal jump triggers LP Fault");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -226,8 +226,8 @@ TEST_REGISTER(test_hcfi_lp_06);
 bool test_hcfi_lp_06(void) {
     TEST_BEGIN("HCFI-LP-06: henvcfg.LPE=0, VS-mode illegal jump no LP Fault");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -266,8 +266,8 @@ TEST_REGISTER(test_hcfi_lp_07);
 bool test_hcfi_lp_07(void) {
     TEST_BEGIN("HCFI-LP-07: VU-mode xLPE controlled by senvcfg.LPE=0");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -308,8 +308,8 @@ TEST_REGISTER(test_hcfi_lp_08);
 bool test_hcfi_lp_08(void) {
     TEST_BEGIN("HCFI-LP-08: VU-mode xLPE=1 triggers LP Fault");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -353,8 +353,8 @@ TEST_REGISTER(test_hcfi_lp_09);
 bool test_hcfi_lp_09(void) {
     TEST_BEGIN("HCFI-LP-09: henvcfg.LPE=1 but menvcfg.LPE=0");
 
-    H_REQUIRED_OR_SKIP();
-    ZICFILP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFILP_AVAILABLE) TEST_SKIP("Zicfilp not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -406,10 +406,11 @@ TEST_REGISTER(test_hcfi_lp_10);
 bool test_hcfi_lp_10(void) {
     TEST_BEGIN("HCFI-LP-10: henvcfg.LPE not implemented, read-only zero");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    /* If Zicfilp is not detected, henvcfg.LPE should be read-only zero */
-    if (detect_zicfilp()) {
+    /* Zicfilp is config-declared, so henvcfg.LPE is writable and this
+     * read-only-zero test does not apply. */
+    if (ZICFILP_AVAILABLE) {
         printf("    Zicfilp is implemented, LPE is writable\n");
         TEST_SKIP("Zicfilp is implemented, skip read-only-zero test");
     }

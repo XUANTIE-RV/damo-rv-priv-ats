@@ -65,7 +65,33 @@ TEST_REGISTER(test_hzlrsc_01_hs_exec);
 bool test_hzlrsc_01_hs_exec(void)
 {
     TEST_BEGIN("HZLRSC-01: HS-mode lr.w/sc.w + lr.d/sc.d succeed");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
+
+    /* First case ONLY: config declares Zalrsc/A, so probe the DUT to
+     * confirm it really implements the reservation instructions
+     * (aligned with the ZALRSC_SUPPORTED/A_SUPPORTED declaration). A
+     * trap-armed lr.w/sc.w pair in M-mode raising illegal-instruction
+     * would mean the DUT does NOT implement it despite the config. No
+     * other case probes. */
+    {
+        static volatile uint64_t hzlrsc_probe_slot;
+        uintptr_t paddr = (uintptr_t)&hzlrsc_probe_slot;
+        uintptr_t plr, psc;
+        M_TRAP_EXPECT_BEGIN();
+        asm volatile(
+            ".option push\n\t.option norvc\n\t"
+            "lr.w %0, (%2)\n\t"
+            "sc.w %1, %3, (%2)\n\t"
+            ".option pop\n\t"
+            : "=&r"(plr), "=&r"(psc)
+            : "r"(paddr), "r"(0x12345678UL) : "memory");
+        bool ptrapped = trap_was_triggered();
+        uintptr_t pcause = ptrapped ? trap_get_cause() : 0;
+        trap_expect_end();
+        TEST_ASSERT("DUT really implements Zalrsc/A (aligned with config)",
+                    !(ptrapped && pcause == CAUSE_ILLEGAL_INST));
+    }
 
     uintptr_t waddr = (uintptr_t)&hzlrsc_hs_slot[0];
     uintptr_t daddr = (uintptr_t)&hzlrsc_hs_slot[2];
@@ -95,7 +121,8 @@ TEST_REGISTER(test_hzlrsc_02_vs_exec_no_cause22);
 bool test_hzlrsc_02_vs_exec_no_cause22(void)
 {
     TEST_BEGIN("HZLRSC-02: VS-mode lr/sc succeed, never cause=22");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -144,7 +171,8 @@ TEST_REGISTER(test_hzlrsc_03_vu_exec_no_cause22);
 bool test_hzlrsc_03_vu_exec_no_cause22(void)
 {
     TEST_BEGIN("HZLRSC-03: VU-mode lr.w/sc.w succeed, never cause=22");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -179,7 +207,8 @@ TEST_REGISTER(test_hzlrsc_04_vs_hs_semantic_parity);
 bool test_hzlrsc_04_vs_hs_semantic_parity(void)
 {
     TEST_BEGIN("HZLRSC-04: VS-mode LR/SC semantics == HS-mode");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

@@ -19,7 +19,6 @@ ENABLE_HYP = 1
 QEMU_CPU   = max
 
 # Spike: explicitly request RV64 + H extension + Sstc.
-SPIKE_ISA = rv64imach_zicsr_zifencei_sstc
 
 EXT_OBJS = \
     main.o \

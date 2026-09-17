@@ -23,13 +23,13 @@ bool test_hcross_smcsrind_01(void)
 {
     TEST_BEGIN("HCROSS-SMCSRIND-01: mstateen0[60]=0 blocks S-mode vsiselect read");
 
-    if (!HAS_H_EXT()) {
+    if (!H_AVAILABLE) {
         TEST_SKIP("H extension not available");
     }
-    if (!platform_has_smcsrind()) {
+    if (!SMCSRIND_AVAILABLE) {
         TEST_SKIP("Smcsrind not implemented");
     }
-    if (!platform_has_smstateen()) {
+    if (!SMSTATEEN_AVAILABLE) {
         TEST_SKIP("Smstateen not implemented");
     }
 
@@ -52,13 +52,13 @@ bool test_hcross_smcsrind_02(void)
 {
     TEST_BEGIN("HCROSS-SMCSRIND-02: mstateen0[60]=0 blocks S-mode vsiselect write");
 
-    if (!HAS_H_EXT()) {
+    if (!H_AVAILABLE) {
         TEST_SKIP("H extension not available");
     }
-    if (!platform_has_smcsrind()) {
+    if (!SMCSRIND_AVAILABLE) {
         TEST_SKIP("Smcsrind not implemented");
     }
-    if (!platform_has_smstateen()) {
+    if (!SMSTATEEN_AVAILABLE) {
         TEST_SKIP("Smstateen not implemented");
     }
 
@@ -78,13 +78,13 @@ bool test_hcross_smcsrind_03(void)
 {
     TEST_BEGIN("HCROSS-SMCSRIND-03: mstateen0[60]=0 blocks S-mode vsireg read");
 
-    if (!HAS_H_EXT()) {
+    if (!H_AVAILABLE) {
         TEST_SKIP("H extension not available");
     }
-    if (!platform_has_smcsrind()) {
+    if (!SMCSRIND_AVAILABLE) {
         TEST_SKIP("Smcsrind not implemented");
     }
-    if (!platform_has_smstateen()) {
+    if (!SMSTATEEN_AVAILABLE) {
         TEST_SKIP("Smstateen not implemented");
     }
 
@@ -104,13 +104,13 @@ bool test_hcross_smcsrind_04(void)
 {
     TEST_BEGIN("HCROSS-SMCSRIND-04: mstateen0[60]=0 blocks S-mode vsireg2-6");
 
-    if (!HAS_H_EXT()) {
+    if (!H_AVAILABLE) {
         TEST_SKIP("H extension not available");
     }
-    if (!platform_has_smcsrind()) {
+    if (!SMCSRIND_AVAILABLE) {
         TEST_SKIP("Smcsrind not implemented");
     }
-    if (!platform_has_smstateen()) {
+    if (!SMSTATEEN_AVAILABLE) {
         TEST_SKIP("Smstateen not implemented");
     }
 
@@ -152,13 +152,13 @@ bool test_hcross_smcsrind_05(void)
 {
     TEST_BEGIN("HCROSS-SMCSRIND-05: mstateen0[60]=1 allows S-mode vsiselect");
 
-    if (!HAS_H_EXT()) {
+    if (!H_AVAILABLE) {
         TEST_SKIP("H extension not available");
     }
-    if (!platform_has_smcsrind()) {
+    if (!SMCSRIND_AVAILABLE) {
         TEST_SKIP("Smcsrind not implemented");
     }
-    if (!platform_has_smstateen()) {
+    if (!SMSTATEEN_AVAILABLE) {
         TEST_SKIP("Smstateen not implemented");
     }
 
@@ -180,13 +180,13 @@ bool test_hcross_smcsrind_06(void)
 {
     TEST_BEGIN("HCROSS-SMCSRIND-06: mstateen0[60]=1 allows S-mode vsireg*");
 
-    if (!HAS_H_EXT()) {
+    if (!H_AVAILABLE) {
         TEST_SKIP("H extension not available");
     }
-    if (!platform_has_smcsrind()) {
+    if (!SMCSRIND_AVAILABLE) {
         TEST_SKIP("Smcsrind not implemented");
     }
-    if (!platform_has_smstateen()) {
+    if (!SMSTATEEN_AVAILABLE) {
         TEST_SKIP("Smstateen not implemented");
     }
 
@@ -257,13 +257,13 @@ bool test_hcross_smcsrind_07(void)
 {
     TEST_BEGIN("HCROSS-SMCSRIND-07: mstateen0[60]=0 does not block M-mode vsiselect");
 
-    if (!HAS_H_EXT()) {
+    if (!H_AVAILABLE) {
         TEST_SKIP("H extension not available");
     }
-    if (!platform_has_smcsrind()) {
+    if (!SMCSRIND_AVAILABLE) {
         TEST_SKIP("Smcsrind not implemented");
     }
-    if (!platform_has_smstateen()) {
+    if (!SMSTATEEN_AVAILABLE) {
         TEST_SKIP("Smstateen not implemented");
     }
 
@@ -291,13 +291,13 @@ bool test_hcross_smcsrind_08(void)
 {
     TEST_BEGIN("HCROSS-SMCSRIND-08: mstateen0[60]=0 does not block M-mode vsireg*");
 
-    if (!HAS_H_EXT()) {
+    if (!H_AVAILABLE) {
         TEST_SKIP("H extension not available");
     }
-    if (!platform_has_smcsrind()) {
+    if (!SMCSRIND_AVAILABLE) {
         TEST_SKIP("Smcsrind not implemented");
     }
-    if (!platform_has_smstateen()) {
+    if (!SMSTATEEN_AVAILABLE) {
         TEST_SKIP("Smstateen not implemented");
     }
 
@@ -343,13 +343,13 @@ bool test_hcross_smcsrind_09(void)
 {
     TEST_BEGIN("HCROSS-SMCSRIND-09: hstateen0[60]=0 blocks VS siselect");
 
-    if (!HAS_H_EXT()) {
+    if (!H_AVAILABLE) {
         TEST_SKIP("H extension not available");
     }
-    if (!platform_has_smcsrind()) {
+    if (!SMCSRIND_AVAILABLE) {
         TEST_SKIP("Smcsrind not implemented");
     }
-    if (!platform_has_smstateen()) {
+    if (!SMSTATEEN_AVAILABLE) {
         TEST_SKIP("Smstateen not implemented");
     }
 
@@ -384,13 +384,13 @@ bool test_hcross_smcsrind_10(void)
 {
     TEST_BEGIN("HCROSS-SMCSRIND-10: hstateen0[60]=0 blocks VS sireg");
 
-    if (!HAS_H_EXT()) {
+    if (!H_AVAILABLE) {
         TEST_SKIP("H extension not available");
     }
-    if (!platform_has_smcsrind()) {
+    if (!SMCSRIND_AVAILABLE) {
         TEST_SKIP("Smcsrind not implemented");
     }
-    if (!platform_has_smstateen()) {
+    if (!SMSTATEEN_AVAILABLE) {
         TEST_SKIP("Smstateen not implemented");
     }
 
@@ -450,13 +450,13 @@ bool test_hcross_smcsrind_11(void)
 {
     TEST_BEGIN("HCROSS-SMCSRIND-11: hstateen0[60]=1 allows VS siselect/sireg");
 
-    if (!HAS_H_EXT()) {
+    if (!H_AVAILABLE) {
         TEST_SKIP("H extension not available");
     }
-    if (!platform_has_smcsrind()) {
+    if (!SMCSRIND_AVAILABLE) {
         TEST_SKIP("Smcsrind not implemented");
     }
-    if (!platform_has_smstateen()) {
+    if (!SMSTATEEN_AVAILABLE) {
         TEST_SKIP("Smstateen not implemented");
     }
 

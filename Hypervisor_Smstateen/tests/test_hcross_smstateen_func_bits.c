@@ -22,7 +22,7 @@ TEST_REGISTER(test_hcross_smsta_05);
 bool test_hcross_smsta_05(void) {
     TEST_BEGIN("HCROSS-SMSTA-05: SE0=0 blocks HS-mode hstateen0 access");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t orig = mstateen0_read();
 
@@ -46,7 +46,7 @@ bool test_hcross_smsta_06(void) {
     TEST_BEGIN("HCROSS-SMSTA-06: SE0=0 blocks HS-mode hstateen0h (RV32)");
 
 #if __riscv_xlen == 32
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t orig = mstateen0_read();
 
@@ -82,7 +82,7 @@ TEST_REGISTER(test_hcross_smsta_07);
 bool test_hcross_smsta_07(void) {
     TEST_BEGIN("HCROSS-SMSTA-07: ENVCFG=0 blocks HS-mode henvcfg access");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t orig = mstateen0_read();
 
@@ -120,7 +120,7 @@ TEST_REGISTER(test_hcross_smsta_08);
 bool test_hcross_smsta_08(void) {
     TEST_BEGIN("HCROSS-SMSTA-08: CSRIND=0 blocks HS-mode vsiselect");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t orig = mstateen0_read();
 
@@ -157,7 +157,7 @@ TEST_REGISTER(test_hcross_smsta_09);
 bool test_hcross_smsta_09(void) {
     TEST_BEGIN("HCROSS-SMSTA-09: IMSIC=0 blocks HS-mode vstopei access");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t orig = mstateen0_read();
 
@@ -193,7 +193,7 @@ TEST_REGISTER(test_hcross_smsta_10);
 bool test_hcross_smsta_10(void) {
     TEST_BEGIN("HCROSS-SMSTA-10: CONTEXT=0 blocks HS-mode hcontext access");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t orig = mstateen0_read();
 
@@ -229,7 +229,7 @@ TEST_REGISTER(test_hcross_smsta_11);
 bool test_hcross_smsta_11(void) {
     TEST_BEGIN("HCROSS-SMSTA-11: P1P13=0 blocks HS-mode hedelegh access");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t orig = mstateen0_read();
 
@@ -261,7 +261,7 @@ TEST_REGISTER(test_hcross_smsta_12);
 bool test_hcross_smsta_12(void) {
     TEST_BEGIN("HCROSS-SMSTA-12: P1P13=1 allows HS-mode hedelegh access");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t orig = mstateen0_read();
 

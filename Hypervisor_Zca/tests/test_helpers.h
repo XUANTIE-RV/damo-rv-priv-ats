@@ -61,70 +61,20 @@
 #define HZ_GMODE    SUITE_HGATP_MODE
 
 /* ===================================================================
- * Feature detection
+ * Capability gating
+ *
+ * Every case opens with two inline guards instead of a wrapper macro:
+ *   if (!H_AVAILABLE)   TEST_SKIP("H extension not available");
+ *   if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
+ * Both come from common/capabilities.h. ZCA_AVAILABLE honors
+ * ZCA_SUPPORTED or C_SUPPORTED (C implies Zca), so the platform
+ * declaration is the sole authority for the extension's presence and no
+ * runtime compressed-instruction probe is used. Cases exercising the
+ * RV64-only doubleword forms (c.ld/c.sd/c.ldsp/c.sdsp, reserved on RV32)
+ * add a third inline guard:
+ *   if (__riscv_xlen != 64)
+ *       TEST_SKIP("RV64-only compressed doubleword instruction");
  * =================================================================== */
-
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-#define REQUIRE_H_EXT() do { \
-    if (!HAS_H_EXT()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-/* Zca detection: platform config macro plus a trap-armed probe of a
- * compressed instruction. A c.addi that retires without an
- * illegal-instruction trap confirms the compressed integer subset is
- * executable. (c.addi accepts any nonzero rd, so it is safe with a
- * compiler-chosen register operand; c.lw/c.sw cannot be probed this
- * way because their rs1'/rs2'/rd' must lie in x8..x15.) */
-static int hz_zca_cached = -1;
-
-static inline bool hz_zca_present(void)
-{
-    if (hz_zca_cached < 0)
-    {
-#ifndef ZCA_SUPPORTED
-        hz_zca_cached = 0;
-#else
-        uintptr_t v = 1;
-        trap_expect_begin();
-        asm volatile(
-            ".option push\n\t.option rvc\n\t"
-            "c.addi %0, 1\n\t"
-            ".option pop\n\t"
-            : "+r"(v) :: "memory");
-        bool trapped = trap_was_triggered();
-        uintptr_t cause = trapped ? trap_get_cause() : 0;
-        trap_expect_end();
-        hz_zca_cached =
-            (trapped && cause == CAUSE_ILLEGAL_INST) ? 0 : 1;
-#endif
-    }
-    return hz_zca_cached == 1;
-}
-
-#define REQUIRE_ZCA() do { \
-    if (!hz_zca_present()) { \
-        TEST_SKIP("Zca not implemented (compressed probe raised " \
-                  "illegal-instruction, or ZCA_SUPPORTED undefined)"); \
-    } \
-} while (0)
-
-/* Standard gate for every case in this suite. */
-#define REQUIRE_HZCA() do { REQUIRE_H_EXT(); REQUIRE_ZCA(); } while (0)
-
-/* RV64-only instructions (c.ld/c.sd/c.ldsp/c.sdsp) are excluded on
- * RV32 (their encodings are reserved there). */
-#define HZCA_REQUIRE_RV64() do { \
-    if (__riscv_xlen != 64) { \
-        TEST_SKIP("RV64-only compressed doubleword instruction"); \
-    } \
-} while (0)
 
 /* ===================================================================
  * G-stage / VS-stage leaf PTE flag presets

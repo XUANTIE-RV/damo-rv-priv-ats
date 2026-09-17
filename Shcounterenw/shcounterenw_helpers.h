@@ -116,14 +116,6 @@ static inline unsigned find_first_hpm_counter_gatable(void) {
 }
 
 /* ===================================================================
- * H-extension detection
- * =================================================================== */
-static inline bool has_h_extension(void) {
-    uintptr_t misa = CSRR(misa);
-    return (misa & (1UL << ('H' - 'A'))) != 0;
-}
-
-/* ===================================================================
  * VS-mode payload functions for counter reads
  *
  * These are passed to run_in_vs_mode() / run_in_vu_mode().

@@ -53,7 +53,7 @@ static uintptr_t setup_1g_dual_mapping_svadu(pt_context_t *ctx,
 TEST_REGISTER(test_svadu_1g01);
 bool test_svadu_1g01(void) {
     TEST_BEGIN("SVADU-1G-01: ADUE=1 1 GiB gigapage A=0 load sets A bit");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 
@@ -74,7 +74,7 @@ bool test_svadu_1g01(void) {
 TEST_REGISTER(test_svadu_1g02);
 bool test_svadu_1g02(void) {
     TEST_BEGIN("SVADU-1G-02: ADUE=1 1 GiB gigapage A=1,D=0 store sets D bit");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 
@@ -95,7 +95,7 @@ bool test_svadu_1g02(void) {
 TEST_REGISTER(test_svadu_1g03);
 bool test_svadu_1g03(void) {
     TEST_BEGIN("SVADU-1G-03: ADUE=1 1 GiB gigapage A=0,D=0 store sets both");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 
@@ -117,7 +117,7 @@ bool test_svadu_1g03(void) {
 TEST_REGISTER(test_svadu_1g04);
 bool test_svadu_1g04(void) {
     TEST_BEGIN("SVADU-1G-04: ADUE=1 1 GiB gigapage A=1,D=0 amoadd sets D");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 

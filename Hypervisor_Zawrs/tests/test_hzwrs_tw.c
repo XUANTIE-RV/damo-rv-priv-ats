@@ -27,8 +27,8 @@ TEST_REGISTER(test_hzwrs_08);
 bool test_hzwrs_08(void)
 {
     TEST_BEGIN("HZWRS-08: VTW=1 + TW=1 VS-mode wrs.nto -> illegal");
-    REQUIRE_H_EXT();
-    REQUIRE_ZAWRS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     uintptr_t saved_mie = hz_quiet_interrupts();
     hz_set_vtw();
@@ -50,8 +50,8 @@ TEST_REGISTER(test_hzwrs_09);
 bool test_hzwrs_09(void)
 {
     TEST_BEGIN("HZWRS-09: VTW=1 + TW=1 VU-mode wrs.nto -> illegal");
-    REQUIRE_H_EXT();
-    REQUIRE_ZAWRS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     uintptr_t saved_mie = hz_quiet_interrupts();
     hz_set_vtw();
@@ -73,8 +73,8 @@ TEST_REGISTER(test_hzwrs_10);
 bool test_hzwrs_10(void)
 {
     TEST_BEGIN("HZWRS-10: VTW=1 VS-mode wrs.sto completes normally");
-    REQUIRE_H_EXT();
-    REQUIRE_ZAWRS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     /* The VTW clause names wrs.nto only. wrs.sto is bounded by its
      * short timeout and must not raise virtual-instruction. No wake
@@ -99,22 +99,24 @@ TEST_REGISTER(test_hzwrs_11);
 bool test_hzwrs_11(void)
 {
     TEST_BEGIN("HZWRS-11: VTW=1 HS-mode wrs.nto completes normally");
-    REQUIRE_H_EXT();
-    REQUIRE_ZAWRS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     /* VTW gates only V=1 execution; HS-mode (V=0) is unaffected. */
     hz_clear_tw();
     hz_set_vtw();
     (void)hz_reserve();
     hz_suppress_globals();
-    hz_set_m_soft_pending();
+    uintptr_t saved_mideleg = hz_set_m_soft_pending();
 
     goto_priv(PRIV_S);
     PRIV_DO(EXEC_WRS_NTO());
     goto_priv(PRIV_M);
+    /* Clear before the assertion so the wake-source teardown stays on
+     * the unconditional path regardless of the record content. */
+    hz_clear_m_soft_pending(saved_mideleg);
     CHECK_NO_TRAP("HS-mode wrs.nto with VTW=1");
 
-    hz_clear_m_soft_pending();
     hz_clear_vtw();
 
     HYP_TEST_END();
@@ -126,8 +128,8 @@ TEST_REGISTER(test_hzwrs_12);
 bool test_hzwrs_12(void)
 {
     TEST_BEGIN("HZWRS-12: VS-mode TW=1/VTW=0 wrs.nto -> illegal");
-    REQUIRE_H_EXT();
-    REQUIRE_ZAWRS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     /* Control case against HSTAT-06 (WFI semantics): mstatus.TW
      * alone intercepts wrs.nto in VS-mode with illegal-instruction. */

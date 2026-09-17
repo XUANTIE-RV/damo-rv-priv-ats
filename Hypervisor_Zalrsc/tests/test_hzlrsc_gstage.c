@@ -41,7 +41,8 @@ TEST_REGISTER(test_hzlrsc_09_lr_gstage_fault);
 bool test_hzlrsc_09_lr_gstage_fault(void)
 {
     TEST_BEGIN("HZLRSC-09: LR G-stage fault -> load guest-page-fault (21)");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -76,7 +77,8 @@ TEST_REGISTER(test_hzlrsc_10_sc_gstage_fault);
 bool test_hzlrsc_10_sc_gstage_fault(void)
 {
     TEST_BEGIN("HZLRSC-10: SC G-stage fault -> store guest-page-fault (23)");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -111,7 +113,8 @@ TEST_REGISTER(test_hzlrsc_11_gva_spv);
 bool test_hzlrsc_11_gva_spv(void)
 {
     TEST_BEGIN("HZLRSC-11: guest LR/SC trap -> GVA=1 and SPV=1");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -170,7 +173,8 @@ TEST_REGISTER(test_hzlrsc_12_htval_gpa);
 bool test_hzlrsc_12_htval_gpa(void)
 {
     TEST_BEGIN("HZLRSC-12: guest LR/SC fault -> htval == GPA>>2 or 0");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -201,7 +205,8 @@ TEST_REGISTER(test_hzlrsc_13_vs_stage_htval_zero);
 bool test_hzlrsc_13_vs_stage_htval_zero(void)
 {
     TEST_BEGIN("HZLRSC-13: VS-stage LR fault -> htval == 0");
-    REQUIRE_HZLRSC();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -236,7 +241,7 @@ TEST_REGISTER(test_hzlrsc_14_hlv_spv0_gva1);
 bool test_hzlrsc_14_hlv_spv0_gva1(void)
 {
     TEST_BEGIN("HZLRSC-14: HLV.W explicit access -> SPV=0 but GVA=1");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

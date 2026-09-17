@@ -503,10 +503,18 @@ unsigned m_trap_handler(void) {
         }
         if (irq == IRQ_M_TIMER) {
             /* M-mode timer interrupt (ACLINT MTIMER): write MTIMECMP[0]
-             * to max value to clear the interrupt source */
-            uintptr_t mtimecmp_addr = PLATFORM_CLINT_BASE + 0x4000UL;
+             * to max value to clear the interrupt source. Use the
+             * per-platform MTIMECMP address: platforms with a per-hart
+             * MTIMER do not follow the centralized CLINT layout.
+             * Halfword write order: parking the high half at the
+             * maximum FIRST keeps every intermediate compare value
+             * above mtime, so no spurious MTIP can fire mid-sequence
+             * (same sequence as sm_mtimecmp_write in Sm_Interrupts
+             * and the Zawrs helpers). */
+            uintptr_t mtimecmp_addr = PLATFORM_MTIMECMP_ADDR;
             asm volatile(
                 "li t0, -1\n\t"
+                "sw t0, 4(%0)\n\t"
                 "sw t0, 0(%0)\n\t"
                 "sw t0, 4(%0)\n\t"
                 "fence\n\t"
@@ -515,8 +523,10 @@ unsigned m_trap_handler(void) {
         }
         if (irq == IRQ_M_SOFTWARE) {
             /* M-mode software interrupt (ACLINT MSWI): write MSIP[0]
-             * to 0 to clear the interrupt source */
-            uintptr_t msip_addr = PLATFORM_CLINT_BASE + 0x0000UL;
+             * to 0 to clear the interrupt source. Use the per-platform
+             * MSIP address (config macro, same source as the MTIMECMP
+             * address above). */
+            uintptr_t msip_addr = PLATFORM_MSIP_ADDR;
             asm volatile(
                 "sw zero, 0(%0)\n\t"
                 "fence\n\t"

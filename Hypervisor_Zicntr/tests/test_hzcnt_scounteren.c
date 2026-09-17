@@ -30,8 +30,8 @@ TEST_REGISTER(test_hzcnt_07);
 bool test_hzcnt_07(void)
 {
     TEST_BEGIN("HZCNT-07: scounteren gates VU cycle when hcen.CY=1");
-    REQUIRE_H_EXT();
-    REQUIRE_ZICNTR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
     uintptr_t saved_mcen = mcounteren_read();
     uintptr_t saved_hcen = hcounteren_read();
@@ -92,8 +92,8 @@ TEST_REGISTER(test_hzcnt_08);
 bool test_hzcnt_08(void)
 {
     TEST_BEGIN("HZCNT-08: hcounteren.CY=0 blocks VU cycle (cause=22)");
-    REQUIRE_H_EXT();
-    REQUIRE_ZICNTR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
     uintptr_t saved_mcen = mcounteren_read();
     uintptr_t saved_hcen = hcounteren_read();
@@ -140,8 +140,8 @@ TEST_REGISTER(test_hzcnt_09);
 bool test_hzcnt_09(void)
 {
     TEST_BEGIN("HZCNT-09: scounteren.CY=0 does not affect VS-mode");
-    REQUIRE_H_EXT();
-    REQUIRE_ZICNTR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
     uintptr_t saved_mcen = mcounteren_read();
     uintptr_t saved_hcen = hcounteren_read();

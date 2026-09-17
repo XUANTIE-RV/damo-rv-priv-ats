@@ -48,7 +48,8 @@ TEST_REGISTER(test_hzacas_23_misaligned_cas);
 bool test_hzacas_23_misaligned_cas(void)
 {
     TEST_BEGIN("HZACAS-23: misaligned amocas (no MAG) -> cause 6/7");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -100,7 +101,8 @@ TEST_REGISTER(test_hzacas_24_mag_intra_no_fault);
 bool test_hzacas_24_mag_intra_no_fault(void)
 {
     TEST_BEGIN("HZACAS-24: MAG intra-granule misaligned amocas -> no fault");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     if (!HZACAS_MAG_DECLARED)
@@ -136,7 +138,8 @@ TEST_REGISTER(test_hzacas_25_mag_intra_gstage_fault);
 bool test_hzacas_25_mag_intra_gstage_fault(void)
 {
     TEST_BEGIN("HZACAS-25: MAG intra-granule amocas G-stage W=0 -> cause 23");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     if (!HZACAS_MAG_DECLARED)
@@ -178,7 +181,8 @@ TEST_REGISTER(test_hzacas_26_misaligned_trap_context);
 bool test_hzacas_26_misaligned_trap_context(void)
 {
     TEST_BEGIN("HZACAS-26: misaligned amocas HS-mode trap context");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

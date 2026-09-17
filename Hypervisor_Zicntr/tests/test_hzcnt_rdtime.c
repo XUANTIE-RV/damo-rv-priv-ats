@@ -33,8 +33,8 @@ TEST_REGISTER(test_hzcnt_01);
 bool test_hzcnt_01(void)
 {
     TEST_BEGIN("HZCNT-01: VS-mode rdtime returns time + htimedelta");
-    REQUIRE_H_EXT();
-    REQUIRE_ZICNTR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
     uintptr_t saved_mcen = mcounteren_read();
     uintptr_t saved_hcen = hcounteren_read();
@@ -80,8 +80,8 @@ TEST_REGISTER(test_hzcnt_02);
 bool test_hzcnt_02(void)
 {
     TEST_BEGIN("HZCNT-02: VU-mode rdtime returns time + htimedelta");
-    REQUIRE_H_EXT();
-    REQUIRE_ZICNTR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
     uintptr_t saved_mcen = mcounteren_read();
     uintptr_t saved_hcen = hcounteren_read();
@@ -136,8 +136,8 @@ TEST_REGISTER(test_hzcnt_03);
 bool test_hzcnt_03(void)
 {
     TEST_BEGIN("HZCNT-03: HS-mode rdtime not affected by htimedelta");
-    REQUIRE_H_EXT();
-    REQUIRE_ZICNTR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
     uintptr_t saved_mcen = mcounteren_read();
 
@@ -177,8 +177,8 @@ TEST_REGISTER(test_hzcnt_04);
 bool test_hzcnt_04(void)
 {
     TEST_BEGIN("HZCNT-04: negative htimedelta -> VS rdtime < time");
-    REQUIRE_H_EXT();
-    REQUIRE_ZICNTR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
     uintptr_t saved_mcen = mcounteren_read();
     uintptr_t saved_hcen = hcounteren_read();
@@ -232,8 +232,8 @@ TEST_REGISTER(test_hzcnt_05);
 bool test_hzcnt_05(void)
 {
     TEST_BEGIN("HZCNT-05: hcounteren.TM=0 VS rdtime -> virtual-inst");
-    REQUIRE_H_EXT();
-    REQUIRE_ZICNTR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
     uintptr_t saved_mcen = mcounteren_read();
     uintptr_t saved_hcen = hcounteren_read();
@@ -269,8 +269,8 @@ TEST_REGISTER(test_hzcnt_06);
 bool test_hzcnt_06(void)
 {
     TEST_BEGIN("HZCNT-06: mcounteren.TM=0 VS rdtime -> illegal-inst");
-    REQUIRE_H_EXT();
-    REQUIRE_ZICNTR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
     uintptr_t saved_mcen = mcounteren_read();
     uintptr_t saved_hcen = hcounteren_read();

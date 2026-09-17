@@ -332,29 +332,11 @@ static inline void hstateen_set_bit63(int idx, bool enable) {
     else        hstateen_clear_bits(idx, STATEEN_BIT63);
 }
 
-/* Extension availability as a compile-time boolean constant (1/0), derived
- * from the platform config's <EXT>_SUPPORTED declaration in
- * config/<platform>/rvtest_config.h. Usable directly in `if (...)` and in
- * `#if`. Prefer such macros over runtime probe functions -- extension support
- * is config-declaration driven. A suite that touches the stateen CSRs must
- * launch the simulator with the declared extension (e.g. Spike _smstateen).
- * Add analogous <EXT>_AVAILABLE macros for other extensions as needed. */
-#ifdef SMSTATEEN_SUPPORTED
-#define SMSTATEEN_AVAILABLE  1
-#else
-#define SMSTATEEN_AVAILABLE  0
-#endif
-
-#ifdef SSCSRIND_SUPPORTED
-#define SSCSRIND_AVAILABLE   1
-#else
-#define SSCSRIND_AVAILABLE   0
-#endif
-
-#ifdef SMCSRIND_SUPPORTED
-#define SMCSRIND_AVAILABLE   1
-#else
-#define SMCSRIND_AVAILABLE   0
-#endif
+/* Extension availability compile-time booleans (<EXT>_AVAILABLE, 1/0) are
+ * centralized in common/capabilities.h, force-included into every translation
+ * unit (see common/Makefile.common). SMSTATEEN_AVAILABLE, SSCSRIND_AVAILABLE
+ * and SMCSRIND_AVAILABLE used to be defined here; they now come from there.
+ * A suite that touches the stateen CSRs must still launch the simulator with
+ * the declared extension (e.g. Spike _smstateen). */
 
 #endif /* HYP_CSR_H */

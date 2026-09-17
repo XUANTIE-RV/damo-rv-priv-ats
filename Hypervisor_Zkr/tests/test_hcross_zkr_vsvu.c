@@ -62,8 +62,8 @@ TEST_REGISTER(test_zkr_hyp_03);
 bool test_zkr_hyp_03(void)
 {
     TEST_BEGIN("ZKR-HYP-03: SSEED=0 VS-mode csrrw -> illegal");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();
@@ -81,8 +81,8 @@ TEST_REGISTER(test_zkr_hyp_04);
 bool test_zkr_hyp_04(void)
 {
     TEST_BEGIN("ZKR-HYP-04: SSEED=1 VS-mode csrrw -> virtual-instruction");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();
@@ -100,8 +100,8 @@ TEST_REGISTER(test_zkr_hyp_05);
 bool test_zkr_hyp_05(void)
 {
     TEST_BEGIN("ZKR-HYP-05: SSEED=0 VU-mode csrrw -> illegal");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();
@@ -119,8 +119,8 @@ TEST_REGISTER(test_zkr_hyp_06);
 bool test_zkr_hyp_06(void)
 {
     TEST_BEGIN("ZKR-HYP-06: SSEED=1 VU-mode csrrw -> virtual-instruction");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();
@@ -138,8 +138,8 @@ TEST_REGISTER(test_zkr_hyp_07);
 bool test_zkr_hyp_07(void)
 {
     TEST_BEGIN("ZKR-HYP-07: SSEED=1 VS-mode csrrs x0 (RO) -> illegal");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();
@@ -158,8 +158,8 @@ TEST_REGISTER(test_zkr_hyp_08);
 bool test_zkr_hyp_08(void)
 {
     TEST_BEGIN("ZKR-HYP-08: SSEED=1 VS-mode csrrsi 0 (RO) -> illegal");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();
@@ -177,8 +177,8 @@ TEST_REGISTER(test_zkr_hyp_09);
 bool test_zkr_hyp_09(void)
 {
     TEST_BEGIN("ZKR-HYP-09: SSEED=1 VS-mode csrrs rs1!=x0 -> virtual-inst");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();
@@ -197,8 +197,8 @@ TEST_REGISTER(test_zkr_hyp_10);
 bool test_zkr_hyp_10(void)
 {
     TEST_BEGIN("ZKR-HYP-10: SSEED=0 VS-mode csrrs rs1!=x0 -> illegal");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();
@@ -216,8 +216,8 @@ TEST_REGISTER(test_zkr_hyp_14);
 bool test_zkr_hyp_14(void)
 {
     TEST_BEGIN("ZKR-HYP-14: SSEED=1 VU-mode csrrs x0 (RO) -> illegal");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();
@@ -235,8 +235,8 @@ TEST_REGISTER(test_zkr_hyp_15);
 bool test_zkr_hyp_15(void)
 {
     TEST_BEGIN("ZKR-HYP-15: SSEED=1 VU-mode csrrsi 0 (RO) -> illegal");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();
@@ -254,8 +254,8 @@ TEST_REGISTER(test_zkr_hyp_16);
 bool test_zkr_hyp_16(void)
 {
     TEST_BEGIN("ZKR-HYP-16: SSEED=1 VU-mode csrrs rs1!=x0 -> virtual-inst");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();
@@ -273,8 +273,8 @@ TEST_REGISTER(test_zkr_hyp_17);
 bool test_zkr_hyp_17(void)
 {
     TEST_BEGIN("ZKR-HYP-17: SSEED=0 VU-mode csrrs rs1!=x0 -> illegal");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();
@@ -292,8 +292,8 @@ TEST_REGISTER(test_zkr_hyp_18);
 bool test_zkr_hyp_18(void)
 {
     TEST_BEGIN("ZKR-HYP-18: SSEED=1 VS-mode csrrci 0 (RO) -> illegal");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();
@@ -309,8 +309,8 @@ TEST_REGISTER(test_zkr_hyp_11);
 bool test_zkr_hyp_11(void)
 {
     TEST_BEGIN("ZKR-HYP-11: SSEED=0 does not affect M-mode access");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
 
     uintptr_t orig = mseccfg_read_zkr();
     mseccfg_clear_bits(MSECCFG_SSEED);

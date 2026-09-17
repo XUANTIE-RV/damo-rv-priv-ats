@@ -21,7 +21,7 @@
 TEST_REGISTER(test_svadu_2m01);
 bool test_svadu_2m01(void) {
     TEST_BEGIN("SVADU-2M-01: ADUE=1 2 MiB megapage A=0 load sets A bit");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 
@@ -48,7 +48,7 @@ bool test_svadu_2m01(void) {
 TEST_REGISTER(test_svadu_2m02);
 bool test_svadu_2m02(void) {
     TEST_BEGIN("SVADU-2M-02: ADUE=1 2 MiB megapage A=1,D=0 store sets D bit");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 
@@ -75,7 +75,7 @@ bool test_svadu_2m02(void) {
 TEST_REGISTER(test_svadu_2m03);
 bool test_svadu_2m03(void) {
     TEST_BEGIN("SVADU-2M-03: ADUE=1 2 MiB megapage A=0 X fetch sets A bit");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 
@@ -111,7 +111,7 @@ bool test_svadu_2m03(void) {
 TEST_REGISTER(test_svadu_2m04);
 bool test_svadu_2m04(void) {
     TEST_BEGIN("SVADU-2M-04: ADUE=1 2 MiB megapage A=0,D=0 store sets both");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 
@@ -139,7 +139,7 @@ bool test_svadu_2m04(void) {
 TEST_REGISTER(test_svadu_2m05);
 bool test_svadu_2m05(void) {
     TEST_BEGIN("SVADU-2M-05: ADUE=1 2 MiB megapage A=1,D=0 amoadd sets D");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 

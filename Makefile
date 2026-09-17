@@ -3,10 +3,8 @@
 #
 # Usage:
 #   make                    # Print help
-#   make pmp_group          # Build all PMP-related extensions
-#   make sv_group           # Build all SV-related extensions
-#   make ss_group           # Build all SS-related extensions
-#   make hyp_group          # Build all Hypervisor extensions
+#   make <group>_group      # Build one group (mirrors run_case_stats.sh)
+#                           #   groups: hyp ss sv sd sm pmp cfi zpm cmo zi zc zk za
 #   make all                # Build ALL extensions
 #   make pmp                # Build a single extension
 #   make spike              # Run all on Spike
@@ -17,21 +15,63 @@
 #   make clean              # Clean all
 # =====================================================================
 
-# Extension groups
-PMP_GROUP = pmp smepmp spmp pmp_sv39 pmp_sv48 pmp_sv57
-SV_GROUP  = Sv39 Sv48 Sv57 Svbare Svade Svadu Svnapot Svinval Svpbmt Svvptc Svrsw60t59b
-SS_GROUP  = Ssccptr Sscofpmf Sscounterenw Ssstateen Sstc Sstvala Sstvecd Ssu64xl
-SM_GROUP  = Smstateen smrnmi Sm_CSR
-HYP_GROUP = Sv39x4 Sv48x4 Sv57x4 \
-            Sv39x4_Sv39 Sv39x4_Sv48 Sv39x4_Sv57 \
-            Sv48x4_Sv39 Sv48x4_Sv48 Sv48x4_Sv57 \
-            Sv57x4_Sv39 Sv57x4_Sv48 Sv57x4_Sv57 \
-			Shgatpa Shtvala Shcounterenw Shvstvecd Shvstvala Shvsatpa Shlcofideleg \
-			Hypervisor_CSR Hypervisor_Interrupts Hypervisor_Exceptions Sha Hypervisor_Svinval Hypervisor_Sstc
-INT_GROUP = aia_aplic aia_imsic aia_smaia aia_iommu aia_hypervisor aclint
+# =====================================================================
+# Extension groups (mirrors the suite lists in run_case_stats.sh)
+# =====================================================================
 
-# All extensions (union of groups + ungrouped)
-EXTENSIONS = $(PMP_GROUP) $(SV_GROUP) $(SS_GROUP) $(SM_GROUP) $(HYP_GROUP) $(INT_GROUP) zpm.Smmpm zpm.Smnpm zpm.Ssnpm
+# --- Hypervisor extensions ---
+HYP_BASE_GROUP = Hypervisor_CSR Hypervisor_Interrupts Hypervisor_Exceptions Sha Shcounterenw Shgatpa Shlcofideleg Shtvala Shvstvala Shvsatpa
+HYP_VM_GROUP   = Sv39x4 Sv48x4 Sv57x4 \
+                 Sv39x4_Sv39 Sv39x4_Sv48 Sv39x4_Sv57 \
+                 Sv48x4_Sv39 Sv48x4_Sv48 Sv48x4_Sv57 \
+                 Sv57x4_Sv39 Sv57x4_Sv48 Sv57x4_Sv57
+HYP_SM_GROUP   = Hypervisor_Smcntrpmf Hypervisor_Smcsrind Hypervisor_Smmpm Hypervisor_Smnpm Hypervisor_Smstateen Hypervisor_PMP
+HYP_SS_GROUP   = Hypervisor_Ssccfg Hypervisor_Ssccptr Hypervisor_Sscofpmf Hypervisor_Sscsrind Hypervisor_Ssdbltrp Hypervisor_Ssnpm Hypervisor_Ssqosid Hypervisor_Ssstateen Hypervisor_Sstc Hypervisor_Sstvala
+HYP_SV_GROUP   = Hypervisor_Svadu Hypervisor_Svinval Hypervisor_Svnapot Hypervisor_Svpbmt
+HYP_ZI_GROUP   = Hypervisor_Zicbom Hypervisor_Zicbop Hypervisor_Zicboz Hypervisor_Zicfilp Hypervisor_Zicfiss Hypervisor_Zkr Hypervisor_Zihintntl Hypervisor_Zicntr Hypervisor_Zihpm Hypervisor_Vector
+HYP_ZA_GROUP   = Hypervisor_Zalrsc Hypervisor_Zaamo Hypervisor_Zacas Hypervisor_Zabha Hypervisor_Zalasr Hypervisor_Zawrs
+HYP_ZC_GROUP   = Hypervisor_Zca
+
+# Union of all Hypervisor groups
+HYP_GROUP = $(HYP_BASE_GROUP) $(HYP_VM_GROUP) $(HYP_SM_GROUP) $(HYP_SS_GROUP) \
+            $(HYP_SV_GROUP) $(HYP_ZI_GROUP) $(HYP_ZA_GROUP) $(HYP_ZC_GROUP)
+
+# --- Supervisor extensions ---
+SS_GROUP  = Ss_CSR Ss_Exceptions Ss_Interrupts Ssccfg Ssccptr Sscofpmf Sscounterenw Sscsrind Ssctr Ssdbltrp Ssstateen Sstc Sstvala Sstvecd Ssu64xl
+SV_GROUP  = Sv39 Sv48 Sv57 Svbare Svade Svadu Svnapot Svinval Svpbmt Svvptc
+
+# --- Debug extensions ---
+SD_GROUP  = Sdext Sdtrig
+
+# --- Machine extensions ---
+SM_GROUP  = Sm_CSR Sm_Exceptions Sm_Interrupts Smcdeleg Smcntrpmf Smcsrind Smctr Smdbltrp Smstateen
+PMP_GROUP = pmp pmp_sv39 pmp_sv48 pmp_sv57
+
+# --- CFI extensions ---
+CFI_GROUP = cfi.Zicfilp cfi.Zicfiss
+
+# --- Pointer masking extensions ---
+ZPM_GROUP = zpm.Smmpm zpm.Smnpm zpm.Ssnpm
+
+# --- CMO extensions ---
+CMO_GROUP = cmo.base cmo.Zicbom cmo.Zicbop cmo.Zicboz
+
+# --- Zi extensions ---
+ZI_GROUP  = Zicntr Zicond Zicsr Zifencei Zihintntl Zihintpause Zihpm Zimop Ziccamoa Ziccamoc Ziccid Ziccif Zicclsm Ziccrse
+
+# --- Zc extensions ---
+ZC_GROUP  = Zcmop Zcmp Zcmt
+
+# --- Zk extensions ---
+ZK_GROUP  = Zkr Zkt
+
+# --- Za extensions ---
+ZA_GROUP  = Za64rs Za128rs Zaamo Zabha Zacas Zalasr Zalrsc Zama16b Zawrs
+
+# All extensions (union of groups, mirrors ALL_SUITES in run_case_stats.sh)
+EXTENSIONS = $(HYP_GROUP) $(SS_GROUP) $(SV_GROUP) $(SD_GROUP) $(SM_GROUP) \
+             $(PMP_GROUP) $(CFI_GROUP) $(ZPM_GROUP) $(CMO_GROUP) \
+             $(ZI_GROUP) $(ZK_GROUP) $(ZC_GROUP) $(ZA_GROUP)
 
 # Forward all variables to sub-makes
 MAKE_VARS = $(if $(XLEN),XLEN=$(XLEN)) \
@@ -51,7 +91,8 @@ QEMU_TARGETS  = $(addprefix qemu-,$(EXTENSIONS))
 WHISPER_TARGETS = $(addprefix whisper-,$(EXTENSIONS))
 
 .PHONY: help all clean sail spike qemu whisper \
-        pmp_group sv_group ss_group hyp_group \
+        hyp_group ss_group sv_group sd_group sm_group pmp_group \
+        cfi_group zpm_group cmo_group zi_group zc_group zk_group za_group \
         $(EXTENSIONS) $(SAIL_TARGETS) $(SPIKE_TARGETS) $(QEMU_TARGETS) $(WHISPER_TARGETS)
 
 # Default target: print usage help
@@ -63,10 +104,19 @@ help:
 	@echo "====================================================================="
 	@echo ""
 	@echo "  Group targets:"
-	@echo "    make pmp_group        Build PMP extensions:  $(PMP_GROUP)"
-	@echo "    make sv_group         Build SV extensions:   $(SV_GROUP)"
-	@echo "    make ss_group         Build SS extensions:   $(SS_GROUP)"
-	@echo "    make hyp_group        Build HYP extensions:  $(HYP_GROUP)"
+	@echo "    make hyp_group        Build all Hypervisor extensions"
+	@echo "    make ss_group         Build Supervisor (Ss*) extensions"
+	@echo "    make sv_group         Build Supervisor VM (Sv*) extensions"
+	@echo "    make sd_group         Build Debug (Sd*) extensions"
+	@echo "    make sm_group         Build Machine (Sm*) extensions"
+	@echo "    make pmp_group        Build PMP extensions"
+	@echo "    make cfi_group        Build CFI (Zicfilp/Zicfiss) extensions"
+	@echo "    make zpm_group        Build pointer-masking (Zpm) extensions"
+	@echo "    make cmo_group        Build CMO (Zicb*) extensions"
+	@echo "    make zi_group         Build Zi* extensions"
+	@echo "    make zc_group         Build Zc* extensions"
+	@echo "    make zk_group         Build Zk* extensions"
+	@echo "    make za_group         Build Za* extensions"
 	@echo "    make all              Build ALL extensions"
 	@echo ""
 	@echo "  Single extension:"
@@ -95,10 +145,19 @@ help:
 all: $(EXTENSIONS)
 
 # Group build targets
-pmp_group: $(PMP_GROUP)
-sv_group:  $(SV_GROUP)
-ss_group:  $(SS_GROUP)
 hyp_group: $(HYP_GROUP)
+ss_group:  $(SS_GROUP)
+sv_group:  $(SV_GROUP)
+sd_group:  $(SD_GROUP)
+sm_group:  $(SM_GROUP)
+pmp_group: $(PMP_GROUP)
+cfi_group: $(CFI_GROUP)
+zpm_group: $(ZPM_GROUP)
+cmo_group: $(CMO_GROUP)
+zi_group:  $(ZI_GROUP)
+zc_group:  $(ZC_GROUP)
+zk_group:  $(ZK_GROUP)
+za_group:  $(ZA_GROUP)
 
 $(EXTENSIONS):
 	$(MAKE) -C $@ $(MAKE_VARS)
@@ -117,6 +176,8 @@ clean:
 	find . -name "*.d" -not -path "./.git/*" -type f -delete
 	find . -name "*.asm" -not -path "./.git/*" -type f -delete
 	find . -name "*.sym" -not -path "./.git/*" -type f -delete
+	find . -name "*.elf" -not -path "./.git/*" -type f -delete
+	find . -name "*.bin" -not -path "./.git/*" -not -path "./SPEC/*" -type f -delete
 	find . -name "*.trace" -not -path "./.git/*" -type f -delete
 	find . -name "*.rvvi" -not -path "./.git/*" -type f -delete
 

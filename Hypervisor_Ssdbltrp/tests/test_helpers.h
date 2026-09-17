@@ -224,15 +224,6 @@ static inline void sstatus_clear(uintptr_t bits)
 }
 
 /* ===================================================================
- * H extension detection
- * =================================================================== */
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-/* ===================================================================
  * Ssdbltrp extension detection
  * =================================================================== */
 
@@ -245,7 +236,7 @@ static inline void sstatus_clear(uintptr_t bits)
  */
 static inline bool check_ssdbltrp_extension(void)
 {
-    if (!HAS_H_EXT())
+    if (!H_AVAILABLE)
         return false;
 
     /* Ensure we're in M-mode */

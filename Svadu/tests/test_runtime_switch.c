@@ -21,7 +21,7 @@
 TEST_REGISTER(test_svadu_sw01);
 bool test_svadu_sw01(void) {
     TEST_BEGIN("SVADU-SW-01: ADUE 0->1 switch then retry succeeds");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(0);
 
@@ -59,7 +59,7 @@ bool test_svadu_sw01(void) {
 TEST_REGISTER(test_svadu_sw02);
 bool test_svadu_sw02(void) {
     TEST_BEGIN("SVADU-SW-02: ADUE 1->0 switch then new A=0 page faults");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     /* Phase 1: ADUE=1, first page succeeds and gets A set */
     set_menvcfg_adue(1);
@@ -103,7 +103,7 @@ bool test_svadu_sw02(void) {
 TEST_REGISTER(test_svadu_sw03);
 bool test_svadu_sw03(void) {
     TEST_BEGIN("SVADU-SW-03: final fence after ADUE changes takes effect");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     /* Conservative strategy: we do not test "stale-before-fence" behavior
      * (implementation may or may not observe change without fence). We only
@@ -134,7 +134,7 @@ bool test_svadu_sw03(void) {
 TEST_REGISTER(test_svadu_sw04);
 bool test_svadu_sw04(void) {
     TEST_BEGIN("SVADU-SW-04: multiple ADUE toggles remain consistent");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     /* Four iterations alternating ADUE=1 (must succeed+set A) and
      * ADUE=0 (must fault, A unchanged). Each iteration uses a fresh

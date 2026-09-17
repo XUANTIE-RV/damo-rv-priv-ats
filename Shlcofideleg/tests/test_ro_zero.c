@@ -22,9 +22,7 @@ TEST_REGISTER(test_shlcofideleg_ro_vsip_lcofip);
 bool test_shlcofideleg_ro_vsip_lcofip(void) {
     TEST_BEGIN("LCFIDLG-RO: vsip.LCOFIP read-only zero when hideleg[13]=0");
 
-    if (!shlcofideleg_check_available()) {
-        TEST_SKIP("Shlcofideleg not implemented");
-    }
+    if (!SHLCOFIDELEG_AVAILABLE) TEST_SKIP("Shlcofideleg not implemented");
 
     uintptr_t saved_hideleg = hideleg_read();
     uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);
@@ -61,9 +59,7 @@ TEST_REGISTER(test_shlcofideleg_ro_vsie_lcofie);
 bool test_shlcofideleg_ro_vsie_lcofie(void) {
     TEST_BEGIN("LCFIDLG-RO: vsie.LCOFIE read-only zero when hideleg[13]=0");
 
-    if (!shlcofideleg_check_available()) {
-        TEST_SKIP("Shlcofideleg not implemented");
-    }
+    if (!SHLCOFIDELEG_AVAILABLE) TEST_SKIP("Shlcofideleg not implemented");
 
     uintptr_t saved_hideleg = hideleg_read();
     uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);

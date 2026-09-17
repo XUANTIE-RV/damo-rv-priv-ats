@@ -20,28 +20,6 @@
 #include "pm/pm_addr.h"
 
 /* ===================================================================
- * Capability gates
- * =================================================================== */
-
-static bool check_h_extension(void) {
-    uint64_t misa_val = CSRR(misa);
-    return (misa_val & (1UL << ('H' - 'A'))) != 0;
-}
-
-#define H_REQUIRED_OR_SKIP() do { \
-    if (!check_h_extension()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-#define SMMPM_REQUIRED_OR_SKIP() do { \
-    H_REQUIRED_OR_SKIP(); \
-    if (!detect_smmpm()) { \
-        TEST_SKIP("Smmpm (mseccfg.PMM) not implemented"); \
-    } \
-} while (0)
-
-/* ===================================================================
  * Scratch data / magics
  * =================================================================== */
 

@@ -25,8 +25,8 @@ TEST_REGISTER(test_hcross_svnapot_01);
 bool test_hcross_svnapot_01(void) {
     TEST_BEGIN("HCROSS-SVNAPOT-01: G-stage 64 KiB NAPOT basic translation");
 
-    H_REQUIRED_OR_SKIP();
-    SVNAPOOT_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVNAPOT_AVAILABLE) TEST_SKIP("Svnapot not available");
 
     two_stage_ctx_t ctx;
 
@@ -66,8 +66,8 @@ TEST_REGISTER(test_hcross_svnapot_02);
 bool test_hcross_svnapot_02(void) {
     TEST_BEGIN("HCROSS-SVNAPOT-02: G-stage NAPOT reserved encoding fault");
 
-    H_REQUIRED_OR_SKIP();
-    SVNAPOOT_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVNAPOT_AVAILABLE) TEST_SKIP("Svnapot not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
@@ -110,8 +110,8 @@ TEST_REGISTER(test_hcross_svnapot_03);
 bool test_hcross_svnapot_03(void) {
     TEST_BEGIN("HCROSS-SVNAPOT-03: Both VS-stage and G-stage use NAPOT");
 
-    H_REQUIRED_OR_SKIP();
-    SVNAPOOT_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVNAPOT_AVAILABLE) TEST_SKIP("Svnapot not available");
 
     two_stage_ctx_t ctx;
 

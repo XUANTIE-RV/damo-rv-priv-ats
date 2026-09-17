@@ -21,7 +21,7 @@ bool test_hcross_sstc_06(void)
 {
     TEST_BEGIN("HCROSS-SSTC-06: M-mode vstimecmp read-write");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     menvcfg_set(MENVCFG_STCE);
     henvcfg_set(HENVCFG_STCE);
@@ -43,7 +43,7 @@ bool test_hcross_sstc_07(void)
 {
     TEST_BEGIN("HCROSS-SSTC-07: vstimecmp all-ones / all-zeros");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     menvcfg_set(MENVCFG_STCE);
     henvcfg_set(HENVCFG_STCE);
@@ -68,7 +68,7 @@ bool test_hcross_sstc_08(void)
 {
     TEST_BEGIN("HCROSS-SSTC-08: HS-mode vstimecmp read-write");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     menvcfg_set(MENVCFG_STCE);
     mcounteren_set(MCOUNTEREN_TM);
@@ -96,7 +96,7 @@ bool test_hcross_sstc_09(void)
 {
     TEST_BEGIN("HCROSS-SSTC-09: vstimecmp triggers VSTIP");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     menvcfg_set(MENVCFG_STCE);
     henvcfg_set(HENVCFG_STCE);
@@ -132,7 +132,7 @@ bool test_hcross_sstc_10(void)
 {
     TEST_BEGIN("HCROSS-SSTC-10: vstimecmp MAX clears VSTIP");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     menvcfg_set(MENVCFG_STCE);
     henvcfg_set(HENVCFG_STCE);
@@ -165,7 +165,7 @@ bool test_hcross_sstc_11(void)
 {
     TEST_BEGIN("HCROSS-SSTC-11: VSTIP = hvip.VSTIP OR vstimecmp signal");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     menvcfg_set(MENVCFG_STCE);
     henvcfg_set(HENVCFG_STCE);  /* STCE=1: vstimecmp signal active */
@@ -217,7 +217,7 @@ bool test_hcross_sstc_12(void)
 {
     TEST_BEGIN("HCROSS-SSTC-12: henvcfg.STCE=0, VSTIP reverts to hvip-only");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     menvcfg_set(MENVCFG_STCE);
     henvcfg_clear(HENVCFG_STCE);   /* STCE=0: vstimecmp signal disabled */
@@ -263,7 +263,7 @@ bool test_hcross_sstc_13(void)
 {
     TEST_BEGIN("HCROSS-SSTC-13: VS-mode stimecmp -> vstimecmp remap");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     menvcfg_set(MENVCFG_STCE);
     mcounteren_set(MCOUNTEREN_TM);
@@ -292,7 +292,7 @@ bool test_hcross_sstc_14(void)
 {
     TEST_BEGIN("HCROSS-SSTC-14: htimedelta affects vstimecmp comparison");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     menvcfg_set(MENVCFG_STCE);
     henvcfg_set(HENVCFG_STCE);
@@ -332,7 +332,7 @@ bool test_hcross_sstc_15(void)
 {
     TEST_BEGIN("HCROSS-SSTC-15: VS-mode timer interrupt capture");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     menvcfg_set(MENVCFG_STCE);
     mcounteren_set(MCOUNTEREN_TM);

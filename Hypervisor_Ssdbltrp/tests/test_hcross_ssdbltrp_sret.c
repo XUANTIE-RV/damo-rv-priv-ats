@@ -20,7 +20,7 @@ bool test_hcross_ssdbltrp_13(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-13: HS-mode SRET to VU clears vsstatus.SDT");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     /* This test verifies that when HS-mode executes SRET to return to VU-mode,
@@ -40,7 +40,7 @@ bool test_hcross_ssdbltrp_14(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-14: VS-mode SRET clears vsstatus.SDT");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     uintptr_t orig_m = menvcfg_read_csr();
@@ -82,7 +82,7 @@ bool test_hcross_ssdbltrp_15(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-15: HS-mode SRET to VS does NOT clear SDT");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     uintptr_t orig_m = menvcfg_read_csr();
@@ -132,7 +132,7 @@ bool test_hcross_ssdbltrp_16(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-16: HS-mode SRET to HS does NOT clear SDT");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     uintptr_t orig_m = menvcfg_read_csr();

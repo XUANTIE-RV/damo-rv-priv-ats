@@ -43,7 +43,8 @@ TEST_REGISTER(test_hzabha_22_byte_amo_never_misaligned);
 bool test_hzabha_22_byte_amo_never_misaligned(void)
 {
     TEST_BEGIN("HZABHA-22: byte AMO at odd address -> no alignment fault");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -80,7 +81,8 @@ TEST_REGISTER(test_hzabha_23_misaligned_half_amo);
 bool test_hzabha_23_misaligned_half_amo(void)
 {
     TEST_BEGIN("HZABHA-23: misaligned half AMO (no MAG) -> cause 6/7");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -135,7 +137,8 @@ TEST_REGISTER(test_hzabha_24_mag_intra_no_fault);
 bool test_hzabha_24_mag_intra_no_fault(void)
 {
     TEST_BEGIN("HZABHA-24: MAG intra-granule misaligned half AMO -> no fault");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     if (!HZABHA_MAG_DECLARED)
@@ -171,7 +174,8 @@ TEST_REGISTER(test_hzabha_25_mag_intra_gstage_fault);
 bool test_hzabha_25_mag_intra_gstage_fault(void)
 {
     TEST_BEGIN("HZABHA-25: MAG intra-granule half AMO G-stage W=0 -> cause 23");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     if (!HZABHA_MAG_DECLARED)
@@ -214,7 +218,8 @@ TEST_REGISTER(test_hzabha_26_misaligned_trap_context);
 bool test_hzabha_26_misaligned_trap_context(void)
 {
     TEST_BEGIN("HZABHA-26: misaligned half AMO HS-mode trap context");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

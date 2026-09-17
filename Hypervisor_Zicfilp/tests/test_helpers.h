@@ -119,67 +119,6 @@ static inline void vsstatus_write(uintptr_t val) {
 }
 
 /* ===================================================================
- * H extension detection
- * =================================================================== */
-static bool check_h_extension(void) {
-    uint64_t misa = CSRR(misa);
-    return (misa & (1UL << ('H' - 'A'))) != 0;
-}
-
-#define H_REQUIRED_OR_SKIP() do { \
-    if (!check_h_extension()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-/* ===================================================================
- * Zicfilp detection (via henvcfg.LPE writability)
- *
- * Attempts to set henvcfg.LPE. If it sticks, Zicfilp is considered
- * implemented for the Hypervisor context.
- * =================================================================== */
-static bool zicfilp_detected = false;
-static bool zicfilp_detection_done = false;
-
-static bool detect_zicfilp(void) {
-    if (zicfilp_detection_done)
-        return zicfilp_detected;
-
-    /* Try setting henvcfg.LPE */
-    uintptr_t orig = henvcfg_read();
-    henvcfg_write(orig | HENVCFG_LPE);
-    uintptr_t val = henvcfg_read();
-    if (val & HENVCFG_LPE) {
-        henvcfg_write(orig);
-        zicfilp_detected = true;
-        zicfilp_detection_done = true;
-        return true;
-    }
-    henvcfg_write(orig);
-
-    /* Also try menvcfg.LPE as fallback */
-    orig = menvcfg_read();
-    menvcfg_set(MENVCFG_LPE);
-    val = menvcfg_read();
-    if (val & MENVCFG_LPE) {
-        menvcfg_clear(MENVCFG_LPE);
-        zicfilp_detected = true;
-        zicfilp_detection_done = true;
-        return true;
-    }
-
-    zicfilp_detected = false;
-    zicfilp_detection_done = true;
-    return false;
-}
-
-#define ZICFILP_REQUIRED_OR_SKIP() do { \
-    if (!detect_zicfilp()) { \
-        TEST_SKIP("Zicfilp not implemented"); \
-    } \
-} while (0)
-
-/* ===================================================================
  * LPAD instruction encoding
  *
  * LPAD is encoded as: AUIPC x0, imm

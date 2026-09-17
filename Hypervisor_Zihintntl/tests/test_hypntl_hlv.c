@@ -26,7 +26,7 @@ TEST_REGISTER(test_ntl_hyp_04);
 bool test_ntl_hyp_04(void)
 {
     TEST_BEGIN("NTL-HYP-04: ntl.all + HLV/HSV/HLVX parity vs unprefixed");
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     /* --- HLV.D: prefixed vs unprefixed load value --- */
     ntl_gva_mem = NTL_MAGIC;

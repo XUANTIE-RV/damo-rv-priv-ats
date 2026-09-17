@@ -50,58 +50,17 @@
 #define HZ_GMODE    SUITE_HGATP_MODE
 
 /* ===================================================================
- * Feature detection
+ * Feature availability
+ *
+ * Zacas support is config-DECLARATION driven: every case gates with
+ *   if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+ *   if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
+ * using the compile-time ZACAS_AVAILABLE macro normalized in
+ * common/capabilities.h from ZACAS_SUPPORTED. No wrapper macro is
+ * provided. Only the first case (HZACAS-01) additionally probes the
+ * DUT (trap-armed amocas.w in M-mode) to verify alignment with the
+ * config declaration; no other case probes.
  * =================================================================== */
-
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-#define REQUIRE_H_EXT() do { \
-    if (!HAS_H_EXT()) { TEST_SKIP("H extension not available"); } \
-} while (0)
-
-/* Zacas detection: config macro plus a trap-armed M-mode amocas.w probe. */
-static int hz_zacas_cached = -1;
-static volatile uint64_t hz_zacas_probe_slot;
-
-static inline bool hz_zacas_present(void)
-{
-    if (hz_zacas_cached < 0)
-    {
-#ifndef ZACAS_SUPPORTED
-        hz_zacas_cached = 0;
-#else
-        uintptr_t addr = (uintptr_t)&hz_zacas_probe_slot;
-        hz_zacas_probe_slot = 0x1111ULL;
-        uintptr_t rd = 0x1111ULL;   /* matches -> success path */
-        uintptr_t sw = 0x2222ULL;
-        M_TRAP_EXPECT_BEGIN();
-        asm volatile(
-            ".option push\n\t.option norvc\n\t"
-            "amocas.w %0, %2, (%1)\n\t"
-            ".option pop\n\t"
-            : "+r"(rd) : "r"(addr), "r"(sw) : "memory");
-        bool trapped = trap_was_triggered();
-        uintptr_t cause = trapped ? trap_get_cause() : 0;
-        trap_expect_end();
-        hz_zacas_cached =
-            (trapped && cause == CAUSE_ILLEGAL_INST) ? 0 : 1;
-#endif
-    }
-    return hz_zacas_cached == 1;
-}
-
-#define REQUIRE_ZACAS() do { \
-    if (!hz_zacas_present()) { \
-        TEST_SKIP("Zacas not implemented (amocas.w probe raised " \
-                  "illegal-instruction, or ZACAS_SUPPORTED undefined)"); \
-    } \
-} while (0)
-
-#define REQUIRE_HZACAS() do { REQUIRE_H_EXT(); REQUIRE_ZACAS(); } while (0)
 
 #define HZACAS_SMP_SKIP_REASON \
     "multi-hart: common/entry.S parks every hart except hart 0, so no " \

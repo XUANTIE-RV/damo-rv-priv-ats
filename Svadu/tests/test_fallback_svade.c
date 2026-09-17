@@ -25,7 +25,7 @@
 TEST_REGISTER(test_svadu_fb01);
 bool test_svadu_fb01(void) {
     TEST_BEGIN("SVADU-FB-01: ADUE=0 A=0 load -> CAUSE_LPF, PTE.A unchanged");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(0);  /* fallback to Svade */
 
@@ -52,7 +52,7 @@ bool test_svadu_fb01(void) {
 TEST_REGISTER(test_svadu_fb02);
 bool test_svadu_fb02(void) {
     TEST_BEGIN("SVADU-FB-02: ADUE=0 D=0 store -> CAUSE_SPF, PTE.D unchanged");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(0);
 
@@ -79,7 +79,7 @@ bool test_svadu_fb02(void) {
 TEST_REGISTER(test_svadu_fb03);
 bool test_svadu_fb03(void) {
     TEST_BEGIN("SVADU-FB-03: ADUE=0 A=0 fetch -> CAUSE_INST_PAGE_FAULT");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(0);
 
@@ -108,7 +108,7 @@ bool test_svadu_fb03(void) {
 TEST_REGISTER(test_svadu_fb04);
 bool test_svadu_fb04(void) {
     TEST_BEGIN("SVADU-FB-04: ADUE=0 D=0 AMO -> CAUSE_SPF, PTE.D unchanged");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(0);
 
@@ -135,7 +135,7 @@ bool test_svadu_fb04(void) {
 TEST_REGISTER(test_svadu_fb05);
 bool test_svadu_fb05(void) {
     TEST_BEGIN("SVADU-FB-05: ADUE=0 A=0,D=0 store -> CAUSE_SPF, A/D unchanged");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(0);
 

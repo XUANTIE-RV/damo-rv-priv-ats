@@ -7,7 +7,6 @@ ENABLE_VM = 1
 ENABLE_PMP = 1
 
 # Spike ISA extensions: enable svinval for this test
-SPIKE_ISA_EXT = _svinval
 
 EXT_OBJS = \
     main.o \

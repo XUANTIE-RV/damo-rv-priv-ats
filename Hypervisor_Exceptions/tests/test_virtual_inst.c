@@ -37,21 +37,12 @@
 
 /* ===================================================================
  * Local platform capability detection
+ *
+ * F/V support is config-declaration driven: gate on the compile-time
+ * F_AVAILABLE / V_AVAILABLE macros (normalized in common/capabilities.h
+ * from F_SUPPORTED / V_SUPPORTED in rvtest_config.h). Do NOT read misa
+ * at runtime to infer support.
  * =================================================================== */
-
-static bool vinst_has_f_ext(void)
-{
-    uintptr_t misa;
-    asm volatile ("csrr %0, misa" : "=r"(misa));
-    return (misa & MISA_F) != 0;
-}
-
-static bool vinst_has_v_ext(void)
-{
-    uintptr_t misa;
-    asm volatile ("csrr %0, misa" : "=r"(misa));
-    return (misa & MISA_V) != 0;
-}
 
 /* ===================================================================
  * Local FP/Vector instruction trampolines.
@@ -412,7 +403,7 @@ bool vinst_21_fs0_illegal(void)
 {
     TEST_BEGIN("VINST-21: FS=0 illegal not virtual");
 
-    if (!vinst_has_f_ext())
+    if (!F_AVAILABLE)
         TEST_SKIP("F extension not available");
 
     uintptr_t saved_mstatus;
@@ -452,7 +443,7 @@ bool vinst_22_vs0_illegal(void)
 {
     TEST_BEGIN("VINST-22: VS=0 illegal not virtual");
 
-    if (!vinst_has_v_ext())
+    if (!V_AVAILABLE)
         TEST_SKIP("V extension not available");
 
     uintptr_t saved_mstatus;

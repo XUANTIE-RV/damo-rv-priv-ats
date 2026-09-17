@@ -18,7 +18,7 @@
 TEST_REGISTER(test_shcounterenw_ro_01_report);
 bool test_shcounterenw_ro_01_report(void) {
     TEST_BEGIN("SHCNTW-RO-01: hcounteren bits for read-only-zero counters");
-    if (!has_h_extension()) TEST_SKIP("H-extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H-extension not supported");
 
     uintptr_t saved_hcen = hcounteren_read();
     unsigned ro_count = 0;

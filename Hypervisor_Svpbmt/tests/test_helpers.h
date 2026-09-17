@@ -43,48 +43,6 @@ extern uint8_t __vm_test_region_end[];
 
 #define TEST_REGION_BASE   ((uintptr_t)__vm_test_region_start)
 
-/* ===================================================================
- * H extension detection
- * =================================================================== */
-static bool check_h_extension(void) {
-    uint64_t misa = CSRR(misa);
-    return (misa & (1UL << ('H' - 'A'))) != 0;
-}
-
-#define H_REQUIRED_OR_SKIP() do { \
-    if (!check_h_extension()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-/* ===================================================================
- * Svpbmt detection via menvcfg.PBMTE writability
- *
- * Per Svpbmt spec: when Svpbmt is implemented, menvcfg.PBMTE must be
- * writable. If PBMTE is read-only zero, Svpbmt is not implemented.
- * =================================================================== */
-static bool svpbmt_detected = false;
-static bool svpbmt_detection_done = false;
-
-static bool check_svpbmt_extension(void) {
-    if (svpbmt_detection_done)
-        return svpbmt_detected;
-
-    uintptr_t old = menvcfg_read();
-    menvcfg_write(old | MENVCFG_PBMTE);
-    uintptr_t new_val = menvcfg_read();
-    menvcfg_write(old);  /* restore */
-
-    svpbmt_detected = ((new_val & MENVCFG_PBMTE) != 0);
-    svpbmt_detection_done = true;
-    return svpbmt_detected;
-}
-
-#define SVPBMT_REQUIRED_OR_SKIP() do { \
-    if (!check_svpbmt_extension()) { \
-        TEST_SKIP("Svpbmt not available"); \
-    } \
-} while (0)
 
 /* ===================================================================
  * PBMT PTE modification helpers

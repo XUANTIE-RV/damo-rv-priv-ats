@@ -341,17 +341,6 @@ static inline bool vsiselect_accessible(void)
     return ok;
 }
 
-/* ===================================================================
- * Platform detection (compile-time, from rvtest_config.h)
- * =================================================================== */
-
-/* Check if H extension is present */
-#ifdef H_SUPPORTED
-#define HAS_H_EXT()  (1)
-#else
-#define HAS_H_EXT()  (0)
-#endif
-
 
 
 /* ===================================================================

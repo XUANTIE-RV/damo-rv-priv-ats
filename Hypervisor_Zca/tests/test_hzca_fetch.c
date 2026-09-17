@@ -32,7 +32,8 @@ TEST_REGISTER(test_hzca_28_fetch_gpf_no_transformed);
 bool test_hzca_28_fetch_gpf_no_transformed(void)
 {
     TEST_BEGIN("HZCA-28: compressed fetch guest-page-fault htinst not transformed");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -82,7 +83,8 @@ TEST_REGISTER(test_hzca_29_fetch_vs_mem_contrast);
 bool test_hzca_29_fetch_vs_mem_contrast(void)
 {
     TEST_BEGIN("HZCA-29: fetch-class vs memory-access-class htinst contrast");
-    REQUIRE_HZCA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

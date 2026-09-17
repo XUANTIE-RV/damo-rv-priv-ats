@@ -22,9 +22,7 @@ TEST_REGISTER(test_shlcofideleg_dynamic_toggle);
 bool test_shlcofideleg_dynamic_toggle(void) {
     TEST_BEGIN("LCFIDLG-DYN: hideleg[13] dynamic toggle consistency");
 
-    if (!shlcofideleg_check_available()) {
-        TEST_SKIP("Shlcofideleg not implemented");
-    }
+    if (!SHLCOFIDELEG_AVAILABLE) TEST_SKIP("Shlcofideleg not implemented");
 
     uintptr_t saved_hideleg = hideleg_read();
     uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);

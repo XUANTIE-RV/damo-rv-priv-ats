@@ -25,8 +25,8 @@ TEST_REGISTER(test_zkr_hyp_12);
 bool test_zkr_hyp_12(void)
 {
     TEST_BEGIN("ZKR-HYP-12: VU-mode RO access -> illegal (not virtual)");
-    REQUIRE_H_EXT();
-    REQUIRE_ZKR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
     uintptr_t orig = mseccfg_read_zkr();

@@ -31,7 +31,7 @@
  * (after recording the reason) when the test must be skipped. */
 static bool counter_virt_preconditions(const char **skip_reason)
 {
-    if (!HAS_H_EXT()) {
+    if (!H_AVAILABLE) {
         *skip_reason = "H extension not supported";
         return false;
     }
@@ -50,7 +50,7 @@ bool test_hcross_ssccfg_01_vs_scountovf(void) {
     TEST_BEGIN("HCROSS-SSCCFG-01: VS-mode scountovf read (CDE=1)");
     const char *skip;
     if (!counter_virt_preconditions(&skip)) TEST_SKIP(skip);
-    if (!platform_has_sscofpmf()) TEST_SKIP("Sscofpmf not supported");
+    if (!SSCOFPMF_AVAILABLE) TEST_SKIP("Sscofpmf not supported");
 
     stateen_allow_csrind();
     uintptr_t orig_cde = menvcfg_read();
@@ -71,7 +71,7 @@ bool test_hcross_ssccfg_02_vu_scountovf(void) {
     TEST_BEGIN("HCROSS-SSCCFG-02: VU-mode scountovf read (CDE=1)");
     const char *skip;
     if (!counter_virt_preconditions(&skip)) TEST_SKIP(skip);
-    if (!platform_has_sscofpmf()) TEST_SKIP("Sscofpmf not supported");
+    if (!SSCOFPMF_AVAILABLE) TEST_SKIP("Sscofpmf not supported");
 
     stateen_allow_csrind();
     uintptr_t orig_cde = menvcfg_read();
@@ -92,7 +92,7 @@ bool test_hcross_ssccfg_03_hs_scountovf(void) {
     TEST_BEGIN("HCROSS-SSCCFG-03: HS-mode scountovf read (CDE=1)");
     const char *skip;
     if (!counter_virt_preconditions(&skip)) TEST_SKIP(skip);
-    if (!platform_has_sscofpmf()) TEST_SKIP("Sscofpmf not supported");
+    if (!SSCOFPMF_AVAILABLE) TEST_SKIP("Sscofpmf not supported");
 
     stateen_allow_csrind();
     uintptr_t orig_cde = menvcfg_read();
@@ -119,7 +119,7 @@ bool test_hcross_ssccfg_04_vs_scountovf_cde0(void) {
     TEST_BEGIN("HCROSS-SSCCFG-04: VS-mode scountovf read (CDE=0)");
     const char *skip;
     if (!counter_virt_preconditions(&skip)) TEST_SKIP(skip);
-    if (!platform_has_sscofpmf()) TEST_SKIP("Sscofpmf not supported");
+    if (!SSCOFPMF_AVAILABLE) TEST_SKIP("Sscofpmf not supported");
 
     stateen_allow_csrind();
     uintptr_t orig_cde = menvcfg_read();

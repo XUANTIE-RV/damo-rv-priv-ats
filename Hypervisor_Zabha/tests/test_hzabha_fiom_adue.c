@@ -57,7 +57,8 @@ TEST_REGISTER(test_hzabha_27_fiom1);
 bool test_hzabha_27_fiom1(void)
 {
     TEST_BEGIN("HZABHA-27: FIOM=1 VS-mode amoadd.b.aq executable");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     hzabha_fiom_case(1, hz_vs_amo_add_b_aq);
@@ -73,7 +74,8 @@ TEST_REGISTER(test_hzabha_28_fiom0);
 bool test_hzabha_28_fiom0(void)
 {
     TEST_BEGIN("HZABHA-28: FIOM=0 control VS-mode amoadd.b.aq");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     hzabha_fiom_case(0, hz_vs_amo_add_b_aq);
@@ -88,7 +90,8 @@ TEST_REGISTER(test_hzabha_29_adue0_a0);
 bool test_hzabha_29_adue0_a0(void)
 {
     TEST_BEGIN("HZABHA-29: ADUE=0 + A=0 byte/half AMO -> Svade store pf (15)");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -130,7 +133,8 @@ TEST_REGISTER(test_hzabha_30_adue0_d0_forced);
 bool test_hzabha_30_adue0_d0_forced(void)
 {
     TEST_BEGIN("HZABHA-30: ADUE=0 + A=1/D=0 byte/half AMO -> store pf (15)");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -168,7 +172,8 @@ TEST_REGISTER(test_hzabha_31_adue1_hw_update);
 bool test_hzabha_31_adue1_hw_update(void)
 {
     TEST_BEGIN("HZABHA-31: ADUE=1 byte/half AMO -> hardware A/D update");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

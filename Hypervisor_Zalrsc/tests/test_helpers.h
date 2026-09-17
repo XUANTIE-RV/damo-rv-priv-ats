@@ -50,63 +50,18 @@
 #define HZ_GMODE    SUITE_HGATP_MODE
 
 /* ===================================================================
- * Feature detection
+ * Feature availability
+ *
+ * Zalrsc support is config-DECLARATION driven: every case gates with
+ *   if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+ *   if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
+ * using the compile-time ZALRSC_AVAILABLE macro normalized in
+ * common/capabilities.h from ZALRSC_SUPPORTED (or A_SUPPORTED, since
+ * the A extension implies Zalrsc). No wrapper macro is provided. Only
+ * the first case (HZLRSC-01) additionally probes the DUT (trap-armed
+ * lr.w/sc.w in M-mode) to verify alignment with the config declaration;
+ * no other case probes.
  * =================================================================== */
-
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-#define REQUIRE_H_EXT() do { \
-    if (!HAS_H_EXT()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-/* Zalrsc detection: platform config macro plus a trap-armed M-mode
- * probe of a real lr.w/sc.w pair. A pair that completes without an
- * illegal-instruction trap proves the reservation instructions exist. */
-static int hz_zalrsc_cached = -1;
-static volatile uint64_t hz_zalrsc_probe_slot;
-
-static inline bool hz_zalrsc_present(void)
-{
-    if (hz_zalrsc_cached < 0)
-    {
-#ifndef ZALRSC_SUPPORTED
-        hz_zalrsc_cached = 0;
-#else
-        uintptr_t addr = (uintptr_t)&hz_zalrsc_probe_slot;
-        M_TRAP_EXPECT_BEGIN();
-        uintptr_t lr, sc;
-        asm volatile(
-            ".option push\n\t.option norvc\n\t"
-            "lr.w %0, (%2)\n\t"
-            "sc.w %1, %3, (%2)\n\t"
-            ".option pop\n\t"
-            : "=&r"(lr), "=&r"(sc)
-            : "r"(addr), "r"(0x12345678UL) : "memory");
-        bool trapped = trap_was_triggered();
-        uintptr_t cause = trapped ? trap_get_cause() : 0;
-        trap_expect_end();
-        hz_zalrsc_cached =
-            (trapped && cause == CAUSE_ILLEGAL_INST) ? 0 : 1;
-#endif
-    }
-    return hz_zalrsc_cached == 1;
-}
-
-#define REQUIRE_ZALRSC() do { \
-    if (!hz_zalrsc_present()) { \
-        TEST_SKIP("Zalrsc not implemented (lr.w/sc.w probe raised " \
-                  "illegal-instruction, or ZALRSC_SUPPORTED undefined)"); \
-    } \
-} while (0)
-
-/* Standard gate for every case in this suite. */
-#define REQUIRE_HZLRSC() do { REQUIRE_H_EXT(); REQUIRE_ZALRSC(); } while (0)
 
 /* Multi-hart limitation: common/entry.S parks every hart except hart 0. */
 #define HZLRSC_SMP_SKIP_REASON \

@@ -31,7 +31,8 @@ TEST_REGISTER(test_hzabha_10_bh_amo_gstage_fault);
 bool test_hzabha_10_bh_amo_gstage_fault(void)
 {
     TEST_BEGIN("HZABHA-10: byte/half AMO G-stage fault -> guest-pf (23)");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -66,7 +67,8 @@ TEST_REGISTER(test_hzabha_11_gva_spv);
 bool test_hzabha_11_gva_spv(void)
 {
     TEST_BEGIN("HZABHA-11: guest byte/half AMO trap -> GVA=1 and SPV=1");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -125,7 +127,8 @@ TEST_REGISTER(test_hzabha_12_htval_gpa);
 bool test_hzabha_12_htval_gpa(void)
 {
     TEST_BEGIN("HZABHA-12: guest byte/half AMO fault -> htval == GPA>>2 or 0");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -157,7 +160,8 @@ TEST_REGISTER(test_hzabha_13_vs_stage_htval_zero);
 bool test_hzabha_13_vs_stage_htval_zero(void)
 {
     TEST_BEGIN("HZABHA-13: VS-stage byte/half AMO fault -> htval == 0");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -191,7 +195,7 @@ TEST_REGISTER(test_hzabha_14_hsv_b_spv0_gva1);
 bool test_hzabha_14_hsv_b_spv0_gva1(void)
 {
     TEST_BEGIN("HZABHA-14: HSV.B explicit access -> SPV=0 but GVA=1");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

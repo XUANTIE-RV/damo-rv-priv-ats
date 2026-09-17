@@ -20,7 +20,7 @@ bool test_hprefetch_01(void)
 {
     TEST_BEGIN("HPREFETCH-01: VS-mode prefetch.r no virtual-inst");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -49,7 +49,7 @@ bool test_hprefetch_02(void)
 {
     TEST_BEGIN("HPREFETCH-02: VS-mode prefetch.w no virtual-inst");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -77,7 +77,7 @@ bool test_hprefetch_03(void)
 {
     TEST_BEGIN("HPREFETCH-03: VS-mode prefetch.i no virtual-inst");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -105,7 +105,7 @@ bool test_hprefetch_04(void)
 {
     TEST_BEGIN("HPREFETCH-04: VU-mode prefetch.r no virtual-inst");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -137,7 +137,7 @@ bool test_hprefetch_05(void)
 {
     TEST_BEGIN("HPREFETCH-05: VU-mode prefetch.w no virtual-inst");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -168,7 +168,7 @@ bool test_hprefetch_06(void)
 {
     TEST_BEGIN("HPREFETCH-06: VU-mode prefetch.i no virtual-inst");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -199,7 +199,7 @@ bool test_hprefetch_07(void)
 {
     TEST_BEGIN("HPREFETCH-07: VS-mode prefetch G-stage no-perm no exc");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;
@@ -228,7 +228,7 @@ bool test_hprefetch_08(void)
 {
     TEST_BEGIN("HPREFETCH-08: VS-mode prefetch no A/D check");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;

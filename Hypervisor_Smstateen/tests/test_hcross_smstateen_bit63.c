@@ -17,7 +17,7 @@ TEST_REGISTER(test_hcross_smsta_03);
 bool test_hcross_smsta_03(void) {
     TEST_BEGIN("HCROSS-SMSTA-03: mstateen0.SE0=0 blocks HS-mode hstateen0");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t orig = mstateen0_read();
 
@@ -44,7 +44,7 @@ bool test_hcross_smsta_04(void) {
     TEST_BEGIN("HCROSS-SMSTA-04: mstateen0 bit 63 writability conditions");
 
     uintptr_t orig = mstateen0_read();
-    bool has_h = HAS_H_EXT();
+    bool has_h = H_AVAILABLE;
 
     /* Try to write bit 63 */
     mstateen0_set(MSTATEEN0_SE0);

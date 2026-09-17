@@ -53,7 +53,8 @@ TEST_REGISTER(test_hzabha_37_reserved_lrsc_cause2);
 bool test_hzabha_37_reserved_lrsc_cause2(void)
 {
     TEST_BEGIN("HZABHA-37: reserved byte/half lr/sc -> cause=2, not 22");
-    REQUIRE_HZABHA();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

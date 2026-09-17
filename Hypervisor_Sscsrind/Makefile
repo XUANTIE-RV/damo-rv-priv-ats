@@ -22,7 +22,6 @@ QEMU_CPU   = max
 # SMCSRIND_SUPPORTED / SSCSRIND_SUPPORTED / SMSTATEEN_SUPPORTED; the tests
 # gate miselect/mireg, vsiselect/vsireg and mstateen0/hstateen0 access on the
 # compile-time *_AVAILABLE macros, so the CSRs must actually exist.
-SPIKE_ISA = rv64imach_zicsr_zifencei_smcsrind_sscsrind_smstateen
 
 EXT_OBJS = \
     main.o \

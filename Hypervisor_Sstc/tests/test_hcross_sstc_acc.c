@@ -21,7 +21,7 @@ bool test_hcross_sstc_03(void)
 {
     TEST_BEGIN("HCROSS-SSTC-03: henvcfg.STCE=0, VS-mode -> virtual-inst");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     menvcfg_set(MENVCFG_STCE);
     mcounteren_set(MCOUNTEREN_TM);
@@ -51,7 +51,7 @@ bool test_hcross_sstc_04(void)
 {
     TEST_BEGIN("HCROSS-SSTC-04: henvcfg.STCE=1, VS-mode -> no exception");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     menvcfg_set(MENVCFG_STCE);
     mcounteren_set(MCOUNTEREN_TM);
@@ -76,7 +76,7 @@ bool test_hcross_sstc_05(void)
 {
     TEST_BEGIN("HCROSS-SSTC-05: hcounteren.TM=0, VS-mode -> virtual-inst");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     menvcfg_set(MENVCFG_STCE);
     mcounteren_set(MCOUNTEREN_TM);

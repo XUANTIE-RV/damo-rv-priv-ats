@@ -21,7 +21,7 @@ bool test_hcross_ssdbltrp_07(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-07: vsstatus.SDT WARL read-write");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     uintptr_t orig_m = menvcfg_read_csr();
@@ -57,7 +57,7 @@ bool test_hcross_ssdbltrp_08(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-08: vsstatus.SDT=1 auto-clears vsstatus.SIE");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     /* This test verifies that writing SDT=1 automatically clears SIE.
@@ -77,7 +77,7 @@ bool test_hcross_ssdbltrp_09(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-09: vsstatus.SDT=1 prevents setting SIE=1");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     /* This test verifies that when SDT=1, attempts to set SIE=1 are ignored.
@@ -97,7 +97,7 @@ bool test_hcross_ssdbltrp_10(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-10: VS-mode trap auto-sets vsstatus.SDT=1");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     /* This test verifies that when a trap occurs from VS-mode to M-mode,
@@ -117,7 +117,7 @@ bool test_hcross_ssdbltrp_11(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-11: VS-mode SDT=1 trap triggers double-trap");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     /* This test verifies that when vsstatus.SDT=1 and a trap occurs from VS-mode,
@@ -137,7 +137,7 @@ bool test_hcross_ssdbltrp_12(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-12: VS-mode double-trap M-mode CSR correct");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     /* This test verifies the M-mode CSR state after a double-trap from VS-mode.

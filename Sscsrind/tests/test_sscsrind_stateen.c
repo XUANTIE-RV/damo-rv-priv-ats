@@ -16,11 +16,11 @@ bool test_sscsrind_sta_01(void)
 {
     TEST_BEGIN("SSCSRIND-STA-01: mstateen0[60]=0 blocks S-mode siselect");
 
-    if (!platform_has_sscsrind())
+    if (!SSCSRIND_AVAILABLE)
     {
         TEST_SKIP("Sscsrind not implemented");
     }
-    if (!platform_has_smstateen())
+    if (!SMSTATEEN_AVAILABLE)
     {
         TEST_SKIP("Smstateen not implemented");
     }
@@ -41,11 +41,11 @@ bool test_sscsrind_sta_02(void)
 {
     TEST_BEGIN("SSCSRIND-STA-02: mstateen0[60]=0 blocks S-mode sireg");
 
-    if (!platform_has_sscsrind())
+    if (!SSCSRIND_AVAILABLE)
     {
         TEST_SKIP("Sscsrind not implemented");
     }
-    if (!platform_has_smstateen())
+    if (!SMSTATEEN_AVAILABLE)
     {
         TEST_SKIP("Smstateen not implemented");
     }
@@ -66,11 +66,11 @@ bool test_sscsrind_sta_03(void)
 {
     TEST_BEGIN("SSCSRIND-STA-03: mstateen0[60]=0 blocks S-mode siselect write");
 
-    if (!platform_has_sscsrind())
+    if (!SSCSRIND_AVAILABLE)
     {
         TEST_SKIP("Sscsrind not implemented");
     }
-    if (!platform_has_smstateen())
+    if (!SMSTATEEN_AVAILABLE)
     {
         TEST_SKIP("Smstateen not implemented");
     }
@@ -91,11 +91,11 @@ bool test_sscsrind_sta_04(void)
 {
     TEST_BEGIN("SSCSRIND-STA-04: mstateen0[60]=1 allows S-mode access");
 
-    if (!platform_has_sscsrind())
+    if (!SSCSRIND_AVAILABLE)
     {
         TEST_SKIP("Sscsrind not implemented");
     }
-    if (!platform_has_smstateen())
+    if (!SMSTATEEN_AVAILABLE)
     {
         TEST_SKIP("Smstateen not implemented");
     }

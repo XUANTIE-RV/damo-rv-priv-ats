@@ -19,7 +19,8 @@
 TEST_REGISTER(test_hcfi_ss_24);
 bool test_hcfi_ss_24(void) {
     TEST_BEGIN("HCFI-SS-24: SSE=1, pte.xwr=010 is valid SS page");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -39,7 +40,8 @@ bool test_hcfi_ss_24(void) {
 TEST_REGISTER(test_hcfi_ss_25);
 bool test_hcfi_ss_25(void) {
     TEST_BEGIN("HCFI-SS-25: SSE=0, pte.xwr=010 reserved -> page-fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -59,7 +61,8 @@ bool test_hcfi_ss_25(void) {
 TEST_REGISTER(test_hcfi_ss_26);
 bool test_hcfi_ss_26(void) {
     TEST_BEGIN("HCFI-SS-26: normal store to SS page -> access-fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -78,7 +81,8 @@ bool test_hcfi_ss_26(void) {
 TEST_REGISTER(test_hcfi_ss_27);
 bool test_hcfi_ss_27(void) {
     TEST_BEGIN("HCFI-SS-27: normal load from SS page succeeds");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -97,7 +101,8 @@ bool test_hcfi_ss_27(void) {
 TEST_REGISTER(test_hcfi_ss_28);
 bool test_hcfi_ss_28(void) {
     TEST_BEGIN("HCFI-SS-28: SS instruction on non-SS page -> access-fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -117,7 +122,8 @@ bool test_hcfi_ss_28(void) {
 TEST_REGISTER(test_hcfi_ss_29);
 bool test_hcfi_ss_29(void) {
     TEST_BEGIN("HCFI-SS-29: SS instruction on read-only page -> page-fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -139,7 +145,8 @@ bool test_hcfi_ss_29(void) {
 TEST_REGISTER(test_hcfi_ss_30);
 bool test_hcfi_ss_30(void) {
     TEST_BEGIN("HCFI-SS-30: CBO on SS page -> access-fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -164,7 +171,8 @@ bool test_hcfi_ss_30(void) {
 TEST_REGISTER(test_hcfi_ss_31);
 bool test_hcfi_ss_31(void) {
     TEST_BEGIN("HCFI-SS-31: instruction fetch from SS page -> access-fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -189,7 +197,8 @@ bool test_hcfi_ss_31(void) {
 TEST_REGISTER(test_hcfi_ss_32);
 bool test_hcfi_ss_32(void) {
     TEST_BEGIN("HCFI-SS-32: SSPOPCHK reads SS page normally");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -212,7 +221,8 @@ bool test_hcfi_ss_32(void) {
 TEST_REGISTER(test_hcfi_ss_33);
 bool test_hcfi_ss_33(void) {
     TEST_BEGIN("HCFI-SS-33: SSPOPCHK on unmapped page -> store page-fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -234,7 +244,8 @@ bool test_hcfi_ss_33(void) {
 TEST_REGISTER(test_hcfi_ss_34);
 bool test_hcfi_ss_34(void) {
     TEST_BEGIN("HCFI-SS-34: SS page COW -> store page-fault");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -256,7 +267,8 @@ bool test_hcfi_ss_34(void) {
 TEST_REGISTER(test_hcfi_ss_35);
 bool test_hcfi_ss_35(void) {
     TEST_BEGIN("HCFI-SS-35: U/SUM bit effect on SS page access");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -278,7 +290,8 @@ bool test_hcfi_ss_35(void) {
 TEST_REGISTER(test_hcfi_ss_36);
 bool test_hcfi_ss_36(void) {
     TEST_BEGIN("HCFI-SS-36: MXR bit does not affect SS page load");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();

@@ -20,7 +20,7 @@ bool test_hcross_ssdbltrp_01(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-01: henvcfg.DTE read-write");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     uintptr_t orig_m = menvcfg_read_csr();
@@ -53,7 +53,7 @@ bool test_hcross_ssdbltrp_02(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-02: henvcfg.DTE=0, vsstatus.SDT read-only zero from VS-mode");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     /* This test requires VS-mode execution to verify that sstatus.SDT
@@ -74,7 +74,7 @@ bool test_hcross_ssdbltrp_03(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-03: henvcfg.DTE=1, vsstatus.SDT writable");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     uintptr_t orig_m = menvcfg_read_csr();
@@ -111,7 +111,7 @@ bool test_hcross_ssdbltrp_04(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-04: henvcfg.DTE=0, VS-mode trap does not set SDT");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     uintptr_t orig_m = menvcfg_read_csr();
@@ -148,7 +148,7 @@ bool test_hcross_ssdbltrp_05(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-05: menvcfg.DTE=0 overrides henvcfg.DTE");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     uintptr_t orig_m = menvcfg_read_csr();
@@ -177,7 +177,7 @@ bool test_hcross_ssdbltrp_06(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-06: henvcfg.DTE dynamic switch");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     uintptr_t orig_m = menvcfg_read_csr();

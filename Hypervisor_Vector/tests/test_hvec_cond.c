@@ -21,7 +21,7 @@ TEST_REGISTER(test_hvec_13);
 bool test_hvec_13(void)
 {
     TEST_BEGIN("HVEC-13: (cond) vsstatus.vs existence with misa.v=0");
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     /* Probe misa.v writability: write 0 then try to restore/set. */
     uintptr_t misa_orig = CSRR(misa);

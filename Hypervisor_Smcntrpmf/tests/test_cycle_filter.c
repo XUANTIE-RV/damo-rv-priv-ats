@@ -25,9 +25,9 @@ bool test_pmf_cyc_08_vsinh_inhibit(void)
 {
     TEST_BEGIN("PMF-CYC-08: VSINH=1 inhibits VS-mode cycle counting");
 
-    if (!HAS_H_EXT())
+    if (!H_AVAILABLE)
         TEST_SKIP("H extension not available");
-    if (!smcntrpmf_implemented())
+    if (!SMCNTRPMF_AVAILABLE)
         TEST_SKIP("Smcntrpmf not implemented");
     if (!cycle_counter_functional())
         TEST_SKIP("cycle counter not functional");
@@ -59,9 +59,9 @@ bool test_pmf_cyc_09_vuinh_inhibit(void)
 {
     TEST_BEGIN("PMF-CYC-09: VUINH=1 inhibits VU-mode cycle counting");
 
-    if (!HAS_H_EXT())
+    if (!H_AVAILABLE)
         TEST_SKIP("H extension not available");
-    if (!smcntrpmf_implemented())
+    if (!SMCNTRPMF_AVAILABLE)
         TEST_SKIP("Smcntrpmf not implemented");
     if (!cycle_counter_functional())
         TEST_SKIP("cycle counter not functional");

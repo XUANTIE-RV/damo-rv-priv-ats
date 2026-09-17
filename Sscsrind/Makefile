@@ -4,7 +4,6 @@
 
 TARGET = sscsrind_test.elf
 
-SPIKE_ISA_EXT = _sscsrind_smstateen
 
 EXT_OBJS = \
     main.o \

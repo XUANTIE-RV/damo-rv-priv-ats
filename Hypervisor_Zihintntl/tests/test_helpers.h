@@ -64,48 +64,15 @@ static volatile uint64_t ntl_mem;       /* load target */
 static volatile uint64_t ntl_gva_mem;   /* HLV/HSV guest area */
 static volatile uint64_t ntl_gva_aux;   /* HSV comparison slot */
 
-/* ===================================================================
- * H extension detection
- * =================================================================== */
-
-static bool check_h_extension(void)
-{
-    uintptr_t misa_val = CSRR(misa);
-    return (misa_val & (1UL << ('H' - 'A'))) != 0;
-}
-
-#define H_REQUIRED_OR_SKIP() do { \
-    if (!check_h_extension()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
 
 /* ===================================================================
- * Zicbom detection (NTL-HYP-05): probe menvcfg.CBIE writability
+ * Zicbom availability (NTL-HYP-05)
+ *
+ * Zicbom support is config-declaration driven: gate on the compile-time
+ * ZICBOM_AVAILABLE macro (normalized in common/capabilities.h from
+ * ZICBOM_SUPPORTED in rvtest_config.h). Do NOT probe menvcfg.CBIE
+ * writability at runtime.
  * =================================================================== */
-
-static bool ntl_zicbom_detected = false;
-static bool ntl_zicbom_detection_done = false;
-
-static bool check_zicbom_extension(void)
-{
-    if (ntl_zicbom_detection_done)
-        return ntl_zicbom_detected;
-
-    uintptr_t orig = menvcfg_read();
-    menvcfg_set_cbie(CBIE_INVAL);
-    uintptr_t val = menvcfg_get_cbie();
-    ntl_zicbom_detected = (val == CBIE_INVAL);
-    menvcfg_write(orig);
-    ntl_zicbom_detection_done = true;
-    return ntl_zicbom_detected;
-}
-
-#define ZICBOM_REQUIRED_OR_SKIP() do { \
-    if (!check_zicbom_extension()) { \
-        TEST_SKIP("Zicbom not available (menvcfg.CBIE read-only)"); \
-    } \
-} while (0)
 
 /* ===================================================================
  * henvcfg CMO field accessors (bit positions shared with menvcfg)

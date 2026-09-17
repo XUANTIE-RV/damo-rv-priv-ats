@@ -19,7 +19,6 @@ ENABLE_HYP = 1
 QEMU_CPU   = xt-c930v-cp
 
 # Spike: explicitly request RV64 + H extension + Ssdbltrp.
-SPIKE_ISA = rv64imach_zicsr_zifencei_ssdbltrp
 
 EXT_OBJS = \
     main.o \

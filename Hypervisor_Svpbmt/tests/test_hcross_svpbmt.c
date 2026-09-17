@@ -32,8 +32,8 @@ TEST_REGISTER(test_hcross_svpbmt_01);
 bool test_hcross_svpbmt_01(void) {
     TEST_BEGIN("HCROSS-SVPBMT-01: G-stage PBMT=NC overrides PMA");
 
-    H_REQUIRED_OR_SKIP();
-    SVPBMT_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVPBMT_AVAILABLE) TEST_SKIP("Svpbmt not available");
 
     two_stage_ctx_t ctx;
 
@@ -78,8 +78,8 @@ TEST_REGISTER(test_hcross_svpbmt_02);
 bool test_hcross_svpbmt_02(void) {
     TEST_BEGIN("HCROSS-SVPBMT-02: VS-stage PBMT=IO overrides intermediate");
 
-    H_REQUIRED_OR_SKIP();
-    SVPBMT_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVPBMT_AVAILABLE) TEST_SKIP("Svpbmt not available");
 
     two_stage_ctx_t ctx;
     ts2_enable_pbmte();
@@ -128,8 +128,8 @@ TEST_REGISTER(test_hcross_svpbmt_03);
 bool test_hcross_svpbmt_03(void) {
     TEST_BEGIN("HCROSS-SVPBMT-03: Both stages nonzero PBMT override");
 
-    H_REQUIRED_OR_SKIP();
-    SVPBMT_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVPBMT_AVAILABLE) TEST_SKIP("Svpbmt not available");
 
     two_stage_ctx_t ctx;
     ts2_enable_pbmte();
@@ -180,8 +180,8 @@ TEST_REGISTER(test_hcross_svpbmt_04);
 bool test_hcross_svpbmt_04(void) {
     TEST_BEGIN("HCROSS-SVPBMT-04: hgatp.MODE=0 skips G-stage override");
 
-    H_REQUIRED_OR_SKIP();
-    SVPBMT_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVPBMT_AVAILABLE) TEST_SKIP("Svpbmt not available");
 
     two_stage_ctx_t ctx;
     ts2_enable_pbmte();

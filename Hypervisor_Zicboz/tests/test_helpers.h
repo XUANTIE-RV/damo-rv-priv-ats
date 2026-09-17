@@ -68,50 +68,17 @@ static inline void henvcfg_set_cbze(unsigned en)
 /* ===================================================================
  * H extension detection
  * =================================================================== */
-static bool check_h_extension(void)
-{
-    uint64_t misa_val = CSRR(misa);
-    return (misa_val & (1UL << ('H' - 'A'))) != 0;
-}
-
-#define H_REQUIRED_OR_SKIP() do { \
-    if (!check_h_extension()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
+/* H gate is inlined per case as:
+ *   if (!H_AVAILABLE) TEST_SKIP("H extension not available"); */
 
 /* ===================================================================
- * Zicboz detection
+ * Zicboz availability
  *
- * Probe by checking if menvcfg.CBZE is writable.
+ * Zicboz support is config-declaration driven: gate on the compile-time
+ * ZICBOZ_AVAILABLE macro (normalized in common/capabilities.h from
+ * ZICBOZ_SUPPORTED in rvtest_config.h). Do NOT probe menvcfg.CBZE
+ * writability at runtime.
  * =================================================================== */
-static bool zicboz_detected = false;
-static bool zicboz_detection_done = false;
-
-static bool check_zicboz_extension(void)
-{
-    if (zicboz_detection_done)
-        return zicboz_detected;
-
-    /* Try setting CBZE=1 in menvcfg, read back */
-    uintptr_t orig = menvcfg_read();
-    menvcfg_set_cbze(1);
-    uintptr_t val = menvcfg_get_cbze();
-    if (val == 1) {
-        zicboz_detected = true;
-    } else {
-        zicboz_detected = false;
-    }
-    menvcfg_write(orig);
-    zicboz_detection_done = true;
-    return zicboz_detected;
-}
-
-#define ZICBOZ_REQUIRED_OR_SKIP() do { \
-    if (!check_zicboz_extension()) { \
-        TEST_SKIP("Zicboz not available"); \
-    } \
-} while (0)
 
 /* ===================================================================
  * cbo.zero trampoline for VS/VU-mode

@@ -32,9 +32,9 @@ TEST_REGISTER(test_hcross_svadu_01);
 bool test_hcross_svadu_01(void) {
     TEST_BEGIN("HCROSS-SVADU-01: henvcfg.ADUE writability");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    if (check_svadu_via_adue()) {
+    if (SVADU_AVAILABLE) {
         /* Svadu implemented: menvcfg.ADUE is writable, so henvcfg.ADUE
          * should also be writable (norm:Svadu_hypervisor_adue_writable).
          * Must set menvcfg.ADUE=1 first, otherwise henvcfg.ADUE is
@@ -86,8 +86,8 @@ TEST_REGISTER(test_hcross_svadu_02);
 bool test_hcross_svadu_02(void) {
     TEST_BEGIN("HCROSS-SVADU-02: HLV with Svadu (ADUE=1, A-bit update)");
 
-    H_REQUIRED_OR_SKIP();
-    SVADU_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -146,8 +146,8 @@ TEST_REGISTER(test_hcross_svadu_03);
 bool test_hcross_svadu_03(void) {
     TEST_BEGIN("HCROSS-SVADU-03: HSV with Svadu (ADUE=1, D-bit update)");
 
-    H_REQUIRED_OR_SKIP();
-    SVADU_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -207,8 +207,8 @@ TEST_REGISTER(test_hcross_svadu_04);
 bool test_hcross_svadu_04(void) {
     TEST_BEGIN("HCROSS-SVADU-04: HLV with Svade (ADUE=0, guest-page-fault)");
 
-    H_REQUIRED_OR_SKIP();
-    SVADU_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -280,8 +280,8 @@ TEST_REGISTER(test_hcross_svadu_05);
 bool test_hcross_svadu_05(void) {
     TEST_BEGIN("HCROSS-SVADU-05: menvcfg.ADUE change + HFENCE.GVMA(x0,x0)");
 
-    H_REQUIRED_OR_SKIP();
-    SVADU_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -359,8 +359,8 @@ TEST_REGISTER(test_hcross_svadu_06);
 bool test_hcross_svadu_06(void) {
     TEST_BEGIN("HCROSS-SVADU-06: menvcfg.ADUE change + HFENCE.GVMA(vmid,x0)");
 
-    H_REQUIRED_OR_SKIP();
-    SVADU_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -466,8 +466,8 @@ TEST_REGISTER(test_hcross_svadu_07);
 bool test_hcross_svadu_07(void) {
     TEST_BEGIN("HCROSS-SVADU-07: henvcfg.ADUE change + HFENCE.VVMA(x0,x0)");
 
-    H_REQUIRED_OR_SKIP();
-    SVADU_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();

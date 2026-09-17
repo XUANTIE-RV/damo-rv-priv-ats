@@ -31,7 +31,6 @@ MARCH      = rv$(XLEN)imac_zicsr_zifencei_svadu_zacas
 #                derive the intra-granule expectation from it.
 #   _smstateen - config/spike-rv64-max declares Smstateen (SMSTATEEN_SUPPORTED),
 #                which HZACAS-36 gates on before touching mstateen0/hstateen0.
-SPIKE_ISA_EXT = _zama16b_smstateen
 
 # QEMU virt: enable Zacas explicitly (max does not enable it by default).
 QEMU_CPU   = max,zacas=true

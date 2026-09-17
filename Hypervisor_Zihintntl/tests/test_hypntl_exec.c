@@ -23,7 +23,7 @@ TEST_REGISTER(test_ntl_hyp_01);
 bool test_ntl_hyp_01(void)
 {
     TEST_BEGIN("NTL-HYP-01: HS-mode ntl.all + ld normal");
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     ntl_mem = NTL_MAGIC;
 
@@ -61,7 +61,7 @@ TEST_REGISTER(test_ntl_hyp_02);
 bool test_ntl_hyp_02(void)
 {
     TEST_BEGIN("NTL-HYP-02: VS-mode ntl.all + ld normal");
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     ntl_mem = NTL_MAGIC;
 
@@ -94,7 +94,7 @@ TEST_REGISTER(test_ntl_hyp_03);
 bool test_ntl_hyp_03(void)
 {
     TEST_BEGIN("NTL-HYP-03: VU-mode ntl.all + ld normal");
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     ntl_mem = NTL_MAGIC;
 

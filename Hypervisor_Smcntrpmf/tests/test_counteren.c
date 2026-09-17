@@ -21,9 +21,9 @@ bool test_pmf_ctr_04_hcounteren_cy0(void)
 {
     TEST_BEGIN("PMF-CTR-04: hcounteren.CY=0, VS-mode cannot read cycle");
 
-    if (!HAS_H_EXT())
+    if (!H_AVAILABLE)
         TEST_SKIP("H extension not available");
-    if (!smcntrpmf_implemented())
+    if (!SMCNTRPMF_AVAILABLE)
         TEST_SKIP("Smcntrpmf not implemented");
 
     /* mcounteren.CY=1 (M permits), hcounteren.CY=0 (HS blocks VS/VU). */
@@ -54,9 +54,9 @@ bool test_hcross_pmf_01_orthogonal(void)
 {
     TEST_BEGIN("HCROSS-PMF-01: VSINH inhibition orthogonal to hcounteren");
 
-    if (!HAS_H_EXT())
+    if (!H_AVAILABLE)
         TEST_SKIP("H extension not available");
-    if (!smcntrpmf_implemented())
+    if (!SMCNTRPMF_AVAILABLE)
         TEST_SKIP("Smcntrpmf not implemented");
     if (!cycle_counter_functional())
         TEST_SKIP("cycle counter not functional");

@@ -29,7 +29,7 @@ static uintptr_t _vs_read_scountovf(uintptr_t arg)
 TEST_REGISTER(test_hcross_sscofpmf_01_vs_both_allow);
 bool test_hcross_sscofpmf_01_vs_both_allow(void) {
     TEST_BEGIN("HCROSS-SSCOFPMF-01: VS-mode scountovf both gates allow");
-    if (!has_hext()) TEST_SKIP("H extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not supported");
     unsigned n = find_first_counter();
     if (!n) TEST_SKIP("no hpmcounter implemented");
     if (!is_scountovf_functional(n)) TEST_SKIP("scountovf not functional on this platform");
@@ -67,7 +67,7 @@ bool test_hcross_sscofpmf_01_vs_both_allow(void) {
 TEST_REGISTER(test_hcross_sscofpmf_02_vs_mc0);
 bool test_hcross_sscofpmf_02_vs_mc0(void) {
     TEST_BEGIN("HCROSS-SSCOFPMF-02: VS-mode scountovf mcounteren=0");
-    if (!has_hext()) TEST_SKIP("H extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not supported");
     unsigned n = find_first_counter();
     if (!n) TEST_SKIP("no hpmcounter implemented");
     if (!is_scountovf_functional(n)) TEST_SKIP("scountovf not functional on this platform");
@@ -104,7 +104,7 @@ bool test_hcross_sscofpmf_02_vs_mc0(void) {
 TEST_REGISTER(test_hcross_sscofpmf_03_vs_hc0);
 bool test_hcross_sscofpmf_03_vs_hc0(void) {
     TEST_BEGIN("HCROSS-SSCOFPMF-03: VS-mode scountovf hcounteren=0");
-    if (!has_hext()) TEST_SKIP("H extension not supported");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not supported");
     unsigned n = find_first_counter();
     if (!n) TEST_SKIP("no hpmcounter implemented");
     if (!is_scountovf_functional(n)) TEST_SKIP("scountovf not functional on this platform");

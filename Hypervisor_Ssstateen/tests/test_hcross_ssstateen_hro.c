@@ -24,7 +24,7 @@ TEST_REGISTER(test_hcross_sssta_39);
 bool test_hcross_sssta_39(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-39: hstateen0 RO1 => mstateen0 same bit RO1");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, ~0UL);
@@ -75,7 +75,7 @@ TEST_REGISTER(test_hcross_sssta_40);
 bool test_hcross_sssta_40(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-40: hstateen1 RO1 => mstateen1 same bit RO1");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(1);
     mstateen_set_bit63(1, true);
@@ -125,7 +125,7 @@ TEST_REGISTER(test_hcross_sssta_41);
 bool test_hcross_sssta_41(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-41: hstateen2 RO1 => mstateen2 same bit RO1");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(2);
     mstateen_set_bit63(2, true);
@@ -175,7 +175,7 @@ TEST_REGISTER(test_hcross_sssta_42);
 bool test_hcross_sssta_42(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-42: hstateen3 RO1 => mstateen3 same bit RO1");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(3);
     mstateen_set_bit63(3, true);
@@ -225,7 +225,7 @@ TEST_REGISTER(test_hcross_sssta_43);
 bool test_hcross_sssta_43(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-43: hstateen0 reserved bits are ROZ");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, ~0UL);
@@ -257,7 +257,7 @@ TEST_REGISTER(test_hcross_sssta_44);
 bool test_hcross_sssta_44(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-44: hstateen0 unimplemented extension bits ROZ");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, ~0UL);
@@ -310,7 +310,7 @@ TEST_REGISTER(test_hcross_sssta_45);
 bool test_hcross_sssta_45(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-45: hstateen0 WARL write legal value readback");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, ~0UL);

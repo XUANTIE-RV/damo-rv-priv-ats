@@ -29,7 +29,7 @@
 /* Preconditions: H extension + Smcdeleg/Ssccfg presence */
 static bool vsireg_preconditions(const char **skip_reason)
 {
-    if (!HAS_H_EXT()) {
+    if (!H_AVAILABLE) {
         *skip_reason = "H extension not supported";
         return false;
     }

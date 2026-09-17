@@ -224,60 +224,13 @@ static void pte_set_bits(pt_context_t *ctx, uintptr_t va, int level,
 }
 
 /* ===================================================================
- * Svadu detection (two-step)
+ * Svadu capability gating
  *
- * Step 1: Write menvcfg.ADUE=1 and read back. Per SPEC/machine.adoc:2247
- *         (norm:menvcfg_adue_rdonly0), if Svadu is not implemented then
- *         ADUE is read-only zero; readback==0 => not implemented.
- *
- * Step 2: Map a 4K leaf PTE with A=0 and perform an S-mode load.
- *         If Svadu is implemented and ADUE=1, the load must succeed
- *         and PTE.A must be set by HW. Any other outcome => not Svadu.
+ * Svadu support is a platform capability declared by the build config
+ * (config/<platform>/rvtest_config.h: SVADU_SUPPORTED), surfaced as the
+ * compile-time SVADU_AVAILABLE macro by common/capabilities.h. Do NOT
+ * probe it at runtime by checking menvcfg.ADUE writability or by
+ * mapping an A=0 page and observing the hardware A-bit update.
  * =================================================================== */
-static bool svadu_detected = false;
-static bool svadu_detection_done = false;
-
-static bool detect_svadu(void) {
-    if (svadu_detection_done)
-        return svadu_detected;
-
-    /* Step 1: writable check */
-    set_menvcfg_adue(1);
-    if (get_menvcfg_adue() == 0) {
-        svadu_detected = false;
-        svadu_detection_done = true;
-        return false;
-    }
-
-    /* Step 2: A=0 load under ADUE=1 must succeed and set A */
-    pt_context_t ctx;
-    pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
-    if (setup_code_mapping(&ctx) != 0) {
-        svadu_detected = false;
-        svadu_detection_done = true;
-        pt_pool_reset();
-        return false;
-    }
-
-    uintptr_t test_va = (uintptr_t)test_fault_page;
-    pt_map_page(&ctx, test_va, test_va,
-                PTE_V | PTE_R | PTE_D,  /* A=0 */
-                PT_LEVEL_4K);
-
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
-    uintptr_t pte    = pte_read(&ctx, test_va, PT_LEVEL_4K);
-    pt_pool_reset();
-
-    svadu_detected = (result == 0) && ((pte & PTE_A) != 0);
-    svadu_detection_done = true;
-    return svadu_detected;
-}
-
-#define SVADU_REQUIRED_OR_SKIP() do { \
-    if (!detect_svadu()) { \
-        TEST_SKIP("Platform does not implement Svadu"); \
-    } \
-} while (0)
 
 #endif /* SVADU_TEST_HELPERS_H */

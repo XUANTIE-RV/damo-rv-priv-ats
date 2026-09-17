@@ -62,58 +62,13 @@ extern uint8_t __vm_test_region_end[];
 #define CAUSE_STORE_GUEST_PAGE_FAULT   23   /* G-stage store/AMO fault */
 
 /* ===================================================================
- * H extension detection
- * =================================================================== */
-static bool check_h_extension(void) {
-    uint64_t misa = CSRR(misa);
-    if (!(misa & (1UL << ('H' - 'A')))) {
-        return false;
-    }
-    return true;
-}
-
-#define H_REQUIRED_OR_SKIP() do { \
-    if (!check_h_extension()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-/* ===================================================================
- * Svadu detection via menvcfg.ADUE writability
+ * Svadu availability
  *
- * Per spec norm:Svadu_hw_update_a_d_bits: "If the Svadu extension is
- * implemented, the menvcfg.ADUE field is writable."
- * Per spec norm:menvcfg_adue_rdonly0: "If Svadu is not implemented,
- * ADUE is read-only zero."
- *
- * We must test menvcfg.ADUE (not henvcfg.ADUE) because
- * norm:menvcfg_adue_henvcfg_adue_rdonly0 states that
- * henvcfg.ADUE is read-only zero when menvcfg.ADUE is zero.
- * Testing henvcfg.ADUE writability would give a false negative
- * when menvcfg.ADUE happens to be zero.
+ * Svadu support is config-declaration driven: gate on the compile-time
+ * SVADU_AVAILABLE macro (normalized in common/capabilities.h from
+ * SVADU_SUPPORTED in rvtest_config.h). Do NOT probe menvcfg.ADUE
+ * writability at runtime.
  * =================================================================== */
-static bool svadu_detected = false;
-static bool svadu_detection_done = false;
-
-static bool check_svadu_via_adue(void) {
-    if (svadu_detection_done)
-        return svadu_detected;
-
-    /* Try to write menvcfg.ADUE=1 and read back */
-    uintptr_t old_menvcfg = menvcfg_read();
-    menvcfg_write(old_menvcfg | MENVCFG_ADUE);
-    svadu_detected = ((menvcfg_read() & MENVCFG_ADUE) != 0);
-    menvcfg_write(old_menvcfg);  /* restore */
-
-    svadu_detection_done = true;
-    return svadu_detected;
-}
-
-#define SVADU_REQUIRED_OR_SKIP() do { \
-    if (!check_svadu_via_adue()) { \
-        TEST_SKIP("Platform does not implement Svadu"); \
-    } \
-} while (0)
 
 /* ===================================================================
  * henvcfg.ADUE access helpers

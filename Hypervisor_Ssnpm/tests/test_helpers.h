@@ -26,36 +26,6 @@
 #include "pm/pm_addr.h"
 
 /* ===================================================================
- * Capability gates
- * =================================================================== */
-
-static bool check_h_extension(void) {
-    uint64_t misa_val = CSRR(misa);
-    return (misa_val & (1UL << ('H' - 'A'))) != 0;
-}
-
-#define H_REQUIRED_OR_SKIP() do { \
-    if (!check_h_extension()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-/* Ssnpm hypervisor-side controls: henvcfg.PMM + hstatus.HUPMM */
-#define SSNPM_HYP_REQUIRED_OR_SKIP() do { \
-    H_REQUIRED_OR_SKIP(); \
-    if (!detect_ssnpm_hyp()) { \
-        TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented"); \
-    } \
-} while (0)
-
-#define SSNPM_REQUIRED_OR_SKIP() do { \
-    H_REQUIRED_OR_SKIP(); \
-    if (!detect_ssnpm()) { \
-        TEST_SKIP("Ssnpm (senvcfg.PMM) not implemented"); \
-    } \
-} while (0)
-
-/* ===================================================================
  * Scratch data addresses (inside .vm_test_region)
  *
  * ts2_setup_full() maps the whole region at 4KB granularity in both

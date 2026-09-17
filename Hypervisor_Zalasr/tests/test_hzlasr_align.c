@@ -51,7 +51,8 @@ TEST_REGISTER(test_hzlasr_25_misaligned_load_acq);
 bool test_hzlasr_25_misaligned_load_acq(void)
 {
     TEST_BEGIN("HZLASR-25: misaligned load-acquire (no MAG) -> fault (record)");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -114,7 +115,8 @@ TEST_REGISTER(test_hzlasr_26_misaligned_store_rel);
 bool test_hzlasr_26_misaligned_store_rel(void)
 {
     TEST_BEGIN("HZLASR-26: misaligned store-release (no MAG) -> cause 6/7");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -168,7 +170,8 @@ TEST_REGISTER(test_hzlasr_27_mag_intra_no_fault);
 bool test_hzlasr_27_mag_intra_no_fault(void)
 {
     TEST_BEGIN("HZLASR-27: MAG intra-granule misaligned Zalasr -> no fault");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     if (!HZLASR_MAG_DECLARED)
@@ -220,7 +223,8 @@ TEST_REGISTER(test_hzlasr_28_misaligned_trap_context);
 bool test_hzlasr_28_misaligned_trap_context(void)
 {
     TEST_BEGIN("HZLASR-28: misaligned Zalasr HS-mode trap context");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

@@ -26,7 +26,8 @@ TEST_REGISTER(test_hzacas_36_hstateen0_no_gate);
 bool test_hzacas_36_hstateen0_no_gate(void)
 {
     TEST_BEGIN("HZACAS-36: hstateen0=0 does not gate amocas in VS/VU");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

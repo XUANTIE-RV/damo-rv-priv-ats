@@ -23,7 +23,8 @@
 TEST_REGISTER(test_hcfi_ss_69);
 bool test_hcfi_ss_69(void) {
     TEST_BEGIN("HCFI-SS-69: SSE=0, SSPUSH/SSPOPCHK revert; SSAMOSWAP virtual-inst");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -55,7 +56,8 @@ bool test_hcfi_ss_69(void) {
 TEST_REGISTER(test_hcfi_ss_70);
 bool test_hcfi_ss_70(void) {
     TEST_BEGIN("HCFI-SS-70: SSE=0, all 16-bit SS instructions revert to Zcmop");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
     /* KNOWN GAP (not implemented): 16-bit SS instructions
      * (C.SSPUSH/C.SSPOPCHK) Zcmop reversion is not directly tested;
      * they share the reversion path with the 32-bit forms (HCFI-SS-69). */
@@ -67,7 +69,8 @@ bool test_hcfi_ss_70(void) {
 TEST_REGISTER(test_hcfi_ss_71);
 bool test_hcfi_ss_71(void) {
     TEST_BEGIN("HCFI-SS-71: SSE=0, ssp CSR access -> virtual-inst");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -85,7 +88,8 @@ bool test_hcfi_ss_71(void) {
 TEST_REGISTER(test_hcfi_ss_72);
 bool test_hcfi_ss_72(void) {
     TEST_BEGIN("HCFI-SS-72: SSE=0, pte.xwr=010 reserved in VS/VU-stage");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     /* VS-stage part */
     two_stage_ctx_t ctx;
@@ -121,7 +125,8 @@ bool test_hcfi_ss_72(void) {
 TEST_REGISTER(test_hcfi_ss_73);
 bool test_hcfi_ss_73(void) {
     TEST_BEGIN("HCFI-SS-73: SSE 0->1 switch, SS instructions available");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -151,7 +156,8 @@ bool test_hcfi_ss_73(void) {
 TEST_REGISTER(test_hcfi_ss_74);
 bool test_hcfi_ss_74(void) {
     TEST_BEGIN("HCFI-SS-74: SSE 1->0 switch, SS instructions revert");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
@@ -181,7 +187,8 @@ bool test_hcfi_ss_74(void) {
 TEST_REGISTER(test_hcfi_ss_75);
 bool test_hcfi_ss_75(void) {
     TEST_BEGIN("HCFI-SS-75: SSE switch without SFENCE/HFENCE");
-    H_REQUIRED_OR_SKIP(); ZICFISS_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICFISS_AVAILABLE) TEST_SKIP("Zicfiss not implemented");
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();

@@ -227,37 +227,6 @@ static inline bool hstateen0_bit_writable(uintptr_t bit)
 }
 
 /* ===================================================================
- * Platform detection
- * =================================================================== */
-
-/* Check if H extension is present */
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-/* Check if Smcsrind is implemented (miselect accessible) */
-static inline bool platform_has_smcsrind(void)
-{
-    trap_expect_begin();
-    miselect_read();
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-    return !trapped;
-}
-
-/* Check if Smstateen is implemented (mstateen0 accessible) */
-static inline bool platform_has_smstateen(void)
-{
-    trap_expect_begin();
-    mstateen0_read();
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-    return !trapped;
-}
-
-/* ===================================================================
  * VS-mode callback functions for run_in_vs_mode()
  *
  * In VS-mode (V=1), siselect (0x150) and sireg (0x151) are

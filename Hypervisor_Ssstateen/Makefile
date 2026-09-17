@@ -19,7 +19,6 @@ ENABLE_TWO_STAGE = 1
 # Spike ISA extensions
 # _sscsrind: CSRIND gate tests exercise VS-mode access to siselect/
 #            sireg (really vsiselect/vsireg), which require Sscsrind.
-SPIKE_ISA = rv64imach_zicsr_zifencei_smstateen_sscsrind
 
 # Extension-specific object files
 EXT_OBJS = \

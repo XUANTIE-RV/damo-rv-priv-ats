@@ -262,15 +262,6 @@ static inline void htimedelta_write(uintptr_t v) {
 #define SSTC_DELAY  100
 
 /* ===================================================================
- * H extension detection
- * =================================================================== */
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-/* ===================================================================
  * Globals provided by tests/sstc_strap.S
  * =================================================================== */
 extern volatile uintptr_t g_sstc_trap_cause;

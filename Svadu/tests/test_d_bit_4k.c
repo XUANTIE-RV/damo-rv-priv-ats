@@ -20,7 +20,7 @@
 TEST_REGISTER(test_svadu_d4k01);
 bool test_svadu_d4k01(void) {
     TEST_BEGIN("SVADU-D4K-01: ADUE=1 store on A=1,D=0 PTE sets D bit");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 
@@ -48,7 +48,7 @@ bool test_svadu_d4k01(void) {
 TEST_REGISTER(test_svadu_d4k02);
 bool test_svadu_d4k02(void) {
     TEST_BEGIN("SVADU-D4K-02: ADUE=1 store on A=0,D=0 PTE sets both A and D");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 
@@ -76,7 +76,7 @@ bool test_svadu_d4k02(void) {
 TEST_REGISTER(test_svadu_d4k03);
 bool test_svadu_d4k03(void) {
     TEST_BEGIN("SVADU-D4K-03: ADUE=1 amoadd on A=1,D=0 PTE sets D bit");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 
@@ -103,7 +103,7 @@ bool test_svadu_d4k03(void) {
 TEST_REGISTER(test_svadu_d4k04);
 bool test_svadu_d4k04(void) {
     TEST_BEGIN("SVADU-D4K-04: ADUE=1 store on A=1,D=1 PTE succeeds, A/D unchanged");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 

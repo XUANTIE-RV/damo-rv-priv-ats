@@ -33,7 +33,8 @@ TEST_REGISTER(test_hzacas_11_cas_gstage_fault);
 bool test_hzacas_11_cas_gstage_fault(void)
 {
     TEST_BEGIN("HZACAS-11: amocas G-stage fault -> store guest-pf (23)");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -71,7 +72,8 @@ TEST_REGISTER(test_hzacas_12_cas_failed_gstage);
 bool test_hzacas_12_cas_failed_gstage(void)
 {
     TEST_BEGIN("HZACAS-12: FAILED amocas G-stage W=0 -> store guest-pf (23)");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -106,7 +108,8 @@ TEST_REGISTER(test_hzacas_13_gva_spv);
 bool test_hzacas_13_gva_spv(void)
 {
     TEST_BEGIN("HZACAS-13: guest amocas trap -> GVA=1 and SPV=1");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -147,7 +150,8 @@ TEST_REGISTER(test_hzacas_14_htval_gpa);
 bool test_hzacas_14_htval_gpa(void)
 {
     TEST_BEGIN("HZACAS-14: guest amocas fault -> htval == GPA>>2 or 0");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -180,7 +184,8 @@ TEST_REGISTER(test_hzacas_15_vs_stage_htval_zero);
 bool test_hzacas_15_vs_stage_htval_zero(void)
 {
     TEST_BEGIN("HZACAS-15: VS-stage amocas fault -> htval == 0");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -216,7 +221,7 @@ TEST_REGISTER(test_hzacas_16_hsv_spv0_gva1);
 bool test_hzacas_16_hsv_spv0_gva1(void)
 {
     TEST_BEGIN("HZACAS-16: HSV.D explicit access -> SPV=0 but GVA=1");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

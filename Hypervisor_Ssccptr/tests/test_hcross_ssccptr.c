@@ -43,7 +43,7 @@ TEST_REGISTER(test_hcross_ssccptr_01);
 bool test_hcross_ssccptr_01(void) {
     TEST_BEGIN("HCROSS-SSCCPTR-01: VS-stage PT walk in cacheable+coherent mem");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -90,7 +90,7 @@ TEST_REGISTER(test_hcross_ssccptr_02);
 bool test_hcross_ssccptr_02(void) {
     TEST_BEGIN("HCROSS-SSCCPTR-02: G-stage PT walk in cacheable+coherent mem");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -136,7 +136,7 @@ TEST_REGISTER(test_hcross_ssccptr_03);
 bool test_hcross_ssccptr_03(void) {
     TEST_BEGIN("HCROSS-SSCCPTR-03: Two-stage PT walk (load+store)");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -193,7 +193,7 @@ TEST_REGISTER(test_hcross_ssccptr_04);
 bool test_hcross_ssccptr_04(void) {
     TEST_BEGIN("HCROSS-SSCCPTR-04: G-stage PT page PMA attribute verification");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     /*
      * Check if the platform supports dynamic PMA configuration.

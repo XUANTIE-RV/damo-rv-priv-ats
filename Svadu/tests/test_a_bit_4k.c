@@ -20,7 +20,7 @@
 TEST_REGISTER(test_svadu_a4k01);
 bool test_svadu_a4k01(void) {
     TEST_BEGIN("SVADU-A4K-01: ADUE=1 load on A=0 PTE sets A bit");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 
@@ -47,7 +47,7 @@ bool test_svadu_a4k01(void) {
 TEST_REGISTER(test_svadu_a4k02);
 bool test_svadu_a4k02(void) {
     TEST_BEGIN("SVADU-A4K-02: ADUE=1 fetch on A=0 X page sets A bit");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 
@@ -75,7 +75,7 @@ bool test_svadu_a4k02(void) {
 TEST_REGISTER(test_svadu_a4k03);
 bool test_svadu_a4k03(void) {
     TEST_BEGIN("SVADU-A4K-03: ADUE=1 load on A=0,D=1 RW page sets A, keeps D");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 
@@ -104,7 +104,7 @@ bool test_svadu_a4k03(void) {
 TEST_REGISTER(test_svadu_a4k04);
 bool test_svadu_a4k04(void) {
     TEST_BEGIN("SVADU-A4K-04: Repeated loads on A=0 page all succeed");
-    SVADU_REQUIRED_OR_SKIP();
+    if (!SVADU_AVAILABLE) TEST_SKIP("Platform does not implement Svadu");
 
     set_menvcfg_adue(1);
 

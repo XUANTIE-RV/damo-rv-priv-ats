@@ -38,7 +38,6 @@ QEMU_CPU = max
 # Zama16b is appended to match the spike-rv64-max platform declaration for
 # consistency across the Hypervisor_Za* suites; Zawrs has no AMO, so it does
 # not change any Zawrs behavior.
-SPIKE_ISA = rv64imach_zicsr_zifencei_zawrs_zama16b
 
 # Extension-specific object files
 EXT_OBJS = \

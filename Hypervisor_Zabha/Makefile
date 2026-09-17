@@ -34,7 +34,6 @@ MARCH      = rv$(XLEN)imac_zicsr_zifencei_svadu_zabha_zacas
 # derive the intra-granule halfword-AMO expectation from it.
 # config/spike-rv64-max declares Zama16b, so launch Spike with it enabled
 # (mirrors Zaamo/Makefile SPIKE_ISA_EXT).
-SPIKE_ISA_EXT = _zama16b
 
 # QEMU virt: enable Zabha and Zacas explicitly.
 QEMU_CPU   = max,zabha=true,zacas=true

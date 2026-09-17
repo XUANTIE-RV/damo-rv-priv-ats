@@ -42,7 +42,6 @@ QEMU_CPU   = max
 # platform config/spike-rv64-max declares: per norm:pma_mag_op_rsrv LR/SC are
 # NEVER relaxed by the misaligned atomicity granule, so they must still fault
 # even with Zama16b present.
-SPIKE_ISA  = rv64imach_zicsr_zifencei_svadu_zama16b
 
 EXT_OBJS = \
     main.o \

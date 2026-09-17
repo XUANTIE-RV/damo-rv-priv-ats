@@ -16,7 +16,10 @@
  *     amocas must NEVER report cause=22 (mandatory negative assertion).
  * =================================================================== */
 
-static volatile uint64_t hzacas_hs_slot[8];
+/* 16-byte alignment is mandatory: amocas.q requires its operand address
+ * to be naturally aligned to 16 bytes (norm:Zacas_amocas_rs1_addr_alignment).
+ * A plain uint64_t[] only guarantees 8-byte alignment. */
+static volatile uint64_t hzacas_hs_slot[8] __attribute__((aligned(16)));
 
 /* ------------------------------------------------------------------
  * HZACAS-01: HS-mode amocas.w/d/q success and failure paths.
@@ -25,7 +28,32 @@ TEST_REGISTER(test_hzacas_01_hs_exec);
 bool test_hzacas_01_hs_exec(void)
 {
     TEST_BEGIN("HZACAS-01: HS-mode amocas.w/d/q success + failure");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
+
+    /* First case ONLY: config declares Zacas, so probe the DUT to
+     * confirm it really implements amocas (aligned with the
+     * ZACAS_SUPPORTED declaration). A trap-armed amocas.w in M-mode
+     * raising illegal-instruction would mean the DUT does NOT implement
+     * Zacas despite the config. No other case probes. */
+    {
+        static volatile uint64_t hzacas_probe_slot;
+        uintptr_t paddr = (uintptr_t)&hzacas_probe_slot;
+        uintptr_t prd = 0x1111ULL;   /* matches -> success path */
+        uintptr_t psw = 0x2222ULL;
+        hzacas_probe_slot = 0x1111ULL;
+        M_TRAP_EXPECT_BEGIN();
+        asm volatile(
+            ".option push\n\t.option norvc\n\t"
+            "amocas.w %0, %2, (%1)\n\t"
+            ".option pop\n\t"
+            : "+r"(prd) : "r"(paddr), "r"(psw) : "memory");
+        bool ptrapped = trap_was_triggered();
+        uintptr_t pcause = ptrapped ? trap_get_cause() : 0;
+        trap_expect_end();
+        TEST_ASSERT("DUT really implements Zacas (aligned with config)",
+                    !(ptrapped && pcause == CAUSE_ILLEGAL_INST));
+    }
 
     /* amocas.w success: cmp matches memory -> store swap, rd = old. */
     uintptr_t waddr = (uintptr_t)&hzacas_hs_slot[0];
@@ -102,7 +130,8 @@ TEST_REGISTER(test_hzacas_02_vs_exec_no_cause22);
 bool test_hzacas_02_vs_exec_no_cause22(void)
 {
     TEST_BEGIN("HZACAS-02: VS-mode amocas executes, never cause=22");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -138,7 +167,8 @@ TEST_REGISTER(test_hzacas_03_vu_exec_no_cause22);
 bool test_hzacas_03_vu_exec_no_cause22(void)
 {
     TEST_BEGIN("HZACAS-03: VU-mode amocas executes, never cause=22");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -182,7 +212,8 @@ TEST_REGISTER(test_hzacas_04_vs_hs_semantic_parity);
 bool test_hzacas_04_vs_hs_semantic_parity(void)
 {
     TEST_BEGIN("HZACAS-04: VS-mode amocas semantics == HS-mode");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

@@ -19,8 +19,8 @@ bool test_hcgstage_01(void)
 {
     TEST_BEGIN("HCGSTAGE-01: cbo.clean G-stage no-perm GPF");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;
@@ -54,8 +54,8 @@ bool test_hcgstage_02(void)
 {
     TEST_BEGIN("HCGSTAGE-02: cbo.flush G-stage no-perm GPF");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;
@@ -89,8 +89,8 @@ bool test_hcgstage_03(void)
 {
     TEST_BEGIN("HCGSTAGE-03: cbo.inval G-stage no-perm GPF");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;
@@ -124,8 +124,8 @@ bool test_hcgstage_05(void)
 {
     TEST_BEGIN("HCGSTAGE-05: cbo.clean G-stage GPF stval=rs1");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;
@@ -163,8 +163,8 @@ bool test_hcgstage_08(void)
 {
     TEST_BEGIN("HCGSTAGE-08: cbo.clean read-only G-stage executes");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;
@@ -196,8 +196,8 @@ bool test_hcgstage_09(void)
 {
     TEST_BEGIN("HCGSTAGE-09: cbo.inval read-only G-stage executes");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;
@@ -228,8 +228,8 @@ bool test_hcgstage_12(void)
 {
     TEST_BEGIN("HCGSTAGE-12: cbo.clean VS-stage page-fault");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOM_AVAILABLE) TEST_SKIP("Zicbom not available");
 
     two_stage_ctx_t ctx;
     uintptr_t victim = TEST_REGION_BASE;

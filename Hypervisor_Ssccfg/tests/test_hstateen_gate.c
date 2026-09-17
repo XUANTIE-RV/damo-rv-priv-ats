@@ -25,11 +25,11 @@
  * Returns false (with reason) when the test must be skipped. */
 static bool hstateen_preconditions(const char **skip_reason)
 {
-    if (!HAS_H_EXT()) {
+    if (!H_AVAILABLE) {
         *skip_reason = "H extension not supported";
         return false;
     }
-    if (!platform_has_smstateen()) {
+    if (!SMSTATEEN_AVAILABLE) {
         *skip_reason = "Smstateen not supported";
         return false;
     }

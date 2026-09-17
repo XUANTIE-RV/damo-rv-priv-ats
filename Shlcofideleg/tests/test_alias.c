@@ -35,9 +35,7 @@ TEST_REGISTER(test_shlcofideleg_alias_lcofip_sip_to_vsip);
 bool test_shlcofideleg_alias_lcofip_sip_to_vsip(void) {
     TEST_BEGIN("LCFIDLG-ALIAS: sip.LCOFIP → vsip.LCOFIP alias");
 
-    if (!shlcofideleg_check_available()) {
-        TEST_SKIP("Shlcofideleg not implemented");
-    }
+    if (!SHLCOFIDELEG_AVAILABLE) TEST_SKIP("Shlcofideleg not implemented");
 
     uintptr_t saved_hideleg = hideleg_read();
     uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);
@@ -69,9 +67,7 @@ TEST_REGISTER(test_shlcofideleg_alias_lcofie_bidirectional);
 bool test_shlcofideleg_alias_lcofie_bidirectional(void) {
     TEST_BEGIN("LCFIDLG-ALIAS: sie.LCOFIE ↔ vsie.LCOFIE bidirectional alias");
 
-    if (!shlcofideleg_check_available()) {
-        TEST_SKIP("Shlcofideleg not implemented");
-    }
+    if (!SHLCOFIDELEG_AVAILABLE) TEST_SKIP("Shlcofideleg not implemented");
 
     uintptr_t saved_hideleg = hideleg_read();
     uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);
@@ -119,9 +115,7 @@ TEST_REGISTER(test_shlcofideleg_alias_mip_to_vsip);
 bool test_shlcofideleg_alias_mip_to_vsip(void) {
     TEST_BEGIN("LCFIDLG-ALIAS: mip.LCOFIP → vsip.LCOFIP propagation");
 
-    if (!shlcofideleg_check_available()) {
-        TEST_SKIP("Shlcofideleg not implemented");
-    }
+    if (!SHLCOFIDELEG_AVAILABLE) TEST_SKIP("Shlcofideleg not implemented");
 
     uintptr_t saved_hideleg = hideleg_read();
     uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);

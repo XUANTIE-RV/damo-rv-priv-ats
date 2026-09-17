@@ -405,28 +405,4 @@ static inline bool is_scountovf_functional(unsigned n) {
     return (sovf & (1u << n)) != 0;
 }
 
-/* ===================================================================
- * Check if S-mode is supported (misa.S bit)
- * =================================================================== */
-static inline bool has_smode(void) {
-    uintptr_t misa = CSRR(misa);
-    return (misa & (1UL << ('S' - 'A'))) != 0;
-}
-
-/* ===================================================================
- * Check if U-mode is supported (misa.U bit)
- * =================================================================== */
-static inline bool has_umode(void) {
-    uintptr_t misa = CSRR(misa);
-    return (misa & (1UL << ('U' - 'A'))) != 0;
-}
-
-/* ===================================================================
- * Check if H extension is supported (misa.H bit)
- * =================================================================== */
-static inline bool has_hext(void) {
-    uintptr_t misa = CSRR(misa);
-    return (misa & (1UL << ('H' - 'A'))) != 0;
-}
-
 #endif /* SSCOFPMF_HELPERS_H */

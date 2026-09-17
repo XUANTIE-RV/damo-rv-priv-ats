@@ -46,7 +46,8 @@ TEST_REGISTER(test_hzamo_21_misaligned_amo);
 bool test_hzamo_21_misaligned_amo(void)
 {
     TEST_BEGIN("HZAMO-21: misaligned AMO (no MAG) -> cause 6/7");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -97,7 +98,8 @@ TEST_REGISTER(test_hzamo_22_mag_intra_no_fault);
 bool test_hzamo_22_mag_intra_no_fault(void)
 {
     TEST_BEGIN("HZAMO-22: MAG intra-granule misaligned AMO -> no fault");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     if (!HZAMO_MAG_DECLARED)
@@ -131,7 +133,8 @@ TEST_REGISTER(test_hzamo_23_mag_intra_gstage_fault);
 bool test_hzamo_23_mag_intra_gstage_fault(void)
 {
     TEST_BEGIN("HZAMO-23: MAG intra-granule AMO G-stage W=0 -> cause 23");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     if (!HZAMO_MAG_DECLARED)
@@ -172,7 +175,8 @@ TEST_REGISTER(test_hzamo_24_misaligned_trap_context);
 bool test_hzamo_24_misaligned_trap_context(void)
 {
     TEST_BEGIN("HZAMO-24: misaligned AMO HS-mode trap context");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

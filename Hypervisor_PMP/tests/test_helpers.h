@@ -44,13 +44,6 @@ extern uint8_t __vm_test_region_end[];
 #define HPMP_VS_MODE   SATP_MODE_SV39
 #define HPMP_G_MODE    HGATP_MODE_SV39X4
 
-/* Check if H extension is present (misa.H). */
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
 /* ===================================================================
  * Runtime capability gate
  *
@@ -59,7 +52,7 @@ extern uint8_t __vm_test_region_end[];
  * not be active (it redefines S/U PMP semantics and is sticky).
  * =================================================================== */
 #define REQUIRE_HYP_PMP() do { \
-    if (!HAS_H_EXT()) { \
+    if (!H_AVAILABLE) { \
         TEST_SKIP("H extension not available"); \
     } \
     if (pmp_detect_entry_count() < 2) { \

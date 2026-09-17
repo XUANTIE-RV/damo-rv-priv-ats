@@ -23,7 +23,7 @@ TEST_REGISTER(test_hcross_sssta_46);
 bool test_hcross_sssta_46(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-46: hstateen0 bit fields match mstateen0");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     uintptr_t saved_h = hstateen_read(0);
@@ -68,7 +68,7 @@ TEST_REGISTER(test_hcross_sssta_47);
 bool test_hcross_sssta_47(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-47: hstateen0 functional bits symmetric with mstateen0");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     uintptr_t saved_h = hstateen_read(0);
@@ -106,7 +106,7 @@ TEST_REGISTER(test_hcross_sssta_48);
 bool test_hcross_sssta_48(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-48: hstateen1 encoding matches mstateen1");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(1);
     mstateen_set_bit63(1, true);
@@ -142,7 +142,7 @@ TEST_REGISTER(test_hcross_sssta_49);
 bool test_hcross_sssta_49(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-49: hstateen2 encoding matches mstateen2");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(2);
     mstateen_set_bit63(2, true);
@@ -178,7 +178,7 @@ TEST_REGISTER(test_hcross_sssta_50);
 bool test_hcross_sssta_50(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-50: hstateen3 encoding matches mstateen3");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(3);
     mstateen_set_bit63(3, true);

@@ -42,7 +42,8 @@ TEST_REGISTER(test_hzacas_17_cas_htinst_transformed);
 bool test_hzacas_17_cas_htinst_transformed(void)
 {
     TEST_BEGIN("HZACAS-17: amocas explicit G-stage fault htinst transformed");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -105,7 +106,8 @@ TEST_REGISTER(test_hzacas_18_htinst_aqrl);
 bool test_hzacas_18_htinst_aqrl(void)
 {
     TEST_BEGIN("HZACAS-18: htinst preserves amocas aq/rl bits");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -124,7 +126,8 @@ TEST_REGISTER(test_hzacas_19_addr_offset_zero);
 bool test_hzacas_19_addr_offset_zero(void)
 {
     TEST_BEGIN("HZACAS-19: amocas htinst Addr. Offset == 0");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -158,7 +161,8 @@ TEST_REGISTER(test_hzacas_20_implicit_walk_cause23);
 bool test_hzacas_20_implicit_walk_cause23(void)
 {
     TEST_BEGIN("HZACAS-20: implicit VS-walk amocas fault -> cause 23 + pseudo");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -195,7 +199,8 @@ TEST_REGISTER(test_hzacas_21_adue_write_pseudo);
 bool test_hzacas_21_adue_write_pseudo(void)
 {
     TEST_BEGIN("HZACAS-21: ADUE=1 amocas D-update fault -> write pseudoinst");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -257,7 +262,8 @@ TEST_REGISTER(test_hzacas_22_explicit_vs_implicit);
 bool test_hzacas_22_explicit_vs_implicit(void)
 {
     TEST_BEGIN("HZACAS-22: htinst disambiguates explicit vs implicit (23)");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

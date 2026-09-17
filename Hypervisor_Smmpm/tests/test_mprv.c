@@ -26,7 +26,7 @@ static volatile uint64_t mprv_data __attribute__((aligned(8)));
 TEST_REGISTER(test_hzpm_mprv_01);
 bool test_hzpm_mprv_01(void) {
     TEST_BEGIN("HZPM-MPRV-01: MPRV MPV=1 MPP=S uses henvcfg.PMM");
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     REQUIRE_VSATP_SV39();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!detect_ssnpm_hyp())
@@ -63,11 +63,11 @@ bool test_hzpm_mprv_01(void) {
 TEST_REGISTER(test_hzpm_mprv_02);
 bool test_hzpm_mprv_02(void) {
     TEST_BEGIN("HZPM-MPRV-02: MPRV MPV=1 MPP=U uses senvcfg.PMM");
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     REQUIRE_VSATP_SV39();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!detect_ssnpm())
-        TEST_SKIP("Ssnpm (senvcfg.PMM) not implemented");
+        TEST_SKIP("Ssnpm not implemented");
     pm_set_umode(PMM_PMLEN7);
     if (pm_get_umode() != PMM_PMLEN7)
         TEST_SKIP("PMLEN=7 not supported for U/VU-mode");
@@ -98,7 +98,8 @@ bool test_hzpm_mprv_02(void) {
 TEST_REGISTER(test_hzpm_mprv_03);
 bool test_hzpm_mprv_03(void) {
     TEST_BEGIN("HZPM-MPRV-03: mseccfg.PMM not applied to effective VS");
-    SMMPM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SMMPM_AVAILABLE) TEST_SKIP("Smmpm (mseccfg.PMM) not implemented");
     REQUIRE_VSATP_SV39();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!detect_ssnpm_hyp())
@@ -140,7 +141,7 @@ bool test_hzpm_mprv_03(void) {
 TEST_REGISTER(test_hzpm_mprv_04);
 bool test_hzpm_mprv_04(void) {
     TEST_BEGIN("HZPM-MPRV-04: MPRV MPV=0 MPP=S uses menvcfg.PMM");
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!detect_smnpm())
         TEST_SKIP("Smnpm (menvcfg.PMM) not implemented");
     pm_set_smode(PMM_PMLEN7);
@@ -169,7 +170,8 @@ bool test_hzpm_mprv_04(void) {
 TEST_REGISTER(test_hzpm_mprv_05);
 bool test_hzpm_mprv_05(void) {
     TEST_BEGIN("HZPM-MPRV-05: MPRV=0 baseline uses mseccfg.PMM");
-    SMMPM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SMMPM_AVAILABLE) TEST_SKIP("Smmpm (mseccfg.PMM) not implemented");
     pm_set_mmode(PMM_PMLEN7);
     if (pm_get_mmode() != PMM_PMLEN7)
         TEST_SKIP("PMLEN=7 not supported for M-mode");

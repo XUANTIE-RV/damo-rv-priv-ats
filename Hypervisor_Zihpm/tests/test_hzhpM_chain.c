@@ -27,7 +27,7 @@ TEST_REGISTER(test_hzhpM_05);
 bool test_hzhpM_05(void)
 {
     TEST_BEGIN("HZHPM-05: hpmcounter VU three-layer gating chain");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     unsigned n = hzhpM_find_implemented();
     if (n == 0)

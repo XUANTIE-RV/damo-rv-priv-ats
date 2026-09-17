@@ -33,7 +33,7 @@ TEST_REGISTER(test_hcross_sssta_21);
 bool test_hcross_sssta_21(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-21: hstateen0.SE0=0 blocks VS read sstateen0");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_set_bit63(0, true);
@@ -53,7 +53,7 @@ TEST_REGISTER(test_hcross_sssta_22);
 bool test_hcross_sssta_22(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-22: hstateen0.SE0=0 blocks VS write sstateen0");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_set_bit63(0, true);
@@ -73,7 +73,7 @@ TEST_REGISTER(test_hcross_sssta_23);
 bool test_hcross_sssta_23(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-23: hstateen0.SE0=1 allows VS sstateen0 access");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_set_bit63(0, true);
@@ -95,7 +95,7 @@ TEST_REGISTER(test_hcross_sssta_24);
 bool test_hcross_sssta_24(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-24: hstateen0.ENVCFG=0 blocks VS read senvcfg");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_ENVCFG);
@@ -126,7 +126,7 @@ TEST_REGISTER(test_hcross_sssta_25);
 bool test_hcross_sssta_25(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-25: hstateen0.ENVCFG=0 blocks VS write senvcfg");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_ENVCFG);
@@ -155,7 +155,7 @@ TEST_REGISTER(test_hcross_sssta_26);
 bool test_hcross_sssta_26(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-26: hstateen0.ENVCFG=1 allows VS senvcfg");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_ENVCFG);
@@ -184,7 +184,7 @@ TEST_REGISTER(test_hcross_sssta_27);
 bool test_hcross_sssta_27(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-27: hstateen0.CSRIND=0 blocks VS read siselect");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_CSRIND);
@@ -213,7 +213,7 @@ TEST_REGISTER(test_hcross_sssta_28);
 bool test_hcross_sssta_28(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-28: hstateen0.CSRIND=0 blocks VS read sireg");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_CSRIND);
@@ -243,7 +243,7 @@ TEST_REGISTER(test_hcross_sssta_29);
 bool test_hcross_sssta_29(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-29: hstateen0.CSRIND=1 allows VS siselect/sireg");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_CSRIND);
@@ -272,7 +272,7 @@ TEST_REGISTER(test_hcross_sssta_30);
 bool test_hcross_sssta_30(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-30: hstateen0.IMSIC=0 blocks VS IMSIC access");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_IMSIC);
@@ -301,7 +301,7 @@ TEST_REGISTER(test_hcross_sssta_31);
 bool test_hcross_sssta_31(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-31: hstateen0.IMSIC=1 allows VS IMSIC access");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_IMSIC);
@@ -357,7 +357,7 @@ TEST_REGISTER(test_hcross_sssta_32);
 bool test_hcross_sssta_32(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-32: hstateen0.IMSIC=0 equivalent to VGEIN=0");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_IMSIC);
@@ -395,7 +395,7 @@ TEST_REGISTER(test_hcross_sssta_33);
 bool test_hcross_sssta_33(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-33: hstateen0.AIA=0 blocks VS Ssaia state");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_AIA);
@@ -436,7 +436,7 @@ TEST_REGISTER(test_hcross_sssta_34);
 bool test_hcross_sssta_34(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-34: hstateen0.AIA=1 allows VS Ssaia state");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_AIA);
@@ -473,7 +473,7 @@ TEST_REGISTER(test_hcross_sssta_35);
 bool test_hcross_sssta_35(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-35: AIA=0 does not affect CSRIND/IMSIC gates");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_AIA |
@@ -550,7 +550,7 @@ TEST_REGISTER(test_hcross_sssta_36);
 bool test_hcross_sssta_36(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-36: hstateen0.CONTEXT=0 blocks VS read scontext");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_CONTEXT);
@@ -579,7 +579,7 @@ TEST_REGISTER(test_hcross_sssta_37);
 bool test_hcross_sssta_37(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-37: hstateen0.CONTEXT=0 blocks VS write scontext");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_CONTEXT);
@@ -608,7 +608,7 @@ TEST_REGISTER(test_hcross_sssta_38);
 bool test_hcross_sssta_38(void)
 {
     TEST_BEGIN("HCROSS-SSSTA-38: hstateen0.CONTEXT=1 allows VS scontext");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_m = mstateen_read(0);
     mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_CONTEXT);

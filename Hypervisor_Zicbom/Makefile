@@ -16,7 +16,6 @@ ENABLE_CMO = 1
 QEMU_CPU   = max
 
 # Spike: explicitly request RV64 + H extension + Zicbom.
-SPIKE_ISA_EXT = _zicbom
 
 EXT_OBJS = \
     main.o \

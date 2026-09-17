@@ -22,7 +22,8 @@
 TEST_REGISTER(test_hzpm_vu_01);
 bool test_hzpm_vu_01(void) {
     TEST_BEGIN("HZPM-VU-01: PMLEN7 tagged load in VU-mode");
-    SSNPM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm not implemented");
     REQUIRE_VSATP_SV39();
     if (!hzpm_try_set_u_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for U/VU-mode");
@@ -44,7 +45,8 @@ bool test_hzpm_vu_01(void) {
 TEST_REGISTER(test_hzpm_vu_02);
 bool test_hzpm_vu_02(void) {
     TEST_BEGIN("HZPM-VU-02: PMLEN16 tagged load in VU-mode");
-    SSNPM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm not implemented");
     REQUIRE_VSATP_SV39();
     if (!hzpm_try_set_u_pmm(PMM_PMLEN16))
         TEST_SKIP("PMLEN=16 not supported for U/VU-mode");
@@ -66,7 +68,8 @@ bool test_hzpm_vu_02(void) {
 TEST_REGISTER(test_hzpm_vu_03);
 bool test_hzpm_vu_03(void) {
     TEST_BEGIN("HZPM-VU-03: PMLEN7 tagged store in VU-mode");
-    SSNPM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm not implemented");
     REQUIRE_VSATP_SV39();
     if (!hzpm_try_set_u_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for U/VU-mode");
@@ -89,7 +92,8 @@ bool test_hzpm_vu_03(void) {
 TEST_REGISTER(test_hzpm_vu_04);
 bool test_hzpm_vu_04(void) {
     TEST_BEGIN("HZPM-VU-04: PM disabled, tagged VA page-fault (VU)");
-    SSNPM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm not implemented");
     REQUIRE_VSATP_SV39();
     pm_set_umode(PMM_DISABLED);
 
@@ -116,8 +120,11 @@ bool test_hzpm_vu_04(void) {
 TEST_REGISTER(test_hzpm_vu_05);
 bool test_hzpm_vu_05(void) {
     TEST_BEGIN("HZPM-VU-05: VS-mode writes senvcfg.PMM (no VS CSR)");
-    SSNPM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm not implemented");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    if (!hzpm_try_set_u_pmm(PMM_PMLEN7))
+        TEST_SKIP("PMLEN=7 not supported for U/VU-mode");
 
     /* norm:H_scsrs_nomatch: senvcfg has no matching VS CSR and keeps
      * its usual accessibility when V=1. If Smstateen is implemented,
@@ -157,7 +164,8 @@ bool test_hzpm_vu_05(void) {
 TEST_REGISTER(test_hzpm_vu_06);
 bool test_hzpm_vu_06(void) {
     TEST_BEGIN("HZPM-VU-06: VU PM independent of VS PM");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     if (!hzpm_try_set_u_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for U/VU-mode");
@@ -201,7 +209,8 @@ bool test_hzpm_vu_06(void) {
 TEST_REGISTER(test_hzpm_vu_07);
 bool test_hzpm_vu_07(void) {
     TEST_BEGIN("HZPM-VU-07: GPA zero-extend (vsatp=Bare, VU-mode)");
-    SSNPM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm not implemented");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!hzpm_try_set_u_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for U/VU-mode");

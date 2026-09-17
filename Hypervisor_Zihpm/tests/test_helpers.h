@@ -40,22 +40,6 @@ extern uintptr_t csr_read(uint16_t csr);
 #define CSR_HPMCOUNTER(n)   ((uint16_t)(CSR_HPMCOUNTER3 + ((n) - 3)))
 
 /* ===================================================================
- * Feature detection
- * =================================================================== */
-
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-#define REQUIRE_H_EXT() do { \
-    if (!HAS_H_EXT()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
-
-/* ===================================================================
  * Counter implementation detection
  *
  * Strategy (identical to Shcounterenw_test_plan.md): in M-mode, write

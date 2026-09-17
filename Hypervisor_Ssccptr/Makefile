@@ -16,7 +16,6 @@ QEMU_CPU   = max
 
 # Spike: explicitly request RV64 + H extension.
 # Ssccptr is a PMA-level constraint extension, no new ISA instructions.
-SPIKE_ISA = rv64imach_zicsr_zifencei
 
 EXT_OBJS = \
     main.o \

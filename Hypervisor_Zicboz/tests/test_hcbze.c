@@ -18,8 +18,8 @@ bool test_hcbze_01(void)
 {
     TEST_BEGIN("HCBZE-01: VS-mode CBZE=0 virtual-instruction");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOZ_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOZ_AVAILABLE) TEST_SKIP("Zicboz not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -50,8 +50,8 @@ bool test_hcbze_02(void)
 {
     TEST_BEGIN("HCBZE-02: VS-mode CBZE=1 executes normally");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOZ_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOZ_AVAILABLE) TEST_SKIP("Zicboz not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -78,8 +78,8 @@ bool test_hcbze_03(void)
 {
     TEST_BEGIN("HCBZE-03: VU-mode henvcfg.CBZE=0 virtual-instruction");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOZ_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOZ_AVAILABLE) TEST_SKIP("Zicboz not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -110,8 +110,8 @@ bool test_hcbze_04(void)
 {
     TEST_BEGIN("HCBZE-04: VU-mode senvcfg.CBZE=0 virtual-instruction");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOZ_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOZ_AVAILABLE) TEST_SKIP("Zicboz not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -143,8 +143,8 @@ bool test_hcbze_05(void)
 {
     TEST_BEGIN("HCBZE-05: VU-mode two-level CBZE=1 executes");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOZ_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOZ_AVAILABLE) TEST_SKIP("Zicboz not available");
 
     two_stage_ctx_t ctx;
     ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
@@ -172,9 +172,9 @@ bool test_hcbze_06(void)
 {
     TEST_BEGIN("HCBZE-06: henvcfg.CBZE read-only zero (no Zicboz)");
 
-    H_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    if (check_zicboz_extension()) {
+    if (ZICBOZ_AVAILABLE) {
         TEST_SKIP("Zicboz implemented, cannot test read-only-zero");
     }
 
@@ -193,8 +193,8 @@ bool test_hcbze_07(void)
 {
     TEST_BEGIN("HCBZE-07: henvcfg.CBZE does not affect others");
 
-    H_REQUIRED_OR_SKIP();
-    ZICBOZ_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZICBOZ_AVAILABLE) TEST_SKIP("Zicboz not available");
 
     /* Set menvcfg.CBZE=1, senvcfg.CBZE=1 first */
     menvcfg_set_cbze(1);

@@ -19,8 +19,8 @@
  *     assertion: reporting cause=22 violates the SPEC (analogue of
  *     HZABHA-37).
  *
- * Gated on REQUIRE_HZLASR (both valid forms observed to execute), so a
- * platform without Zalasr cannot pass a reserved-encoding check "for the
+ * Gated on ZALASR_AVAILABLE (config-declared), so a platform without
+ * Zalasr skips rather than passing a reserved-encoding check "for the
  * wrong reason". The reserved encoding raises illegal-instruction BEFORE
  * any memory access, so no two-stage translation is needed; run_in_vs/vu
  * with vsatp/hgatp left Bare is used.
@@ -55,7 +55,8 @@ TEST_REGISTER(test_hzlasr_34_reserved_cause2);
 bool test_hzlasr_34_reserved_cause2(void)
 {
     TEST_BEGIN("HZLASR-34: reserved load-acquire/store-release -> cause=2, not 22");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
 
     /* VS-mode: all four reserved encodings. */
     hzlasr_reserved_case(hz_vs_ld_noaq_rsv, 0, "load w/o aq (funct7 0x18)");

@@ -10,7 +10,6 @@ TARGET = svadu_test.elf
 ENABLE_VM = 1
 
 # Spike ISA extensions: enable svadu for this test
-SPIKE_ISA_EXT = _svadu
 
 EXT_OBJS = \
     main.o \

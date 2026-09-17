@@ -22,7 +22,7 @@ bool test_hcross_ssdbltrp_19(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-19: MRET to VS-mode clears sstatus.SDT");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     /* This test verifies that when M-mode executes MRET to VS-mode,
@@ -42,7 +42,7 @@ bool test_hcross_ssdbltrp_20(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-20: MRET to VU clears sstatus.SDT and vsstatus.SDT");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     /* This test verifies that when M-mode executes MRET to VU-mode,
@@ -62,7 +62,7 @@ bool test_hcross_ssdbltrp_21(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-21: MRET to VU clears vsstatus.SDT (sstatus.SDT=0)");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     /* This test verifies that when M-mode executes MRET to VU-mode,
@@ -82,7 +82,7 @@ bool test_hcross_ssdbltrp_22(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-22: MRET to VS-mode does NOT clear vsstatus.SDT");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     uintptr_t orig_m = menvcfg_read_csr();
@@ -124,7 +124,7 @@ bool test_hcross_ssdbltrp_23(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-23: M-mode SRET to VU clears sstatus.SDT and vsstatus.SDT");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     /*
@@ -145,7 +145,7 @@ bool test_hcross_ssdbltrp_24(void)
 {
     TEST_BEGIN("HCROSS-SSDBLTRP-24: MNRET to VU clears sstatus.SDT and vsstatus.SDT");
 
-    if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
     /*

@@ -53,22 +53,6 @@ extern uint8_t __vm_test_region_end[];
 #define CAUSE_LOAD_GUEST_PAGE_FAULT    21
 #define CAUSE_STORE_GUEST_PAGE_FAULT   23
 
-/* ===================================================================
- * H extension detection
- * =================================================================== */
-static bool check_h_extension(void) {
-    uint64_t misa = CSRR(misa);
-    if (!(misa & (1UL << ('H' - 'A')))) {
-        return false;
-    }
-    return true;
-}
-
-#define H_REQUIRED_OR_SKIP() do { \
-    if (!check_h_extension()) { \
-        TEST_SKIP("H extension not available"); \
-    } \
-} while (0)
 
 /* ===================================================================
  * PMA configuration capability detection

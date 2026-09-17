@@ -27,7 +27,8 @@ static volatile uint64_t hs_amo  __attribute__((aligned(8)));
 TEST_REGISTER(test_hzpm_hs_01);
 bool test_hzpm_hs_01(void) {
     TEST_BEGIN("HZPM-HS-01: PMLEN7 tagged load in HS-mode (Sv39)");
-    SMNPM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SMNPM_AVAILABLE) TEST_SKIP("Smnpm (menvcfg.PMM) not implemented");
     REQUIRE_SATP_SV39();
     if (!hzpm_try_set_s_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for S/HS-mode");
@@ -51,7 +52,8 @@ bool test_hzpm_hs_01(void) {
 TEST_REGISTER(test_hzpm_hs_02);
 bool test_hzpm_hs_02(void) {
     TEST_BEGIN("HZPM-HS-02: PMLEN7 tagged load in HS-mode (Bare)");
-    SMNPM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SMNPM_AVAILABLE) TEST_SKIP("Smnpm (menvcfg.PMM) not implemented");
     if (!hzpm_try_set_s_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for S/HS-mode");
 
@@ -74,7 +76,8 @@ bool test_hzpm_hs_02(void) {
 TEST_REGISTER(test_hzpm_hs_03);
 bool test_hzpm_hs_03(void) {
     TEST_BEGIN("HZPM-HS-03: HS PM independent of VS PM");
-    SMNPM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SMNPM_AVAILABLE) TEST_SKIP("Smnpm (menvcfg.PMM) not implemented");
     REQUIRE_SATP_SV39();
     REQUIRE_VSATP_SV39();
     if (!detect_ssnpm_hyp())
@@ -124,7 +127,8 @@ bool test_hzpm_hs_03(void) {
 TEST_REGISTER(test_hzpm_hs_04);
 bool test_hzpm_hs_04(void) {
     TEST_BEGIN("HZPM-HS-04: menvcfg.PMM does not affect VS-mode");
-    SMNPM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SMNPM_AVAILABLE) TEST_SKIP("Smnpm (menvcfg.PMM) not implemented");
     REQUIRE_VSATP_SV39();
     if (!detect_ssnpm_hyp())
         TEST_SKIP("Ssnpm hyp controls not implemented");
@@ -160,10 +164,11 @@ bool test_hzpm_hs_04(void) {
 TEST_REGISTER(test_hzpm_hs_05);
 bool test_hzpm_hs_05(void) {
     TEST_BEGIN("HZPM-HS-05: menvcfg.PMM does not affect VU-mode");
-    SMNPM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SMNPM_AVAILABLE) TEST_SKIP("Smnpm (menvcfg.PMM) not implemented");
     REQUIRE_VSATP_SV39();
     if (!detect_ssnpm())
-        TEST_SKIP("Ssnpm (senvcfg.PMM) not implemented");
+        TEST_SKIP("Ssnpm not implemented");
     if (!hzpm_try_set_s_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for S/HS-mode");
 
@@ -196,7 +201,8 @@ bool test_hzpm_hs_05(void) {
 TEST_REGISTER(test_hzpm_hs_06);
 bool test_hzpm_hs_06(void) {
     TEST_BEGIN("HZPM-HS-06: PMLEN7 amoadd.d in HS-mode (Sv39)");
-    SMNPM_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SMNPM_AVAILABLE) TEST_SKIP("Smnpm (menvcfg.PMM) not implemented");
     REQUIRE_SATP_SV39();
     if (!hzpm_try_set_s_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for S/HS-mode");

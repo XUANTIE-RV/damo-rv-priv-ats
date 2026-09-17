@@ -5,7 +5,7 @@ Hypervisor_Exceptions,129,113,12,4
 Sha,28,28,0,0
 Shcounterenw,22,22,0,0
 Shgatpa,21,21,0,0
-Shlcofideleg,14,10,4,0
+Shlcofideleg,14,0,0,14
 Shtvala,50,44,4,2
 Shvstvala,22,19,0,3
 Shvsatpa,19,19,0,0
@@ -33,7 +33,7 @@ Hypervisor_Sscofpmf,6,2,1,3
 Hypervisor_Sscsrind,33,28,3,2
 Hypervisor_Ssdbltrp,24,11,0,13
 Hypervisor_Ssnpm,48,3,0,45
-Hypervisor_Ssqosid,6,2,4,0
+Hypervisor_Ssqosid,6,0,0,6
 Hypervisor_Ssstateen,50,43,0,7
 Hypervisor_Sstc,15,14,1,0
 Hypervisor_Sstvala,8,8,0,0
@@ -66,7 +66,7 @@ Ssccptr,45,42,0,3
 Sscofpmf,39,36,0,3
 Sscounterenw,20,20,0,0
 Sscsrind,14,14,0,0
-Ssctr,141,130,5,6
+Ssctr,141,133,2,6
 Ssdbltrp,33,15,2,16
 Ssstateen,42,32,2,8
 Sstc,31,31,0,0
@@ -77,13 +77,12 @@ Sv39,50,50,0,0
 Sv48,50,50,0,0
 Sv57,49,49,0,0
 Svbare,32,32,0,0
-Svade,33,8,0,25
+Svade,33,33,0,0
 Svadu,30,30,0,0
 Svnapot,53,53,0,0
 Svinval,37,37,0,0
 Svpbmt,49,46,0,3
 Svvptc,15,13,0,2
-Svrsw60t59b,23,21,0,2
 Sdext,104,21,0,83
 Sdtrig,118,40,2,76
 Sm_CSR,224,178,5,41
@@ -92,7 +91,7 @@ Sm_Interrupts,91,73,0,18
 Smcdeleg,26,26,0,0
 Smcntrpmf,51,43,4,4
 Smcsrind,31,30,0,1
-Smctr,41,35,3,3
+Smctr,41,36,2,3
 Smdbltrp,38,10,2,26
 Smstateen,47,36,0,11
 pmp,74,74,0,0

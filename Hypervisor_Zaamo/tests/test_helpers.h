@@ -49,58 +49,18 @@
 #define HZ_GMODE    SUITE_HGATP_MODE
 
 /* ===================================================================
- * Feature detection
+ * Feature availability
+ *
+ * Zaamo support is config-DECLARATION driven: every case gates with
+ *   if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+ *   if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
+ * using the compile-time ZAAMO_AVAILABLE macro normalized in
+ * common/capabilities.h from ZAAMO_SUPPORTED (or A_SUPPORTED, since the
+ * A extension implies Zaamo). No wrapper macro is provided. Only the
+ * first case (HZAMO-01) additionally probes the DUT (trap-armed
+ * amoadd.w in M-mode) to verify alignment with the config declaration;
+ * no other case probes.
  * =================================================================== */
-
-#define HAS_H_EXT() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('H' - 'A'))) != 0; \
-})
-
-#define REQUIRE_H_EXT() do { \
-    if (!HAS_H_EXT()) { TEST_SKIP("H extension not available"); } \
-} while (0)
-
-/* Zaamo detection: A/Zaamo config macro plus a trap-armed M-mode amoadd.w
- * probe. An AMO that completes without an illegal-instruction trap proves
- * the AMO instructions exist. */
-static int hz_zaamo_cached = -1;
-static volatile uint64_t hz_zaamo_probe_slot;
-
-static inline bool hz_zaamo_present(void)
-{
-    if (hz_zaamo_cached < 0)
-    {
-#if !defined(ZAAMO_SUPPORTED) && !defined(A_SUPPORTED)
-        hz_zaamo_cached = 0;
-#else
-        uintptr_t addr = (uintptr_t)&hz_zaamo_probe_slot;
-        M_TRAP_EXPECT_BEGIN();
-        uintptr_t old;
-        asm volatile(
-            ".option push\n\t.option norvc\n\t"
-            "amoadd.w %0, %2, (%1)\n\t"
-            ".option pop\n\t"
-            : "=r"(old) : "r"(addr), "r"(1UL) : "memory");
-        bool trapped = trap_was_triggered();
-        uintptr_t cause = trapped ? trap_get_cause() : 0;
-        trap_expect_end();
-        hz_zaamo_cached =
-            (trapped && cause == CAUSE_ILLEGAL_INST) ? 0 : 1;
-#endif
-    }
-    return hz_zaamo_cached == 1;
-}
-
-#define REQUIRE_ZAAMO() do { \
-    if (!hz_zaamo_present()) { \
-        TEST_SKIP("Zaamo/A not implemented (amoadd.w probe raised " \
-                  "illegal-instruction, or config macro undefined)"); \
-    } \
-} while (0)
-
-#define REQUIRE_HZAMO() do { REQUIRE_H_EXT(); REQUIRE_ZAAMO(); } while (0)
 
 #define HZAMO_SMP_SKIP_REASON \
     "multi-hart: common/entry.S parks every hart except hart 0, so no " \

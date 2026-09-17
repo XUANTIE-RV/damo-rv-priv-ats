@@ -63,7 +63,8 @@ TEST_REGISTER(test_hzacas_27_fiom1);
 bool test_hzacas_27_fiom1(void)
 {
     TEST_BEGIN("HZACAS-27: FIOM=1 VS-mode amocas.w.aq executable");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     hzacas_fiom_case(1, hz_vs_amocas_w_aq);
@@ -79,7 +80,8 @@ TEST_REGISTER(test_hzacas_28_fiom0);
 bool test_hzacas_28_fiom0(void)
 {
     TEST_BEGIN("HZACAS-28: FIOM=0 control VS-mode amocas.w.aq");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     hzacas_fiom_case(0, hz_vs_amocas_w_aq);
@@ -94,7 +96,8 @@ TEST_REGISTER(test_hzacas_29_adue0_a0);
 bool test_hzacas_29_adue0_a0(void)
 {
     TEST_BEGIN("HZACAS-29: ADUE=0 + A=0 amocas -> Svade store pf (15)");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -138,7 +141,8 @@ TEST_REGISTER(test_hzacas_30_adue0_d0_forced);
 bool test_hzacas_30_adue0_d0_forced(void)
 {
     TEST_BEGIN("HZACAS-30: ADUE=0 + A=1/D=0 success amocas -> store pf (15)");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -178,7 +182,8 @@ TEST_REGISTER(test_hzacas_31_adue1_hw_update);
 bool test_hzacas_31_adue1_hw_update(void)
 {
     TEST_BEGIN("HZACAS-31: ADUE=1 amocas -> hardware A/D update, no fault");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -234,7 +239,8 @@ TEST_REGISTER(test_hzacas_32_failed_cas_d_side_effect);
 bool test_hzacas_32_failed_cas_d_side_effect(void)
 {
     TEST_BEGIN("HZACAS-32: (record) ADUE=1 failed-CAS VS-stage D side effect");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -286,7 +292,8 @@ TEST_REGISTER(test_hzacas_33_failed_cas_gstage_d_side_effect);
 bool test_hzacas_33_failed_cas_gstage_d_side_effect(void)
 {
     TEST_BEGIN("HZACAS-33: (record) ADUE=1 failed-CAS G-stage D side effect");
-    REQUIRE_HZACAS();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

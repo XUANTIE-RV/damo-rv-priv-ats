@@ -36,7 +36,8 @@ TEST_REGISTER(test_hzamo_10_amo_gstage_fault);
 bool test_hzamo_10_amo_gstage_fault(void)
 {
     TEST_BEGIN("HZAMO-10: AMO G-stage fault -> store guest-pf (23)");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -70,7 +71,8 @@ TEST_REGISTER(test_hzamo_11_gva_spv);
 bool test_hzamo_11_gva_spv(void)
 {
     TEST_BEGIN("HZAMO-11: guest AMO trap -> GVA=1 and SPV=1 (VS + VU)");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -128,7 +130,8 @@ TEST_REGISTER(test_hzamo_12_htval_gpa);
 bool test_hzamo_12_htval_gpa(void)
 {
     TEST_BEGIN("HZAMO-12: guest AMO fault -> htval == GPA>>2 or 0");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -158,7 +161,8 @@ TEST_REGISTER(test_hzamo_13_vs_stage_htval_zero);
 bool test_hzamo_13_vs_stage_htval_zero(void)
 {
     TEST_BEGIN("HZAMO-13: VS-stage AMO fault -> htval == 0");
-    REQUIRE_HZAMO();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -191,7 +195,7 @@ TEST_REGISTER(test_hzamo_14_hsv_spv0_gva1);
 bool test_hzamo_14_hsv_spv0_gva1(void)
 {
     TEST_BEGIN("HZAMO-14: HSV.D explicit access -> SPV=0 but GVA=1");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

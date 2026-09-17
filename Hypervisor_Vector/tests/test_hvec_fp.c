@@ -17,8 +17,9 @@
  *       mstatus.fs and vsstatus.fs to Dirty.
  *
  * Prerequisite: V and F declared by the platform configuration
- * (V_SUPPORTED/F_SUPPORTED in rvtest_config.h); otherwise the whole
- * group skips (VF_REQUIRED_OR_SKIP).
+ * (V_SUPPORTED/F_SUPPORTED in rvtest_config.h, surfaced as the
+ * compile-time V_AVAILABLE/F_AVAILABLE macros); otherwise each case
+ * in this group skips.
  * =================================================================== */
 
 /* ---- HVEC-09: vsstatus.fs=Off gates vector FP ---- */
@@ -27,8 +28,9 @@ TEST_REGISTER(test_hvec_09);
 bool test_hvec_09(void)
 {
     TEST_BEGIN("HVEC-09: vsstatus.fs=Off gates vector FP instructions");
-    H_REQUIRED_OR_SKIP();
-    VF_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
+    if (!F_AVAILABLE) TEST_SKIP("Float extension not available");
 
     hvec_mstatus_set_field(HVEC_FS_SHIFT, CTX_INITIAL);
     hvec_vsstatus_set_field(HVEC_FS_SHIFT, CTX_OFF);
@@ -58,8 +60,9 @@ TEST_REGISTER(test_hvec_10);
 bool test_hvec_10(void)
 {
     TEST_BEGIN("HVEC-10: mstatus.fs=Off gates vector FP instructions");
-    H_REQUIRED_OR_SKIP();
-    VF_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
+    if (!F_AVAILABLE) TEST_SKIP("Float extension not available");
 
     hvec_vsstatus_set_field(HVEC_FS_SHIFT, CTX_DIRTY);
     hvec_mstatus_set_field(HVEC_FS_SHIFT, CTX_OFF);
@@ -87,8 +90,9 @@ TEST_REGISTER(test_hvec_11);
 bool test_hvec_11(void)
 {
     TEST_BEGIN("HVEC-11: VU-mode vector FP gating (vsstatus.fs=Off)");
-    H_REQUIRED_OR_SKIP();
-    VF_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
+    if (!F_AVAILABLE) TEST_SKIP("Float extension not available");
 
     hvec_mstatus_set_field(HVEC_FS_SHIFT, CTX_INITIAL);
     hvec_vsstatus_set_field(HVEC_FS_SHIFT, CTX_OFF);
@@ -116,8 +120,9 @@ TEST_REGISTER(test_hvec_12);
 bool test_hvec_12(void)
 {
     TEST_BEGIN("HVEC-12: vector FP sets both fs fields Dirty");
-    H_REQUIRED_OR_SKIP();
-    VF_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
+    if (!F_AVAILABLE) TEST_SKIP("Float extension not available");
 
     hvec_mstatus_set_field(HVEC_FS_SHIFT, CTX_INITIAL);
     hvec_vsstatus_set_field(HVEC_FS_SHIFT, CTX_INITIAL);

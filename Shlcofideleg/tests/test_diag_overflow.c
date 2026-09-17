@@ -14,6 +14,8 @@ TEST_REGISTER(test_diag_alias_chain);
 bool test_diag_alias_chain(void) {
     TEST_BEGIN("DIAG: Full alias chain analysis");
 
+    if (!SHLCOFIDELEG_AVAILABLE) TEST_SKIP("Shlcofideleg not implemented");
+
     uintptr_t saved_hideleg = hideleg_read();
     uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);
     uintptr_t saved_sie = csr_read(CSR_SIE);

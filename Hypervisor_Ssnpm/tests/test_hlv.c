@@ -39,7 +39,8 @@ static void hlv_setup_u(two_stage_ctx_t *ctx) {
 TEST_REGISTER(test_hzpm_hlv_01);
 bool test_hzpm_hlv_01(void) {
     TEST_BEGIN("HZPM-HLV-01: HLV in HS-mode, SPVP=1 uses henvcfg.PMM");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
@@ -66,7 +67,8 @@ bool test_hzpm_hlv_01(void) {
 TEST_REGISTER(test_hzpm_hlv_02);
 bool test_hzpm_hlv_02(void) {
     TEST_BEGIN("HZPM-HLV-02: HLV in HS-mode, SPVP=1, PM off -> fault");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     pm_set_vsmode(PMM_DISABLED);
@@ -99,7 +101,8 @@ bool test_hzpm_hlv_02(void) {
 TEST_REGISTER(test_hzpm_hlv_03);
 bool test_hzpm_hlv_03(void) {
     TEST_BEGIN("HZPM-HLV-03: HLV in HS-mode, SPVP=0 uses senvcfg.PMM");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!hzpm_try_set_u_pmm(PMM_PMLEN7))
@@ -126,7 +129,8 @@ bool test_hzpm_hlv_03(void) {
 TEST_REGISTER(test_hzpm_hlv_04);
 bool test_hzpm_hlv_04(void) {
     TEST_BEGIN("HZPM-HLV-04: HUPMM ineffective for HLV in HS-mode");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
@@ -165,7 +169,8 @@ bool test_hzpm_hlv_04(void) {
 TEST_REGISTER(test_hzpm_hlv_05);
 bool test_hzpm_hlv_05(void) {
     TEST_BEGIN("HZPM-HLV-05: HLV in M-mode, SPVP=0 uses senvcfg.PMM");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!hzpm_try_set_u_pmm(PMM_PMLEN7))
@@ -194,7 +199,8 @@ bool test_hzpm_hlv_05(void) {
 TEST_REGISTER(test_hzpm_hlv_06);
 bool test_hzpm_hlv_06(void) {
     TEST_BEGIN("HZPM-HLV-06: HLV in M-mode, SPVP=1 uses henvcfg.PMM");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
@@ -219,7 +225,8 @@ bool test_hzpm_hlv_06(void) {
 TEST_REGISTER(test_hzpm_hlv_07);
 bool test_hzpm_hlv_07(void) {
     TEST_BEGIN("HZPM-HLV-07: HLV in U-mode, SPVP=0 uses HUPMM");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!hzpm_try_set_hupmm(PMM_PMLEN7))
@@ -247,7 +254,8 @@ bool test_hzpm_hlv_07(void) {
 TEST_REGISTER(test_hzpm_hlv_08);
 bool test_hzpm_hlv_08(void) {
     TEST_BEGIN("HZPM-HLV-08: senvcfg.PMM ineffective for HLV in U-mode");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
@@ -287,7 +295,8 @@ bool test_hzpm_hlv_08(void) {
 TEST_REGISTER(test_hzpm_hlv_09);
 bool test_hzpm_hlv_09(void) {
     TEST_BEGIN("HZPM-HLV-09: HSV in HS-mode, SPVP=1 tagged store");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
@@ -315,7 +324,8 @@ bool test_hzpm_hlv_09(void) {
 TEST_REGISTER(test_hzpm_hlv_10);
 bool test_hzpm_hlv_10(void) {
     TEST_BEGIN("HZPM-HLV-10: MPRV does not affect HLV PM selection");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))

@@ -77,7 +77,8 @@ TEST_REGISTER(test_hzlasr_29_fiom1);
 bool test_hzlasr_29_fiom1(void)
 {
     TEST_BEGIN("HZLASR-29: FIOM=1 VS-mode load-acquire/store-release executable");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     hzlasr_fiom_case(1);
@@ -93,7 +94,8 @@ TEST_REGISTER(test_hzlasr_30_fiom0);
 bool test_hzlasr_30_fiom0(void)
 {
     TEST_BEGIN("HZLASR-30: FIOM=0 control VS-mode load-acquire/store-release");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
     hzlasr_fiom_case(0);
@@ -109,7 +111,8 @@ TEST_REGISTER(test_hzlasr_31_adue0_load_acq_a0);
 bool test_hzlasr_31_adue0_load_acq_a0(void)
 {
     TEST_BEGIN("HZLASR-31: ADUE=0 + A=0 load-acquire -> Svade load pf (record)");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -150,7 +153,8 @@ TEST_REGISTER(test_hzlasr_32_adue0_store_rel_d0_forced);
 bool test_hzlasr_32_adue0_store_rel_d0_forced(void)
 {
     TEST_BEGIN("HZLASR-32: ADUE=0 + A=1/D=0 store-release -> store pf (15)");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 
@@ -190,7 +194,8 @@ TEST_REGISTER(test_hzlasr_33_adue1_hw_update);
 bool test_hzlasr_33_adue1_hw_update(void)
 {
     TEST_BEGIN("HZLASR-33: ADUE=1 load-acquire A-only, store-release A+D");
-    REQUIRE_HZLASR();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
     REQUIRE_VSATP_MODE(HZ_VSMODE);
     REQUIRE_HGATP_MODE(HZ_GMODE);
 

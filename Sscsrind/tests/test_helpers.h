@@ -173,26 +173,6 @@ static inline void mcounteren_write(uintptr_t v)
  * Feature detection
  * =================================================================== */
 
-/* Check if Sscsrind is implemented (siselect CSR accessible from M-mode) */
-static inline bool platform_has_sscsrind(void)
-{
-    trap_expect_begin();
-    siselect_read();
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-    return !trapped;
-}
-
-/* Check if Smstateen is implemented */
-static inline bool platform_has_smstateen(void)
-{
-    trap_expect_begin();
-    mstateen0_read();
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-    return !trapped;
-}
-
 /* ===================================================================
  * Convenience macros for privilege mode testing
  * =================================================================== */

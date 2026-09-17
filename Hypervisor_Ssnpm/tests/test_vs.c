@@ -25,7 +25,8 @@
 TEST_REGISTER(test_hzpm_vs_01);
 bool test_hzpm_vs_01(void) {
     TEST_BEGIN("HZPM-VS-01: PMLEN7 tagged load in VS-mode");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
@@ -48,7 +49,8 @@ bool test_hzpm_vs_01(void) {
 TEST_REGISTER(test_hzpm_vs_02);
 bool test_hzpm_vs_02(void) {
     TEST_BEGIN("HZPM-VS-02: PMLEN16 tagged load in VS-mode");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN16))
         TEST_SKIP("PMLEN=16 not supported for VS-mode");
@@ -70,7 +72,8 @@ bool test_hzpm_vs_02(void) {
 TEST_REGISTER(test_hzpm_vs_03);
 bool test_hzpm_vs_03(void) {
     TEST_BEGIN("HZPM-VS-03: PMLEN7 tagged store in VS-mode");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
@@ -93,7 +96,8 @@ bool test_hzpm_vs_03(void) {
 TEST_REGISTER(test_hzpm_vs_04);
 bool test_hzpm_vs_04(void) {
     TEST_BEGIN("HZPM-VS-04: PMLEN7 amoadd.d via tagged VA in VS-mode");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
@@ -117,7 +121,8 @@ bool test_hzpm_vs_04(void) {
 TEST_REGISTER(test_hzpm_vs_05);
 bool test_hzpm_vs_05(void) {
     TEST_BEGIN("HZPM-VS-05: different tags, same location (VS-mode)");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
@@ -142,7 +147,8 @@ bool test_hzpm_vs_05(void) {
 TEST_REGISTER(test_hzpm_vs_06);
 bool test_hzpm_vs_06(void) {
     TEST_BEGIN("HZPM-VS-06: PM disabled, tagged VA page-fault (VS)");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     pm_set_vsmode(PMM_DISABLED);
 
@@ -172,7 +178,8 @@ bool test_hzpm_vs_06(void) {
 TEST_REGISTER(test_hzpm_vs_07);
 bool test_hzpm_vs_07(void) {
     TEST_BEGIN("HZPM-VS-07: VA sign-extend correctness in VS-mode");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
@@ -206,7 +213,8 @@ bool test_hzpm_vs_07(void) {
 TEST_REGISTER(test_hzpm_vs_08);
 bool test_hzpm_vs_08(void) {
     TEST_BEGIN("HZPM-VS-08: VS PM independent of menvcfg.PMM");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_VSATP_SV39();
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
@@ -239,7 +247,8 @@ bool test_hzpm_vs_08(void) {
 TEST_REGISTER(test_hzpm_vs_09);
 bool test_hzpm_vs_09(void) {
     TEST_BEGIN("HZPM-VS-09: GPA zero-extend (vsatp=Bare, VS-mode)");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
@@ -267,7 +276,8 @@ bool test_hzpm_vs_09(void) {
 TEST_REGISTER(test_hzpm_vs_10);
 bool test_hzpm_vs_10(void) {
     TEST_BEGIN("HZPM-VS-10: PM disabled, tagged GPA guest-page-fault");
-    SSNPM_HYP_REQUIRED_OR_SKIP();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
+    if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     pm_set_vsmode(PMM_DISABLED);
 

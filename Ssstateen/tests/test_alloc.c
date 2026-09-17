@@ -84,7 +84,7 @@ bool test_ss_alloc_ro1_no_h(void) {
 TEST_REGISTER(test_ss_alloc_ro1_with_h);
 bool test_ss_alloc_ro1_with_h(void) {
     TEST_BEGIN("SS-ALLOC-03: sstateen0 RO1 => mstateen0+hstateen0 RO1");
-    REQUIRE_H_EXT();
+    if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     uintptr_t saved_mstateen0 = mstateen_read(0);
     mstateen_write(0, ~0UL);

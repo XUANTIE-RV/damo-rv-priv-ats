@@ -29,7 +29,6 @@ ENABLE_VM = 1
 QEMU_CPU = max
 
 # Spike: explicitly request RV64 + H extension + Zicntr + Zihpm.
-SPIKE_ISA = rv64imach_zicsr_zifencei_zicntr_zihpm
 
 # Extension-specific object files
 EXT_OBJS = \

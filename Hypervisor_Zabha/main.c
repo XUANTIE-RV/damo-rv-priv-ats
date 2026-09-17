@@ -41,13 +41,6 @@ extern test_func_t _test_table_end[];
 #define PLATFORM_MTIMECMP_ADDR  (PLATFORM_CLINT_BASE + 0x4000UL)
 #endif
 
-static bool hzabha_misa_h(void)
-{
-    uintptr_t misa;
-    asm volatile ("csrr %0, misa" : "=r"(misa));
-    return (misa & (1UL << ('H' - 'A'))) != 0;
-}
-
 int main(void)
 {
     uart_init();
@@ -63,9 +56,9 @@ int main(void)
         *mtimecmp = (uint64_t)-1;
     }
 
-    if (!hzabha_misa_h())
+    if (!H_AVAILABLE)
     {
-        printf("[SKIP] misa.H clear: H extension unavailable, "
+        printf("[SKIP] H extension not declared by platform config, "
                "all cross cases skip themselves\n");
     }
 
@@ -73,7 +66,7 @@ int main(void)
         (uintptr_t)_test_table_end - (uintptr_t)_test_table
     ) / sizeof(test_func_t);
 
-    if (hzabha_misa_h())
+    if (H_AVAILABLE)
     {
         hyp_reset_state();
     }
