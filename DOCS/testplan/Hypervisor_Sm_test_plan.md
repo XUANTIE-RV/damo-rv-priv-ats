@@ -52,7 +52,7 @@
 
 | 规范 ID | 来源 | 描述（英文） | 描述（中文） |
 |---------|------|-------------|-------------|
-| `hstateen_sstateen_zero_initialization` | `smstateen.adoc` | After M-mode software modifies any mstateen CSR, it is responsible for initializing the corresponding hstateen and sstateen CSRs to zero. | M-mode 软件修改任何 mstateen CSR 后，负责将对应的 hstateen 和 sstateen CSR 初始化为零。 |
+| `norm:hstateen_sstateen_zero_initialization` | `smstateen.adoc` | After M-mode software modifies any mstateen CSR, it is responsible for initializing the corresponding hstateen and sstateen CSRs to zero. | M-mode 软件修改任何 mstateen CSR 后，负责将对应的 hstateen 和 sstateen CSR 初始化为零。 |
 | `norm:unimplemented_mode_bits` | `smcntrpmf.adoc` | For each bit in 61:58, if the associated privilege mode is not implemented, the bit is read-only zero. | `mcyclecfg`/`minstretcfg` 的 61:58 位中，若对应特权模式未实现，该位为只读零。 |
 | `norm:counter_inhibited_behavior` | `smcntrpmf.adoc` | The fundamental behavior of cycle and instret is modified in that counting does not occur while executing in an inhibited privilege mode. | cycle 和 instret 的基本行为被修改：在被抑制的特权模式下执行时不发生计数。 |
 | `hcounteren_vs_vu_control` | `hypervisor.adoc` | The `hcounteren` CSR controls availability of performance monitoring counters to VS-mode and VU-mode. | `hcounteren` CSR 控制 VS 和 VU 模式下性能监控计数器的可用性。 |
@@ -466,7 +466,7 @@
 
 | Norm ID | 覆盖的测试 ID |
 |---------|---------------|
-| `hstateen_sstateen_zero_initialization` | HCROSS-SMSTA-01 |
+| `norm:hstateen_sstateen_zero_initialization` | HCROSS-SMSTA-01 |
 | `norm:mstateen_lower_priv_roz` | HCROSS-SMSTA-02 |
 | `norm:mstateen_bit_63_op` | HCROSS-SMSTA-03 |
 | `norm:mstateen_bit_63_roz` | HCROSS-SMSTA-04 |

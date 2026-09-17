@@ -393,7 +393,7 @@ Prerequisites for all GPF test cases:
 | `two_stage_map_gs_4k(ts, gpa, hpa, flags)` | `common/hyp/two_stage.h` | Adds 4K mapping in G-stage |
 | `two_stage_activate(ts)` | `common/hyp/two_stage.h` | Writes vsatp + hgatp to activate |
 | `delegate_gpf_to_hs()` | Test helper | Sets medeleg/hedeleg to delegate cause 20/21/23 to HS |
-| `SHTVALA_REQUIRE()` | Test helper | `TEST_SKIP` when platform does not implement Shtvala |
+| `SHTVALA_AVAILABLE` | `common/capabilities.h` | Compile-time capability macro (from `SHTVALA_SUPPORTED`); cases inline `TEST_SKIP` when 0 |
 | `REQUIRE_HGATP_MODE(mode)` | Test helper | `TEST_SKIP` when hgatp does not support specified MODE |
 
 ### CSR Definitions

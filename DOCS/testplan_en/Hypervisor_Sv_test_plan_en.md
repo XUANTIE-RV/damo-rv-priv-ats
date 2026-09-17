@@ -41,7 +41,7 @@ Official repository:
 
 ## Covered Specification Points
 
-The following table lists the specification points covered by this plan. Entries with the `norm:` prefix are official SPEC labels; entries without the prefix are specification points decomposed from the SPEC text.
+The following table lists the specification points covered by this plan. Entries with the `norm:` prefix are official SPEC normative rule labels; entries without the prefix are specification points summarized by this plan based on the SPEC text.
 
 | Norm ID | Source | Description |
 |---------|--------|-------------|

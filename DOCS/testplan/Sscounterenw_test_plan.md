@@ -8,7 +8,7 @@
 
 ## 概述
 
-RISC-V 特权级规范中，`scounteren` 寄存器控制 S-mode 对硬件性能计数器（`hpmcounter3`–`hpmcounter31`）以及 `cycle`、`time`、`instret` 的访问权限。当 `scounteren` 中某个 bit 为 0 时，U-mode 访问对应的计数器将触发 illegal instruction exception。
+RISC-V 特权级规范中，`scounteren` 寄存器控制 S-mode 对硬件性能计数器（`hpmcounter3`–`hpmcounter31`）以及 `cycle`、`time`、`instret` 的访问权限。当 `scounteren` 中某个 bit 为 0 时，U-mode 访问对应的计数器将触发 illegal-instruction 异常。
 
 然而，基础规范并未强制要求 `scounteren` 的所有 bit 都必须可写——实现可以将某些 bit 硬连线为 0 或 1。这导致软件无法可靠地控制 U-mode 对计数器的访问权限。
 
@@ -22,27 +22,42 @@ RISC-V 特权级规范中，`scounteren` 寄存器控制 S-mode 对硬件性能�
 
 ---
 
-## 测试范围
+## 本文档覆盖的 SPEC 章节
 
-### 规范来源
+本方案依据以下 RISC-V 官方规范（本地路径）：
 
-- `SPEC/sscounterenw.adoc` — Sscounterenw Extension for Counter-Enable Writability, Version 1.0
+- `SPEC/riscv-isa-manual/src/priv/sscounterenw.adoc` — Sscounterenw Extension for Counter-Enable Writability, Version 1.0
+- `SPEC/riscv-isa-manual/src/priv/supervisor.adoc` — scounteren 寄存器定义与访问控制行为
+- `SPEC/riscv-isa-manual/src/priv/machine.adoc` — mcounteren 对 S-mode 计数器访问的门控
 
-### 覆盖的规范点
+官方仓库：
+
+- https://github.com/riscv/riscv-isa-manual （对应仓库内 src/priv/sscounterenw.adoc、src/priv/supervisor.adoc、src/priv/machine.adoc）
+
+---
+
+## 覆盖的规范点
 
 | Norm ID | 原文 | 中文说明 |
 |---------|------|----------|
 | `norm:sscounterenw_hpmcounter_scounteren` | If the Sscounterenw extension is implemented, then for any `hpmcounter` that is not read-only zero, the corresponding bit in `scounteren` must be writable. | 如果实现了 Sscounterenw 扩展，则对于任何非只读零的 `hpmcounter`，`scounteren` 中对应的位必须是可写的。 |
-| `norm:scounteren_bit_set_to_1` | — | scounteren bit 可被设为 1，随后 U-mode 可无异常访问对应计数器 |
-| `norm:scounteren_bit_set_to_0` | — | scounteren bit 可被设为 0，随后 U-mode 访问对应计数器触发 illegal instruction |
-| `norm:scounteren_bit_toggle` | — | scounteren bit 可在 0 和 1 之间反复切换，行为一致 |
-| `norm:scounteren_readonly_zero_counter` | — | 对于 read-only zero 的 hpmcounter，scounteren 对应 bit 行为不受 Sscounterenw 约束（可以是 read-only） |
-| `norm:mcounteren_gate_scounteren` | — | mcounteren 仍然 gate S-mode 对计数器的访问，Sscounterenw 不改变这一层级关系 |
 
-### 不在测试范围内
+**自行拆解的规范点**（来自 `supervisor.adoc`、`machine.adoc` 中相关文本的拆解，SPEC 无独立 norm 标签）：
+
+| Norm ID | 中文说明 |
+|---------|----------|
+| `scounteren_bit_set_to_1` | scounteren bit 可被设为 1，随后 U-mode 可无异常访问对应计数器 |
+| `scounteren_bit_set_to_0` | scounteren bit 可被设为 0，随后 U-mode 访问对应计数器触发 illegal-instruction |
+| `scounteren_bit_toggle` | scounteren bit 可在 0 和 1 之间反复切换，行为一致 |
+| `scounteren_readonly_zero_counter` | 对于 read-only zero 的 hpmcounter，scounteren 对应 bit 行为不受 Sscounterenw 约束（可以是 read-only） |
+| `mcounteren_gate_scounteren` | mcounteren 仍然 gate S-mode 对计数器的访问，Sscounterenw 不改变这一层级关系 |
+
+---
+
+## 不在测试范围内
 
 - **计数器事件计数的正确性**：Sscounterenw 仅约束 scounteren 的可写性，不涉及计数器是否正确计数
-- **Sscofpmf（Count Overflow and Mode-Based Filtering）**：由独立的 sscofpmf 测试计划覆盖
+- **Sscofpmf（Count Overflow and Mode-Based Filtering）**：由独立的 `Sscofpmf_test_plan.md` 覆盖
 - **hcounteren（Hypervisor Counter-Enable）**：VS/VU-mode 的计数器访问控制由 hypervisor 测试覆盖
 - **Sv32 模式**：本计划仅覆盖 RV64
 - **多 hart 场景**：项目为单核测试环境
@@ -66,14 +81,6 @@ RISC-V 特权级规范中，`scounteren` 寄存器控制 S-mode 对硬件性能�
 | `instret` | 0xC02 | 已退休指令计数器（只读，bit 2） |
 | `hpmcounter3`–`hpmcounter31` | 0xC03–0xC1F | 硬件性能计数器（只读，bit 3–31） |
 
-### 关键参考文件
-
-| 路径 | 说明 |
-|------|------|
-| `SPEC/sscounterenw.adoc` | Sscounterenw 规范全文 |
-| `common/test_framework.h` | 测试框架（TEST_BEGIN / TEST_ASSERT / TEST_END） |
-| `common/encoding.h` | CSR 地址定义（CSR_MCOUNTEREN / CSR_SCOUNTEREN） |
-
 ### 设计原则
 
 1. **动态发现法**：运行时先探测哪些 hpmcounter 是已实现的（非 read-only zero），再对这些计数器验证 scounteren 可写性
@@ -87,7 +94,7 @@ RISC-V 特权级规范中，`scounteren` 寄存器控制 S-mode 对硬件性能�
 ### Group 1：scounteren 可写性验证（M-mode 读写回环）
 
 **规范依据**：
-- `norm:scounteren_writable_for_implemented_counter`：已实现计数器对应的 scounteren bit 必须可写
+- `norm:sscounterenw_hpmcounter_scounteren`：已实现计数器对应的 scounteren bit 必须可写
 
 **测试职责**：在 M-mode 下，对每个已实现的 hpmcounter 对应的 scounteren bit 进行写 1/读回、写 0/读回验证。
 
@@ -98,85 +105,33 @@ RISC-V 特权级规范中，`scounteren` 寄存器控制 S-mode 对硬件性能�
 | SSCNTW-WR-03 | instret 对应 scounteren[2] 可写 | 探测 instret 是否已实现，若是则验证 scounteren[2] 可写 1 和写 0 | 写入值回读一致 |
 | SSCNTW-WR-04 | hpmcounter3–31 对应 scounteren[3:31] 可写 | 逐个探测 hpmcounter3–31，对已实现的验证 scounteren 对应 bit 可写 | 已实现计数器的对应 bit 写入值回读一致 |
 
-```c
-/* SSCNTW-WR-01 示例 */
-
-TEST_REGISTER(test_sscounterenw_cycle_bit_writable);
-bool test_sscounterenw_cycle_bit_writable(void) {
-    TEST_BEGIN("SSCNTW-WR-01: scounteren[0] writable when cycle is implemented");
-
-    /* 先确保 mcounteren[0]=1，使 S-mode 可访问 cycle */
-    uintptr_t mcen = csr_read(CSR_MCOUNTEREN);
-    csr_write(CSR_MCOUNTEREN, mcen | (1UL << 0));
-
-    /* 探测 cycle 是否已实现（读取不触发异常且值非恒零） */
-    /* 对于 cycle，几乎所有实现都提供，直接认为已实现 */
-
-    /* 测试 scounteren[0] 写 1 */
-    csr_write(CSR_SCOUNTEREN, csr_read(CSR_SCOUNTEREN) | (1UL << 0));
-    TEST_ASSERT("scounteren[0] can be set to 1",
-                (csr_read(CSR_SCOUNTEREN) & (1UL << 0)) != 0);
-
-    /* 测试 scounteren[0] 写 0 */
-    csr_write(CSR_SCOUNTEREN, csr_read(CSR_SCOUNTEREN) & ~(1UL << 0));
-    TEST_ASSERT("scounteren[0] can be cleared to 0",
-                (csr_read(CSR_SCOUNTEREN) & (1UL << 0)) == 0);
-
-    /* 恢复 mcounteren */
-    csr_write(CSR_MCOUNTEREN, mcen);
-
-    TEST_END();
-}
-```
-
 ---
 
 ### Group 2：scounteren 控制 U-mode 访问（端到端验证）
 
 **规范依据**：
-- `norm:scounteren_bit_set_to_1`：bit 为 1 时 U-mode 可访问
-- `norm:scounteren_bit_set_to_0`：bit 为 0 时 U-mode 访问触发 illegal instruction
+- `scounteren_bit_set_to_1`：bit 为 1 时 U-mode 可访问
+- `scounteren_bit_set_to_0`：bit 为 0 时 U-mode 访问触发 illegal-instruction
 
-**测试职责**：对已实现的 hpmcounter，验证 scounteren bit 设为 1 时 U-mode 读取成功，设为 0 时 U-mode 读取触发 illegal instruction（cause=2）。
+**测试职责**：对已实现的 hpmcounter，验证 scounteren bit 设为 1 时 U-mode 读取成功，设为 0 时 U-mode 读取触发 illegal-instruction（cause=2）。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
-| SSCNTW-ACCESS-01 | scounteren[0]=1 时 U-mode 读 cycle 成功 | 设置 mcounteren[0]=1, scounteren[0]=1，U-mode 读 cycle | 无异常 |
-| SSCNTW-ACCESS-02 | scounteren[0]=0 时 U-mode 读 cycle 触发异常 | 设置 mcounteren[0]=1, scounteren[0]=0，U-mode 读 cycle | 触发 illegal instruction (cause=2) |
-| SSCNTW-ACCESS-03 | scounteren[1]=1 时 U-mode 读 time 成功 | 设置 mcounteren[1]=1, scounteren[1]=1，U-mode 读 time | 无异常 |
-| SSCNTW-ACCESS-04 | scounteren[1]=0 时 U-mode 读 time 触发异常 | 设置 mcounteren[1]=1, scounteren[1]=0，U-mode 读 time | 触发 illegal instruction (cause=2) |
-| SSCNTW-ACCESS-05 | scounteren[2]=1 时 U-mode 读 instret 成功 | 设置 mcounteren[2]=1, scounteren[2]=1，U-mode 读 instret | 无异常 |
-| SSCNTW-ACCESS-06 | scounteren[2]=0 时 U-mode 读 instret 触发异常 | 设置 mcounteren[2]=1, scounteren[2]=0，U-mode 读 instret | 触发 illegal instruction (cause=2) |
+| SSCNTW-ACCESS-01 | scounteren[0]=1 时 U-mode 读 cycle 成功 | 设置 mcounteren[0]=1、scounteren[0]=1，U-mode 读 cycle | 无异常 |
+| SSCNTW-ACCESS-02 | scounteren[0]=0 时 U-mode 读 cycle 触发异常 | 设置 mcounteren[0]=1、scounteren[0]=0，U-mode 读 cycle | 触发 illegal-instruction（cause=2） |
+| SSCNTW-ACCESS-03 | scounteren[1]=1 时 U-mode 读 time 成功 | 设置 mcounteren[1]=1、scounteren[1]=1，U-mode 读 time | 无异常 |
+| SSCNTW-ACCESS-04 | scounteren[1]=0 时 U-mode 读 time 触发异常 | 设置 mcounteren[1]=1、scounteren[1]=0，U-mode 读 time | 触发 illegal-instruction（cause=2） |
+| SSCNTW-ACCESS-05 | scounteren[2]=1 时 U-mode 读 instret 成功 | 设置 mcounteren[2]=1、scounteren[2]=1，U-mode 读 instret | 无异常 |
+| SSCNTW-ACCESS-06 | scounteren[2]=0 时 U-mode 读 instret 触发异常 | 设置 mcounteren[2]=1、scounteren[2]=0，U-mode 读 instret | 触发 illegal-instruction（cause=2） |
 | SSCNTW-ACCESS-07 | scounteren[N]=1 时 U-mode 读 hpmcounterN 成功 | 对已实现的 hpmcounterN，设置对应 bit=1，U-mode 读取 | 无异常 |
-| SSCNTW-ACCESS-08 | scounteren[N]=0 时 U-mode 读 hpmcounterN 触发异常 | 对已实现的 hpmcounterN，设置对应 bit=0，U-mode 读取 | 触发 illegal instruction (cause=2) |
-
-```c
-/* SSCNTW-ACCESS-01 示例 */
-
-TEST_REGISTER(test_sscounterenw_umode_cycle_allowed);
-bool test_sscounterenw_umode_cycle_allowed(void) {
-    TEST_BEGIN("SSCNTW-ACCESS-01: U-mode reads cycle when scounteren[0]=1");
-
-    /* 配置：mcounteren[0]=1, scounteren[0]=1 */
-    csr_set(CSR_MCOUNTEREN, 1UL << 0);
-    csr_set(CSR_SCOUNTEREN, 1UL << 0);
-
-    /* 切换到 U-mode 读取 cycle */
-    goto_priv(PRIV_U);
-    PRIV_DO_NO_TRAP(csr_read(CSR_CYCLE));
-    goto_priv(PRIV_M);
-    CHECK_NO_TRAP("U-mode read cycle with scounteren[0]=1");
-
-    TEST_END();
-}
-```
+| SSCNTW-ACCESS-08 | scounteren[N]=0 时 U-mode 读 hpmcounterN 触发异常 | 对已实现的 hpmcounterN，设置对应 bit=0，U-mode 读取 | 触发 illegal-instruction（cause=2） |
 
 ---
 
 ### Group 3：scounteren bit 反复切换一致性
 
 **规范依据**：
-- `norm:scounteren_bit_toggle`：scounteren bit 可反复切换，行为一致
+- `scounteren_bit_toggle`：scounteren bit 可反复切换，行为一致
 
 **测试职责**：对已实现的计数器，反复设置和清除 scounteren bit，验证每次切换后 U-mode 访问行为一致。
 
@@ -186,82 +141,28 @@ bool test_sscounterenw_umode_cycle_allowed(void) {
 | SSCNTW-TOGGLE-02 | instret 对应 bit 反复切换 | 对 scounteren[2] 做 1→0→1→0 切换，每次验证 U-mode 行为 | 每次切换后行为符合当前 bit 值 |
 | SSCNTW-TOGGLE-03 | hpmcounterN 对应 bit 反复切换 | 对已实现的 hpmcounterN 做切换验证 | 每次切换后行为符合当前 bit 值 |
 
-```c
-/* SSCNTW-TOGGLE-01 示例 */
-
-TEST_REGISTER(test_sscounterenw_toggle_cycle);
-bool test_sscounterenw_toggle_cycle(void) {
-    TEST_BEGIN("SSCNTW-TOGGLE-01: scounteren[0] toggle consistency");
-
-    csr_set(CSR_MCOUNTEREN, 1UL << 0);
-
-    for (int i = 0; i < 4; i++) {
-        bool enable = (i % 2 == 0);
-
-        if (enable)
-            csr_set(CSR_SCOUNTEREN, 1UL << 0);
-        else
-            csr_clear(CSR_SCOUNTEREN, 1UL << 0);
-
-        goto_priv(PRIV_U);
-        PRIV_DO_TRAP(csr_read(CSR_CYCLE));
-        goto_priv(PRIV_M);
-
-        if (enable) {
-            CHECK_NO_TRAP("cycle accessible after enable");
-        } else {
-            CHECK_TRAP("cycle blocked after disable", CAUSE_ILLEGAL_INST);
-        }
-    }
-
-    TEST_END();
-}
-```
-
 ---
 
 ### Group 4：mcounteren 与 scounteren 层级交互
 
 **规范依据**：
-- `norm:mcounteren_gate_scounteren`：mcounteren 仍然 gate S-mode 对计数器的访问
+- `mcounteren_gate_scounteren`：mcounteren 仍然 gate S-mode 对计数器的访问
 
 **测试职责**：验证即使 scounteren bit 为 1，如果 mcounteren 对应 bit 为 0，S-mode 访问计数器仍触发异常（Sscounterenw 不改变层级关系）。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
-| SSCNTW-HIER-01 | mcounteren[0]=0 时 S-mode 读 cycle 异常 | 设置 mcounteren[0]=0, scounteren[0]=1，S-mode 读 cycle | 触发 illegal instruction (cause=2) |
-| SSCNTW-HIER-02 | mcounteren[0]=1 时 S-mode 读 cycle 成功 | 设置 mcounteren[0]=1, scounteren[0]=1，S-mode 读 cycle | 无异常 |
-| SSCNTW-HIER-03 | mcounteren[N]=0 时 S-mode 读 hpmcounterN 异常 | 设置 mcounteren[N]=0, scounteren[N]=1，S-mode 读取 | 触发 illegal instruction (cause=2) |
-| SSCNTW-HIER-04 | mcounteren=0 scounteren=1 时 U-mode 读 cycle 异常 | mcounteren 阻断后，即使 scounteren=1，U-mode 也无法访问 | 触发 illegal instruction (cause=2) |
-
-```c
-/* SSCNTW-HIER-01 示例 */
-
-TEST_REGISTER(test_sscounterenw_mcounteren_gates_smode);
-bool test_sscounterenw_mcounteren_gates_smode(void) {
-    TEST_BEGIN("SSCNTW-HIER-01: mcounteren[0]=0 blocks S-mode cycle access");
-
-    /* mcounteren[0]=0, scounteren[0]=1 */
-    csr_clear(CSR_MCOUNTEREN, 1UL << 0);
-    csr_set(CSR_SCOUNTEREN, 1UL << 0);
-
-    /* S-mode 尝试读 cycle */
-    goto_priv(PRIV_S);
-    PRIV_DO_TRAP(csr_read(CSR_CYCLE));
-    goto_priv(PRIV_M);
-    CHECK_TRAP("S-mode cycle blocked by mcounteren",
-               CAUSE_ILLEGAL_INST);
-
-    TEST_END();
-}
-```
+| SSCNTW-HIER-01 | mcounteren[0]=0 时 S-mode 读 cycle 异常 | 设置 mcounteren[0]=0、scounteren[0]=1，S-mode 读 cycle | 触发 illegal-instruction（cause=2） |
+| SSCNTW-HIER-02 | mcounteren[0]=1 时 S-mode 读 cycle 成功 | 设置 mcounteren[0]=1、scounteren[0]=1，S-mode 读 cycle | 无异常 |
+| SSCNTW-HIER-03 | mcounteren[N]=0 时 S-mode 读 hpmcounterN 异常 | 设置 mcounteren[N]=0、scounteren[N]=1，S-mode 读取 | 触发 illegal-instruction（cause=2） |
+| SSCNTW-HIER-04 | mcounteren=0 scounteren=1 时 U-mode 读 cycle 异常 | mcounteren 阻断后，即使 scounteren=1，U-mode 也无法访问 | 触发 illegal-instruction（cause=2） |
 
 ---
 
 ### Group 5：read-only zero 计数器的 scounteren bit 行为
 
 **规范依据**：
-- `norm:scounteren_readonly_zero_counter`：对于 read-only zero 的 hpmcounter，Sscounterenw 不强制其 scounteren bit 可写
+- `scounteren_readonly_zero_counter`：对于 read-only zero 的 hpmcounter，Sscounterenw 不强制其 scounteren bit 可写
 
 **测试职责**：对于探测为 read-only zero 的 hpmcounter，记录其 scounteren bit 行为（可能是 read-only 0 或 read-only 1），不作 pass/fail 判断，仅作信息收集。
 
@@ -269,51 +170,19 @@ bool test_sscounterenw_mcounteren_gates_smode(void) {
 |---------|----------|----------|----------|
 | SSCNTW-RO-01 | read-only zero 计数器 scounteren bit 探测 | 对所有 read-only zero 的 hpmcounter，尝试写 scounteren bit 并报告结果 | 信息性输出，不做 pass/fail |
 
-```c
-/* SSCNTW-RO-01 示例 */
-
-TEST_REGISTER(test_sscounterenw_readonly_zero_report);
-bool test_sscounterenw_readonly_zero_report(void) {
-    TEST_BEGIN("SSCNTW-RO-01: Report scounteren bits for read-only-zero counters");
-
-    for (int i = 3; i <= 31; i++) {
-        /* 先探测 hpmcounter 是否为 read-only zero */
-        csr_set(CSR_MCOUNTEREN, 1UL << i);
-
-        /* 在 M-mode 读 mhpmcounter 判断是否为 read-only zero */
-        /* 如果 mhpmcounter 写后回读仍为 0，则认为是 read-only zero */
-        /* ... 探测逻辑 ... */
-
-        if (is_readonly_zero) {
-            /* 仅报告 scounteren bit 行为，不做 pass/fail */
-            csr_write(CSR_SCOUNTEREN, csr_read(CSR_SCOUNTEREN) | (1UL << i));
-            bool can_set = (csr_read(CSR_SCOUNTEREN) & (1UL << i)) != 0;
-            printf("  hpmcounter%d: read-only zero, scounteren[%d] %s\n",
-                   i, i, can_set ? "writable" : "hardwired");
-        }
-    }
-
-    TEST_END();
-}
-```
-
 ---
 
 ## 计数器实现探测策略
 
-由于不同实现可能支持不同的 hpmcounter 子集，测试需在运行时动态探测。探测算法如下：
+由于不同实现可能支持不同的 hpmcounter 子集，测试需在运行时动态探测。探测流程如下：
 
-```
-for each counter index i (0..31):
-    1. M-mode: 设置 mcounteren[i] = 1
-    2. 对于 i=0(cycle), i=1(time), i=2(instret):
-       - 直接在 M-mode 读取对应 CSR，如果非零则已实现
-    3. 对于 i=3..31 (hpmcounter3-31):
-       - 在 M-mode 写 mhpmcounter[i] 为非零值
-       - 回读 mhpmcounter[i]，如果回读值非零则已实现
-       - 恢复原值
-    4. 记录已实现的计数器位图，供后续测试使用
-```
+1. 对每个计数器索引 i (0..31)：
+   - M-mode：设置 `mcounteren[i] = 1`
+   - 对于 i=0 (cycle)、i=1 (time)、i=2 (instret)：直接在 M-mode 读取对应 CSR，若返回值非零或读取不产生异常则认为已实现
+   - 对于 i=3..31 (hpmcounter3-31)：在 M-mode 写 `mhpmcounter[i]` 为非零值，回读 `mhpmcounter[i]`，若回读值非零则认为已实现，随后恢复原值
+2. 记录已实现的计数器位图，供后续测试使用
+
+任一平台违反 SPEC 时用例保持 FAIL，实现缺陷记录至 `bugs/` 目录。
 
 ---
 
@@ -330,82 +199,13 @@ for each counter index i (0..31):
 
 ---
 
-## 框架层面需要的支持
+## 附录 A：规范点覆盖矩阵
 
-### 需要新增的 CSR 定义（`common/encoding.h`）
-
-当前 `encoding.h` 已有 `CSR_MCOUNTEREN`（0x306）和 `CSR_SCOUNTEREN`（0x106），但缺少以下定义：
-
-```c
-/* User-level read-only counter CSRs */
-#define CSR_CYCLE       0xC00
-#define CSR_TIME        0xC01
-#define CSR_INSTRET     0xC02
-#define CSR_HPMCOUNTER3 0xC03
-#define CSR_HPMCOUNTER4 0xC04
-/* ... */
-#define CSR_HPMCOUNTER31 0xC1F
-
-/* Machine-level counter CSRs (read-write) */
-#define CSR_MCYCLE      0xB00
-#define CSR_MINSTRET    0xB02
-#define CSR_MHPMCOUNTER3  0xB03
-/* ... */
-#define CSR_MHPMCOUNTER31 0xB1F
-```
-
-### 需要新增的 CSR 动态访问能力
-
-由于 `hpmcounter3`–`hpmcounter31` 有 29 个 CSR，逐一硬编码不现实。需要一个按索引读取 CSR 的机制：
-
-```c
-/**
- * read_hpmcounter - 按索引读取 hpmcounter CSR
- * @idx: 计数器索引 (0=cycle, 1=time, 2=instret, 3-31=hpmcounter3-31)
- * @return: 计数器值
- *
- * 实现方式：使用 switch-case 或函数指针表映射到具体的 csrr 指令
- */
-uintptr_t read_hpmcounter(unsigned int idx);
-
-/**
- * write_mhpmcounter - 按索引写入 mhpmcounter CSR (M-mode)
- * @idx: 计数器索引 (3-31)
- * @val: 要写入的值
- */
-void write_mhpmcounter(unsigned int idx, uintptr_t val);
-
-/**
- * read_mhpmcounter - 按索引读取 mhpmcounter CSR (M-mode)
- * @idx: 计数器索引 (3-31)
- * @return: 计数器值
- */
-uintptr_t read_mhpmcounter(unsigned int idx);
-```
-
-### U-mode 执行 CSR 读取
-
-当前框架支持 `goto_priv(PRIV_U)` + `PRIV_DO_TRAP`/`PRIV_DO_NO_TRAP` 模式。但 U-mode 下执行 `csrr` 指令读取计数器需要特别注意：
-
-- U-mode 下 `csrr` 如果目标 CSR 被 scounteren 禁止，会触发 illegal instruction
-- 需要确保 trap handler 能正确处理并跳过该指令（当前框架的 `trap_expect_begin/end` 机制已支持）
-
-**结论**：当前框架的 trap 机制已能支持，无需修改 trap 处理逻辑。
-
----
-
-## 目录结构建议
-
-```
-sscounterenw/
-├── Makefile
-├── main.c
-├── kernel.ld              (可复用 sstvecd/kernel.ld)
-└── tests/
-    ├── test_helpers.h     (计数器探测、动态 CSR 访问辅助)
-    ├── test_writable.c    (Group 1: 可写性验证)
-    ├── test_access.c      (Group 2: U-mode 访问控制)
-    ├── test_toggle.c      (Group 3: 切换一致性)
-    ├── test_hierarchy.c   (Group 4: 层级交互)
-    └── test_readonly.c    (Group 5: read-only zero 报告)
-```
+| Norm ID | 覆盖的测试 ID | 覆盖状态 | 备注 |
+|---------|--------------|----------|------|
+| `norm:sscounterenw_hpmcounter_scounteren` | SSCNTW-WR-01、SSCNTW-WR-02、SSCNTW-WR-03、SSCNTW-WR-04、SSCNTW-ACCESS-01 ~ SSCNTW-ACCESS-08、SSCNTW-TOGGLE-01 ~ SSCNTW-TOGGLE-03 | 已覆盖 | 核心规范：已实现计数器对应 scounteren bit 可写 |
+| `scounteren_bit_set_to_1` | SSCNTW-ACCESS-01、SSCNTW-ACCESS-03、SSCNTW-ACCESS-05、SSCNTW-ACCESS-07、SSCNTW-HIER-02 | 已覆盖 | bit=1 时 U-mode 可访问 |
+| `scounteren_bit_set_to_0` | SSCNTW-ACCESS-02、SSCNTW-ACCESS-04、SSCNTW-ACCESS-06、SSCNTW-ACCESS-08 | 已覆盖 | bit=0 时 U-mode 触发 illegal-instruction |
+| `scounteren_bit_toggle` | SSCNTW-TOGGLE-01、SSCNTW-TOGGLE-02、SSCNTW-TOGGLE-03 | 已覆盖 | bit 反复切换一致性 |
+| `scounteren_readonly_zero_counter` | SSCNTW-RO-01 | 已覆盖 | read-only zero 计数器信息性报告 |
+| `mcounteren_gate_scounteren` | SSCNTW-HIER-01、SSCNTW-HIER-02、SSCNTW-HIER-03、SSCNTW-HIER-04 | 已覆盖 | mcounteren 门控层级 |

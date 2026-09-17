@@ -295,7 +295,7 @@
 | HZLRSC-40 | （记录型）HLV+HSV 无法替代 LR/SC 原子性 | HS-mode 以 `HLV.W` + `HSV.W` 序列对 guest 内存做读改写，与 VS-mode 内的 LR/SC 循环并发（需多 hart） | 记录性：HLV+HSV 为两次独立非原子访问、无 reservation 保护，并发下可观测到丢失更新；多 hart 未就绪时 SKIP |
 
 > [!NOTE]
-> - 本组所有测试必须在运行时通过 `HAS_H_EXT()` 检测 H 扩展；Zalrsc 支持以平台配置 `ZALRSC_SUPPORTED` 宏为准，并以 trap-armed raw encoding 探测指令可用性，不满足时全组 TEST_SKIP。
+> - 本组所有测试必须以平台配置 `H_SUPPORTED` 宏为准检测 H 扩展；Zalrsc 支持以平台配置 `ZALRSC_SUPPORTED` 宏为准，并以 trap-armed raw encoding 探测指令可用性，不满足时全组 TEST_SKIP。
 > - **异常类别与 cause 断言必须精确**：LR 归 load 类（4/5/13/21）、SC 归 store/AMO 类（6/7/15/23），依据 `norm:mcause_exccode_st_sc_amo`、`norm:load_page_fault_no_r`、`norm:store_page_fault_no_w`。断言不得将两者混淆，也不得将 VS-stage 故障（cause 13/15）误判为 G-stage 故障（cause 21/23）。
 > - **cause=22 为强制负向断言**：HZLRSC-02/03 中 guest LR/SC 若报 virtual-instruction exception 即为违反 SPEC（`hypervisor.adoc` 无任何条款对 LR/SC 施加 virtual-instruction 门控），应保持失败并记录至 `bugs/` 目录，不得放宽断言。
 > - **htinst golden 值计算已就绪**：框架 `hyp_transform_mem_inst()` 对 opcode 0x2F 已实现“Atomic (LR/SC/AMO)：保留除 bits19:15 外全部字段”，与 `htinst_transformed_atomic` 逐字一致；HZLRSC-15~18 可直接复用。HZLRSC-19/20 的隐式遍历场景可复用 `setup_implicit_walk_victim()`。
@@ -406,7 +406,7 @@
 | HZAMO-31 | （记录型）HLV+HSV 无法替代 AMO 原子性 | HS-mode 以 `HLV.W`+`HSV.W` 序列对 guest 内存做读改写，与 VS-mode 内的 `amoadd.w` 并发（需多 hart） | 记录性：HLV+HSV 为两次独立非原子访问，并发下可观测到丢失更新，而 VS-mode AMO 保持原子；多 hart 未就绪时 SKIP（与 HZLRSC-40 同理） |
 
 > [!NOTE]
-> - 本组所有测试必须在运行时通过 `HAS_H_EXT()` 检测 H 扩展；Zaamo/A 支持以平台配置 `ZAAMO_SUPPORTED`（或 `A_SUPPORTED`）宏为准，并以 trap-armed 执行 AMO 二次探测，不满足时全组 TEST_SKIP。
+> - 本组所有测试必须以平台配置 `H_SUPPORTED` 宏为准检测 H 扩展；Zaamo/A 支持以平台配置 `ZAAMO_SUPPORTED`（或 `A_SUPPORTED`）宏为准，并以 trap-armed 执行 AMO 二次探测，不满足时全组 TEST_SKIP。
 > - **异常类别断言必须精确且区别于 LR**：AMO 的**全部**异常归 store/AMO 类（misaligned=6、access fault=7、page fault=15、guest-page fault=23），依据 `norm:mcause_exccode_st_sc_amo` 与 `norm:store_page_fault_no_w` 配套 NOTE。断言**绝不**得接受 load 类（4/5/13/21）——AMO 到不可读页亦报 cause=15 而非 13；AMO 的隐式 VS-stage 遍历 GPF 报 cause=23 而非 21（`norm:H_vm_gpapriv`）。这是与 Group 1（LR 报 load 类）的根本分野。
 > - **cause=22 为强制负向断言**：HZAMO-02/03 中 guest AMO 若报 virtual-instruction exception 即违反 SPEC（`hypervisor.adoc` 无任何条款对 AMO 施加 virtual-instruction 门控），应保持失败并记录至 `bugs/` 目录，不得放宽断言。
 > - **htinst golden 值计算已就绪**：框架 `hyp_transform_mem_inst()` 对 opcode 0x2F 已实现“Atomic (LR/SC/AMO)：保留除 bits19:15 外全部字段”，与 `htinst_transformed_atomic` 逐字一致，HZAMO-15~17 可直接复用；HZAMO-18/19 的隐式遍历场景可复用 `setup_implicit_walk_victim()`。aq/rl 变体（HZAMO-16/25）若框架无对应原语须以 raw encoding 注入或补充原语。
@@ -532,7 +532,7 @@
 | HZACAS-36 | 清零 `hstateen0` 后 VS/VU-mode 仍正常执行 amocas | 先确认 Smstateen 已实现且 `mstateen0`/`hstateen0` 可读写，**保持 `mstateen0`.SE0=1**（`norm:mstateen0_se0_op`：SE0=0 时 HS-mode 对 `hstateen0` 的访问自身被门控，前置条件无法建立）；保存并清零 `hstateen0` 全部位，回读确认为 0（证明清零已生效、门控已处于最严状态）；VS-stage/G-stage 均映射为可读写（VU 目标页 U=1），分别在 VS-mode 与 VU-mode 执行 `amocas.w`/`amocas.d`/`amocas.q`（成功路径与失败路径各一次），完毕后恢复 `hstateen0` | 全部正常执行，rd（或寄存器对）=内存旧值、成功路径内存按 CAS 语义更新、失败路径内存不变或写回旧值（均合规），与非虚拟化语义一致；**绝不**报 virtual-instruction (cause=22) 或 illegal-instruction (cause=2)——依据 `norm:stateen_op` + `norm:stateen_illegal_state_access`：门控仅适用于"读写受保护状态"的指令，Zacas 无 CSR、不引入架构状态，无 stateen 位可分配，故门控条件不成立（与 HZACAS-02/03 的区别见交集点 13）。若 `hstateen0` 回读非 0（平台将其硬接为只读零以外的值但写入未生效），则前置条件不成立，用例 SKIP 并注明原因，不得当作 PASS |
 
 > [!NOTE]
-> - 本组所有测试必须在运行时通过 `HAS_H_EXT()` 检测 H 扩展；Zacas 支持以平台配置 `ZACAS_SUPPORTED` 宏为准，并以 trap-armed 执行 amocas 二次探测，不满足时全组 TEST_SKIP；Zacas 依赖 Zaamo（进而依赖 A 扩展），故本组以 Group 2 的 Zaamo 探测结论为隐式前提（`ZAAMO_SUPPORTED`/`A_SUPPORTED` 亦须满足）。
+> - 本组所有测试必须以平台配置 `H_SUPPORTED` 宏为准检测 H 扩展；Zacas 支持以平台配置 `ZACAS_SUPPORTED` 宏为准，并以 trap-armed 执行 amocas 二次探测，不满足时全组 TEST_SKIP；Zacas 依赖 Zaamo（进而依赖 A 扩展），故本组以 Group 2 的 Zaamo 探测结论为隐式前提（`ZAAMO_SUPPORTED`/`A_SUPPORTED` 亦须满足）。
 > - **异常类别断言必须精确**：amocas 的**全部**异常归 store/AMO 类（misaligned=6、access fault=7、page fault=15、guest-page fault=23），依据 `norm:mcause_exccode_st_sc_amo`（amocas 属 AMO 指令族）与 `norm:store_page_fault_no_w` 配套 NOTE。断言**绝不**得接受 load 类（4/5/13/21）。
 > - **无条件写权限检查为 Zacas 特有强制断言**：HZACAS-07/12（失败 CAS 仍报 store 类异常）依据 `norm:Zacas_amocas_w_permission` 的“always”无条件语言，为**强制**判定（非记录型）——这与 HZACAS-32/33（失败 CAS 的 D 位副作用，SPEC 空白点，记录型）性质不同，不得混淆：前者是权限**检查**（W 位/G-stage 写权限），SPEC 明文强制；后者是权限检查通过后 D 位**自动更新**的副作用，Zacas SPEC 未明文规定（区别于 Zalrsc 的 `norm:sc_failed_side_effects` 明文 UNSPECIFIED）。
 > - **cause=22 为强制负向断言**：HZACAS-02/03 中 guest amocas 若报 virtual-instruction exception 即违反 SPEC（`hypervisor.adoc` 无任何条款对 amocas 施加 virtual-instruction 门控），应保持失败并记录至 `bugs/` 目录，不得放宽断言。
@@ -668,7 +668,7 @@
 | HZABHA-39 | （记录型）HLV.B+HSV.B / HLV.H+HSV.H 无法替代字节/半字 AMO 原子性 | HS-mode 以 `HLV.B`+`HSV.B`（或 `HLV.H`+`HSV.H`）序列对 guest 内存做字节/半字读改写，与 VS-mode 内的 `amoadd.b`/`amoadd.h` 并发（需多 hart） | 记录性：HLV+HSV 为两次独立非原子访问、无原子性保证，并发下可观测到丢失更新，而 VS-mode 字节/半字 AMO 保持原子；多 hart 未就绪时 SKIP（与 HZLRSC-40/HZAMO-31/HZACAS-35 同理） |
 
 > [!NOTE]
-> - 本组所有测试必须在运行时通过 `HAS_H_EXT()` 检测 H 扩展；Zabha 支持以平台配置 `ZABHA_SUPPORTED` 宏为准，并以 trap-armed 执行字节/半字 AMO 二次探测，不满足时全组 TEST_SKIP；Zabha 依赖 Zaamo（进而依赖 A 扩展），故本组以 `ZAAMO_SUPPORTED`/`A_SUPPORTED` 亦满足为隐式前提；4.7 的 `amocas.b/h` 另依赖 Zacas（`ZACAS_SUPPORTED`），未实现时相应用例（HZABHA-32~36）TEST_SKIP。
+> - 本组所有测试必须以平台配置 `H_SUPPORTED` 宏为准检测 H 扩展；Zabha 支持以平台配置 `ZABHA_SUPPORTED` 宏为准，并以 trap-armed 执行字节/半字 AMO 二次探测，不满足时全组 TEST_SKIP；Zabha 依赖 Zaamo（进而依赖 A 扩展），故本组以 `ZAAMO_SUPPORTED`/`A_SUPPORTED` 亦满足为隐式前提；4.7 的 `amocas.b/h` 另依赖 Zacas（`ZACAS_SUPPORTED`），未实现时相应用例（HZABHA-32~36）TEST_SKIP。
 > - **异常类别断言必须精确**：字节/半字 AMO 与 `amocas.b/h` 的**全部**异常归 store/AMO 类（misaligned=6、access fault=7、page fault=15、guest-page fault=23），依据 `norm:mcause_exccode_st_sc_amo`（byte/halfword AMO 属 AMO 指令族，与宽度无关）与 `norm:store_page_fault_no_w` 配套 NOTE。断言**绝不**得接受 load 类（4/5/13/21）；隐式 VS-stage 遍历 GPF 报 cause=23（`norm:H_vm_gpapriv`）。
 > - **cause=22 为强制负向断言（有效指令）**：HZABHA-02/03/32 中 guest 字节/半字 AMO 与 amocas.b/h 若报 virtual-instruction exception 即违反 SPEC，应保持失败并记录至 `bugs/` 目录，不得放宽断言。
 > - **htinst funct3 宽度保留为 Zabha 特有强制维度**：HZABHA-16/35 须实测确认框架 `hyp_transform_mem_inst()` 的 opcode 0x2F 分支正确保留 funct3=000(.b)/001(.h)（bits14:12），使 HS-mode 能判定陷入访问宽度；不得假定与 word/dword AMO 共享分支即宽度编码自动正确，须以字节/半字实际指令字实测 golden 值。
@@ -793,7 +793,7 @@
 | HZLASR-36 | （记录型）HLV/HSV 无法复制 load-acquire/store-release 的原子性与 RCsc 排序 | HS-mode 以 `HLV.W`+`HSV.W` 序列对 guest 内存做读改写，与 VS-mode 内的 `lw.aq`/`sw.rl` 并发（需多 hart），观测单拷贝原子性与 acquire/release 排序 | 记录性：HLV/HSV 为**非原子、无排序注解**的独立访问，并发下可观测到丢失更新与排序违例，而 VS-mode load-acquire/store-release 保持单拷贝原子性与 RCsc 排序；HLV/HSV 无 aq/rl 变体，故无法复制排序注解。多 hart 未就绪时 SKIP（与 HZLRSC-40/HZAMO-31/HZACAS-35/HZABHA-39 同理） |
 
 > [!NOTE]
-> - 本组所有测试必须在运行时通过 `HAS_H_EXT()` 检测 H 扩展；Zalasr 支持以平台配置 `ZALASR_SUPPORTED`（或 `ZALASR1P0P0_SUPPORTED`）宏为准，并以 trap-armed 执行 load-acquire/store-release 二次探测，不满足时全组 TEST_SKIP；**Zalasr 可独立于 Zaamo/Zalrsc/Zabha 实现（`norm:zalasr_builds_on_amo`），故门控不以 A 扩展宏（`ZAAMO_SUPPORTED`/`A_SUPPORTED`）为前置**（区别于 Group 2/3/4）。
+> - 本组所有测试必须以平台配置 `H_SUPPORTED` 宏为准检测 H 扩展；Zalasr 支持以平台配置 `ZALASR_SUPPORTED`（或 `ZALASR1P0P0_SUPPORTED`）宏为准，并以 trap-armed 执行 load-acquire/store-release 二次探测，不满足时全组 TEST_SKIP；**Zalasr 可独立于 Zaamo/Zalrsc/Zabha 实现（`norm:zalasr_builds_on_amo`），故门控不以 A 扩展宏（`ZAAMO_SUPPORTED`/`A_SUPPORTED`）为前置**（区别于 Group 2/3/4）。
 > - **load-acquire 的 cause 归类为观测记录型（SPEC 歧义）**：zalasr.adoc 未明文规定 load-acquire/store-release 的异常 cause 归类（编码位于 AMO opcode 0x2F 空间），本组按功能语义（load-acquire 为纯加载→load 类、store-release 为纯存储→store/AMO 类）设计期望值，但**对 load-acquire 的具体 cause（HZLASR-07/12/22/23a/25/31）采用“记录实际观测值 + 与功能分类比对 + 偏差报告 bugs/”策略**，不武断强制判定；**store-release 的 cause（HZLASR-08/09/13/22/23b/26/32）因 store 与 AMO 同归 store/AMO 类而无歧义，为强制断言**。
 > - **load-acquire 到 R=1/W=0 页正常执行为架构必然（HZLASR-06/10 强制正向断言）**：独立原子加载必须能读只读内存，若平台按 AMO 语义要求写权限而报 cause 15，则 load-acquire 无法读取只读变量、违背 `norm:zalasr_atomic_ordered` 的“原子加载”语义，记录实际 cause 并作为疑似缺陷报告至 `bugs/`。
 > - **cause=22 为强制负向断言（有效指令）**：HZLASR-02/03 中 guest load-acquire/store-release 若报 virtual-instruction exception 即违反 SPEC（`hypervisor.adoc` 无任何条款对其施加 virtual-instruction 门控），应保持失败并记录至 `bugs/` 目录，不得放宽断言。
@@ -826,9 +826,9 @@
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
-| HZWRS-01 | HS-mode 执行 wrs.nto/wrs.sto | `hstatus.VTW`=0，HS-mode 以 `lr` 建立保留集并前置本地使能的 pending 软中断，依次执行 `wrs.nto` 与 `wrs.sto`（raw encoding） | 均正常完成，无异常 |
-| HZWRS-02 | VS-mode 执行 wrs.nto/wrs.sto | `hstatus.VTW`=0、`mstatus.TW`=0，VS-mode 同场景执行两条指令 | 均正常完成，不误触发 virtual-instruction exception |
-| HZWRS-03 | VU-mode 执行 wrs.nto/wrs.sto | 同上配置，VU-mode 执行两条指令 | 均正常完成，无异常 |
+| HZWRS-01 | HS-mode 执行 wrs.nto/wrs.sto | `hstatus.VTW`=0，HS-mode 以 `lr` 建立保留集并前置**委托至 S 级的**（`mideleg.SS`=1、`sstatus.SIE`=0）本地使能 pending 软中断，依次执行 `wrs.nto` 与 `wrs.sto`（raw encoding） | 均正常完成，无异常 |
+| HZWRS-02 | VS-mode 执行 wrs.nto/wrs.sto | `hstatus.VTW`=0、`mstatus.TW`=0，前置 VS 级 pending 软中断（`hvip.VSSIP` 经 `hideleg` 路由至 VS、`vsie.SSIE`=1、`vsstatus.SIE`=0），VS-mode 依次执行两条指令 | 均正常完成，不误触发 virtual-instruction exception |
+| HZWRS-03 | VU-mode 执行 wrs.nto/wrs.sto | 同上配置，但 VU-mode 无法维持 pending 唤醒源（任何本地使能中断的目标特权级均高于 U，进入 VU-mode 即被取走），改为以看门狗 M-timer（MTIE+MIE）兑底：`wrs` 可合法停顿，M-timer 到期打断停顿并恢复执行 | 两条指令均在有限时间内完成，无同步异常（trap 记录为空或仅含 M-timer 中断） |
 
 ### 6.2 hstatus.VTW 门控（VS/VU-mode wrs.nto）
 
@@ -850,18 +850,18 @@
 | HZWRS-12 | VS-mode 下 TW=1 单独生效 | `mstatus.TW`=1、`hstatus.VTW`=0，VS-mode 执行 `wrs.nto` | illegal-instruction exception (cause=2)（对照 `Hypervisor_CSR_test_plan.md` HSTAT-06 的 WFI 语义） |
 
 > [!NOTE]
-> - 本组所有测试必须在运行时通过 `HAS_H_EXT()` 检测 H 扩展，并以 trap-armed raw encoding 探测 Zawrs 支持（未实现时全套 TEST_SKIP）；Zawrs 依赖 Zalrsc，用例须先以 `lr` 建立保留集（该 `lr` 的语义验证归 Group 1，本组仅将其作为前置手段）。
+> - 本组所有测试必须以平台配置 `H_SUPPORTED` 宏为准检测 H 扩展，并以 trap-armed raw encoding 探测 Zawrs 支持（未实现时全套 TEST_SKIP）；Zawrs 依赖 Zalrsc，用例须先以 `lr` 建立保留集（该 `lr` 的语义验证归 Group 1，本组仅将其作为前置手段）。
 > - 与 WFI/VTW 用例（HSTAT-04）同样存在时序依赖：VTW 异常要求 `wrs.nto` "未在实现限定时间内完成"。若实现按 `norm:Zawrs_stall_terminate` 以极短时长提前终止停顿导致异常不触发，应保持用例失败并记录至 `bugs/` 目录，不得放宽断言。
 > - HZWRS-06 为记录型用例：`norm:vtw_virtinstr` 允许实现在 VTW=1 时总是触发 virtual-instruction（即使存在被全局屏蔽的 pending 中断），因此"立即完成"与"报 cause=22"均为合法实现；用例仅记录实现选择并约束异常类型（若触发必须为 cause=22），同时避免依赖实现停顿时长。
 > - HZWRS-08/09 验证异常类型判定：`mstatus.TW`=1 时按 `norm:Zawrs_priv_illegal_instr_excp` 报 illegal-instruction (cause=2)，不得报 virtual-instruction；断言必须使用精确 cause 常量。
-> - 中断环境：本组 VS/VU 用例需在受控中断环境下执行（HZWRS-01~03、HZWRS-06 需前置本地使能的 pending 中断；HZWRS-04/05 需屏蔽所有本地使能中断），避免中断递送污染 trap 记录。
+> - 中断环境：本组 VS/VU 用例需在受控中断环境下执行（HZWRS-01~02、HZWRS-06 需前置本地使能的 pending 中断；HZWRS-04/05 需屏蔽所有本地使能中断），避免中断递送污染 trap 记录。**pending 唤醒源的特权级生存性**：未委托的 SSIP 目标为 M-mode，一旦 hart 降至 M 以下即被合法取走（`machine.adoc` `norm:intr_mip_mie_op` 条件 (a)：当前特权级低于目标模式即取中断），故 HS-mode 用例必须先将 SSIP 委托至 S 级（`mideleg.SS`=1，配合 `sstatus.SIE`=0 使其在 HS-mode 下保持 pending）；VS-mode 用例使用 `hvip.VSSIP`（VS 级目标，`vsstatus.SIE`=0 下保持 pending）；VU-mode 下任何 pending 使能中断都会在进入 VU-mode 时被取走，改用看门狗兜底验证“不永久挂死”。
 > - Zawrs 非 Hypervisor 场景（编码与可用性、停顿与恢复、TW 基础行为）由 `Zawrs_test_plan.md` 覆盖；`hstatus.VTW`/`mstatus.TW` 对 WFI 的基础门控由 `Hypervisor_CSR_test_plan.md`（HSTAT-04/06）覆盖，本组不重复。
 
 ---
 
 ## 关键注意事项
 
-1. **扩展检测**：所有测试必须在运行时通过 `HAS_H_EXT()` 检测 H 扩展，不可用时 TEST_SKIP。Zalrsc 以平台配置 `ZALRSC_SUPPORTED` 宏为准并以 trap-armed raw encoding 二次探测；Zaamo 以平台配置 `ZAAMO_SUPPORTED`（或 `A_SUPPORTED`）宏为准并以 trap-armed 执行 AMO 二次探测；Zacas 以平台配置 `ZACAS_SUPPORTED` 宏为准并以 trap-armed 执行 amocas 二次探测（依赖 Zaamo，故 `ZAAMO_SUPPORTED`/`A_SUPPORTED` 亦须满足）；Zabha 以平台配置 `ZABHA_SUPPORTED` 宏为准并以 trap-armed 执行字节/半字 AMO 二次探测（依赖 Zaamo，故 `ZAAMO_SUPPORTED`/`A_SUPPORTED` 亦须满足；其 `amocas.b/h` 用例另需 `ZACAS_SUPPORTED`）；Zalasr 以平台配置 `ZALASR_SUPPORTED`（或 `ZALASR1P0P0_SUPPORTED`）宏为准并以 trap-armed 执行 load-acquire/store-release 二次探测（**可独立于 Zaamo/Zalrsc/Zabha 实现，不以 A 扩展宏为前置**，`norm:zalasr_builds_on_amo`）；Zawrs 无独立探测标志，以 trap-armed raw encoding（`wrs.nto`=0x00D00073、`wrs.sto`=0x01D00073）探测，未实现时全套 TEST_SKIP。
+1. **扩展检测**：所有测试必须以平台配置 `H_SUPPORTED` 宏为准检测 H 扩展，不可用时 TEST_SKIP。Zalrsc 以平台配置 `ZALRSC_SUPPORTED` 宏为准并以 trap-armed raw encoding 二次探测；Zaamo 以平台配置 `ZAAMO_SUPPORTED`（或 `A_SUPPORTED`）宏为准并以 trap-armed 执行 AMO 二次探测；Zacas 以平台配置 `ZACAS_SUPPORTED` 宏为准并以 trap-armed 执行 amocas 二次探测（依赖 Zaamo，故 `ZAAMO_SUPPORTED`/`A_SUPPORTED` 亦须满足）；Zabha 以平台配置 `ZABHA_SUPPORTED` 宏为准并以 trap-armed 执行字节/半字 AMO 二次探测（依赖 Zaamo，故 `ZAAMO_SUPPORTED`/`A_SUPPORTED` 亦须满足；其 `amocas.b/h` 用例另需 `ZACAS_SUPPORTED`）；Zalasr 以平台配置 `ZALASR_SUPPORTED`（或 `ZALASR1P0P0_SUPPORTED`）宏为准并以 trap-armed 执行 load-acquire/store-release 二次探测（**可独立于 Zaamo/Zalrsc/Zabha 实现，不以 A 扩展宏为前置**，`norm:zalasr_builds_on_amo`）；Zawrs 无独立探测标志，以 trap-armed raw encoding（`wrs.nto`=0x00D00073、`wrs.sto`=0x01D00073）探测，未实现时全套 TEST_SKIP。
 
 2. **指令注入约定**：LR/SC 若工具链不支持助记符则以 raw encoding 注入（AMO opcode=0x2F，funct5=00010(LR)/00011(SC)，funct3=010(.w)/011(.d)，bit26=aq、bit25=rl，LR 的 rs2 字段置 0）；AMO 基础原语（9 条 × .w/.d）已由 `common/mem_ops.h` 提供，aq/rl 变体若缺原语则以 raw encoding 注入（opcode=0x2F，funct5：amoadd=00000/amoswap=00001/amoxor=00100/amoor=00110/amoand=00111/amomin=01000/amomax=01001/amominu=01100/amomaxu=01101）；amocas 若工具链（`-march` 含 `zacas`）不支持助记符则以 raw encoding 注入（opcode=0x2F，funct5=00101，funct3=010(.w)/011(.d)/100(.q)，bit26=aq、bit25=rl），RV32 的 `amocas.d`/RV64 的 `amocas.q` 须使用偶数寄存器对（rd/rd+1、rs2/rs2+1）；字节/半字 AMO 若工具链（`-march` 含 `zabha`）不支持助记符则以 raw encoding 注入（opcode=0x2F，funct5 同 word AMO，**funct3=000(.b)/001(.h)**，bit26=aq、bit25=rl），`amocas.b/h` 为 funct5=00101 + funct3=000/001，保留字节/半字 lr/sc 为 funct5=00010(lr)/00011(sc) + funct3=000/001；load-acquire/store-release 若工具链（`-march` 含 `zalasr`）不支持助记符则以 raw encoding 注入（opcode=0x2F，load-acquire funct5=00110 且 rs2 字段置 0、aq(bit26)=1，store-release funct5=00111 且 rd 字段置 0、rl(bit25)=1，funct3=000(.b)/001(.h)/010(.w)/011(.d，RV64)），保留编码为 load funct5=00110+aq=0 / store funct5=00111+rl=0；wrs 指令一律以 raw encoding 注入（SYSTEM opcode=0x73）。上述指令统一 `.option norvc` 保证 4 字节指令长度，便于 trap handler 按 sepc+4 跳过故障指令。
 

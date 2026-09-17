@@ -1203,21 +1203,6 @@ CFLAGS  += $(HYP_EXT_FLAGS)
 ASFLAGS += $(HYP_EXT_FLAGS)
 ```
 
-### Sub-extension Registration Table
-
-When adding a new sub-extension, only register one row in this table + one `common/hyp/ext/<name>.h` (5–30 lines):
-
-| Sub-extension | REQUIRE Macro | Primary Common API Reuse | Primary Trap Fields | Primary Cause / Delegation Mask |
-|---------------|---------------|--------------------------|---------------------|---------------------------------|
-| Sha             | `SHA_REQUIRE`           | All                                        | —                        | — |
-| Shtvala         | `SHTVALA_REQUIRE`       | `delegate_causes_to_hs(MASK_GPF)` / `two_stage_build(FAULT_G_STAGE_*)` / `CHECK_HTVAL_NONZERO` | `htval`, `htinst`, `GVA` | `MASK_GPF` |
-| Shvstvala       | `SHVSTVALA_REQUIRE`     | `delegate_causes_to_vs(MASK_VS_PF\|MASK_VIRT_INST)` / `CHECK_VSTVAL_NONZERO` | `vstval`, `vscause` | `MASK_VS_PF \| MASK_VIRT_INST` |
-| Shvstvecd       | `SHVSTVECD_REQUIRE`     | `REQUIRE_STVEC_MODE(0)` / `delegate_causes_to_vs(...)` | `vsepc`, `vscause` | `MASK_VS_PF` |
-| Shvsatpa        | `SHVSATPA_REQUIRE`      | `csr_mode_field_supported(CSR_VSATP, ...)` | —                        | — |
-| Shgatpa         | `SHGATPA_REQUIRE`       | `REQUIRE_HGATP_MODE(*)` / `two_stage_build(FAULT_GPA_HIGH_BITS)` | `htval` | `MASK_GPF` |
-| Shcounterenw    | `SHCOUNTERENW_REQUIRE`  | `csr_warl_probe(CSR_HCOUNTEREN)`           | —                        | — |
-| Shlcofideleg    | `SHLCOFIDELEG_REQUIRE`  | `delegate_ints_to_vs(MASK_LCOFI_INT)`      | —                        | `MASK_LCOFI_INT` |
-
 ### Comparison with v1 Naming (To Prevent Future Naming Drift)
 
 | v1 Draft (Shtvala-specific) | v2 Generalized Naming |
