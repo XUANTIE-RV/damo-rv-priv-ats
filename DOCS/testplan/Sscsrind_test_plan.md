@@ -1,8 +1,20 @@
 # Sscsrind 扩展 Supervisor Mode 测试计划
 
-> 本文档描述 Sscsrind (Supervisor-level Indirect CSR Access) 扩展中 Supervisor Mode 相关功能的测试计划。Sscsrind 扩展为 S-mode 提供间接 CSR 访问机制（siselect/sireg\*），并在 H 扩展存在时提供 VS-level 间接 CSR 访问（vsiselect/vsireg\*）。
->
-> 生成时间：2026-06-25
+本文档描述 Sscsrind (Supervisor-level Indirect CSR Access) 扩展中 Supervisor Mode 相关功能的测试计划。Sscsrind 扩展为 S-mode 提供间接 CSR 访问机制（siselect/sireg\*），并在 H 扩展存在时提供 VS-level 间接 CSR 访问（vsiselect/vsireg\*）。
+
+---
+
+## 本文档覆盖的 SPEC 章节
+
+本方案依据以下 RISC-V 官方规范（本地路径）：
+
+- `SPEC/riscv-isa-manual/src/priv/smcsrind.adoc` — Smcsrind/Sscsrind：siselect/sireg\*、vsiselect/vsireg\* 行为、访问异常、Smstateen 交互
+- `SPEC/riscv-isa-manual/src/priv/smstateen.adoc` — Smstateen：mstateen0[60]、hstateen0[60] 对间接 CSR 的门控
+- `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — Hypervisor：VS/VU-mode 下 virtual-instruction 异常机制
+
+官方仓库：
+
+- https://github.com/riscv/riscv-isa-manual （对应仓库内 src/priv/smcsrind.adoc、src/priv/smstateen.adoc、src/priv/hypervisor.adoc）
 
 ---
 
@@ -27,6 +39,8 @@
 ---
 
 ## 规范依据
+
+本方案引用的规范点均来自 `smcsrind.adoc`。
 
 | 规范 ID | 来源 | 描述（英文） | 描述（中文） |
 |---------|------|-------------|-------------|
@@ -187,71 +201,9 @@
 > - **测试职责**：验证 VS-mode 通过 sireg* 的硬件重映射访问 vsireg* 的行为，以及 HS-mode/VS-mode 的间接 CSR 交互
 > - **ID 映射**：SSCSRIND-HYP-01~06 → HCROSS-SSCSRIND-28~33
 
-### 代码示例
+### 实现要点
 
-> **注意**：以下代码示例仅保留非 H 扩展场景的测试（Group 1 和 Group 4.1）。H 扩展相关测试的代码示例请参见 `Hypervisor_cross_test_plan.md` Group 11。
-
-```c
-/* SSCSRIND-SCSR-03: siselect minimum range 0..0xFFF */
-TEST_REGISTER(test_sscsrind_scsr_03);
-bool test_sscsrind_scsr_03(void) {
-    TEST_BEGIN("SSCSRIND-SCSR-03: siselect minimum range 0..0xFFF");
-
-    if (!(CSRR(misa) & (1UL << ('S' - 'A')))) {
-        TEST_SKIP("S-mode not implemented");
-    }
-
-    /* Ensure Smstateen allows S-mode access */
-    if (platform_has_smstateen()) {
-        CSRS(0x30C, (1ULL << 60));  /* mstateen0[60] = 1 */
-    }
-
-    goto_priv(PRIV_S);
-
-    /* Test several values within the 0..0xFFF range */
-    uintptr_t test_vals[] = {0, 1, 0x100, 0x800, 0xFFF};
-    for (int i = 0; i < 5; i++) {
-        PRIV_DO(CSRW(0x150, test_vals[i]));  /* siselect */
-        /* WARL: writing should not cause exception.
-         * Readback should be a legal value. */
-    }
-
-    goto_priv(PRIV_M);
-    TEST_ASSERT("siselect accepts 0..0xFFF range", 1);
-
-    TEST_END();
-}
-
-/* SSCSRIND-STA-01: mstateen0[60]=0 blocks S-mode siselect */
-TEST_REGISTER(test_sscsrind_sta_01);
-bool test_sscsrind_sta_01(void) {
-    TEST_BEGIN("SSCSRIND-STA-01: mstateen0[60]=0 blocks S-mode siselect");
-
-    if (!platform_has_smstateen()) {
-        TEST_SKIP("Smstateen not implemented");
-    }
-
-    uintptr_t orig = CSRR(0x30C);  /* mstateen0 */
-
-    /* Clear CSRIND bit (bit 60) */
-    CSRC(0x30C, (1ULL << 60));
-
-    /* S-mode tries to read siselect */
-    goto_priv(PRIV_S);
-    PRIV_DO(CSRR(0x150));  /* siselect */
-    goto_priv(PRIV_M);
-    CHECK_TRAP("illegal-instruction on S-mode siselect read",
-               CAUSE_ILLEGAL_INST);
-
-    /* Restore */
-    CSRW(0x30C, orig);
-    TEST_END();
-}
-
-/* NOTE: H-extension code examples (test_sscsrind_vi_01, test_sscsrind_sta_10,
- * test_sscsrind_hyp_01) have been moved to Hypervisor_cross_test_plan.md Group 11.
- * See HCROSS-SSCSRIND-11~33 for H-dependent test implementations. */
-```
+本文档仅保留非 H 扩展场景的测试（Group 1 和 Group 4.1）。H 扩展相关测试已迁移至 `Hypervisor_cross_test_plan.md` Group 11，具体实现参见该文档。
 
 ---
 
@@ -268,51 +220,13 @@ bool test_sscsrind_sta_01(void) {
 
 ## 测试实现说明
 
-### 文件组织
-
-```
-damo-priv-test/
-├── Sscsrind/
-│   ├── Makefile
-│   ├── kernel.ld
-│   ├── main.c
-│   └── tests/
-│       ├── test_sscsrind_smode.c      # Group 1: S-mode CSR 基本功能
-│       └── test_sscsrind_stateen.c    # Group 4.1: State-Enable 控制 (S-mode only)
-│
-│   注意：以下 Group 已迁移到 Hypervisor_cross_test_plan.md Group 11：
-│   - Group 2 (VS-level CSR) → HCROSS-SSCSRIND-01~10
-│   - Group 3 (Virtual-Instruction) → HCROSS-SSCSRIND-11~21
-│   - Group 4.2/4.3 (State-Enable H-ext) → HCROSS-SSCSRIND-22~27
-│   - Group 5 (Hypervisor 交叉) → HCROSS-SSCSRIND-28~33
-```
-
 ### 运行时检测
 
-```c
-static bool platform_has_sscsrind(void) {
-    /* Check if siselect CSR is accessible */
-    trap_expect_begin();
-    CSRR(0x150);  /* siselect */
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-    return !trapped;
-}
+本方案需要在运行时检测以下能力：
 
-static bool platform_has_h_ext(void) {
-    /* Check H extension via misa */
-    uintptr_t misa = CSRR(misa);
-    return (misa & (1UL << ('H' - 'A'))) != 0;
-}
-
-static bool platform_has_smstateen(void) {
-    trap_expect_begin();
-    CSRR(0x30C);  /* mstateen0 */
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-    return !trapped;
-}
-```
+- **Sscsrind 存在性**：尝试在 M-mode 读取 `siselect`（0x150），若触发 illegal-instruction 则未实现，相关用例 SKIP。
+- **Smstateen 存在性**：尝试在 M-mode 读取 `mstateen0`（0x30C），若触发 illegal-instruction 则未实现，Group 4.1 SKIP。
+- **H 扩展存在性**：通过 `misa.H` 位判定。本方案仅保留非 H 场景用例，H 扩展相关用例均已迁移。
 
 ### 关键注意事项
 
@@ -330,23 +244,17 @@ static bool platform_has_smstateen(void) {
 
 4. **宽度特性**：siselect/sireg* 和 vsiselect/vsireg* 的宽度始终为当前 XLEN，而非 SXLEN/VSXLEN。在 MXLEN=64、SXLEN=32 的配置下，M-mode 访问 siselect 为 64 位，S-mode 访问为 32 位。
 
-5. **框架修改**：需在 `common/encoding.h` 中添加 CSR 地址定义：
-   ```c
-   #define CSR_SISELECT   0x150
-   #define CSR_SIREG      0x151
-   #define CSR_SIREG2     0x152
-   #define CSR_SIREG3     0x153
-   #define CSR_SIREG4     0x155
-   #define CSR_SIREG5     0x156
-   #define CSR_SIREG6     0x157
-   #define CSR_VSISELECT  0x250
-   #define CSR_VSIREG     0x251
-   #define CSR_VSIREG2    0x252
-   #define CSR_VSIREG3    0x253
-   #define CSR_VSIREG4    0x255
-   #define CSR_VSIREG5    0x256
-   #define CSR_VSIREG6    0x257
-   ```
+5. **CSR 地址定义**：需在公共框架的 CSR 地址定义中添加：
+
+   | 名称 | 地址 | 名称 | 地址 |
+   |------|------|------|------|
+   | siselect | 0x150 | vsiselect | 0x250 |
+   | sireg | 0x151 | vsireg | 0x251 |
+   | sireg2 | 0x152 | vsireg2 | 0x252 |
+   | sireg3 | 0x153 | vsireg3 | 0x253 |
+   | sireg4 | 0x155 | vsireg4 | 0x255 |
+   | sireg5 | 0x156 | vsireg5 | 0x256 |
+   | sireg6 | 0x157 | vsireg6 | 0x257 |
 
 6. **与其他测试计划的交叉引用**：
    - Smstateen MSTA-CSRIND-01~04：从 Smstateen 角度验证 bit 60 控制。SSCSRIND-STA-01~04 从 Sscsrind 角度验证同一规范点。实现时选择一处，另一处交叉引用。
@@ -368,7 +276,7 @@ static bool platform_has_smstateen(void) {
 
 ---
 
-## 覆盖率矩阵
+## 附录 A：规范点覆盖矩阵
 
 | 规范 ID | 覆盖的测试 ID（本文档） | 已迁移到 Hypervisor_cross |
 |---------|------------------------|--------------------------|

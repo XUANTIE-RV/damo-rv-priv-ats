@@ -4,9 +4,20 @@
 
 本测试计划覆盖 RISC-V Ssdbltrp（Supervisor-level Double Trap）扩展的所有核心功能点。该扩展通过在 `sstatus` 中引入 SDT（S-mode-disable-trap）位和在 `menvcfg`/`henvcfg` 中引入 DTE（Double-Trap Enable）位来解决低于 M 特权级的双陷阱问题。
 
-本测试计划依据 `SPEC/ssdbltrp.adoc`、`SPEC/supervisor.adoc`（supv-double-trap 章节）和 `SPEC/machine.adoc`（menvcfg.DTE、medeleg[16]、MRET/SRET 清除行为）中的规范点（norm 标记）编写。
-
 ### 本文档覆盖的 SPEC 章节
+
+本方案依据以下 RISC-V 官方规范（本地路径）：
+
+- `SPEC/riscv-isa-manual/src/priv/ssdbltrp.adoc` — Ssdbltrp 扩展：DTE/SDT 字段引入、M-mode 关键错误处理路径
+- `SPEC/riscv-isa-manual/src/priv/supervisor.adoc` — sstatus.SDT 字段操作、SDT/SIE 互斥、trap 交付、SRET 清除
+- `SPEC/riscv-isa-manual/src/priv/machine.adoc` — menvcfg.DTE 使能控制、medeleg[16] 只读零、MRET/SRET/MNRET 对 SDT/MDT 的跨模式清除、mtval2 依赖
+
+官方仓库：
+
+- https://github.com/riscv/riscv-isa-manual （对应仓库内 src/priv/ssdbltrp.adoc、src/priv/supervisor.adoc、src/priv/machine.adoc）
+
+本方案覆盖的 SPEC 章节要点：
+
 - Ssdbltrp Extension（`ssdbltrp.adoc`：扩展概述、DTE/SDT 字段引入）
 - Double Trap Control in `sstatus` Register（`supervisor.adoc`：SDT 字段操作、SDT/SIE 互斥、trap 交付、SRET 清除）
 - `menvcfg`.DTE（`machine.adoc`：DTE 使能控制、DTE=0 时全局禁用）
@@ -14,6 +25,7 @@
 - MRET/SRET/MNRET 清除 SDT（`machine.adoc`：跨模式返回时 SDT 清除行为）
 
 ### 由其他测试计划覆盖
+
 - M-mode double trap（`mstatus`.MDT 字段行为） → `Smdbltrp_test_plan.md`
 - Hypervisor 基本功能 → `Hypervisor_CSR_test_plan.md`、`Hypervisor_Interrupts_test_plan.md`、`Hypervisor_Exceptions_test_plan.md`
 - Smrnmi 交互 → `smrnmi_test_plan.md`
@@ -23,7 +35,7 @@
 
 ## 覆盖的规范点
 
-本章节列出本文档 Groups 1-7 所有测试组中引用的规范点（norm ID），已去重并按字母顺序排列。
+本章节列出本文档 Groups 1-9 所有测试组中引用的规范点（norm ID），已去重并按字母顺序排列。
 
 > **注意**：Hypervisor 相关规范点（`norm:henvcfg_DTE`、`norm:henvcfg_dte_op`、`norm:vsstatus_SDT`、`norm:vsstatus_sdt_op`、`norm:vsstatus_sdt_clr_mret_sret`、`norm:vsstatus_sdt_clr_mnret`、`norm:sret_dt`、`norm:HS_mode_invoke_error`）已迁移至 `Hypervisor_cross_test_plan.md` Group 12。
 
@@ -33,14 +45,16 @@
 | `norm:menvcfg_DTE` | The Ssdbltrp extension adds the `menvcfg`.DTE field. | Ssdbltrp 扩展添加 `menvcfg`.DTE 字段。 |
 | `norm:menvcfg_dte_op` | The Ssdbltrp extension adds the double-trap-enable (DTE) field in `menvcfg`. When `menvcfg`.DTE is zero, the implementation behaves as though Ssdbltrp is not implemented. When Ssdbltrp is not implemented `sstatus`.SDT, `vsstatus`.SDT, and `henvcfg`.DTE bits are read-only zero. | Ssdbltrp 扩展向 `menvcfg` 添加 DTE 字段。`menvcfg`.DTE=0 时行为如同未实现 Ssdbltrp；此时 `sstatus`.SDT、`vsstatus`.SDT 和 `henvcfg`.DTE 均为只读零。 |
 | `norm:medeleg_16_no_rd0` | The `medeleg`[16] is read-only zero as double trap is not delegatable. | `medeleg`[16] 为只读零，因为 double trap 异常不可委托。 |
+| `norm:mstatus_mdt_clr_mret_sret` | If the Ssdbltrp extension is implemented, and the new privilege mode is U, VS, or VU, then `mstatus`.MDT is also set to 0 by MRET or SRET in M-mode. | 若实现 Ssdbltrp，MRET 或 M-mode 中的 SRET 新模式为 U、VS 或 VU 时，`mstatus`.MDT 也被清零。 |
 | `norm:mtval2_Ssdbltrap` | The Ssdbltrp extension requires the implementation of the `mtval2` CSR. | Ssdbltrp 扩展要求实现 `mtval2` CSR。 |
+| `norm:mtval2_val` | The `mtval2` register is an SXLEN-bit read-write register. | `mtval2` 是 SXLEN 位读写寄存器，其值在 double-trap 交付时保存原始 trap 的 mcause 值。 |
 | `norm:sstatus_SDT` | The Ssdbltrp extension adds the `sstatus`.SDT field. | Ssdbltrp 扩展添加 `sstatus`.SDT 字段。 |
 | `norm:sstatus_sdt` | The S-mode-disable-trap (SDT) bit is a WARL field introduced by the Ssdbltrp extension to address double trap at privilege modes lower than M. | SDT 位是 Ssdbltrp 扩展引入的 WARL 字段，用于处理低于 M 特权级的双陷阱。 |
 | `norm:sstatus_sdt_clr_mnret` | If the Ssdbltrp extension is also implemented, and the new privilege mode is U, VS, or VU, then `sstatus`.SDT is also set to 0 (by MNRET). | 若同时实现 Ssdbltrp，MNRET 新模式为 U、VS 或 VU 时，`sstatus`.SDT 也被清零。 |
 | `norm:sstatus_sdt_clr_mret_sret` | If the Ssdbltrp extension is also implemented, and the new privilege mode is U, VS, or VU, then `sstatus`.SDT is also set to 0 (by MRET or SRET in M-mode). | 若同时实现 Ssdbltrp，MRET 或 M-mode 中的 SRET 新模式为 U、VS 或 VU 时，`sstatus`.SDT 也被清零。 |
 | `norm:sstatus_sdt_sret` | An SRET instruction sets the SDT bit to 0. | SRET 指令将 SDT 位清零。 |
 | `norm:sstatus_sdt_sstatus_sie_overwrite` | When the SDT bit is set to 1 by an explicit CSR write, the SIE bit is cleared to 0. This clearing occurs regardless of the value written, if any, to the SIE bit by the same write. The SIE bit can only be set to 1 by an explicit CSR write if the SDT bit is being set to 0 by the same write or is already 0. | 通过显式 CSR 写入将 SDT 设为 1 时，SIE 被清零。无论同次写入中 SIE 的值如何，此清零均发生。仅当 SDT 在同次写入中被设为 0 或已为 0 时，SIE 才能被显式 CSR 写入设为 1。 |
-| `norm:sstatus_sdt_trap` | When a trap is to be taken into S-mode, if the SDT bit is currently 0, it is then set to 1, and the trap is delivered as expected. However, if SDT is already set to 1, then this is an unexpected trap. In the event of an unexpected trap, a double-trap exception trap is delivered into M-mode. To deliver this trap, the hart writes registers, except `mcause` and `mtval2`, with the same information that the unexpected trap would have written if it was taken into M-mode. The `mtval2` register is then set to what would be otherwise written into the `mcause` register by the unexpected trap. The `mcause` register is set to 16, the double-trap exception code. | trap 交付到 S-mode 时，若 SDT=0，则设 SDT=1 并正常交付。若 SDT=1，则为 unexpected trap，产生 double-trap 异常交付到 M-mode：除 `mcause` 和 `mtval2` 外，写入与 unexpected trap 交付到 M-mode 时相同的 CSR 信息；`mtval2` 设为 unexpected trap 原本写入 `mcause` 的值；`mcause` 设为 16（double-trap 异常码）。 |
+| `norm:sstatus_sdt_trap` | When a trap is to be taken into S-mode, if the SDT bit is currently 0, it is then set to 1, and the trap is delivered as expected. However, if SDT is already set to 1, then this is an unexpected trap. In the event of an unexpected trap, a double-trap exception trap is delivered into M-mode. The `mtval2` register is then set to what would be otherwise written into the `mcause` register by the unexpected trap. The `mcause` register is set to 16, the double-trap exception code. | trap 交付到 S-mode 时，若 SDT=0，则设 SDT=1 并正常交付。若 SDT=1，则为 unexpected trap，产生 double-trap 异常交付到 M-mode：`mtval2` 设为 unexpected trap 原本写入 `mcause` 的值；`mcause` 设为 16（double-trap 异常码）。 |
 
 ---
 
@@ -61,7 +75,7 @@
 | SDT-04 | SDT 同次写入清零时允许 SIE=1 | 同时写 sstatus.SDT=0 和 SIE=1 | SIE=1 且 SDT=0（同次写入清零 SDT 允许设置 SIE） |
 | SDT-05 | SDT=0 时允许 SIE=1 | 设 sstatus.SDT=0，然后写 sstatus.SIE=1 | SIE=1（SDT=0 时 SIE 可正常设置） |
 | SDT-06 | trap 到 S-mode 时 SDT 自动设为 1 | 设 sstatus.SDT=0，从 U-mode 触发 ecall trap 到 S-mode | S-mode trap handler 中读 sstatus.SDT=1 |
-| SDT-07 | trap 正常交付时 SDT 从 0 变 1 | 设 SDT=0、SIE=1，触发 S-mode timer interrupt | trap 正常交付，SDT 被硬件设为 1，SIE 被硬件清零 |
+| SDT-07 | trap 正常交付时 SDT 从 0 变 1 | 设 SDT=0、SIE=1，触发 S-mode timer interrupt | trap 正常交付，SDT 被设为 1，SIE 被清零 |
 
 ---
 
@@ -70,7 +84,7 @@
 **规范依据**：
 - `norm:sstatus_sdt_trap`：SDT=1 时为 unexpected trap，double-trap 异常交付 M-mode（mcause=16, mtval2=原始 cause）
 - `norm:M_mode_invoke_error`：M-mode 可在 S/HS-mode 双陷阱时调用关键错误处理器
-- `norm:mstatus_sdt_clr_mret_sret`：MRET 新模式为 U 时清 sstatus.SDT（来自 `machine.adoc`，在 M-mode double-trap handler 返回时使用）
+- `norm:mstatus_mdt_clr_mret_sret`：MRET 新模式为 U 时清 mstatus.MDT（M-mode double-trap handler 返回时使用）
 
 **测试职责**：验证 SDT=1 时 double-trap 异常的交付机制，包括 mcause=16 和 mtval2 中保存的原始 cause。
 
@@ -81,7 +95,7 @@
 | DT-03 | double-trap 时 mepc 保存正确 PC | 设 SDT=1，S-mode ECALL 触发 double-trap | mepc = ECALL 指令地址 |
 | DT-04 | double-trap 时 M-mode CSR 写入正确 | 设 SDT=1，S-mode 触发 trap 导致 double-trap | mstatus.MPP=S-mode, mstatus.MPIE=旧 MIE, mstatus.MIE=0 |
 | DT-05 | SDT=1 时非法指令触发 double-trap | 设 SDT=1，S-mode 执行非法指令 | M-mode trap handler 收到 mcause=16, mtval2=2（illegal-instruction cause） |
-| DT-06 | SDT=1 时中断触发 double-trap | 设 SDT=1、SIE=0（SDT=1 强制），在 S-mode 触发 machine timer interrupt（直接到 M-mode 的不算，需 S-mode 接收的中断） | 如果中断被委托到 S-mode 且 SDT=1，则 double-trap 到 M-mode |
+| DT-06 | SDT=1 时中断触发 double-trap | 设 SDT=1、SIE=0（SDT=1 强制），在 S-mode 触发被委托到 S-mode 的中断 | 若中断被委托到 S-mode 且 SDT=1，则 double-trap 到 M-mode |
 | DT-07 | SDT=0 时 trap 正常交付（无 double-trap） | 设 SDT=0，S-mode ECALL | trap 正常交付到 S-mode（或 M-mode，取决于 medeleg），mcause≠16 |
 | DT-08 | double-trap 时 mstatus.MDT 被设置 | 设 SDT=1，S-mode ECALL 触发 double-trap 到 M-mode | mstatus.MDT=1（M-mode 接收 trap 时 MDT 从 0 设为 1） |
 
@@ -167,27 +181,27 @@
 | DELEG-01 | medeleg[16] 只读零 | M-mode 尝试写 medeleg bit 16 = 1 | medeleg[16] 读回 0（只读零） |
 | DELEG-02 | double-trap 始终交付到 M-mode | 设 medeleg 全 1（包括尝试 bit 16），触发 double-trap | double-trap 始终交付到 M-mode（不会被委托到 S-mode） |
 
-
 ---
 
 ## Group 9. mtval2 CSR 依赖
 
 **规范依据**：
 - `norm:mtval2_Ssdbltrap`：Ssdbltrp 扩展要求 mtval2 CSR 的实现
+- `norm:mtval2_val`：mtval2 是 SXLEN 位读写寄存器
 - `norm:sstatus_sdt_trap`：double-trap 交付时 mtval2 写入原始 trap 的 cause
 
 **测试职责**：验证实现 Ssdbltrp 时 mtval2 CSR 的存在性，以及 double-trap / S-mode 交付路径对 mtval2 的写入行为。
 
-**实现映射**：本组是 Group 2 中 double-trap 交付行为（DT-02 的 mtval2 部分）的实际落地用例。探针通过 `ssdbltrp_run_s_probe()`（`Ssdbltrp/ssdbltrp_trap_asm.S`）在 S-mode 执行委托的非法指令触发；mtval2 的期望值取自 M-mode handler 入口捕获（`trap_m_entry_mtval2_hook`），因为后续任何 M-mode trap 入口都会重写 mtval2。
+**实现要点**：本组是 Group 2 中 double-trap 交付行为（DT-02 的 mtval2 部分）的实际落地用例。探针在 S-mode 执行被委托的非法指令触发；mtval2 的期望值取自 M-mode handler 入口捕获，因为后续任何 M-mode trap 入口都会重写 mtval2。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
-| MTVAL2-01 | mtval2 CSR 存在性与读写 | M-mode 读 mtval2（缺失即 illegal-instruction，显性失败）；WARL 写回稳定性；保持零（`norm:mtval2_val`） | Ssdbltrp 实现时 mtval2 必须存在、WARL 稳定、可保持 0 |
-| MTVAL2-02 | double-trap 时 mtval2 写入原始 cause | 阶段 1（canary）：SDT=0 探测，合规实现不得升级；阶段 2：SDT=1 触发 double-trap 到 M-mode，检查 mcause=16、mtval2=原始 cause（illegal=2）、入口 mstatus.MPP=S | SDT=0 无升级；SDT=1 时 mcause=16、mtval2=2、MPP=S（`norm:sstatus_sdt_trap`） |
+| MTVAL2-01 | mtval2 CSR 存在性与读写 | M-mode 读 mtval2（缺失即 illegal-instruction，显性失败）；WARL 写回稳定性；保持零 | Ssdbltrp 实现时 mtval2 必须存在、WARL 稳定、可保持 0 |
+| MTVAL2-02 | double-trap 时 mtval2 写入原始 cause | 阶段 1（canary）：SDT=0 探测，合规实现不得升级；阶段 2：SDT=1 触发 double-trap 到 M-mode，检查 mcause=16、mtval2=原始 cause（illegal=2）、入口 mstatus.MPP=S | SDT=0 无升级；SDT=1 时 mcause=16、mtval2=2、MPP=S |
 | MTVAL2-03 | S-mode 交付不修改 mtval2 | 预置 mtval2 哨兵值，SDT=0 时委托 trap 交付到 S-mode（SDT 0→1），返回 M-mode 后验证 | 无 double-trap 升级记录；S-mode 侧记录 cause=2 且 status 快照 SDT=1；mtval2 为哨兵值或 0（非 2，证明无 M-mode 升级参与） |
 
 **测试环境要求**：
-- double-trap 探针要求环境严格保持 `mstatus.MDT=0`（无 Smrnmi 时 MDT=1 下的 M-mode 异常即不可恢复 critical error）：套件以 `SMDBLTRP_SUPPORTED` 构建，`TEST_END`/`reset_state` 均调用 `clear_mdt()`，探针前显式清 SDT/MDT。
+- double-trap 探针要求环境严格保持 `mstatus.MDT=0`（无 Smrnmi 时 MDT=1 下的 M-mode 异常即不可恢复 critical error）：套件构建时启用 Smdbltrp 依赖支持，测试结束与状态复位阶段均清除 MDT，探针执行前显式清 SDT/MDT。
 
 ---
 
@@ -197,9 +211,9 @@
 |--------|--------|--------------|------|
 | P0（必须） | Group 1 (sstatus.SDT 字段) | SDT-01~07 | SDT 是 Ssdbltrp 的核心机制，SDT/SIE 互斥是安全保证 |
 | P0（必须） | Group 2 (Double Trap 交付) | DT-01~08 | Double-trap 异常交付是该扩展的核心功能 |
-| P0（必须） | Group 4 (menvcfg.DTE) | DTE-01~02, 05~07 | DTE 是全局使能控制，决定功能是否生效 |
+| P0（必须） | Group 4 (menvcfg.DTE) | DTE-01~02、DTE-05~07 | DTE 是全局使能控制，决定功能是否生效 |
 | P1（重要） | Group 3 (SRET 清除) | SRET-01~02 | SRET 清除 SDT 是 trap 返回的关键路径 |
-| P1（重要） | Group 7 (跨模式清除) | XRET-01~02, 07, 09, 11 | MRET/SRET/MNRET 对 SDT 的跨模式影响 |
+| P1（重要） | Group 7 (跨模式清除) | XRET-01~02、XRET-07、XRET-09、XRET-11 | MRET/SRET/MNRET 对 SDT 的跨模式影响 |
 | P2（建议） | Group 8 (medeleg[16]) | DELEG-01~02 | 验证不可委托约束 |
 | P2（建议） | Group 9 (mtval2 依赖) | MTVAL2-01~03 | CSR 依赖关系验证 |
 
@@ -207,130 +221,13 @@
 
 ---
 
-## 测试实现说明
-
-### 文件组织
-
-```
-damo-priv-test/
-├── Ssdbltrp/
-│   ├── Makefile                     # 定义 SMDBLTRP_SUPPORTED，激活 clear_mdt() 环境处理
-│   ├── kernel.ld
-│   ├── main.c                       # 安装 MDT 清除型 M/S trap 入口，探针环境检查
-│   ├── ssdbltrp_trap_asm.S          # M-mode MDT 清除入口 + S-mode 入口 + S-mode 探针 trampoline
-│   └── tests/
-│       ├── test_sdt_field.c           # Group 1: sstatus.SDT 字段行为
-│       ├── test_strap.c               # Group 2: S-mode Double Trap 交付（占位 SKIP，见 Group 8 实现映射注）
-│       ├── test_sret_sdt.c            # Group 3: SRET 对 SDT 的清除
-│       ├── test_menvcfg_dte.c        # Group 4: menvcfg.DTE 控制
-│       ├── test_xret_sdt.c           # Group 7: MRET/SRET/MNRET 跨模式清除
-│       ├── test_medeleg16.c          # Group 8: medeleg[16] 只读零
-│       └── test_mtval2_dep.c         # Group 9: mtval2 CSR 依赖（含 double-trap 交付行为验证）
-├── Hypervisor_Ssdbltrp/              # Hypervisor × Ssdbltrp 交叉测试
-│   └── tests/
-│       └── test_hcross_ssdbltrp_*.c  # Group 12: Hypervisor × Ssdbltrp
-└── common/                            # 复用通用框架（trap_dt_snap / mtval2 入口钩子 / probe 容错）
-```
-
-> **注意**：原 `test_henvcfg_dte.c`（Group 5）和 `test_vsstatus_sdt.c`（Group 6）已迁移至 `Hypervisor_Ssdbltrp/` 项目。
-
-### 运行时检测
-
-```c
-static bool check_ssdbltrp_extension(void) {
-    /* Probe menvcfg.DTE writability */
-    uintptr_t old = CSRR(menvcfg);
-    CSRW(menvcfg, old | MENVCFG_DTE);
-    uintptr_t new_val = CSRR(menvcfg);
-    CSRW(menvcfg, old);  /* restore */
-    return (new_val & MENVCFG_DTE) != 0;
-}
-
-static bool check_smdbltrp_extension(void) {
-    /* Probe mstatus.MDT writability */
-    uintptr_t old = CSRR(mstatus);
-    CSRC(mstatus, MSTATUS_MDT_BIT);  /* try to clear MDT */
-    uintptr_t new_val = CSRR(mstatus);
-    CSRW(mstatus, old);  /* restore */
-    return (new_val & MSTATUS_MDT_BIT) == 0;  /* MDT was cleared => Smdbltrp exists */
-}
-```
-
-### 通用测试模式
-
-#### 模式 1：SDT/SIE 互斥测试（Group 1）
-
-```c
-/* SDT-02: SDT=1 write clears SIE */
-TEST_REGISTER(test_sdt_02);
-bool test_sdt_02(void) {
-    TEST_BEGIN("SDT-02: SDT=1 write clears SIE regardless of SIE value");
-
-    if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
-
-    uintptr_t orig = CSRR(sstatus);
-
-    /* Set SIE=1 first */
-    CSRS(sstatus, SSTATUS_SIE);
-
-    /* Write SDT=1 with SIE=1 in same write */
-    uintptr_t write_val = (CSRR(sstatus) | SSTATUS_SDT | SSTATUS_SIE);
-    CSRW(sstatus, write_val);
-
-    uintptr_t val = CSRR(sstatus);
-    TEST_ASSERT("SIE cleared when SDT=1 written",
-                (val & SSTATUS_SIE) == 0);
-    TEST_ASSERT("SDT=1 successfully set",
-                (val & SSTATUS_SDT) != 0);
-
-    /* Restore */
-    CSRW(sstatus, orig);
-    TEST_END();
-}
-```
-
-#### 模式 2：Double-trap 交付测试（Group 2）
-
-```c
-/* DT-01: SDT=1 ecall triggers double-trap */
-TEST_REGISTER(test_dt_01);
-bool test_dt_01(void) {
-    TEST_BEGIN("DT-01: SDT=1 ecall triggers double-trap to M-mode");
-
-    if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
-    if (!check_smdbltrp_extension()) TEST_SKIP("Smdbltrp not available");
-
-    /* Setup: clear MDT, set SDT=1, delegate ecall to S-mode */
-    clear_mdt();
-    uintptr_t orig_sstatus = CSRR(sstatus);
-    CSRS(sstatus, SSTATUS_SDT);
-
-    /* Arm M-mode trap, switch to S-mode, execute ecall
-     * Since SDT=1, the ecall trap to S-mode becomes a double-trap to M-mode */
-    M_TRAP_EXPECT_BEGIN();
-    run_in_smode(_s_ecall_wrapper);
-    if (trap_was_triggered()) {
-        TEST_ASSERT_EQ("mcause = 16 (double-trap)",
-                       trap_get_cause(), 16);
-        TEST_ASSERT_EQ("mtval2 = 9 (ecall-from-S cause)",
-                       trap_get_mtval2(), 9);
-    } else {
-        TEST_ASSERT("double-trap should have been delivered", false);
-    }
-    M_TRAP_EXPECT_END();
-
-    CSRW(sstatus, orig_sstatus);
-    TEST_END();
-}
-```
-
-### 关键注意事项
+## 关键注意事项
 
 1. **扩展检测**：所有测试必须在运行时检测 Ssdbltrp 的可用性（通过 `menvcfg.DTE` 可写性），不可用时 TEST_SKIP。
 
 2. **Smdbltrp 依赖**：Double-trap 测试需要在 M-mode 处理 double-trap 异常。如果 Smdbltrp 未实现，M-mode 自身没有 MDT 保护，double-trap 到 M-mode 将导致 critical-error state（系统挂死），因此 double-trap 交付测试需同时检测 Smdbltrp。
 
-3. **MDT 清除**：在 M-mode 测试 double-trap 前，必须先清除 `mstatus.MDT`（使用 `clear_mdt()` 或 `M_TRAP_EXPECT_BEGIN()`），否则 M-mode trap 本身也会成为 unexpected trap。
+3. **MDT 清除**：在 M-mode 测试 double-trap 前，必须先清除 `mstatus.MDT`，否则 M-mode trap 本身也会成为 unexpected trap。
 
 4. **Smrnmi 依赖**：Group 7 中 XRET-09~11（MNRET 测试）需要 Smrnmi 扩展。通过检测 `mnstatus` CSR 的存在性判断，不存在时 TEST_SKIP。
 
@@ -340,14 +237,40 @@ bool test_dt_01(void) {
 
 7. **Hypervisor 测试**：需要 Hypervisor 扩展的测试（`henvcfg.DTE`、`vsstatus.SDT` 等）已迁移至 `Hypervisor_cross_test_plan.md`。
 
+任一平台违反 SPEC 时用例保持 FAIL，实现缺陷记录至 `bugs/` 目录。
+
+---
+
+## 附录 A：规范点覆盖矩阵
+
+| Norm ID | 覆盖的测试 ID | 覆盖状态 | 备注 |
+|---------|--------------|----------|------|
+| `norm:sstatus_SDT` | SDT-01、SDT-06、SDT-07 | 已覆盖 | sstatus.SDT 字段引入 |
+| `norm:sstatus_sdt` | SDT-01~05 | 已覆盖 | SDT WARL 属性 |
+| `norm:sstatus_sdt_sstatus_sie_overwrite` | SDT-02、SDT-03、SDT-04、SDT-05 | 已覆盖 | SDT/SIE 互斥 |
+| `norm:sstatus_sdt_trap` | SDT-06、SDT-07、DT-01~08、MTVAL2-02、MTVAL2-03 | 已覆盖 | trap 交付与 double-trap 升级 |
+| `norm:sstatus_sdt_sret` | SRET-01、SRET-02 | 已覆盖 | SRET 清零 SDT |
+| `norm:sstatus_sdt_clr_mret_sret` | XRET-01、XRET-02、XRET-07 | 已覆盖 | MRET/M-mode SRET 跨模式清零 |
+| `norm:sstatus_sdt_clr_mnret` | XRET-09、XRET-11 | 已覆盖 | MNRET 跨模式清零 |
+| `norm:mstatus_mdt_clr_mret_sret` | DT-04、DT-08、XRET-01 | 已覆盖 | M-mode 侧 MDT 清除路径 |
+| `norm:M_mode_invoke_error` | DT-01~08 | 已覆盖 | M-mode 关键错误处理入口 |
+| `norm:menvcfg_DTE` | DTE-01、DTE-07 | 已覆盖 | menvcfg.DTE 字段引入 |
+| `norm:menvcfg_dte_op` | DTE-01、DTE-02、DTE-05、DTE-06、DTE-07 | 已覆盖 | DTE 全局使能/禁用控制 |
+| `norm:medeleg_16_no_rd0` | DELEG-01、DELEG-02 | 已覆盖 | medeleg[16] 只读零 |
+| `norm:mtval2_Ssdbltrap` | MTVAL2-01、MTVAL2-02 | 已覆盖 | mtval2 CSR 依赖 |
+| `norm:mtval2_val` | MTVAL2-01、MTVAL2-02、MTVAL2-03 | 已覆盖 | mtval2 读写与写入语义 |
+
+**未覆盖规范点说明**：
+- Hypervisor 相关规范点（`norm:henvcfg_DTE`、`norm:henvcfg_dte_op`、`norm:vsstatus_SDT`、`norm:vsstatus_sdt_op`、`norm:vsstatus_sdt_clr_mret_sret`、`norm:vsstatus_sdt_clr_mnret`、`norm:sret_dt`、`norm:HS_mode_invoke_error`）：迁移至 `Hypervisor_cross_test_plan.md` Group 12，本方案不重复覆盖。
+
 ---
 
 ## 参考
 
-- `SPEC/ssdbltrp.adoc` — Ssdbltrp Double Trap Extension
-- `SPEC/supervisor.adoc` — Double Trap Control in sstatus Register (supv-double-trap)
-- `SPEC/machine.adoc` — menvcfg.DTE, medeleg[16], MRET/SRET SDT clearing
-- `SPEC/smrnmi.adoc` — Smrnmi Extension (MNRET interaction)
+- `ssdbltrp.adoc` — Ssdbltrp Double Trap Extension
+- `supervisor.adoc` — Double Trap Control in sstatus Register
+- `machine.adoc` — menvcfg.DTE、medeleg[16]、MRET/SRET SDT 清除
+- `smrnmi.adoc` — Smrnmi Extension（MNRET 交互）
 - `DOCS/testplan/Smdbltrp_test_plan.md` — Smdbltrp 扩展测试计划（Machine-level Double Trap）
 - `DOCS/testplan/Hypervisor_CSR_test_plan.md` — Hypervisor CSR 子集测试计划
 - `DOCS/testplan/Hypervisor_Interrupts_test_plan.md` — Hypervisor 中断子集测试计划

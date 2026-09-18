@@ -1014,18 +1014,6 @@ void platform_caps_probe(void);          /* 测试套件 main 入口调用一次
 #define REQUIRE_STVEC_MODE(m)      do { if (!(g_caps.stvec_modes & (1u<<(m)))) TEST_SKIP("stvec mode"); } while(0)
 ```
 
-子扩展层（每扩展 1 行）：
-```c
-/* common/hyp/ext/shtvala.h    */ #define SHTVALA_REQUIRE()      REQUIRE_EXT(has_shtvala)
-/* common/hyp/ext/shvstvala.h  */ #define SHVSTVALA_REQUIRE()    REQUIRE_EXT(has_shvstvala)
-/* common/hyp/ext/shvstvecd.h  */ #define SHVSTVECD_REQUIRE()    REQUIRE_EXT(has_shvstvecd)
-/* common/hyp/ext/shvsatpa.h   */ #define SHVSATPA_REQUIRE()     REQUIRE_EXT(has_shvsatpa)
-/* common/hyp/ext/shgatpa.h    */ #define SHGATPA_REQUIRE()      REQUIRE_EXT(has_shgatpa)
-/* common/hyp/ext/sha.h        */ #define SHA_REQUIRE()          REQUIRE_EXT(has_sha)
-/* common/hyp/ext/shcounterenw.h     */ #define SHCOUNTERENW_REQUIRE()    REQUIRE_EXT(has_shcounterenw)
-/* common/hyp/ext/shlcofideleg.h     */ #define SHLCOFIDELEG_REQUIRE()    REQUIRE_EXT(has_shlcofideleg)
-```
-
 ### 模块 13：通用委托封装（`common/hyp/hyp_csr.c` 扩展）
 
 不再为每种 trap 单独写 `delegate_xxx_to_hs`，统一改为掩码驱动：
@@ -1150,21 +1138,6 @@ ifdef ENABLE_SHLCOFIDELEG ; HYP_EXT_FLAGS += -DENABLE_SHLCOFIDELEG ; endif
 CFLAGS  += $(HYP_EXT_FLAGS)
 ASFLAGS += $(HYP_EXT_FLAGS)
 ```
-
-### 子扩展登记表
-
-新增子扩展时只需在此表登记一行 + 一个 `common/hyp/ext/<name>.h`（5–30 行）：
-
-| 子扩展 | REQUIRE 宏 | 主要复用通用 API | 主要 trap 字段 | 主要 cause / 委托 mask |
-|---|---|---|---|---|
-| Sha             | `SHA_REQUIRE`           | 全部                                       | —                        | — |
-| Shtvala         | `SHTVALA_REQUIRE`       | `delegate_causes_to_hs(MASK_GPF)` / `two_stage_build(FAULT_G_STAGE_*)` / `CHECK_HTVAL_NONZERO` | `htval`, `htinst`, `GVA` | `MASK_GPF` |
-| Shvstvala       | `SHVSTVALA_REQUIRE`     | `delegate_causes_to_vs(MASK_VS_PF\|MASK_VIRT_INST)` / `CHECK_VSTVAL_NONZERO` | `vstval`, `vscause` | `MASK_VS_PF \| MASK_VIRT_INST` |
-| Shvstvecd       | `SHVSTVECD_REQUIRE`     | `REQUIRE_STVEC_MODE(0)` / `delegate_causes_to_vs(...)` | `vsepc`, `vscause` | `MASK_VS_PF` |
-| Shvsatpa        | `SHVSATPA_REQUIRE`      | `csr_mode_field_supported(CSR_VSATP, ...)` | —                        | — |
-| Shgatpa         | `SHGATPA_REQUIRE`       | `REQUIRE_HGATP_MODE(*)` / `two_stage_build(FAULT_GPA_HIGH_BITS)` | `htval` | `MASK_GPF` |
-| Shcounterenw    | `SHCOUNTERENW_REQUIRE`  | `csr_warl_probe(CSR_HCOUNTEREN)`           | —                        | — |
-| Shlcofideleg    | `SHLCOFIDELEG_REQUIRE`  | `delegate_ints_to_vs(MASK_LCOFI_INT)`      | —                        | `MASK_LCOFI_INT` |
 
 ### 与 v1 命名的对照（避免日后命名漂移）
 

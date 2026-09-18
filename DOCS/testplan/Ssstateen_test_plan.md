@@ -6,9 +6,18 @@
 
 ### 1.1 规范来源
 
-- **规范文件**: `SPEC/smstateen.adoc`
-- **扩展名称**: Ssstateen (Supervisor-level State Enable Extension)
-- **关联扩展**: Smstateen (Machine-level superset)
+本方案依据以下 RISC-V 官方规范（本地路径）：
+
+- `SPEC/riscv-isa-manual/src/priv/smstateen.adoc` — Smstateen/Ssstateen：sstateen0-3、hstateen0-3 CSR 及其位定义、访问控制、异常行为
+- `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — Hypervisor：VS/VU-mode 与 virtual-instruction 异常机制（hstateen 相关部分）
+
+官方仓库：
+
+- https://github.com/riscv/riscv-isa-manual （对应仓库内 src/priv/smstateen.adoc、src/priv/hypervisor.adoc）
+
+**扩展名称**：Ssstateen (Supervisor-level State Enable Extension)
+
+**关联扩展**：Smstateen (Machine-level superset)
 
 ### 1.2 被测特性
 
@@ -71,6 +80,12 @@ Ssstateen 扩展是 Smstateen 的 supervisor-level 子集，仅包含 sstateen\*
 | `norm:hstateen0_context_op` | The CONTEXT bit in `hstateen0` controls access to the `scontext` CSR provided by the Sdtrig extension. | `hstateen0` 中的 CONTEXT 位控制对 Sdtrig 扩展提供的 `scontext` CSR 的访问。 |
 | `norm:mstateen_bit_correspondence` | For every bit with a defined purpose in an `sstateen` CSR, the same bit is defined in the matching `mstateen` CSR to control access below machine level to the same state. | 对于 `sstateen` CSR 中具有定义用途的每一位，匹配的 `mstateen` CSR 中定义了相同的位，以控制机器级别以下对相同状态的访问。 |
 
+**自行拆解的规范点**（SPEC 无独立 norm 标签）：
+
+| Norm ID | 中文说明 |
+|---------|----------|
+| `mstateen0_fcsr_roz` | misa.F=1 时 FCSR 位为只读零（从 `stateen0_fcsr_op` 与 `mstateen_lower_priv_roz` 推导） |
+
 ---
 
 ## 3. S-mode 测试组
@@ -102,13 +117,6 @@ Ssstateen 扩展是 Smstateen 的 supervisor-level 子集，仅包含 sstateen\*
 
 **预期结果**：
 - S-mode 读取 sstateen0 正常，无 illegal-instruction 异常
-
-**断言**：
-```
-CHECK_NO_TRAP("S-mode read sstateen0 should succeed");
-uint32_t val = read_csr(sstateen0);
-LOG_INFO("sstateen0 value = 0x%08x", val);
-```
 
 ---
 
@@ -146,12 +154,6 @@ LOG_INFO("sstateen0 value = 0x%08x", val);
 **预期结果**：
 - U-mode 访问自定义状态触发 illegal-instruction 异常
 
-**断言**：
-```
-EXPECT_TRAP(CAUSE_ILLEGAL_INSTRUCTION, read_custom_csr());
-CHECK_TRAP("U-mode custom CSR with sstateen0.C=0", CAUSE_ILLEGAL_INSTRUCTION);
-```
-
 ---
 
 ### Group 3：sstateen0 功能位
@@ -160,14 +162,14 @@ CHECK_TRAP("U-mode custom CSR with sstateen0.C=0", CAUSE_ILLEGAL_INSTRUCTION);
 - `norm:stateen0_c_op`：C 位 (bit 0) 控制自定义状态访问
 - `norm:stateen0_fcsr_op`：FCSR 位 (bit 1) 控制 Zfinx 场景 fcsr
 - `norm:stateen0_jvt_op`：JVT 位 (bit 2) 控制 Zcmt jvt CSR
-- `norm:mstateen0_fcsr_roz`：misa.F=1 时 FCSR 位为只读零（传播到 sstateen0）
+- `mstateen0_fcsr_roz`：misa.F=1 时 FCSR 位为只读零（传播到 sstateen0）
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 | 规范引用 |
 |---------|----------|----------|----------|----------|
 | SS-FUNC-01 | sstateen0.C 位可写 | S-mode 写 sstateen0.C=1 后读回 | C 位为 1（前提：mstateen0.C=1） | `norm:stateen0_c_op` |
 | SS-FUNC-02 | sstateen0.C=0 阻止 U-mode 自定义访问 | 设 sstateen0.C=0，U-mode 访问自定义 CSR | 触发 illegal-instruction 异常 | `norm:stateen0_c_op` |
 | SS-FUNC-03 | sstateen0.C=1 允许 U-mode 自定义访问 | 设 sstateen0.C=1，U-mode 访问自定义 CSR | 访问正常 | `norm:stateen0_c_op` |
-| SS-FUNC-04 | sstateen0.FCSR 位行为 (misa.F=1) | misa.F=1 时，sstateen0.FCSR 为只读零 | FCSR 位写 1 后读回仍为 0 | `norm:mstateen0_fcsr_roz` |
+| SS-FUNC-04 | sstateen0.FCSR 位行为 (misa.F=1) | misa.F=1 时，sstateen0.FCSR 为只读零 | FCSR 位写 1 后读回仍为 0 | `mstateen0_fcsr_roz` |
 | SS-FUNC-05 | sstateen0.FCSR=0 浮点指令非法 (misa.F=0) | 确保 misa.F=0、sstateen0.FCSR=0，U-mode 执行浮点指令 | 所有浮点指令触发 illegal-instruction 异常 | `norm:stateen0_fcsr_op` |
 | SS-FUNC-06 | sstateen0.JVT 位可写 | S-mode 写 sstateen0.JVT=1 后读回 | JVT 位为 1（前提：Zcmt 实现且 mstateen0.JVT=1） | `norm:stateen0_jvt_op` |
 | SS-FUNC-07 | sstateen0.JVT=0 阻止 U-mode jvt | 设 sstateen0.JVT=0，U-mode 读 jvt | 触发 illegal-instruction 异常 | `norm:stateen0_jvt_op` |
@@ -185,12 +187,6 @@ CHECK_TRAP("U-mode custom CSR with sstateen0.C=0", CAUSE_ILLEGAL_INSTRUCTION);
 
 **预期结果**：
 - 所有浮点指令均触发 illegal-instruction 异常，如同它们都访问 fcsr
-
-**断言**：
-```
-EXPECT_TRAP(CAUSE_ILLEGAL_INSTRUCTION, asm("fadd fa0, fa0, fa1"));
-CHECK_TRAP("FP instr illegal when misa.F=0 and FCSR=0", CAUSE_ILLEGAL_INSTRUCTION);
-```
 
 ---
 
@@ -229,19 +225,6 @@ CHECK_TRAP("FP instr illegal when misa.F=0 and FCSR=0", CAUSE_ILLEGAL_INSTRUCTIO
 **预期结果**：
 - 如果 sstateen0 某位为 RO1，则 mstateen0 同位也必须为 RO1
 
-**断言**：
-```
-clear_csr(sstateen0, test_bit);
-uint32_t ssta_val = read_csr(sstateen0);
-if (ssta_val & test_bit) {
-    /* sstateen0 该位为 RO1，回 M-mode 验证 mstateen0 */
-    goto_priv(PRIV_M);
-    clear_csr(mstateen0, test_bit);
-    uint64_t msta_val = read_csr(mstateen0);
-    TEST_ASSERT("mstateen0 same bit must also be RO1", msta_val & test_bit);
-}
-```
-
 ---
 
 ### Group 5：sstateen 异常行为
@@ -273,12 +256,6 @@ if (ssta_val & test_bit) {
 **预期结果**：
 - U-mode 读 jvt 触发 illegal-instruction 异常 (cause=2)
 
-**断言**：
-```
-EXPECT_TRAP(CAUSE_ILLEGAL_INSTRUCTION, read_csr(jvt));
-CHECK_TRAP("U-mode read jvt with sstateen0.JVT=0", CAUSE_ILLEGAL_INSTRUCTION);
-```
-
 ---
 
 ### Group 6：sstateen 初始化要求
@@ -304,12 +281,6 @@ CHECK_TRAP("U-mode read jvt with sstateen0.JVT=0", CAUSE_ILLEGAL_INSTRUCTION);
 
 **预期结果**：
 - sstateen0 读回值中所有可写位均为 0
-
-**断言**：
-```
-uint32_t val = read_csr(sstateen0);
-TEST_ASSERT_EQ("sstateen0 should be initialized to 0", val, 0);
-```
 
 ---
 
@@ -349,13 +320,6 @@ TEST_ASSERT_EQ("sstateen0 should be initialized to 0", val, 0);
 **预期结果**：
 - HS-mode 读取 hstateen0 正常，无 illegal-instruction 异常
 
-**断言**：
-```
-CHECK_NO_TRAP("HS-mode read hstateen0 should succeed");
-uint64_t val = read_csr(hstateen0);
-LOG_INFO("hstateen0 value = 0x%016lx", val);
-```
-
 ---
 
 ### Group 8：hstateen bit 63 控制 sstateen 访问
@@ -390,12 +354,6 @@ LOG_INFO("hstateen0 value = 0x%016lx", val);
 **预期结果**：
 - VS-mode 读取 sstateen0 触发 virtual-instruction 异常 (cause=22)
 
-**断言**：
-```
-EXPECT_TRAP(CAUSE_VIRTUAL_INSTRUCTION, read_csr(sstateen0));
-CHECK_TRAP("VS-mode access sstateen0 with hstateen0.SE0=0", CAUSE_VIRTUAL_INSTRUCTION);
-```
-
 ---
 
 ### Group 9：hstateen 对 VS-mode sstateen 的只读零传播
@@ -425,14 +383,6 @@ CHECK_TRAP("VS-mode access sstateen0 with hstateen0.SE0=0", CAUSE_VIRTUAL_INSTRU
 
 **预期结果**：
 - VS-mode 下 sstateen0.C 读回为 0（被 hstateen0 传播为只读零）
-
-**断言**：
-```
-write_csr(sstateen0, STATEEN0_C_BIT);
-uint32_t val = read_csr(sstateen0);
-TEST_ASSERT_EQ("sstateen0.C in VS-mode should be RO0 when hstateen0.C=0",
-               val & STATEEN0_C_BIT, 0);
-```
 
 ---
 
@@ -530,19 +480,6 @@ TEST_ASSERT_EQ("sstateen0.C in VS-mode should be RO0 when hstateen0.C=0",
 **预期结果**：
 - 如果 hstateen0 某位为 RO1，则 mstateen0 同位也必须为 RO1
 
-**断言**：
-```
-clear_csr(hstateen0, test_bit);
-uint64_t hsta_val = read_csr(hstateen0);
-if (hsta_val & test_bit) {
-    /* hstateen0 该位为 RO1，回 M-mode 检查 mstateen0 */
-    goto_priv(PRIV_M);
-    clear_csr(mstateen0, test_bit);
-    uint64_t msta_val = read_csr(mstateen0);
-    TEST_ASSERT("mstateen0 same bit must also be RO1", msta_val & test_bit);
-}
-```
-
 ---
 
 ### Group 12：hstateen 编码与 mstateen 一致性
@@ -571,47 +508,8 @@ if (hsta_val & test_bit) {
 **预期结果**：
 - hstateen0 的 C (bit 0)、FCSR (bit 1)、JVT (bit 2)、CONTEXT (bit 57)、IMSIC (bit 58)、AIA (bit 59)、CSRIND (bit 60)、ENVCFG (bit 62)、SE0 (bit 63) 位的位置与 mstateen0 完全一致
 
-**断言**：
-```
-/* 已知功能位掩码 */
-uint64_t known_bits = STATEEN0_C | STATEEN0_FCSR | STATEEN0_JVT |
-                      STATEEN0_CONTEXT | STATEEN0_IMSIC | STATEEN0_AIA |
-                      STATEEN0_CSRIND | STATEEN0_ENVCFG | STATEEN0_SE0;
-/* hstateen0 中这些位应与 mstateen0 位置一致 */
-TEST_ASSERT("hstateen0 known bits match mstateen0",
-            (hstateen0_mask & known_bits) == (mstateen0_mask & known_bits));
-```
-
 ---
 
-## 5. 验证计划
-
-### 5.1 自动化测试
-
-```bash
-# 编译 ssstateen 测试
-make ssstateen CROSS_COMPILER=/path/to/riscv64-unknown-elf-
-
-# 在 QEMU 上运行
-qemu-system-riscv64 -M virt -cpu max -bios none \
-    -kernel ssstateen/ssstateen_test.elf -m 256M -smp 1 -nographic
-
-# 在 Spike 上运行
-make spike-ssstateen CROSS_COMPILER=/path/to/riscv64-unknown-elf-
-
-# 在 Sail 上运行
-make sail-ssstateen CROSS_COMPILER=/path/to/riscv64-unknown-elf-
-```
-
-### 5.2 手动验证
-
-- 验证所有 normative rules 是否被至少一个测试用例覆盖
-- 检查 H 扩展相关测试（Group 7-12）在无 H 扩展的平台上被正确跳过
-- 确认 virtual-instruction 异常 (cause=22) 在 VS/VU 模式正确触发
-- 验证 RV32 特有的 hstateen0h 测试覆盖
-- 确认 mstateen 预配置正确，不影响 Ssstateen 独立测试的准确性
-
----
 
 ## 6. 测试判定标准
 
@@ -629,9 +527,9 @@ make sail-ssstateen CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 
 ---
 
-## 7. 覆盖率矩阵
+## 附录 A：规范点覆盖矩阵
 
-### 7.1 Normative Rules 覆盖追溯
+### A.1 Normative Rules 覆盖追溯
 
 | 规范引用 | 覆盖测试 ID |
 |----------|------------|
@@ -657,7 +555,7 @@ make sail-ssstateen CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | `norm:hstateen_bit_63_writable` | SS-HB63-01~02, SS-HB63-06 |
 | `norm:stateen0_c_op` | SS-UCTL-01~02, SS-FUNC-01~03 |
 | `norm:stateen0_fcsr_op` | SS-UCTL-06, SS-FUNC-04~05 |
-| `norm:mstateen0_fcsr_roz` | SS-FUNC-04 |
+| `mstateen0_fcsr_roz` | SS-FUNC-04 |
 | `norm:stateen0_jvt_op` | SS-UCTL-04~05, SS-FUNC-06~08 |
 | `norm:hstateen0_SE0_op` | SS-HSE0-01~03 |
 | `norm:hstateen0_envcfg_op` | SS-HENVCFG-01~03 |

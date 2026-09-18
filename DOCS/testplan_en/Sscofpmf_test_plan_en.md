@@ -6,11 +6,21 @@ This document describes the test plan for the Sscofpmf (Count Overflow and Privi
 
 ---
 
+## Specification Sections Covered by This Document
+
+This plan is based on the following RISC-V official specifications (local paths):
+
+- `SPEC/riscv-isa-manual/src/priv/sscofpmf.adoc` — Sscofpmf Extension for Count Overflow and Mode-Based Filtering, Version 1.0
+- `SPEC/riscv-isa-manual/src/priv/machine.adoc` — mhpmevent/mhpmcounter CSRs, mip/mie LCOFIP/LCOFIE, mideleg, mcounteren
+- `SPEC/riscv-isa-manual/src/priv/supervisor.adoc` — LCOFIP/LCOFIE bits in sip/sie
+
+Official repository:
+
+- https://github.com/riscv/riscv-isa-manual (corresponding files `src/priv/sscofpmf.adoc`, `src/priv/machine.adoc`, `src/priv/supervisor.adoc` in the repository)
+
+---
+
 ## Test Scope
-
-### Specification Source
-
-- `SPEC/sscofpmf.adoc` — Sscofpmf Extension for Count Overflow and Mode-Based Filtering, Version 1.0
 
 ### Key CSRs
 
@@ -21,46 +31,35 @@ This document describes the test plan for the Sscofpmf (Count Overflow and Privi
 | `hpmcounter3`–`hpmcounter31` | 0xC03–0xC1F | Hardware performance counters (S/U-mode read-only shadow) |
 | `scountovf` | 0xDA0 | 32-bit read-only; shadow copy of OF bits |
 | `mcounteren` | 0x306 | M-mode control of S-mode counter access |
-| `hcounteren` | 0x606 | HS-mode control of VS-mode counter access |
+| `hcounteren` | 0x606 | HS-mode control of VS-mode counter access (VS-mode gating cases have been migrated to `Hypervisor_Ss_test_plan_en.md` Group 10) |
 | `mip` / `sip` | 0x344 / 0x144 | Interrupt pending; bit 13 = LCOFIP |
 | `mie` / `sie` | 0x304 / 0x104 | Interrupt enable; bit 13 = LCOFIE |
 | `mideleg` | 0x303 | Interrupt delegation; bit 13 controls LCOFI delegation to S-mode |
-
-### Key Reference Files
-
-| Path | Description |
-|------|-------------|
-| `SPEC/sscofpmf.adoc` | Full Sscofpmf specification |
-| `common/test_framework.h` | Test framework (TEST_BEGIN / TEST_ASSERT / TEST_END) |
-| `common/encoding.h` | CSR address definitions (requires additions for mhpmevent/hpmcounter/scountovf, etc.) |
-| `common/csr_accessors.c` | Dynamic CSR read/write (requires additions for mhpmevent/mhpmcounter/scountovf) |
-| `common/trap.c` | Trap handler (requires enhanced interrupt identification capability) |
 
 ### mhpmevent High-Bit Field Layout
 
 ```
   63   62   61   60   59   58   57   56
-┌────┬────┬────┬────┬────┬────┬────┬────┐
-│ OF │MINH│SINH│UINH│VSINH│VUINH│WPRI│WPRI│
-└────┴────┴────┴────┴────┴────┴────┴────┘
++----+----+----+----+-----+-----+----+----+
+| OF |MINH|SINH|UINH|VSINH|VUINH|WPRI|WPRI|
++----+----+----+----+-----+-----+----+----+
 ```
 
 ### Covered Specification Points
 
-| Norm ID | Original Text |
-|---------|---------------|
-| `norm:mhpmevent_inh_op` | Each of the five `x`INH bits, when set, inhibit counting of events while in privilege mode `x`. All-zeroes for these bits results in counting of events in all modes. |
-| `norm:mhpmevent_of_op` | The OF bit is set when the corresponding hpmcounter overflows, and remains set until written by software. |
-| `norm:hpmcounter_overflow` | Since hpmcounter values are unsigned values, overflow is defined as unsigned overflow of the implemented counter bits. Note that there is no loss of information after an overflow since the counter wraps around and keeps counting while the sticky OF bit remains set. |
-| `norm:count_overflow_interrupt` | If an hpmcounter overflows while the associated OF bit is zero, then a "count overflow interrupt request" is generated. If the OF bit is one, then no interrupt request is generated. Consequently the OF bit also functions as a count overflow interrupt disable for the associated hpmcounter. |
-| `norm:count_overflow_trigger` | Count overflow never results from writes to the mhpmcounter_n or mhpmevent_n registers, only from hardware increments of counter registers. |
-| `norm:mhpmevent_of_bit_set` | Generation of a count-overflow-interrupt request by an `hpmcounter` sets the associated OF bit. |
-| `norm:LCOFIP_op` | When an OF bit is set, it eventually, but not necessarily immediately, sets the LCOFIP bit in the `mip`/`sip` registers. |
-| `norm:scountovf_op` | This extension adds the `scountovf` CSR, a 32-bit read-only register that contains shadow copies of the OF bits in the 29 mhpmevent CSRs (mhpmevent_3 - mhpmevent_31) - where scountovf bit X corresponds to mhpmevent_X. |
-| `norm:scountovf_smode_read_access_control` | Read access to bit X is subject to the same mcounteren (or mcounteren and hcounteren) CSRs that mediate access to the hpmcounter CSRs by S-mode (or VS-mode). |
-| `norm:scountovf_mmode_read_access` | In M-mode, scountovf bit X is always readable. |
-| `norm:scountovf_smode_read_access` | In S/HS-mode, scountovf bit X is readable when mcounteren bit X is set, and otherwise reads as zero. |
-| `norm:scountovf_vsmode_read_access` | Similarly, in VS mode, scountovf bit X is readable when mcounteren bit X and hcounteren bit X are both set, and otherwise reads as zero. |
+| Norm ID | Original Text | Description |
+|---------|---------------|-------------|
+| `norm:mhpmevent_inh_op` | Each of the five `x`INH bits, when set, inhibit counting of events while in privilege mode `x`. All-zeroes for these bits results in counting of events in all modes. | Each of the five `x`INH bits, when set, inhibits event counting in privilege mode `x`. All-zero results in counting in all modes. |
+| `norm:mhpmevent_of_op` | The OF bit is set when the corresponding hpmcounter overflows, and remains set until written by software. | The OF bit is set when the corresponding hpmcounter overflows, and remains set until written by software. |
+| `norm:hpmcounter_overflow` | Since hpmcounter values are unsigned values, overflow is defined as unsigned overflow of the implemented counter bits. Note that there is no loss of information after an overflow since the counter wraps around and keeps counting while the sticky OF bit remains set. | Overflow is defined as unsigned overflow of the implemented counter bits; after overflow the counter wraps and keeps counting while the sticky OF bit remains set. |
+| `norm:count_overflow_interrupt` | If an hpmcounter overflows while the associated OF bit is zero, then a "count overflow interrupt request" is generated. If the OF bit is one, then no interrupt request is generated. Consequently the OF bit also functions as a count overflow interrupt disable for the associated hpmcounter. | An hpmcounter overflow with OF=0 generates a "count overflow interrupt request"; with OF=1 no request is generated. OF also functions as an overflow interrupt disable. |
+| `norm:count_overflow_trigger` | Count overflow never results from writes to the mhpmcounter_n or mhpmevent_n registers, only from hardware increments of counter registers. | Count overflow never results from writes to mhpmcounter_n / mhpmevent_n; only from hardware increments. |
+| `norm:mhpmevent_of_bit_set` | Generation of a count-overflow-interrupt request by an `hpmcounter` sets the associated OF bit. | Generation of a count-overflow-interrupt request by an hpmcounter sets the associated OF bit. |
+| `norm:LCOFIP_op` | When an OF bit is set, it eventually, but not necessarily immediately, sets the LCOFIP bit in the `mip`/`sip` registers. | When an OF bit is set, it eventually — but not necessarily immediately — sets the LCOFIP bit in `mip`/`sip`. |
+| `norm:scountovf_op` | This extension adds the `scountovf` CSR, a 32-bit read-only register that contains shadow copies of the OF bits in the 29 mhpmevent CSRs (mhpmevent_3 - mhpmevent_31) - where scountovf bit X corresponds to mhpmevent_X. | The extension adds `scountovf`, a 32-bit read-only register containing shadow copies of the OF bits of mhpmevent_3..31; scountovf bit X corresponds to mhpmevent_X. |
+| `norm:scountovf_smode_read_access_control` | Read access to bit X is subject to the same mcounteren (or mcounteren and hcounteren) CSRs that mediate access to the hpmcounter CSRs by S-mode (or VS-mode). | Read access to bit X is subject to the same mcounteren (or mcounteren + hcounteren) gating that mediates hpmcounter access for S-mode (or VS-mode). |
+| `norm:scountovf_mmode_read_access` | In M-mode, scountovf bit X is always readable. | In M-mode, scountovf bit X is always readable. |
+| `norm:scountovf_smode_read_access` | In S/HS-mode, scountovf bit X is readable when mcounteren bit X is set, and otherwise reads as zero. | In S/HS-mode, scountovf bit X is readable when mcounteren bit X is set; otherwise it reads as zero. |
 
 ### Out of Scope
 
@@ -69,16 +68,11 @@ This document describes the test plan for the Sscofpmf (Count Overflow and Privi
 - **Multi-hart scenarios**: The project targets a single-core test environment.
 - **RV32 / mhpmeventh**: Only RV64 is covered (RV32 requires mhpmeventh CSR access for the upper 32 bits).
 - **Exact counter value verification**: Does not verify the precise number of counter increments; only verifies overflow behavior.
+- **VS-mode scenarios (VSINH/VUINH counting inhibition, VS-mode scountovf double gating)**: Migrated to `Hypervisor_Ss_test_plan_en.md` Group 10.
 
 ---
 
 ## Prerequisites and Constraints
-
-> [!IMPORTANT]
-> The following framework-level support must be in place before test code can be implemented (see "Design Points" section for details):
-> 1. `common/encoding.h` requires new mhpmevent/mhpmcounter/scountovf CSR addresses and field masks.
-> 2. `common/csr_accessors.c` requires new dynamic read/write cases for mhpmevent/mhpmcounter/scountovf.
-> 3. `common/trap.c` requires enhanced identification and recording of asynchronous interrupts (interrupt bit).
 
 ### Counter Discovery Strategy
 
@@ -87,9 +81,11 @@ Since different implementations support varying numbers of hpmcounters (3–31),
 ### Event Trigger Strategy
 
 To reliably increment counters, the tests use the following strategy:
-1. **Configure mhpmevent for the "retired instructions" event** (event number is implementation-defined; typically event=2 on Spike)
+1. **Configure mhpmevent for the "retired instructions" event** (event number is implementation-defined; provided by platform configuration macros).
 2. **Execute a known instruction sequence** to produce a predictable counter increment.
 3. **Initialize mhpmcounter to a value near the maximum** (e.g., `0xFFFFFFFF_FFFFFFFE`) to quickly trigger overflow.
+
+If any platform violates the SPEC, the corresponding case remains FAIL, and implementation defects are recorded to the `bugs/` directory.
 
 ---
 
@@ -99,8 +95,7 @@ To reliably increment counters, the tests use the following strategy:
 
 **Spec Reference**:
 - `norm:mhpmevent_of_op`: OF bit is writable and readable.
-- `norm:mhpmevent_inh_op`: xINH bits are writable and readable.
-- xINH bits corresponding to unimplemented privilege modes are read-only zero.
+- `norm:mhpmevent_inh_op`: xINH bits are writable and readable; xINH bits corresponding to unimplemented privilege modes are read-only zero.
 
 **Test Scope**: In M-mode, verify the read/write behavior of the upper 8-bit fields of the mhpmevent CSR.
 
@@ -117,6 +112,9 @@ To reliably increment counters, the tests use the following strategy:
 | COFPMF-RW-09 | Low-bit field preservation | Writing mhpmevent high bits does not affect the low 56 bits (low-bit value unchanged before and after high-bit write) | Low-bit fields are unaffected by high-bit writes |
 | COFPMF-RW-10 | Multi-counter traversal | Iterate over mhpmevent3–31, performing OF bit write-1/read-back verification for each (skip unimplemented) | OF bit of all implemented mhpmevent CSRs is readable and writable |
 
+> [!NOTE]
+> COFPMF-RW-05/06 verify the positive WARL branch of VSINH/VUINH (independent of the H extension); on platforms without the H extension, these two bits are expected to be read-only zero (negative branch). The full H-extension-dependent semantics (VSINH/VUINH counting inhibition, read-only-zero probing when H is unimplemented) are covered by `Hypervisor_Ss_test_plan_en.md` Group 10 (HCROSS-SSCOFPMF-04~06).
+
 ---
 
 ### Group 2: Privilege Mode Filtering
@@ -126,7 +124,7 @@ To reliably increment counters, the tests use the following strategy:
 
 **Test Scope**: Verify that each xINH bit correctly inhibits or permits event counting in the corresponding privilege mode.
 
-**Prerequisites**: At least one hpmcounter must be confirmed as implemented, and a usable event number must be identified (on Spike, event=2 for retired instructions).
+**Prerequisites**: At least one hpmcounter must be confirmed as implemented, and a usable event number must be identified (provided by platform configuration, typically the retired-instructions event).
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
@@ -143,6 +141,8 @@ To reliably increment counters, the tests use the following strategy:
 
 > [!NOTE]
 > Privilege mode switches (ecall / mret / sret) themselves produce instruction counts. Tests verify functionality by comparing the count difference between "inhibited" and "non-inhibited" scenarios, rather than verifying exact count values. For S/U-mode tests, counting should first be disabled in M-mode (MINH=1), then switch to the target mode for execution, and upon return only compare the count delta during target-mode execution.
+>
+> This group does not cover VSINH/VUINH counting-inhibition cases (which depend on the H extension and require entering VS/VU-mode); that portion is covered by `Hypervisor_Ss_test_plan_en.md` Group 10 (HCROSS-SSCOFPMF-04~05).
 
 ---
 
@@ -166,8 +166,8 @@ To reliably increment counters, the tests use the following strategy:
 | COFPMF-OVF-06 | Writing mhpmcounter does not trigger overflow | Directly write mhpmcounter to 0 (a "wrap" from a large value); verify OF is not set | OF bit remains 0 |
 | COFPMF-OVF-07 | Writing mhpmevent does not trigger overflow | Modify mhpmevent event selection / xINH fields; verify OF is not set | OF bit remains 0 |
 | COFPMF-OVF-08 | LCOFIP software clear | After setting LCOFIP, software clears it by writing mip; verify successful clear | mip.LCOFIP = 0 |
-| COFPMF-OVF-09 | LCOFI interrupt delegated to S-mode | Set mideleg bit 13 = 1, trigger overflow interrupt; verify it is caught in the S-mode handler | S-mode trap handler receives cause = interrupt\|13 |
-| COFPMF-OVF-10 | LCOFI interrupt handled in M-mode | mideleg bit 13 = 0, trigger overflow interrupt; verify it is caught in the M-mode handler | M-mode trap handler receives cause = interrupt\|13 |
+| COFPMF-OVF-09 | LCOFI interrupt delegated to S-mode | Set mideleg bit 13 = 1, trigger overflow interrupt; verify it is caught in the S-mode handler | S-mode trap handler receives cause = interrupt \| 13 |
+| COFPMF-OVF-10 | LCOFI interrupt handled in M-mode | mideleg bit 13 = 0, trigger overflow interrupt; verify it is caught in the M-mode handler | M-mode trap handler receives cause = interrupt \| 13 |
 | COFPMF-OVF-11 | No interrupt when LCOFIE is disabled | Clear mie.LCOFIE, trigger overflow; verify no interrupt occurs (only OF is set) | OF=1, but no interrupt is generated |
 | COFPMF-OVF-12 | Multiple counters overflow simultaneously | Configure two counters both near maximum, trigger overflow simultaneously; verify both OF bits are set | OF bits of both mhpmevent CSRs are 1 |
 
@@ -182,21 +182,20 @@ To reliably increment counters, the tests use the following strategy:
 - `norm:scountovf_op`: 32-bit read-only; bit X corresponds to the OF bit of mhpmevent X.
 - `norm:scountovf_mmode_read_access`: Always readable in M-mode.
 - `norm:scountovf_smode_read_access`: S-mode access is controlled by mcounteren.
-- `norm:scountovf_vsmode_read_access`: VS-mode access is controlled by both mcounteren and hcounteren.
 - `norm:scountovf_smode_read_access_control`: Access control is consistent with the mcounteren/hcounteren rules for hpmcounter.
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
 | COFPMF-SOV-01 | scountovf reflects OF bit | Set mhpmevent3 OF=1, read scountovf; verify bit 3 = 1 | scountovf bit 3 = 1 |
-| COFPMF-SOV-02 | scountovf read-only verification | Attempt to write scountovf (csrw in S-mode); should trigger illegal instruction | Triggers CAUSE_ILLEGAL_INST |
+| COFPMF-SOV-02 | scountovf read-only verification | Attempt to write scountovf (csrw in S-mode); should trigger illegal-instruction | Triggers illegal-instruction (cause=2) |
 | COFPMF-SOV-03 | scountovf multi-bit mapping | Set mhpmevent3 and mhpmevent5 OF=1 simultaneously; verify scountovf bit 3 and bit 5 are both 1 | scountovf = (1<<3) \| (1<<5) |
 | COFPMF-SOV-04 | scountovf clear tracking | Set OF=1 then clear mhpmevent3 OF; read scountovf bit 3 | scountovf bit 3 = 0 |
 | COFPMF-SOV-05 | M-mode read is not restricted by mcounteren | Clear mcounteren bit 3; M-mode read of scountovf bit 3 still reflects the true value | scountovf bit 3 reflects the true OF value |
 | COFPMF-SOV-06 | S-mode readable when mcounteren=1 | Set mcounteren bit 3 = 1; S-mode reads scountovf bit 3 | Reads the true OF value |
 | COFPMF-SOV-07 | S-mode reads zero when mcounteren=0 | Clear mcounteren bit 3; S-mode reads scountovf; bit 3 should be 0 (even if OF=1) | scountovf bit 3 = 0 |
-| COFPMF-SOV-08 | VS-mode double gate (both permit) | mcounteren bit 3 = 1, hcounteren bit 3 = 1; VS-mode reads scountovf bit 3 | Reads the true OF value |
-| COFPMF-SOV-09 | VS-mode reads zero when mcounteren=0 | mcounteren bit 3 = 0 (regardless of hcounteren); VS-mode reads scountovf bit 3 | scountovf bit 3 = 0 |
-| COFPMF-SOV-10 | VS-mode reads zero when hcounteren=0 | mcounteren bit 3 = 1, hcounteren bit 3 = 0; VS-mode reads scountovf bit 3 | scountovf bit 3 = 0 |
+
+> [!NOTE]
+> VS-mode scountovf access control cases (`norm:scountovf_vsmode_read_access`) depend on the Hypervisor extension and have been migrated to `Hypervisor_Ss_test_plan_en.md` Group 10 (HCROSS-SSCOFPMF-01~03).
 
 ---
 
@@ -206,69 +205,57 @@ To reliably increment counters, the tests use the following strategy:
 
 Since the number of implemented hpmcounter3–31 CSRs is optional, all test cases must dynamically probe whether the target counter exists before proceeding:
 
+1. Attempt to write a non-zero value to the target mhpmcounter in M-mode.
+2. Read back the counter.
+3. Restore the original value.
+4. If the read-back is non-zero, the counter is considered implemented; otherwise unimplemented.
+
 If a counter is not implemented, the test case should use `TEST_SKIP()` to skip.
 
 ### 2. Event Configuration Strategy
 
-Different implementations use different low-bit event numbers for mhpmevent. Tests should provide a platform-configurable event number macro:
+Different implementations use different low-bit event numbers for mhpmevent. Tests should provide a platform-configurable event number macro (for example, the "retired instructions" event number) rather than hardcoding a specific implementation in the plan.
 
-### 3. Trap Handler Enhancement for Interrupt Testing
+### 3. Trap Handler Requirements for Interrupt Testing
 
-The current `common/trap.c` primarily handles synchronous exceptions. To support LCOFI interrupt testing (Group 3), the following is required:
+LCOFI interrupt testing (Group 3) requires the trap handler to:
 
-1. **Trap handler interrupt identification**: Check the most significant bit of `mcause` (interrupt bit); if set to 1, the trap is an interrupt.
-2. **Record interrupt information**: Log the interrupt cause (low bits) to `trap_record`.
+1. **Interrupt identification**: Check the most significant bit of `mcause` (interrupt bit); if set to 1, the trap is an interrupt.
+2. **Record interrupt information**: Log the interrupt cause (low bits) to trap state.
 3. **LCOFIP clear**: Clear `mip.LCOFIP` in the handler to prevent an infinite interrupt loop.
-4. **LCOFIE management**: Provide `lcofie_enable()` / `lcofie_disable()` helper functions.
+4. **LCOFIE management**: Provide helpers to enable/disable LCOFIE.
 
 ### 4. Overflow Trigger Method
 
-To reliably trigger overflow, the recommended approach is:
+To reliably trigger overflow:
+1. Set mhpmcounter to a value near overflow (e.g., `-MARGIN`).
+2. Configure mhpmevent to start counting.
+3. Execute enough instructions (greater than MARGIN).
+4. Stop counting (clear mhpmevent).
 
-Set the counter to a value near overflow and execute a sufficient number of instructions. `MARGIN` is recommended to be set to 50–100, enough to cover loop overhead.
+`MARGIN` is recommended to be set to 50–100, enough to cover loop overhead.
 
-### 5. scountovf Access Control Testing (Group 4 SOV-06 to SOV-10)
+### 5. scountovf Access Control Testing
 
-Reading `scountovf` in different privilege modes is required. For S-mode tests, the framework's `goto_priv(PRIV_S)` + `PRIV_DO_NO_TRAP` pattern can be reused; VS-mode tests require Hypervisor extension support (`ENABLE_HYP`), using `goto_priv(PRIV_VS)` to enter VS-mode.
-
----
-
-## Framework Adjustment Checklist
-
-> [!IMPORTANT]
-> The following adjustments are prerequisites for test implementation.
-
-### 1. `common/encoding.h` New Definitions
-
-New CSR address definitions are required for mhpmevent3–31 (0x323–0x33F), mhpmcounter3–31 (0xB03–0xB1F), hpmcounter3–31 (0xC03–0xC1F), scountovf (0xDA0), mhpmevent high-bit field masks for RV64 (MHPMEVENT_OF, MHPMEVENT_MINH, MHPMEVENT_SINH, MHPMEVENT_UINH, MHPMEVENT_VSINH, MHPMEVENT_VUINH), and LCOFI interrupt bit definitions (MIP_LCOFIP, MIE_LCOFIE, IRQ_LCOFI = 13).
-
-### 2. `common/csr_accessors.c` New Cases
-
-Add to `csr_read()`:
-- `0x323–0x33F` (mhpmevent3–31)
-- `0xB03–0xB1F` (mhpmcounter3–31)
-- `0xDA0` (scountovf, read-only)
-
-Add to `csr_write()`:
-- `0x323–0x33F` (mhpmevent3–31)
-- `0xB03–0xB1F` (mhpmcounter3–31)
-
-### 3. `common/trap.c` Interrupt Support
-
-Add an interrupt branch in the M-mode trap handler (`m_trap_handler`): check the interrupt bit of `mcause`; if it is an interrupt and the IRQ is IRQ_LCOFI, clear LCOFIP to prevent an infinite loop, record the interrupt information to `trap_record`, and return without adjusting `epc` since interrupt handling is complete.
+Group 4 SOV-06~07 requires reading `scountovf` in S-mode; the framework's privilege-switch + no-trap assertion capability can be reused. VS-mode double-gating cases (which depend on the H extension) have been migrated to `Hypervisor_Ss_test_plan_en.md` Group 10; this plan no longer includes VS-mode tests.
 
 ---
 
-## Test File Organization
+## Appendix A: Specification Point Coverage Matrix
 
-```
-sscofpmf/
-├── Makefile                      # Build configuration (SPIKE_ISA_EXT = _sscofpmf)
-├── main.c                        # Entry point; prints banner, iterates over test_table
-├── sscofpmf_helpers.h            # Helper macros/functions (event number, counter discovery)
-└── tests/
-    ├── test_register.c           # Group 1: mhpmevent field read/write
-    ├── test_mode_filter.c        # Group 2: privilege mode filtering
-    ├── test_overflow.c           # Group 3: count overflow and interrupts
-    └── test_scountovf.c          # Group 4: scountovf register
-```
+| Norm ID | Covered Test IDs | Coverage Status | Notes |
+|---------|------------------|-----------------|-------|
+| `norm:mhpmevent_inh_op` | COFPMF-RW-02 ~ COFPMF-RW-08, COFPMF-INH-01 ~ COFPMF-INH-10 | Covered | xINH bit read/write and mode filtering |
+| `norm:mhpmevent_of_op` | COFPMF-RW-01, COFPMF-RW-08, COFPMF-RW-10, COFPMF-OVF-01 ~ COFPMF-OVF-03, COFPMF-SOV-01, COFPMF-SOV-03, COFPMF-SOV-04 | Covered | OF bit read/write and sticky semantics |
+| `norm:hpmcounter_overflow` | COFPMF-OVF-01, COFPMF-OVF-02, COFPMF-OVF-12 | Covered | Unsigned overflow definition |
+| `norm:count_overflow_interrupt` | COFPMF-OVF-04, COFPMF-OVF-05, COFPMF-OVF-11 | Covered | Overflow interrupt request generation condition |
+| `norm:count_overflow_trigger` | COFPMF-OVF-06, COFPMF-OVF-07 | Covered | CSR writes do not trigger overflow |
+| `norm:mhpmevent_of_bit_set` | COFPMF-OVF-01, COFPMF-OVF-04, COFPMF-OVF-12 | Covered | Overflow interrupt request sets OF |
+| `norm:LCOFIP_op` | COFPMF-OVF-04, COFPMF-OVF-05, COFPMF-OVF-08 ~ COFPMF-OVF-11 | Covered | LCOFIP propagation after OF is set |
+| `norm:scountovf_op` | COFPMF-SOV-01, COFPMF-SOV-02, COFPMF-SOV-03, COFPMF-SOV-04 | Covered | scountovf 32-bit read-only semantics |
+| `norm:scountovf_mmode_read_access` | COFPMF-SOV-01, COFPMF-SOV-03, COFPMF-SOV-04, COFPMF-SOV-05 | Covered | M-mode always readable |
+| `norm:scountovf_smode_read_access` | COFPMF-SOV-06, COFPMF-SOV-07 | Covered | S-mode gated by mcounteren |
+| `norm:scountovf_smode_read_access_control` | COFPMF-SOV-05, COFPMF-SOV-06, COFPMF-SOV-07 | Covered | Access control rule consistency |
+
+**Uncovered specification points**:
+- `norm:scountovf_vsmode_read_access`: VS-mode double-gating cases have been migrated to `Hypervisor_Ss_test_plan_en.md` Group 10; this plan does not duplicate coverage.

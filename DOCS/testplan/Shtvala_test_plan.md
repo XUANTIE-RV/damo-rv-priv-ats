@@ -393,7 +393,7 @@
 | `two_stage_map_gs_4k(ts, gpa, hpa, flags)` | `common/hyp/two_stage.h` | 在 G-stage 增加 4K 映射 |
 | `two_stage_activate(ts)` | `common/hyp/two_stage.h` | 写入 vsatp + hgatp 激活 |
 | `delegate_gpf_to_hs()` | 测试辅助 | 设置 medeleg/hedeleg 委托 cause 20/21/23 至 HS |
-| `SHTVALA_REQUIRE()` | 测试辅助 | 平台未实现 Shtvala 时 `TEST_SKIP` |
+| `SHTVALA_AVAILABLE` | `common/capabilities.h` | 编译期能力宏（源自 `SHTVALA_SUPPORTED`）；为 0 时用例内联 `TEST_SKIP` |
 | `REQUIRE_HGATP_MODE(mode)` | 测试辅助 | hgatp 不支持指定 MODE 时 `TEST_SKIP` |
 
 ### CSR 定义

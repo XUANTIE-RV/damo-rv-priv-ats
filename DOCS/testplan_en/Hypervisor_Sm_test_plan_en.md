@@ -52,7 +52,7 @@ The following table lists the specification points covered by this plan. Entries
 
 | Norm ID | Source | Description |
 |---------|--------|-------------|
-| `hstateen_sstateen_zero_initialization` | `smstateen.adoc` | After M-mode software modifies any mstateen CSR, it is responsible for initializing the corresponding hstateen and sstateen CSRs to zero. |
+| `norm:hstateen_sstateen_zero_initialization` | `smstateen.adoc` | After M-mode software modifies any mstateen CSR, it is responsible for initializing the corresponding hstateen and sstateen CSRs to zero. |
 | `norm:unimplemented_mode_bits` | `smcntrpmf.adoc` | For each bit in 61:58, if the associated privilege mode is not implemented, the bit is read-only zero. |
 | `norm:counter_inhibited_behavior` | `smcntrpmf.adoc` | The fundamental behavior of cycle and instret is modified in that counting does not occur while executing in an inhibited privilege mode. |
 | `hcounteren_vs_vu_control` | `hypervisor.adoc` | The `hcounteren` CSR controls availability of performance monitoring counters to VS-mode and VU-mode. |
@@ -463,7 +463,7 @@ The following table indicates which test cases cover each specification point in
 
 | Norm ID | Covered Test IDs |
 |---------|------------------|
-| `hstateen_sstateen_zero_initialization` | HCROSS-SMSTA-01 |
+| `norm:hstateen_sstateen_zero_initialization` | HCROSS-SMSTA-01 |
 | `norm:mstateen_lower_priv_roz` | HCROSS-SMSTA-02 |
 | `norm:mstateen_bit_63_op` | HCROSS-SMSTA-03 |
 | `norm:mstateen_bit_63_roz` | HCROSS-SMSTA-04 |

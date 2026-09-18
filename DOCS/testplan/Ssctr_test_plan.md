@@ -1,8 +1,6 @@
 # Ssctr 扩展测试计划（Supervisor Mode）
 
-> 本文档描述 Ssctr（Control Transfer Records — Supervisor-level）扩展的测试计划。聚焦于 S-mode 下的 CTR CSR（`sctrctl`/`sctrdepth`/`sctrstatus`）、Entry Registers、SCTRCLR 指令、录制行为、特权级模式转换、外部陷阱、转换类型过滤、周期计数、RAS 仿真、Freeze 行为、State Enable 访问控制和 Custom Extensions。M-mode 层面的 Smctr 行为由 `Smctr_test_plan.md` 覆盖。Hypervisor 相关的 CTR 测试（`vsctrctl`、VS/VU-mode 外部陷阱、虚拟化模式转换、VS-mode Freeze）已迁移至 `Hypervisor_cross_test_plan.md` Group 14。
->
-> 生成时间：2026-06-25
+本文档描述 Ssctr（Control Transfer Records — Supervisor-level）扩展的测试计划。聚焦于 S-mode 下的 CTR CSR（`sctrctl`/`sctrdepth`/`sctrstatus`）、Entry Registers、SCTRCLR 指令、录制行为、特权级模式转换、外部陷阱、转换类型过滤、周期计数、RAS 仿真、Freeze 行为、State Enable 访问控制和 Custom Extensions。M-mode 层面的 Smctr 行为由 `Smctr_test_plan.md` 覆盖。Hypervisor 相关的 CTR 测试（`vsctrctl`、VS/VU-mode 外部陷阱、虚拟化模式转换、VS-mode Freeze）已迁移至 `Hypervisor_cross_test_plan.md` Group 14。
 
 ---
 
@@ -11,6 +9,18 @@
 Ssctr 是 RISC-V Control Transfer Records (CTR) 扩展的 Supervisor-level 部分。本质上与 Smctr 相同，但排除了 Machine-level CSR 和行为。Ssctr 提供在寄存器可访问的片上存储中录制有限的控制流转换历史的能力，通过间接 CSR 接口（Sscsrind）访问 CTR 缓冲区。
 
 ### 本文档覆盖的 SPEC 章节
+
+本方案依据以下 RISC-V 官方规范（本地路径）：
+
+- `SPEC/riscv-isa-manual/src/priv/smctr.adoc` — Smctr/Ssctr（Control Transfer Records）：Ssctr 定义与 Smctr 合卷于本文件
+- `SPEC/riscv-isa-manual/src/priv/smcsrind.adoc` — Smcsrind/Sscsrind：siselect/sireg* 间接 CSR 访问机制（CTR entry 访问）
+- `SPEC/riscv-isa-manual/src/priv/smstateen.adoc` — Smstateen：mstateen0.CTR 对 CTR CSR 的门控
+
+官方仓库：
+
+- https://github.com/riscv/riscv-isa-manual （对应仓库内 src/priv/smctr.adoc、src/priv/smcsrind.adoc、src/priv/smstateen.adoc）
+
+本方案覆盖的 SPEC 章节要点：
 
 - `sctrctl` CSR（Supervisor Control Transfer Records Control Register）
 - `sctrdepth` CSR（Supervisor CTR Depth Register）
@@ -481,7 +491,7 @@ Ssctr 是 RISC-V Control Transfer Records (CTR) 扩展的 Supervisor-level 部�
 ## Group 14. State Enable 访问控制（S-mode 视角）
 
 **规范依据**：
-- `norm:mstateen_ctr0` / `norm:mstateen_ctr0_execpt1/2/3`：mstateen0.CTR=0 时 S-mode 访问被阻止
+- `norm:mstateen_ctr0` / `norm:mstateen_ctr0_except1/2/3`：mstateen0.CTR=0 时 S-mode 访问被阻止
 - `norm:mstateen_ctr0_qualified_transfer`：CTR=0 时隐式更新继续
 
 **测试职责**：从 S-mode 视角验证 State Enable 访问控制的效果。
@@ -517,60 +527,15 @@ Ssctr 是 RISC-V Control Transfer Records (CTR) 扩展的 Supervisor-level 部�
 
 ## 测试实现说明
 
-### 文件组织
-
-```
-damo-priv-test/
-├── ssctr/
-│   ├── Makefile
-│   ├── kernel.ld
-│   ├── main.c
-│   └── tests/
-│       ├── test_sctrctl_csr.c        # Group 1: sctrctl CSR
-│       ├── test_sctrdepth.c          # Group 3: sctrdepth CSR
-│       ├── test_sctrstatus.c         # Group 4: sctrstatus CSR
-│       ├── test_entry_sctrclr.c      # Group 5: Entry Registers 与 SCTRCLR
-│       ├── test_recording.c          # Group 6: 基本录制行为
-│       ├── test_priv_transitions.c   # Group 7: 特权级模式转换
-│       ├── test_exttrap.c            # Group 8: 外部陷阱（S-mode）
-│       ├── test_transfer_filter.c    # Group 9: 转换类型过滤
-│       ├── test_cycle_count.c        # Group 10: 周期计数
-│       ├── test_ras_emulation.c      # Group 11: RAS 仿真模式
-│       ├── test_freeze.c             # Group 12: Freeze 行为（S-mode）
-│       ├── test_state_enable.c       # Group 14: State Enable 访问控制
-│       └── test_custom_ext.c         # Group 15: Custom Extensions
-├── hypervisor_cross/                  # Hypervisor 交叉测试（包含 Ssctr）
-│   └── tests/
-│       └── test_hcross_ssctr.c       # Group 14: Hypervisor × Ssctr
-└── common/                            # 复用通用框架
-```
-
-> **注意**：原 `test_vsctrctl_csr.c`（Group 2）、`test_virt_transitions.c`（Group 13）和 Hypervisor 相关测试已迁移至 `hypervisor_cross/` 项目。
-
 ### 运行时检测
 
-```c
-static bool check_ssctr_extension(void) {
-    /* Probe sctrctl writability */
-    trap_expect_begin();
-    uintptr_t old = CSRR(sctrctl);
-    CSRW(sctrctl, old | SCTRCTL_S);  /* try to set S bit */
-    uintptr_t new_val = CSRR(sctrctl);
-    CSRW(sctrctl, old);  /* restore */
-    trap_expect_end();
-    return (new_val & SCTRCTL_S) != 0;  /* S bit was set => Ssctr exists */
-}
+本方案需在运行时检测以下能力：
 
-static bool check_mstateen_extension(void) {
-    /* Probe mstateen0 CSR existence */
-    trap_expect_begin();
-    uintptr_t val = CSRR(mstateen0);
-    (void)val;
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-    return !trapped;
-}
-```
+- **Ssctr 存在性**：尝试在 S-mode 写 `sctrctl` 的 S 位，若能写入则认为已实现，否则相关用例 TEST_SKIP。
+- **Smstateen 存在性**：尝试读取 `mstateen0` CSR，若触发 illegal-instruction 则未实现，Group 14 相关用例 TEST_SKIP。
+- **STE 字段实现性**：STE 为可选字段，写 1 后读回判定；未实现时 Group 8 相关用例 TEST_SKIP。
+- **周期计数实现性**：通过 CCV/CCM 位写 1 后读回判定；未实现时 Group 10 相关用例 TEST_SKIP。
+- **RAS 仿真实现性**：通过 RASEMU 位写 1 后读回判定；未实现时 Group 11 相关用例 TEST_SKIP。
 
 ### 关键注意事项
 
@@ -582,7 +547,9 @@ static bool check_mstateen_extension(void) {
 
 4. **Hypervisor 测试**：需要 Hypervisor 扩展的测试（`vsctrctl`、VS/VU-mode 外部陷阱、虚拟化模式转换）已迁移至 `Hypervisor_cross_test_plan.md`。
 
-5. **CTR 清理**：每次测试前应调用 `sctrclr()` 清空 entry 寄存器，避免前次测试干扰。
+5. **CTR 清理**：每次测试前应执行 SCTRCLR 清空 entry 寄存器，避免前次测试干扰。
+
+任一平台违反 SPEC 时用例保持 FAIL，实现缺陷记录至 `bugs/` 目录。
 
 ---
 
@@ -610,13 +577,93 @@ static bool check_mstateen_extension(void) {
 
 ## 参考
 
-- `SPEC/ssctr.adoc` — Ssctr (Control Transfer Records - Supervisor-level) Extension
-- `SPEC/smctr.adoc` — Smctr (Control Transfer Records - Machine-level) Extension
-- `SPEC/smstateen.adoc` — Smstateen Extension Specification
-- `SPEC/sscsrind.adoc` — Sscsrind (Supervisor-level Indirect CSR Access) Extension
+- `smctr.adoc` — Smctr/Ssctr (Control Transfer Records) Extension
+- `smcsrind.adoc` — Smcsrind/Sscsrind（indirect CSR access）
+- `smstateen.adoc` — Smstateen Extension Specification
 - `DOCS/testplan/Smctr_test_plan.md` — Smctr Machine Mode 测试计划
 - `DOCS/testplan/Hypervisor_cross_test_plan.md` — Hypervisor 与其他扩展交叉测试计划（含 Hypervisor × Ssctr，Group 14）
 
 ---
 
-*生成时间：2026-06-25*
+## 附录 A：规范点覆盖矩阵
+
+| Norm ID | 覆盖的测试 ID | 覆盖状态 | 备注 |
+|---------|--------------|----------|------|
+| `norm:Ssctr_scope` | — | 背景 | Ssctr 与 Smctr 关系说明，不构成可测行为 |
+| `norm:Ssctr_CTR_CSR_interface` | SSCTR-ENT-01 ~ SSCTR-ENT-13 | 已覆盖 | 间接 CSR 接口与 logical entry 0 |
+| `norm:Ssctr_transfer_steps` | SSCTR-REC-01 ~ SSCTR-REC-13、SSCTR-RAS-04 | 已覆盖 | 写指针递增与循环缓冲区 |
+| `norm:Ssctr_sctrctl_op` | SSCTR-CTL-01 ~ SSCTR-CTL-10 | 已覆盖 | sctrctl 对 mctrctl 子集访问 |
+| `norm:Ssctr_sctrctl_acc` | SSCTR-CTL-04、SSCTR-CTL-05 | 已覆盖 | bits 2/9 只读零 |
+| `norm:Ssctr_ctrsource_sz_acc_op` | SSCTR-REC-13 | 已覆盖 | ctrsource MXLEN-bit WARL |
+| `norm:Ssctr_sctrstatus_acc` | SSCTR-STS-01 | 已覆盖 | sctrstatus 未定义位 WPRI |
+| `norm:sctrdepth` | SSCTR-DEP-01 ~ SSCTR-DEP-06 | 已覆盖 | sctrdepth 32-bit |
+| `norm:sctrdepth_depth` | SSCTR-DEP-03 | 已覆盖 | DEPTH 实现值探测 |
+| `norm:sctrdepth_depth_op0` | SSCTR-DEP-02、SSCTR-DEP-06 | 已覆盖 | DEPTH 编码 |
+| `norm:sctrdepth_depth_op1` | SSCTR-DEP-04、SSCTR-DEP-05、SSCTR-ENT-12 | 已覆盖 | 深度与 entry 可见范围 |
+| `norm:sctrstatus` | SSCTR-STS-01 ~ SSCTR-STS-10 | 已覆盖 | sctrstatus 更新时机 |
+| `norm:sctrstatus_wrptr` | SSCTR-STS-02 ~ SSCTR-STS-06、SSCTR-STS-10 | 已覆盖 | WRPTR WARL 与回绕 |
+| `norm:sctrstatus_frozen_op` | SSCTR-STS-07 ~ SSCTR-STS-09、SSCTR-FRZ-07、SSCTR-FRZ-08 | 已覆盖 | FROZEN 抑制录制 |
+| `norm:sctrstatus_frozen_set` | SSCTR-FRZ-04 ~ SSCTR-FRZ-06 | 已覆盖 | LCOFIFRZ 自动设置 FROZEN |
+| `norm:ctr_freeze_bp` | SSCTR-FRZ-01 ~ SSCTR-FRZ-03 | 已覆盖 | BPFRZ 自动设置 FROZEN |
+| `norm:siselect_acc_op` | SSCTR-ENT-01 ~ SSCTR-ENT-09 | 已覆盖 | siselect 0x200-0x2FF 映射 CTR entry |
+| `norm:ctrsource_op` | SSCTR-REC-07、SSCTR-TRAP-09 | 已覆盖 | ctrsource.PC 语义 |
+| `norm:ctrsource_ctrtartget_ctrdata_Vbit` | SSCTR-ENT-13、SSCTR-REC-06 | 已覆盖 | V 位有效性 |
+| `norm:ctrtarget_op` | SSCTR-REC-08、SSCTR-TRAP-10 | 已覆盖 | ctrtarget.PC 语义 |
+| `norm:ctrtarget_sz_acc` | SSCTR-REC-08 | 已覆盖 | ctrtarget MXLEN-bit WARL |
+| `norm:ctrtarget_pc_next_br` | SSCTR-TTF-05、SSCTR-TTF-06 | 已覆盖 | 未取分支的 ctrtarget |
+| `norm:ctrtarget_misp` | SSCTR-REC-09 | 已覆盖 | MISP 可选字段 |
+| `norm:ctrdata_sz_acc` | SSCTR-REC-10 ~ SSCTR-REC-12、SSCTR-CC-01 ~ SSCTR-CC-11 | 已覆盖 | ctrdata 64-bit 与字段可选 |
+| `norm:ctrdata_type` | SSCTR-REC-10 ~ SSCTR-REC-12、SSCTR-TTF-02 ~ SSCTR-TTF-16 | 已覆盖 | TYPE 字段与转换类型 |
+| `norm:ctrdata_cc` | SSCTR-CC-02、SSCTR-CC-10 | 已覆盖 | CCE/CCM 编码 |
+| `norm:ctrdata_cc_supported` | SSCTR-CC-01 | 已覆盖 | 周期计数可选 |
+| `norm:ctrdata_ccv` | SSCTR-CC-01、SSCTR-CC-05 ~ SSCTR-CC-07 | 已覆盖 | CCV 有效位 |
+| `norm:ctrdata_undef` | SSCTR-STS-01 | 已覆盖 | 未定义位只读零 |
+| `norm:ctr_ccounter_inc` | SSCTR-CC-03、SSCTR-CC-04 | 已覆盖 | CtrCycleCounter 递增 |
+| `norm:ctr_ccounter_reset` | SSCTR-CC-05、SSCTR-CC-06 | 已覆盖 | 写 xctrctl/SCTRCLR 重置 |
+| `norm:ctr_ccounter_impl` | SSCTR-CC-09 | 已覆盖 | CCE 可实现 0-4 位 |
+| `norm:ctr_ccounter_sat` | SSCTR-CC-08 | 已覆盖 | CC 饱和 |
+| `norm:ctr_ccounter_ccv` | SSCTR-CC-05 ~ SSCTR-CC-07、SSCTR-ENT-15、SSCTR-ENT-16 | 已覆盖 | CCV 重置行为 |
+| `norm:ctr_behavior` | SSCTR-REC-01 ~ SSCTR-REC-13 | 已覆盖 | CTR 录制合格转换 |
+| `norm:ctr_behavior_criteria0` | SSCTR-REC-01、SSCTR-REC-02 | 已覆盖 | 当前特权模式启用 |
+| `norm:ctr_behavior_criteria1` | SSCTR-TTF-01 ~ SSCTR-TTF-17 | 已覆盖 | 转换类型未被抑制 |
+| `norm:ctr_behavior_criteria2` | SSCTR-REC-03、SSCTR-STS-08、SSCTR-STS-09、SSCTR-FRZ-07、SSCTR-FRZ-08 | 已覆盖 | FROZEN 未置位 |
+| `norm:ctr_behavior_criteria3` | SSCTR-REC-01 ~ SSCTR-REC-13 | 已覆盖 | 转换完成/退休 |
+| `norm:ctr_stack` | SSCTR-REC-04、SSCTR-REC-05 | 已覆盖 | 循环缓冲区与最老丢失 |
+| `norm:ctr_validbit` | SSCTR-ENT-13、SSCTR-REC-06 | 已覆盖 | 录制时 V=1 |
+| `norm:ctr_various_jump_enc` | SSCTR-TTF-09 ~ SSCTR-TTF-16 | 已覆盖 | 8-15 跳转编码分类 |
+| `norm:ctr_ttype0` ~ `norm:ctr_ttype15` | SSCTR-TTF-02 ~ SSCTR-TTF-16、SSCTR-REC-10 ~ SSCTR-REC-12 | 已覆盖 | 各转换类型 TYPE 字段 |
+| `norm:ctr_ttf_default` | SSCTR-TTF-01 | 已覆盖 | 默认录制所有转换 |
+| `norm:ctrctl_excinh_op` | SSCTR-TTF-02 | 已覆盖 | EXCINH 抑制异常 |
+| `norm:ctrctl_intrinh_op` | SSCTR-TTF-03 | 已覆盖 | INTRINH 抑制中断 |
+| `norm:ctrctl_tretinh_op` | SSCTR-TTF-04 | 已覆盖 | TRETINH 抑制 trap return |
+| `norm:ctrctl_ntbren_op` | SSCTR-TTF-05、SSCTR-TTF-06 | 已覆盖 | NTBREN 启用未取分支 |
+| `norm:ctrctl_tkbrinh_op` | SSCTR-TTF-07、SSCTR-TTF-08 | 已覆盖 | TKBRINH 抑制已取分支 |
+| `norm:ctrctl_indcallinh_op` | SSCTR-TTF-09 | 已覆盖 | INDCALLINH 抑制间接调用 |
+| `norm:ctrctl_dircallinh_op` | SSCTR-TTF-10 | 已覆盖 | DIRCALLINH 抑制直接调用 |
+| `norm:ctrctl_indjmpinh_op` | SSCTR-TTF-11 | 已覆盖 | INDJMPINH 抑制间接跳转 |
+| `norm:ctrctl_dirjmpinh_op` | SSCTR-TTF-12 | 已覆盖 | DIRJMPINH 抑制直接跳转 |
+| `norm:ctrctl_corswapinh_op` | SSCTR-TTF-13 | 已覆盖 | CORSWAPINH 抑制协程交换 |
+| `norm:ctrctl_retinh_op` | SSCTR-TTF-14 | 已覆盖 | RETINH 抑制函数返回 |
+| `norm:ctrctl_indljmpinh_op` | SSCTR-TTF-15 | 已覆盖 | INDLJMPINH 抑制其他间接跳转 |
+| `norm:ctrctl_dirljmpinh_op` | SSCTR-TTF-16 | 已覆盖 | DIRLJMPINH 抑制其他直接跳转 |
+| `norm:ctrctl_rasemu_op` | SSCTR-RAS-01 ~ SSCTR-RAS-10 | 已覆盖 | RASEMU 仿真行为 |
+| `norm:ctr_trap_enabled` / `norm:ctr_trap_ee` | SSCTR-TRAP-01 | 已覆盖 | 启用模式间陷阱录制 |
+| `norm:ctr_trap_disabled_src` / `norm:ctr_trap_de` | SSCTR-TRAP-02 | 已覆盖 | 禁用→启用部分录制 |
+| `norm:ctr_trap_disabled_tgt` / `norm:ctr_trap_ed` | SSCTR-TRAP-03、SSCTR-EXT-01 ~ SSCTR-EXT-03 | 已覆盖 | 启用→禁用外部陷阱 |
+| `norm:ctr_trap_dd` | SSCTR-TRAP-04 | 已覆盖 | 禁用→禁用不录制 |
+| `norm:ctr_trapret_enabled` / `norm:ctr_trapret_ee` | SSCTR-TRAP-05 | 已覆盖 | 启用模式间 trap return 录制 |
+| `norm:ctr_trapret_to_disabled` / `norm:ctr_trapret_ed` | SSCTR-TRAP-06 | 已覆盖 | 启用→禁用部分录制 |
+| `norm:ctr_trapret_from_disabled` / `norm:ctr_trapret_de` | SSCTR-TRAP-07 | 已覆盖 | 禁用→启用不录制 |
+| `norm:ctr_trapret_dd` | SSCTR-TRAP-08 | 已覆盖 | 禁用→禁用 trap return 不录制 |
+| `norm:exttrap_us` | SSCTR-EXT-01、SSCTR-EXT-02、SSCTR-EXT-03、SSCTR-EXT-10、SSCTR-EXT-11 | 已覆盖 | U→S 外部陷阱 STE |
+| `norm:exttrap_ctrtarget0` | SSCTR-EXT-03 | 已覆盖 | 外部陷阱 ctrtarget.PC=0 |
+| `norm:sctrclr_op1` | SSCTR-ENT-14 | 已覆盖 | SCTRCLR 清零所有 entry |
+| `norm:sctrclr_op2` | SSCTR-ENT-15、SSCTR-CC-06 | 已覆盖 | SCTRCLR 清零周期计数器 |
+| `norm:sctrclr_acc` | SSCTR-ENT-14、SSCTR-ENT-15、SSCTR-ENT-16 | 已覆盖 | SCTRCLR 后访问行为 |
+| `norm:sctrclr_exceptions` | SSCTR-ENT-17 | 已覆盖 | U-mode/VU-mode 异常 |
+| `norm:mstateen_ctr0` / `norm:mstateen_ctr0_except1/2/3` | SSCTR-SEA-01、SSCTR-SEA-03 ~ SSCTR-SEA-05 | 已覆盖 | mstateen0.CTR 门控 S-mode 访问 |
+| `norm:mstateen_ctr0_qualified_transfer` | SSCTR-SEA-01 | 已覆盖 | CTR=0 时隐式更新继续 |
+| `norm:ctr_custom_bits` | SSCTR-CUST-01 ~ SSCTR-CUST-06 | 已覆盖 | Custom[3:0] 自定义扩展行为 |
+
+**未覆盖规范点说明**：
+- Hypervisor 相关规范点（`norm:Ssctr_vsctrctl_sz_acc_op`、`norm:vsctr-s_op`、`norm:vsctrctl-u_op`、`norm:vsctrctl-ste_op`、`norm:vsctrctl-bpfrz_op`、`norm:vsctrctl-lcofifrz_op`、`norm:vsiselect_op`、`norm:ctr_freeze_vs`、`norm:exttrap_vshs`、`norm:exttrap_vuhs`、`norm:exttrap_vuvs`、`norm:sctrdepth_mode`）：已迁移至 `Hypervisor_cross_test_plan.md` Group 14，本方案不重复覆盖。
