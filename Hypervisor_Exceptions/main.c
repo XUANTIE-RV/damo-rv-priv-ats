@@ -4,7 +4,7 @@
  */
 
 /*
- * main.c - Hypervisor Exceptions Subset Test entry point
+ * main.c - Hypervisor Exceptions Compliance Test entry point
  *
  * See DOCS/testplan/Hypervisor_Exceptions_test_plan.md for the full test plan.
  *
@@ -30,7 +30,7 @@ int main(void) {
     uart_init();
     reset_state();
 
-    test_print_banner("RISC-V Hypervisor Exceptions Subset Test");
+    test_print_banner("RISC-V Hypervisor Exceptions Compliance Test");
 
     unsigned int test_count = (unsigned int)(
         (uintptr_t)_test_table_end - (uintptr_t)_test_table

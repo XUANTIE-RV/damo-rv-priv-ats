@@ -22,7 +22,6 @@
 #include "hyp/hyp_test.h"
 #include "hyp/hyp_csr.h"
 #include "hyp/hyp_defs.h"
-#include "hyp/hyp_platform.h"
 
 /* Group 1 */ #include "test_probe.c"
 /* Group 2 */ #include "test_mode.c"

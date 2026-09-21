@@ -53,8 +53,8 @@ bool test_hzlasr_25_misaligned_load_acq(void)
     TEST_BEGIN("HZLASR-25: misaligned load-acquire (no MAG) -> fault (record)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t off = HZLASR_MAG_DECLARED ? HZLASR_W_MIS_STRADDLE
                                         : HZLASR_W_MIS_INTRA;
@@ -62,7 +62,7 @@ bool test_hzlasr_25_misaligned_load_acq(void)
 
     /* Part A: hedeleg[4]/[5]=0 -> captured at HS/M level. */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hzlasr_preset_granule();
     hedeleg_write(hedeleg_read() & ~((1UL << 4) | (1UL << 5)));
     trap_expect_begin();
@@ -78,7 +78,7 @@ bool test_hzlasr_25_misaligned_load_acq(void)
     hzlasr_record_load_cause("(A) misaligned load-acquire (expect 4/5)", cause_a);
 
     /* Part B: hedeleg[4]/[5]=1 -> a load-align cause is delivered to VS. */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hzlasr_preset_granule();
     hyp_delegate_to_vs((1UL << 4) | (1UL << 5), 0);
     hz_vs_handler_install();
@@ -117,8 +117,8 @@ bool test_hzlasr_26_misaligned_store_rel(void)
     TEST_BEGIN("HZLASR-26: misaligned store-release (no MAG) -> cause 6/7");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t off = HZLASR_MAG_DECLARED ? HZLASR_W_MIS_STRADDLE
                                         : HZLASR_W_MIS_INTRA;
@@ -127,7 +127,7 @@ bool test_hzlasr_26_misaligned_store_rel(void)
 
     /* Part A: hedeleg[6]/[7]=0 -> captured at HS/M level. */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hzlasr_preset_granule();
     hedeleg_write(hedeleg_read() & ~((1UL << 6) | (1UL << 7)));
     trap_expect_begin();
@@ -145,7 +145,7 @@ bool test_hzlasr_26_misaligned_store_rel(void)
                                  CAUSE_STORE_ACCESS_FAULT));
 
     /* Part B: hedeleg[6]/[7]=1 -> delivered to VS-mode. */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hzlasr_preset_granule();
     hyp_delegate_to_vs((1UL << 6) | (1UL << 7), 0);
     hz_vs_handler_install();
@@ -172,8 +172,8 @@ bool test_hzlasr_27_mag_intra_no_fault(void)
     TEST_BEGIN("HZLASR-27: MAG intra-granule misaligned Zalasr -> no fault");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!HZLASR_MAG_DECLARED)
         TEST_SKIP("platform declares no misaligned atomicity granule (Zama16b)");
 
@@ -182,7 +182,7 @@ bool test_hzlasr_27_mag_intra_no_fault(void)
 
     /* load-acquire intra-granule. */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hzlasr_preset_granule();
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lw_aq, mis);
@@ -197,7 +197,7 @@ bool test_hzlasr_27_mag_intra_no_fault(void)
                 "exception (norm:zalasr_misaligned_single_op)", !fired_l);
 
     /* store-release intra-granule. */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hzlasr_preset_granule();
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_sw_rl, mis);
@@ -225,8 +225,8 @@ bool test_hzlasr_28_misaligned_trap_context(void)
     TEST_BEGIN("HZLASR-28: misaligned Zalasr HS-mode trap context");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t off = HZLASR_MAG_DECLARED ? HZLASR_W_MIS_STRADDLE
                                         : HZLASR_W_MIS_INTRA;
@@ -235,7 +235,7 @@ bool test_hzlasr_28_misaligned_trap_context(void)
 
     /* store-release misaligned trap context (forced store class). */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hzlasr_preset_granule();
     hedeleg_write(hedeleg_read() & ~((1UL << 6) | (1UL << 7)));
     hz_clear_gva_spv();
@@ -269,7 +269,7 @@ bool test_hzlasr_28_misaligned_trap_context(void)
                        (htinst_s >> 15) & 0x1FUL, (uintptr_t)0);
 
     /* load-acquire misaligned trap context (record cause class). */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hzlasr_preset_granule();
     hedeleg_write(hedeleg_read() & ~((1UL << 4) | (1UL << 5)));
     hz_clear_gva_spv();

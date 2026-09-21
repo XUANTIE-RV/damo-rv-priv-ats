@@ -52,13 +52,13 @@ static uintptr_t _prio_vs_fetch_target(uintptr_t addr)
 TEST_REGISTER(test_sha_prio_gstage_over_vsstage);
 bool test_sha_prio_gstage_over_vsstage(void) {
     TEST_BEGIN("SHA-PRIO-01: G-stage fault takes priority over VS-stage fault");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t target_gpa = 0x50000000UL;
 
     gpt_pool_reset();
     two_stage_ctx_t ctx;
-    two_stage_init(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     two_stage_setup_identity(&ctx, base, PLATFORM_MEM_SIZE,
@@ -95,7 +95,7 @@ bool test_sha_prio_gstage_over_vsstage(void) {
 TEST_REGISTER(test_sha_prio_inst_fetch_over_illegal);
 bool test_sha_prio_inst_fetch_over_illegal(void) {
     TEST_BEGIN("SHA-PRIO-02: inst-fetch GPF takes priority over illegal-inst");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* Spec: norm:HSyncExcPrio — guest-page-fault from G-stage has higher
      * priority than illegal-instruction exception.
@@ -116,7 +116,7 @@ bool test_sha_prio_inst_fetch_over_illegal(void) {
 
     gpt_pool_reset();
     two_stage_ctx_t ctx;
-    two_stage_init(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     two_stage_setup_identity(&ctx, base, PLATFORM_MEM_SIZE,

@@ -26,8 +26,6 @@
 #error "SUITE_VSATP_MODE must be defined before including this file"
 #endif
 
-#define G12_GMODE   SUITE_HGATP_MODE
-#define G12_VSMODE  SUITE_VSATP_MODE
 
 #define G12_VS_RWX  (PTE_V|PTE_R|PTE_W|PTE_X|PTE_A|PTE_D)
 #define G12_VS_INV  (0)
@@ -59,12 +57,12 @@ static uintptr_t g12_hs_sfence_vma_all(uintptr_t arg) {
 TEST_REGISTER(test_ts_sf_01_v1_flush_vs);
 bool test_ts_sf_01_v1_flush_vs(void) {
     TEST_BEGIN("TS-SF-01: V=1 sfence.vma -> VS-stage flushed");
-    REQUIRE_VSATP_MODE(G12_VSMODE);
-    REQUIRE_HGATP_MODE(G12_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_full(&ctx, G12_VSMODE, G12_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Warm up. */
     (void)ts2_run_check_no_fault(&ctx, test_vs_read_write, va);
@@ -103,12 +101,12 @@ bool test_ts_sf_01_v1_flush_vs(void) {
 TEST_REGISTER(test_ts_sf_02_v1_no_g_flush);
 bool test_ts_sf_02_v1_no_g_flush(void) {
     TEST_BEGIN("TS-SF-02: V=1 sfence.vma does not affect G-stage");
-    REQUIRE_VSATP_MODE(G12_VSMODE);
-    REQUIRE_HGATP_MODE(G12_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_full(&ctx, G12_VSMODE, G12_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Warm up. */
     (void)ts2_run_check_no_fault(&ctx, test_vs_read_write, va);
@@ -134,11 +132,11 @@ bool test_ts_sf_02_v1_no_g_flush(void) {
 TEST_REGISTER(test_ts_sf_03_vtvm_virt_inst);
 bool test_ts_sf_03_vtvm_virt_inst(void) {
     TEST_BEGIN("TS-SF-03: hstatus.VTVM=1 -> sfence.vma in VS = virt-inst (22)");
-    REQUIRE_VSATP_MODE(G12_VSMODE);
-    REQUIRE_HGATP_MODE(G12_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, G12_VSMODE, G12_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Set hstatus.VTVM=1. */
     asm volatile ("csrs hstatus, %0" :: "r"((uintptr_t)HSTATUS_VTVM));
@@ -173,12 +171,12 @@ bool test_ts_sf_03_vtvm_virt_inst(void) {
 TEST_REGISTER(test_ts_sf_04_v0_not_touch_vs);
 bool test_ts_sf_04_v0_not_touch_vs(void) {
     TEST_BEGIN("TS-SF-04: V=0 sfence.vma does not affect VS-stage");
-    REQUIRE_VSATP_MODE(G12_VSMODE);
-    REQUIRE_HGATP_MODE(G12_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_full(&ctx, G12_VSMODE, G12_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Warm up. */
     (void)ts2_run_check_no_fault(&ctx, test_vs_read_write, va);

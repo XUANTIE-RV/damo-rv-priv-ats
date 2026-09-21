@@ -22,7 +22,7 @@ bool test_hcfi_ss_37(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     ssp_write(SS_PAGE_ADDR + 0x100);
 
@@ -46,7 +46,7 @@ bool test_hcfi_ss_38(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     ssp_write(SS_PAGE_ADDR + 0x100);
 
@@ -68,7 +68,7 @@ bool test_hcfi_ss_39(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     ssp_write(SS_PAGE_ADDR + 0x100);
 
@@ -91,7 +91,7 @@ bool test_hcfi_ss_40(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     ssp_write(SS_PAGE_ADDR + 0x100);
 
@@ -115,7 +115,7 @@ bool test_hcfi_ss_41(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     ssp_write(SS_PAGE_ADDR + 0x100);
     /* Delegate store guest-page-fault to HS (medeleg only; hedeleg[23]
@@ -147,7 +147,7 @@ bool test_hcfi_ss_42(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     ssp_write(SS_PAGE_ADDR + 0x100);
     clear_all_deleg();

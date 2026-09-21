@@ -34,6 +34,10 @@
  * These mirror the values in rvmodel_macros.h for C code use.
  * Assembly code uses the originals in rvmodel_macros.h. */
 #define PLATFORM_CLINT_BASE       0x02000000UL
+/* Interrupt-controller / software-interrupt device capabilities (consumed by
+ * common/capabilities.h to derive MSWI_AVAILABLE). */
+#define CLINT_SUPPORTED            /* SiFive CLINT: MSIP@+0x0, MTIMECMP@+0x4000, MTIME@+0xBFF8 */
+#define MSWI_SUPPORTED             /* machine software-interrupt device (msip MMIO) present */
 #define PLATFORM_MSIP_ADDR        PLATFORM_CLINT_BASE
 #define PLATFORM_MTIMECMP_ADDR    (PLATFORM_CLINT_BASE + 0x4000UL)
 #define PLATFORM_MTIME_ADDR       (PLATFORM_CLINT_BASE + 0xBFF8UL)

@@ -4,7 +4,7 @@
  */
 
 /*
- * main.c - Hypervisor CSR Subset Test entry point
+ * main.c - Hypervisor CSR Compliance Test entry point
  *
  * See DOCS/testplan/Hypervisor_CSR_test_plan.md for the full test plan.
  *
@@ -27,7 +27,7 @@ int main(void) {
     uart_init();
     reset_state();
 
-    test_print_banner("RISC-V Hypervisor CSR Subset Test");
+    test_print_banner("RISC-V Hypervisor CSR Compliance Test");
 
     unsigned int test_count = (unsigned int)(
         (uintptr_t)_test_table_end - (uintptr_t)_test_table

@@ -356,7 +356,6 @@ void hsv_d(uintptr_t addr, uint64_t val);  /* 写入双字（RV64） */
 | `CHECK_HTVAL(msg, expected_gpa_shifted)` | 检查 htval 值 |
 | `CHECK_HTINST(msg, expected)` | 检查 htinst 值 |
 | `CHECK_GVA(msg, expected)` | 检查 hstatus.GVA |
-| `REQUIRE_EXT(field)` | 子扩展未实现时跳过 |
 
 **委托辅助函数：**
 

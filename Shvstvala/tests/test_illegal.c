@@ -39,7 +39,7 @@ bool test_shvstvala_ill_01(void) {
     /* Two-stage identity map for execution */
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     uintptr_t r_start = (uintptr_t)__vm_test_region_start;
@@ -82,7 +82,7 @@ bool test_shvstvala_ill_02(void) {
 
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     uintptr_t r_start = (uintptr_t)__vm_test_region_start;
@@ -125,7 +125,7 @@ bool test_shvstvala_ill_03(void) {
 
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     uintptr_t r_start = (uintptr_t)__vm_test_region_start;
@@ -168,7 +168,7 @@ bool test_shvstvala_ill_04(void) {
 
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     uintptr_t r_start = (uintptr_t)__vm_test_region_start;
@@ -213,7 +213,7 @@ bool test_shvstvala_ill_05(void) {
 
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     uintptr_t r_start = (uintptr_t)__vm_test_region_start;
@@ -243,7 +243,7 @@ bool test_shvstvala_ill_05(void) {
     g_shvstvala_cause  = 0;
 
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     two_stage_vs_identity(&ctx, lo_base, lo_end - lo_base,
                           vs_flags, PT_LEVEL_2M);
     two_stage_vs_identity(&ctx, r_start, r_size, vs_flags, PT_LEVEL_4K);

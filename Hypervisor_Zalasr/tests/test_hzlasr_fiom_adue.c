@@ -44,7 +44,7 @@ static void hzlasr_fiom_case(int fiom)
     g_hz_fiom_rd = 0;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t he = henvcfg_read();
     if (fiom) he |= HZ_HENVCFG_FIOM; else he &= ~HZ_HENVCFG_FIOM;
     henvcfg_write(he);
@@ -79,8 +79,8 @@ bool test_hzlasr_29_fiom1(void)
     TEST_BEGIN("HZLASR-29: FIOM=1 VS-mode load-acquire/store-release executable");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzlasr_fiom_case(1);
     printf("  [INFO] FIOM ordering effect requires multi-hart: %s\n",
            HZLASR_SMP_SKIP_REASON);
@@ -96,8 +96,8 @@ bool test_hzlasr_30_fiom0(void)
     TEST_BEGIN("HZLASR-30: FIOM=0 control VS-mode load-acquire/store-release");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzlasr_fiom_case(0);
     HYP_TEST_END();
 }
@@ -113,12 +113,12 @@ bool test_hzlasr_31_adue0_load_acq_a0(void)
     TEST_BEGIN("HZLASR-31: ADUE=0 + A=0 load-acquire -> Svade load pf (record)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     ts2_disable_adue();
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("VS leaf PTE resolvable", pte != NULL);
@@ -155,12 +155,12 @@ bool test_hzlasr_32_adue0_store_rel_d0_forced(void)
     TEST_BEGIN("HZLASR-32: ADUE=0 + A=1/D=0 store-release -> store pf (15)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     ts2_disable_adue();
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("VS leaf PTE resolvable", pte != NULL);
@@ -196,14 +196,14 @@ bool test_hzlasr_33_adue1_hw_update(void)
     TEST_BEGIN("HZLASR-33: ADUE=1 load-acquire A-only, store-release A+D");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
 
     /* (a) load-acquire: hardware sets A, NOT D. */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("(a) VS leaf PTE resolvable", pte != NULL);
     if (pte == NULL) { ts2_finish(&ctx); HYP_TEST_END(); }
@@ -239,7 +239,7 @@ bool test_hzlasr_33_adue1_hw_update(void)
                 (pte_l & PTE_D) == 0);
 
     /* (b) store-release: hardware sets A+D. */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("(b) VS leaf PTE resolvable", pte != NULL);
     if (pte == NULL) { ts2_finish(&ctx); HYP_TEST_END(); }

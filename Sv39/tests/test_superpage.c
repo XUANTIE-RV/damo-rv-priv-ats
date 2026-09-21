@@ -5,32 +5,30 @@
 
 /*
  * test_superpage.c - Group 8: Superpage Alignment (ALIGN-01~02)
- *                  + Group 9: Multi-level Page Table Walk (WALK-01/04/05)
+ *                  + Group 9: Multi-level Page Table Walk (WALK + 04/05)
  *
- * Tests:
- *   ALIGN-01: Misaligned 2MB megapage triggers page fault
- *   ALIGN-02: Misaligned 1GB gigapage triggers page fault
- *   WALK-01:  Sv39 three-level full walk (4KB pages)
- *   WALK-04:  Non-leaf PTE at last level triggers page fault
- *   WALK-05:  Intermediate leaf PTE (2MB megapage) works
+ * Shared by Sv39/Sv48/Sv57; the full-walk test ID, its function name,
+ * the report mode name and the walk-depth wording are derived from
+ * SUITE_SATP_MODE in test_helpers.h (WALK-01 Sv39 / WALK-02 Sv48 /
+ * WALK-03 Sv57). ALIGN-01/02, WALK-04/05 are identical across modes.
  */
 
 /* ===================================================================
  * Group 8: Superpage Alignment (ALIGN-01 ~ ALIGN-02)
  * =================================================================== */
 
-TEST_REGISTER(test_sv39_align01);
-bool test_sv39_align01(void) {
+SV_REGISTER(align01);
+bool SVFN(align01)(void) {
     TEST_BEGIN("ALIGN-01: Misaligned 2MB megapage triggers page fault");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /*
      * Construct a misaligned megapage:
-     * Use a VA outside the 1GB code mapping region.
+     * Use a VA outside the code mapping region.
      * Map with PA that has ppn[0] != 0 (PA not 2MB-aligned).
      */
     uintptr_t test_va_2m = 0x40000000UL;  /* 1GB mark, different from code region */
@@ -48,18 +46,18 @@ bool test_sv39_align01(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_align02);
-bool test_sv39_align02(void) {
+SV_REGISTER(align02);
+bool SVFN(align02)(void) {
     TEST_BEGIN("ALIGN-02: Misaligned 1GB gigapage triggers page fault");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /*
      * Construct a misaligned gigapage:
-     * Install a leaf PTE at L2 (root level) with ppn[1:0] != 0.
+     * Install a leaf PTE at the root level with ppn[1:0] != 0.
      * Use a VA in a different 1GB region than the code mapping.
      */
     uintptr_t test_va_1g = 0x40000000UL;  /* 1GB, different region */
@@ -78,16 +76,17 @@ bool test_sv39_align02(void) {
 }
 
 /* ===================================================================
- * Group 9: Multi-level Page Table Walk (WALK-01, WALK-04, WALK-05)
+ * Group 9: Multi-level Page Table Walk (WALK full + WALK-04, WALK-05)
  * =================================================================== */
 
-TEST_REGISTER(test_sv39_walk01);
-bool test_sv39_walk01(void) {
-    TEST_BEGIN("WALK-01: Sv39 three-level full walk (4KB pages)");
+SV_REGISTER(SFX_WALK_FULL);
+bool SVFN(SFX_WALK_FULL)(void) {
+    TEST_BEGIN(ID_WALK_FULL ": " SUITE_MODE_NAME " " SUITE_WALK_DEPTH
+               " full walk (4KB pages)");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     uintptr_t base = PLATFORM_MEM_BASE;
     uintptr_t size = 2 * PAGE_SIZE_2M;
@@ -98,19 +97,19 @@ bool test_sv39_walk01(void) {
 
     uintptr_t result = vm_run_in_smode(&ctx, test_smode_read_write,
                                         (uintptr_t)test_data_area);
-    TEST_ASSERT("three-level walk read/write succeeds", result == 0);
+    TEST_ASSERT(SUITE_WALK_DEPTH " walk read/write succeeds", result == 0);
 
     pt_pool_reset();
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_walk04);
-bool test_sv39_walk04(void) {
+SV_REGISTER(walk04);
+bool SVFN(walk04)(void) {
     TEST_BEGIN("WALK-04: Non-leaf PTE at last level triggers page fault");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /*
@@ -130,13 +129,13 @@ bool test_sv39_walk04(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_walk05);
-bool test_sv39_walk05(void) {
+SV_REGISTER(walk05);
+bool SVFN(walk05)(void) {
     TEST_BEGIN("WALK-05: Intermediate leaf PTE (2MB megapage) works");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     uintptr_t base = PLATFORM_MEM_BASE;
     uintptr_t size = 16 * PAGE_SIZE_2M;

@@ -13,6 +13,7 @@
  * =================================================================== */
 
 #include "hyp_test_helpers.h"
+#include "two_stage_helpers.h"   /* SUITE_HGATP_MODE / SUITE_VSATP_MODE fallback */
 
 /* ===================================================================
  * G-stage fault helpers.
@@ -23,7 +24,7 @@ void setup_gstage_with_victim(two_stage_ctx_t *ctx,
                               uintptr_t victim_flags)
 {
     gpt_pool_reset();
-    two_stage_init(ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    two_stage_init(ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     /* Kernel/UART at 2MB. */
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
@@ -116,7 +117,7 @@ uintptr_t setup_implicit_walk_victim(two_stage_ctx_t *ctx,
                                      uintptr_t victim_g_flags)
 {
     gpt_pool_reset();
-    two_stage_init(ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* --- VS-stage: identity-map the kernel/low region at 2MB and
      *     map test_va into the test region at 4KB (creates the leaf

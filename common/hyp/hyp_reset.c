@@ -115,7 +115,11 @@ void hyp_reset_state(void) {
     CSRW(CSR_VSIP, 0);
     CSRW(CSR_VSATP, 0);
 
-    /* Final TLB flush in case any G-stage entries linger. */
+    /* Final TLB flush: vsatp was just cleared, so flush the VS-stage
+     * (HFENCE.VVMA) as well as any lingering G-stage entries
+     * (HFENCE.GVMA).  Flushing only GVMA would leave stale VS-stage
+     * entries from a prior paged vsatp usable by the next VS run. */
+    hfence_vvma_all();
     hfence_gvma_all();
 
     /* ----- Forward to base reset (PMP, satp, M-mode return, etc.) ----- */

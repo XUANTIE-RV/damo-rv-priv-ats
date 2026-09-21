@@ -22,7 +22,7 @@ bool test_hcfi_ss_43(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
     /* Use Bare VS-stage (no VS-stage page tables) */
-    ts2_setup_full(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     ssp_write(SS_PAGE_ADDR + 0x100);
 
@@ -42,7 +42,7 @@ bool test_hcfi_ss_44(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     ssp_write(SS_PAGE_ADDR + 0x100);
 
@@ -62,7 +62,7 @@ bool test_hcfi_ss_45(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
 
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_exec_ssamoswap_w, SS_PAGE_ADDR);
@@ -81,7 +81,7 @@ bool test_hcfi_ss_46(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full_u(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     senvcfg_set(SENVCFG_SSE);
     ssp_write(SS_PAGE_ADDR + 0x100);
@@ -103,7 +103,7 @@ bool test_hcfi_ss_47(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     ssp_write(SS_PAGE_ADDR + 0x100);
 
@@ -124,7 +124,7 @@ bool test_hcfi_ss_48(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
 
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_read_ssp, 0);

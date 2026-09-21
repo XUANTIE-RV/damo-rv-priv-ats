@@ -41,12 +41,12 @@ bool test_hzlrsc_15_lr_htinst_transformed(void)
     TEST_BEGIN("HZLRSC-15: LR explicit G-stage fault htinst = 0/transformed");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_INV);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_INV);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lr_w, va);
@@ -78,12 +78,12 @@ bool test_hzlrsc_16_sc_htinst_transformed(void)
     TEST_BEGIN("HZLRSC-16: SC explicit G-stage fault htinst keeps funct5=SC");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lrsc_w, va);
@@ -112,7 +112,7 @@ static void hzlrsc_aqrl_case(uintptr_t (*probe)(uintptr_t), uintptr_t va,
                              unsigned exp_aq, unsigned exp_rl)
 {
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, g_flags);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, g_flags);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, probe, va);
     bool fired = trap_was_triggered();
@@ -145,8 +145,8 @@ bool test_hzlrsc_17_htinst_aqrl(void)
     TEST_BEGIN("HZLRSC-17: htinst preserves aq/rl bits");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     /* lr.w.aq  -> load guest-page-fault (21), aq=1 rl=0 */
@@ -174,12 +174,12 @@ bool test_hzlrsc_18_addr_offset_zero(void)
     TEST_BEGIN("HZLRSC-18: LR/SC htinst Addr. Offset == 0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_INV);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_INV);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lr_w, va);
@@ -208,11 +208,11 @@ bool test_hzlrsc_19_implicit_walk_pseudo(void)
     TEST_BEGIN("HZLRSC-19: implicit VS-walk LR fault -> read pseudoinst");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t va = (uintptr_t)test_data_area;
 
     /* Invalidate the VS-stage leaf PT page in G-stage so the implicit
@@ -247,12 +247,12 @@ bool test_hzlrsc_20_adue_write_pseudo(void)
     TEST_BEGIN("HZLRSC-20: ADUE=1 SC D-update fault -> write pseudoinst");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Patch the VS leaf PTE: W=1 (store passes VS perm), A=1, D=0 (so a
      * successful SC store requires a hardware D-bit update). */
@@ -306,14 +306,14 @@ bool test_hzlrsc_21_explicit_vs_implicit(void)
     TEST_BEGIN("HZLRSC-21: htinst disambiguates explicit vs implicit (21)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
 
     /* (a) explicit LR data access fails in G-stage. */
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_INV);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_INV);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lr_w, va);
     bool fired_a = trap_was_triggered();
@@ -334,7 +334,7 @@ bool test_hzlrsc_21_explicit_vs_implicit(void)
 
     /* (b) implicit VS-stage PTE read fails in G-stage. */
     uintptr_t va_b = (uintptr_t)test_data_area;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t pt_gpa = ts2_invalidate_vs_pt_in_g(&ctx, va_b, PT_LEVEL_4K);
     TEST_ASSERT("(b) VS leaf PT GPA resolvable", pt_gpa != 0);
     trap_expect_begin();

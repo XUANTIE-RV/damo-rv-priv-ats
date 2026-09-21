@@ -36,7 +36,7 @@ static void hzacas_fiom_case(int fiom, uintptr_t (*probe)(uintptr_t))
     hz_cas_swap = 0x00002000u;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t he = henvcfg_read();
     if (fiom) he |= HZ_HENVCFG_FIOM; else he &= ~HZ_HENVCFG_FIOM;
     henvcfg_write(he);
@@ -65,8 +65,8 @@ bool test_hzacas_27_fiom1(void)
     TEST_BEGIN("HZACAS-27: FIOM=1 VS-mode amocas.w.aq executable");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzacas_fiom_case(1, hz_vs_amocas_w_aq);
     printf("  [INFO] FIOM ordering effect requires multi-hart: %s\n",
            HZACAS_SMP_SKIP_REASON);
@@ -82,8 +82,8 @@ bool test_hzacas_28_fiom0(void)
     TEST_BEGIN("HZACAS-28: FIOM=0 control VS-mode amocas.w.aq");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzacas_fiom_case(0, hz_vs_amocas_w_aq);
     HYP_TEST_END();
 }
@@ -98,12 +98,12 @@ bool test_hzacas_29_adue0_a0(void)
     TEST_BEGIN("HZACAS-29: ADUE=0 + A=0 amocas -> Svade store pf (15)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     ts2_disable_adue();
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("VS leaf PTE resolvable", pte != NULL);
@@ -143,12 +143,12 @@ bool test_hzacas_30_adue0_d0_forced(void)
     TEST_BEGIN("HZACAS-30: ADUE=0 + A=1/D=0 success amocas -> store pf (15)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     ts2_disable_adue();
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("VS leaf PTE resolvable", pte != NULL);
@@ -184,12 +184,12 @@ bool test_hzacas_31_adue1_hw_update(void)
     TEST_BEGIN("HZACAS-31: ADUE=1 amocas -> hardware A/D update, no fault");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("VS leaf PTE resolvable", pte != NULL);
     if (pte == NULL) { ts2_finish(&ctx); HYP_TEST_END(); }
@@ -241,12 +241,12 @@ bool test_hzacas_32_failed_cas_d_side_effect(void)
     TEST_BEGIN("HZACAS-32: (record) ADUE=1 failed-CAS VS-stage D side effect");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("VS leaf PTE resolvable", pte != NULL);
     if (pte == NULL) { ts2_finish(&ctx); HYP_TEST_END(); }
@@ -294,12 +294,12 @@ bool test_hzacas_33_failed_cas_gstage_d_side_effect(void)
     TEST_BEGIN("HZACAS-33: (record) ADUE=1 failed-CAS G-stage D side effect");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t *vspte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     uintptr_t *gpte = gpt_get_pte(&ctx.g_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("VS + G leaf PTEs resolvable", vspte != NULL && gpte != NULL);

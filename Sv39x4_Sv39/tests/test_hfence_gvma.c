@@ -26,8 +26,6 @@
 #error "SUITE_VSATP_MODE must be defined before including this file"
 #endif
 
-#define G11_GMODE   SUITE_HGATP_MODE
-#define G11_VSMODE  SUITE_VSATP_MODE
 
 #define G11_G_RWXU  (PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D)
 
@@ -89,12 +87,12 @@ static void g11_hfence_all_adapter(uintptr_t a, uintptr_t b) {
 TEST_REGISTER(test_ts_hg_01_global);
 bool test_ts_hg_01_global(void) {
     TEST_BEGIN("TS-HG-01: hfence.gvma x0,x0 -> new G PTE visible");
-    REQUIRE_VSATP_MODE(G11_VSMODE);
-    REQUIRE_HGATP_MODE(G11_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_full(&ctx, G11_VSMODE, G11_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     /* Warm. */
     (void)ts2_run_check_no_fault(&ctx, test_vs_read_write, va);
 
@@ -112,12 +110,12 @@ bool test_ts_hg_01_global(void) {
 TEST_REGISTER(test_ts_hg_02_by_gpa);
 bool test_ts_hg_02_by_gpa(void) {
     TEST_BEGIN("TS-HG-02: hfence.gvma gpa>>2, x0 -> per-GPA flush");
-    REQUIRE_VSATP_MODE(G11_VSMODE);
-    REQUIRE_HGATP_MODE(G11_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_full(&ctx, G11_VSMODE, G11_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     (void)ts2_run_check_no_fault(&ctx, test_vs_read_write, va);
 
     uintptr_t cause = g11_g_invalidate_then_fence_then_load(
@@ -135,12 +133,12 @@ bool test_ts_hg_02_by_gpa(void) {
 TEST_REGISTER(test_ts_hg_03_by_vmid);
 bool test_ts_hg_03_by_vmid(void) {
     TEST_BEGIN("TS-HG-03: hfence.gvma x0,vmid -> per-VMID flush");
-    REQUIRE_VSATP_MODE(G11_VSMODE);
-    REQUIRE_HGATP_MODE(G11_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_full(&ctx, G11_VSMODE, G11_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     (void)ts2_run_check_no_fault(&ctx, test_vs_read_write, va);
 
     uintptr_t cause = g11_g_invalidate_then_fence_then_load(
@@ -159,12 +157,12 @@ bool test_ts_hg_03_by_vmid(void) {
 TEST_REGISTER(test_ts_hg_04_mode_switch);
 bool test_ts_hg_04_mode_switch(void) {
     TEST_BEGIN("TS-HG-04: hgatp.MODE switch + HFENCE.GVMA -> ok");
-    REQUIRE_VSATP_MODE(G11_VSMODE);
-    REQUIRE_HGATP_MODE(G11_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_full(&ctx, G11_VSMODE, G11_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     (void)ts2_run_check_no_fault(&ctx, test_vs_read_write, va);
 
     /* Switch hgatp.MODE: temporarily go to Bare, fence, then restore. */
@@ -173,7 +171,7 @@ bool test_ts_hg_04_mode_switch(void) {
     /* Restore by re-enabling the same context. */
     {
         uintptr_t root_ppn = ((uintptr_t)ctx.g_ctx.root_pt) >> PAGE_SHIFT;
-        uintptr_t new_hgatp = ((uintptr_t)G11_GMODE << 60) | root_ppn;
+        uintptr_t new_hgatp = ((uintptr_t)SUITE_HGATP_MODE << 60) | root_ppn;
         asm volatile ("csrw " CSR_STR(CSR_HGATP) ", %0" :: "r"(new_hgatp) : "memory");
         hfence_gvma_all();
     }
@@ -197,8 +195,8 @@ bool test_ts_hg_04_mode_switch(void) {
 TEST_REGISTER(test_ts_hg_05_tvm_illegal);
 bool test_ts_hg_05_tvm_illegal(void) {
     TEST_BEGIN("TS-HG-05: TVM=1 in HS -> illegal-inst (2)");
-    REQUIRE_VSATP_MODE(G11_VSMODE);
-    REQUIRE_HGATP_MODE(G11_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     asm volatile ("csrs mstatus, %0" :: "r"((uintptr_t)MSTATUS_TVM));
 
@@ -222,11 +220,11 @@ bool test_ts_hg_05_tvm_illegal(void) {
 TEST_REGISTER(test_ts_hg_06_v1_virt_inst);
 bool test_ts_hg_06_v1_virt_inst(void) {
     TEST_BEGIN("TS-HG-06: HFENCE.GVMA in VS-mode -> virt-inst (22)");
-    REQUIRE_VSATP_MODE(G11_VSMODE);
-    REQUIRE_HGATP_MODE(G11_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, G11_VSMODE, G11_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, g11_vs_hfence_gvma_all, 0);

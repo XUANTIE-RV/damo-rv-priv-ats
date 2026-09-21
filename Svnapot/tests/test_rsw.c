@@ -21,7 +21,7 @@ bool test_napot_rsw_writable(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -32,7 +32,7 @@ bool test_napot_rsw_writable(void) {
 
     for (int i = 0; i < n; i++) {
         pt_pool_reset();
-        pt_init(&ctx, SATP_MODE_SV39);
+        pt_init(&ctx, SUITE_SATP_MODE);
         ret = setup_code_mapping(&ctx);
 
         uintptr_t test_va = NAPOT_TEST_REGION_0;
@@ -61,7 +61,7 @@ bool test_napot_rsw_readback(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);

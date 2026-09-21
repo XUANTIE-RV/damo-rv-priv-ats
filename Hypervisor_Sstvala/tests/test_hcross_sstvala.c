@@ -43,7 +43,7 @@ bool test_hcross_sstvala_01(void) {
     /* Initialize two-stage translation: VS=Bare, G-stage=SV39X4 */
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     /* Identity-map the kernel/UART region at 2MB granularity */
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
@@ -100,7 +100,7 @@ bool test_hcross_sstvala_02(void) {
     /* Initialize two-stage translation: VS=Bare, G-stage=SV39X4 */
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     /* Identity-map the kernel/UART region at 2MB granularity */
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
@@ -159,7 +159,7 @@ bool test_hcross_sstvala_03(void) {
     /* Initialize two-stage translation: VS=Bare, G-stage=SV39X4 */
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     /* Identity-map the kernel/UART region at 2MB granularity */
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
@@ -229,7 +229,7 @@ bool test_hcross_sstvala_04(void) {
     two_stage_ctx_t ctx;
     gpt_pool_reset();
     pt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* VS-stage: identity-map kernel/UART region at 2MB granularity */
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
@@ -310,7 +310,7 @@ bool test_hcross_sstvala_05(void) {
     two_stage_ctx_t ctx;
     gpt_pool_reset();
     pt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* VS-stage: identity-map kernel/UART region at 2MB granularity */
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
@@ -414,7 +414,7 @@ bool test_hcross_sstvala_06(void) {
      * Code/data regions identity-mapped so VS-mode payload can run. */
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     uintptr_t lo_end = (uintptr_t)__vm_test_region_start & ~(PAGE_SIZE_2M - 1);
@@ -455,7 +455,7 @@ bool test_hcross_sstvala_07(void) {
 
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     uintptr_t lo_end = (uintptr_t)__vm_test_region_start & ~(PAGE_SIZE_2M - 1);
@@ -495,7 +495,7 @@ bool test_hcross_sstvala_08(void) {
 
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     uintptr_t lo_end = (uintptr_t)__vm_test_region_start & ~(PAGE_SIZE_2M - 1);

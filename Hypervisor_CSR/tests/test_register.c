@@ -4,7 +4,7 @@
  */
 
 /*
- * test_register.c - Hypervisor CSR Subset Test Registration
+ * test_register.c - Hypervisor CSR Compliance Test Registration
  *
  * All test cases are organized by Group, matching
  * DOCS/testplan/Hypervisor_CSR_test_plan.md.

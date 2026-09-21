@@ -28,8 +28,6 @@
 #error "SUITE_VSATP_MODE must be defined before including this file"
 #endif
 
-#define G7_GMODE   SUITE_HGATP_MODE
-#define G7_VSMODE  SUITE_VSATP_MODE
 
 /* Common reusable PTE flag bundles. AD bits set so we never trigger
  * an A/D-update fault that would mask the permission semantics. */
@@ -53,11 +51,11 @@
 TEST_REGISTER(test_ts_perm_01_dual_rwx);
 bool test_ts_perm_01_dual_rwx(void) {
     TEST_BEGIN("TS-PERM-01: dual RWX permits load+store");
-    REQUIRE_VSATP_MODE(G7_VSMODE);
-    REQUIRE_HGATP_MODE(G7_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, G7_VSMODE, G7_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t va = (uintptr_t)test_data_area;
     uintptr_t r = ts2_run_check_no_fault(&ctx, test_vs_read_write, va);
     TEST_ASSERT("read-modify-write succeeded", r == 0);
@@ -72,12 +70,12 @@ bool test_ts_perm_01_dual_rwx(void) {
 TEST_REGISTER(test_ts_perm_02_vs_ronly_store);
 bool test_ts_perm_02_vs_ronly_store(void) {
     TEST_BEGIN("TS-PERM-02: VS R-only + store -> VS page-fault (15)");
-    REQUIRE_VSATP_MODE(G7_VSMODE);
-    REQUIRE_HGATP_MODE(G7_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_vs_victim(&ctx, G7_VSMODE, G7_GMODE, va, G7_VS_R);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G7_VS_R);
 
     bool ok = ts2_run_check_fault(&ctx, test_vs_store_expect_fault, va,
                                   CAUSE_STORE_PAGE_FAULT);
@@ -92,12 +90,12 @@ bool test_ts_perm_02_vs_ronly_store(void) {
 TEST_REGISTER(test_ts_perm_03_g_ronly_store);
 bool test_ts_perm_03_g_ronly_store(void) {
     TEST_BEGIN("TS-PERM-03: G R-only + store -> store-guest-page-fault (23)");
-    REQUIRE_VSATP_MODE(G7_VSMODE);
-    REQUIRE_HGATP_MODE(G7_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_g_victim(&ctx, G7_VSMODE, G7_GMODE, va, G7_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G7_G_RU);
 
     bool ok = ts2_run_check_fault(&ctx, test_vs_store_expect_fault, va,
                                   CAUSE_STORE_GUEST_PAGE_FAULT);
@@ -112,12 +110,12 @@ bool test_ts_perm_03_g_ronly_store(void) {
 TEST_REGISTER(test_ts_perm_04_vs_xonly_load);
 bool test_ts_perm_04_vs_xonly_load(void) {
     TEST_BEGIN("TS-PERM-04: VS X-only + load -> VS page-fault (13)");
-    REQUIRE_VSATP_MODE(G7_VSMODE);
-    REQUIRE_HGATP_MODE(G7_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_vs_victim(&ctx, G7_VSMODE, G7_GMODE, va, G7_VS_X);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G7_VS_X);
 
     bool ok = ts2_run_check_fault(&ctx, test_vs_load_expect_fault, va,
                                   CAUSE_LOAD_PAGE_FAULT);
@@ -132,12 +130,12 @@ bool test_ts_perm_04_vs_xonly_load(void) {
 TEST_REGISTER(test_ts_perm_05_g_xonly_load);
 bool test_ts_perm_05_g_xonly_load(void) {
     TEST_BEGIN("TS-PERM-05: G X-only + load -> load-guest-page-fault (21)");
-    REQUIRE_VSATP_MODE(G7_VSMODE);
-    REQUIRE_HGATP_MODE(G7_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_g_victim(&ctx, G7_VSMODE, G7_GMODE, va, G7_G_XU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G7_G_XU);
 
     bool ok = ts2_run_check_fault(&ctx, test_vs_load_expect_fault, va,
                                   CAUSE_LOAD_GUEST_PAGE_FAULT);
@@ -163,8 +161,8 @@ static uintptr_t g7_vs_exec_no_fault(uintptr_t arg) {
 TEST_REGISTER(test_ts_perm_06_dual_rx_fetch);
 bool test_ts_perm_06_dual_rx_fetch(void) {
     TEST_BEGIN("TS-PERM-06: dual RX permits fetch");
-    REQUIRE_VSATP_MODE(G7_VSMODE);
-    REQUIRE_HGATP_MODE(G7_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* test_exec_target backs a small ret-only stub written to RAM by
      * the suite startup. We only need to verify that fetching from it
@@ -179,7 +177,7 @@ bool test_ts_perm_06_dual_rx_fetch(void) {
      * we'd fault with cause=2 (illegal instruction) on a zero word. */
     *(volatile uint16_t *)va = 0x8082;  /* c.jr ra */
     asm volatile ("fence.i" ::: "memory");
-    ts2_setup_with_dual_victim(&ctx, G7_VSMODE, G7_GMODE, va,
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va,
                                G7_VS_RX, G7_G_RXU);
 
     (void)ts2_run_check_no_fault(&ctx, g7_vs_exec_no_fault, va);
@@ -192,12 +190,12 @@ bool test_ts_perm_06_dual_rx_fetch(void) {
 TEST_REGISTER(test_ts_perm_07_vs_invalid);
 bool test_ts_perm_07_vs_invalid(void) {
     TEST_BEGIN("TS-PERM-07: VS V=0 + load -> VS page-fault (13)");
-    REQUIRE_VSATP_MODE(G7_VSMODE);
-    REQUIRE_HGATP_MODE(G7_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_vs_victim(&ctx, G7_VSMODE, G7_GMODE, va, G7_VS_INV);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G7_VS_INV);
 
     bool ok = ts2_run_check_fault(&ctx, test_vs_load_expect_fault, va,
                                   CAUSE_LOAD_PAGE_FAULT);
@@ -211,12 +209,12 @@ bool test_ts_perm_07_vs_invalid(void) {
 TEST_REGISTER(test_ts_perm_08_g_invalid);
 bool test_ts_perm_08_g_invalid(void) {
     TEST_BEGIN("TS-PERM-08: G V=0 + load -> guest-page-fault (21)");
-    REQUIRE_VSATP_MODE(G7_VSMODE);
-    REQUIRE_HGATP_MODE(G7_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_g_victim(&ctx, G7_VSMODE, G7_GMODE, va, G7_G_INV);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G7_G_INV);
 
     bool ok = ts2_run_check_fault(&ctx, test_vs_load_expect_fault, va,
                                   CAUSE_LOAD_GUEST_PAGE_FAULT);
@@ -231,12 +229,12 @@ bool test_ts_perm_08_g_invalid(void) {
 TEST_REGISTER(test_ts_perm_09_g_no_u);
 bool test_ts_perm_09_g_no_u(void) {
     TEST_BEGIN("TS-PERM-09: G U=0 + load -> guest-page-fault (21)");
-    REQUIRE_VSATP_MODE(G7_VSMODE);
-    REQUIRE_HGATP_MODE(G7_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_g_victim(&ctx, G7_VSMODE, G7_GMODE, va, G7_G_RWX_NOU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G7_G_RWX_NOU);
 
     bool ok = ts2_run_check_fault(&ctx, test_vs_load_expect_fault, va,
                                   CAUSE_LOAD_GUEST_PAGE_FAULT);
@@ -252,15 +250,15 @@ bool test_ts_perm_09_g_no_u(void) {
 TEST_REGISTER(test_ts_perm_10_vs_no_u_vu);
 bool test_ts_perm_10_vs_no_u_vu(void) {
     TEST_BEGIN("TS-PERM-10: VS U=0 + VU-mode load -> VS page-fault (13)");
-    REQUIRE_VSATP_MODE(G7_VSMODE);
-    REQUIRE_HGATP_MODE(G7_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
     /* VU-mode access requires VS-stage U=1 throughout. Use the U=1
      * variant of full setup, then override the victim page to U=0
      * (G7_VS_RWX without U). */
-    ts2_setup_full_u(&ctx, G7_VSMODE, G7_GMODE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     /* Force the victim page to U=0 in VS-stage. */
     (void)pt_map_page(&ctx.vs_ctx, va & ~0xfffUL, va & ~0xfffUL,
                       G7_VS_RWX, PT_LEVEL_4K);
@@ -316,13 +314,13 @@ static uintptr_t g7_vs_load_with_sum(uintptr_t va) {
 TEST_REGISTER(test_ts_perm_11_vs_u1_sum0);
 bool test_ts_perm_11_vs_u1_sum0(void) {
     TEST_BEGIN("TS-PERM-11: VS U=1 + SUM=0 + VS load -> page-fault (13)");
-    REQUIRE_VSATP_MODE(G7_VSMODE);
-    REQUIRE_HGATP_MODE(G7_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
     /* VS U=1 victim; G default RWXU. */
-    ts2_setup_with_vs_victim(&ctx, G7_VSMODE, G7_GMODE, va, G7_VS_RWX_U);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G7_VS_RWX_U);
 
     g7_sum_value = 0;
     bool ok = ts2_run_check_fault(&ctx, g7_vs_load_with_sum, va,
@@ -334,12 +332,12 @@ bool test_ts_perm_11_vs_u1_sum0(void) {
 TEST_REGISTER(test_ts_perm_12_vs_u1_sum1);
 bool test_ts_perm_12_vs_u1_sum1(void) {
     TEST_BEGIN("TS-PERM-12: VS U=1 + SUM=1 + VS load -> success");
-    REQUIRE_VSATP_MODE(G7_VSMODE);
-    REQUIRE_HGATP_MODE(G7_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_vs_victim(&ctx, G7_VSMODE, G7_GMODE, va, G7_VS_RWX_U);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G7_VS_RWX_U);
 
     g7_sum_value = 1;
     trap_expect_begin();

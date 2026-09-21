@@ -50,15 +50,15 @@ bool test_hzacas_23_misaligned_cas(void)
     TEST_BEGIN("HZACAS-23: misaligned amocas (no MAG) -> cause 6/7");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t off = HZACAS_MAG_DECLARED ? HZACAS_MIS_STRADDLE : HZACAS_MIS_INTRA;
     uintptr_t mis = (uintptr_t)test_data_area + off;
 
     /* Part A: hedeleg[6]/[7]=0 -> captured at HS/M level. */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hzacas_setup_cas((uintptr_t)test_data_area);
     hedeleg_write(hedeleg_read() & ~((1UL << 6) | (1UL << 7)));
     trap_expect_begin();
@@ -76,7 +76,7 @@ bool test_hzacas_23_misaligned_cas(void)
                                  CAUSE_STORE_ACCESS_FAULT));
 
     /* Part B: hedeleg[6]/[7]=1 -> delivered to VS-mode. */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hzacas_setup_cas((uintptr_t)test_data_area);
     hyp_delegate_to_vs((1UL << 6) | (1UL << 7), 0);
     hz_vs_handler_install();
@@ -103,8 +103,8 @@ bool test_hzacas_24_mag_intra_no_fault(void)
     TEST_BEGIN("HZACAS-24: MAG intra-granule misaligned amocas -> no fault");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!HZACAS_MAG_DECLARED)
         TEST_SKIP("platform declares no misaligned atomicity granule (Zama16b)");
 
@@ -112,7 +112,7 @@ bool test_hzacas_24_mag_intra_no_fault(void)
     uintptr_t mis = va + HZACAS_MIS_INTRA;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hzacas_setup_cas(va);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amocas_w_probe, mis);
@@ -140,8 +140,8 @@ bool test_hzacas_25_mag_intra_gstage_fault(void)
     TEST_BEGIN("HZACAS-25: MAG intra-granule amocas G-stage W=0 -> cause 23");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!HZACAS_MAG_DECLARED)
         TEST_SKIP("platform declares no misaligned atomicity granule (Zama16b)");
 
@@ -149,7 +149,7 @@ bool test_hzacas_25_mag_intra_gstage_fault(void)
     uintptr_t mis = va + HZACAS_MIS_INTRA;
 
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     hzacas_setup_cas(va);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amocas_w_probe, mis);
@@ -183,14 +183,14 @@ bool test_hzacas_26_misaligned_trap_context(void)
     TEST_BEGIN("HZACAS-26: misaligned amocas HS-mode trap context");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t off = HZACAS_MAG_DECLARED ? HZACAS_MIS_STRADDLE : HZACAS_MIS_INTRA;
     uintptr_t mis = (uintptr_t)test_data_area + off;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hzacas_setup_cas((uintptr_t)test_data_area);
     hedeleg_write(hedeleg_read() & ~((1UL << 6) | (1UL << 7)));
     hz_clear_gva_spv();

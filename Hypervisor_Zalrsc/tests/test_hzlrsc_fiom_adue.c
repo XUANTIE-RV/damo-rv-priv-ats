@@ -42,7 +42,7 @@ static void hzlrsc_fiom_case(int fiom)
     *(volatile uint32_t *)va = 0;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t he = henvcfg_read();
     if (fiom) he |= HZ_HENVCFG_FIOM; else he &= ~HZ_HENVCFG_FIOM;
     henvcfg_write(he);
@@ -78,8 +78,8 @@ bool test_hzlrsc_30_fiom1(void)
     TEST_BEGIN("HZLRSC-30: FIOM=1 VS-mode lr.w.aq/sc.w.rl executable");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzlrsc_fiom_case(1);
     printf("  [INFO] FIOM ordering effect requires multi-hart: %s\n",
            HZLRSC_SMP_SKIP_REASON);
@@ -95,8 +95,8 @@ bool test_hzlrsc_31_fiom0(void)
     TEST_BEGIN("HZLRSC-31: FIOM=0 control VS-mode lr.w.aq/sc.w.rl");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzlrsc_fiom_case(0);
     HYP_TEST_END();
 }
@@ -112,12 +112,12 @@ bool test_hzlrsc_32_failed_sc_d_side_effect(void)
     TEST_BEGIN("HZLRSC-32: (record) ADUE=1 failed-SC VS-stage D side effect");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* VS leaf: W=1, A=1, D=0 so a store would need a D update. */
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
@@ -161,12 +161,12 @@ bool test_hzlrsc_33_failed_sc_gstage_d_side_effect(void)
     TEST_BEGIN("HZLRSC-33: (record) ADUE=1 failed-SC G-stage D side effect");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;   /* GPA == VA (identity) */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t *vspte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     uintptr_t *gpte = gpt_get_pte(&ctx.g_ctx, va, PT_LEVEL_4K);
@@ -213,14 +213,14 @@ bool test_hzlrsc_34_adue0_svade(void)
     TEST_BEGIN("HZLRSC-34: ADUE=0 + A=0 -> Svade pf (LR 13 / SC 15)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
 
     /* LR (load) with A=0 -> load page-fault (13). */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     ts2_disable_adue();
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("VS leaf PTE resolvable", pte != NULL);
@@ -244,7 +244,7 @@ bool test_hzlrsc_34_adue0_svade(void)
                 cause != CAUSE_STORE_GUEST_PAGE_FAULT);
 
     /* SC (store) with A=0 -> store page-fault (15). */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     ts2_disable_adue();
     pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     if (pte == NULL) { ts2_finish(&ctx); HYP_TEST_END(); }

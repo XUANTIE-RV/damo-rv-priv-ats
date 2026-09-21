@@ -64,12 +64,12 @@ bool test_hzamo_06_amo_vs_store_fault(void)
     TEST_BEGIN("HZAMO-06: AMO VS-stage R=1/W=0 -> store pf (15) to VS");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_R);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_R);
 
     hyp_delegate_to_vs((1UL << CAUSE_STORE_PAGE_FAULT), 0);
     hz_vs_handler_install();
@@ -98,12 +98,12 @@ bool test_hzamo_07_amo_unreadable_store_class(void)
     TEST_BEGIN("HZAMO-07: AMO to R=0 page -> store pf (15), not load (13)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_XONLY);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_XONLY);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amo_add_w, va);
@@ -131,12 +131,12 @@ bool test_hzamo_08_hedeleg0_to_hs(void)
     TEST_BEGIN("HZAMO-08: hedeleg[15]=0 -> AMO fault stays at HS/M (15)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_R);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_R);
     hedeleg_write(hedeleg_read() & ~(1UL << CAUSE_STORE_PAGE_FAULT));
     hz_vs_handler_install();
 
@@ -166,14 +166,14 @@ bool test_hzamo_09_lr_vs_amo_permission(void)
     TEST_BEGIN("HZAMO-09: LR executes but AMO faults on R=1/W=0 page");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
 
     /* LR: read-only suffices -> no trap. */
     two_stage_ctx_t ctx;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_R);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_R);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hzamo_vs_lr_w, va);
     bool lr_fired = trap_was_triggered();
@@ -185,7 +185,7 @@ bool test_hzamo_09_lr_vs_amo_permission(void)
     TEST_ASSERT("LR to R=1/W=0 executes (needs only read)", !lr_fired);
 
     /* AMO: needs write -> store page-fault (15). */
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_R);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_R);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amo_add_w, va);
     bool amo_fired = trap_was_triggered();

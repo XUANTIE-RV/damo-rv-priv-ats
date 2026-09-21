@@ -32,8 +32,6 @@
 #error "SUITE_VSATP_MODE must be defined before including this file"
 #endif
 
-#define G5_GMODE   SUITE_HGATP_MODE
-#define G5_VSMODE  SUITE_VSATP_MODE
 
 /* Magic values written by VS-mode under M-mode supervision. The M-mode
  * caller pre-clears each candidate physical slot, then inspects all of
@@ -101,8 +99,8 @@ static bool g5_write_and_check(two_stage_ctx_t *ctx, uintptr_t va,
 TEST_REGISTER(test_ts_nid_01_vs_only);
 bool test_ts_nid_01_vs_only(void) {
     TEST_BEGIN("TS-NID-01: VS-stage non-identity (VA->GPA), G identity");
-    REQUIRE_VSATP_MODE(G5_VSMODE);
-    REQUIRE_HGATP_MODE(G5_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t A = (uintptr_t)test_data_area;    /* VA */
     uintptr_t B = (uintptr_t)test_fault_page;   /* GPA == SPA (G identity) */
@@ -112,7 +110,7 @@ bool test_ts_nid_01_vs_only(void) {
     g5_clear4(A, B, C, D);
 
     two_stage_ctx_t ctx;
-    ts2_setup_non_identity(&ctx, G5_VSMODE, G5_GMODE,
+    ts2_setup_non_identity(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                            A, B, B,
                            VS_FLAGS_RWX_S_AD, G_FLAGS_RWXU_AD);
 
@@ -129,8 +127,8 @@ bool test_ts_nid_01_vs_only(void) {
 TEST_REGISTER(test_ts_nid_02_g_only);
 bool test_ts_nid_02_g_only(void) {
     TEST_BEGIN("TS-NID-02: G-stage non-identity (GPA->SPA), VS identity");
-    REQUIRE_VSATP_MODE(G5_VSMODE);
-    REQUIRE_HGATP_MODE(G5_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t A = (uintptr_t)test_data_area;    /* VA == GPA */
     uintptr_t B = (uintptr_t)test_fault_page;   /* SPA */
@@ -140,7 +138,7 @@ bool test_ts_nid_02_g_only(void) {
     g5_clear4(A, B, C, D);
 
     two_stage_ctx_t ctx;
-    ts2_setup_non_identity(&ctx, G5_VSMODE, G5_GMODE,
+    ts2_setup_non_identity(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                            A, A, B,
                            VS_FLAGS_RWX_S_AD, G_FLAGS_RWXU_AD);
 
@@ -157,8 +155,8 @@ bool test_ts_nid_02_g_only(void) {
 TEST_REGISTER(test_ts_nid_03_both);
 bool test_ts_nid_03_both(void) {
     TEST_BEGIN("TS-NID-03: VS-stage and G-stage both non-identity");
-    REQUIRE_VSATP_MODE(G5_VSMODE);
-    REQUIRE_HGATP_MODE(G5_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t A = (uintptr_t)test_data_area;    /* VA */
     uintptr_t B = (uintptr_t)test_fault_page;   /* GPA */
@@ -168,7 +166,7 @@ bool test_ts_nid_03_both(void) {
     g5_clear4(A, B, C, D);
 
     two_stage_ctx_t ctx;
-    ts2_setup_non_identity(&ctx, G5_VSMODE, G5_GMODE,
+    ts2_setup_non_identity(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                            A, B, C,
                            VS_FLAGS_RWX_S_AD, G_FLAGS_RWXU_AD);
 
@@ -199,8 +197,8 @@ static uintptr_t g5_store_m3(uintptr_t a) { *(volatile uint64_t *)a = G5_MAGIC_3
 TEST_REGISTER(test_ts_nid_04_multi_page);
 bool test_ts_nid_04_multi_page(void) {
     TEST_BEGIN("TS-NID-04: 4-page non-identity, per-page data isolation");
-    REQUIRE_VSATP_MODE(G5_VSMODE);
-    REQUIRE_HGATP_MODE(G5_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* VAs: the 4 named test pages. */
     uintptr_t A = (uintptr_t)test_data_area;
@@ -221,7 +219,7 @@ bool test_ts_nid_04_multi_page(void) {
     g5_clear4(S0, S1, S2, S3);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, G5_VSMODE, G5_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* VS redirect each VA to its dedicated SPA (G identity covers SPAs). */
     g5_redirect_vs(&ctx, A, S0);

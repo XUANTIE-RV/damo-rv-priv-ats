@@ -77,7 +77,7 @@ bool test_hcfi_lp_12(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Enable LPE for VS-mode */
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
@@ -137,7 +137,7 @@ bool test_hcfi_lp_13(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -208,7 +208,7 @@ bool test_hcfi_lp_14(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Set henvcfg.LPE=0 - VSLPE=0 */
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(false, true);
@@ -269,7 +269,7 @@ bool test_hcfi_lp_15(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -340,7 +340,7 @@ bool test_hcfi_lp_16(void) {
     /* Map test_exec_target with X=0 so the JALR target fetch faults
      * with an instruction page fault (ELP=LP_EXPECTED is preserved
      * across the trap, per norm:Zicfilp_forward_traps). */
-    ts2_setup_with_vs_victim(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4,
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                              (uintptr_t)test_exec_target,
                              VS_FLAGS_RW_S_AD);
 
@@ -408,7 +408,7 @@ bool test_hcfi_lp_17(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(false, true);
     mseccfg_clear(MSECCFG_MLPE);
@@ -470,7 +470,7 @@ bool test_hcfi_lp_18(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -527,7 +527,7 @@ bool test_hcfi_lp_19(void) {
     gpt_pool_reset();
     /* Map test_exec_target with X=0 so the JALR target fetch faults
      * with an instruction page fault (ELP=LP_EXPECTED is preserved). */
-    ts2_setup_with_vs_victim(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4,
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                              (uintptr_t)test_exec_target,
                              VS_FLAGS_RW_S_AD);
 
@@ -594,7 +594,7 @@ bool test_hcfi_lp_20(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(false, true);
     mseccfg_clear(MSECCFG_MLPE);
@@ -654,7 +654,7 @@ bool test_hcfi_lp_21(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -710,7 +710,7 @@ bool test_hcfi_lp_22(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     senvcfg_set(SENVCFG_LPE);
@@ -785,7 +785,7 @@ bool test_hcfi_lp_23(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     senvcfg_clear(SENVCFG_LPE);

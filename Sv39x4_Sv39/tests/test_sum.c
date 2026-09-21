@@ -29,8 +29,6 @@
 #error "SUITE_VSATP_MODE must be defined before including this file"
 #endif
 
-#define G9_GMODE   SUITE_HGATP_MODE
-#define G9_VSMODE  SUITE_VSATP_MODE
 
 #ifndef SSTATUS_SUM
 #define SSTATUS_SUM   (1UL << 18)
@@ -61,12 +59,12 @@ static uintptr_t g9_vs_load_with_sum(uintptr_t va) {
 TEST_REGISTER(test_ts_sum_01_vs_u1_sum0);
 bool test_ts_sum_01_vs_u1_sum0(void) {
     TEST_BEGIN("TS-SUM-01: VS U=1 + SUM=0 -> page-fault (13)");
-    REQUIRE_VSATP_MODE(G9_VSMODE);
-    REQUIRE_HGATP_MODE(G9_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_vs_victim(&ctx, G9_VSMODE, G9_GMODE, va, G9_VS_RWX_U);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G9_VS_RWX_U);
 
     g9_sum_value = 0;
     bool ok = ts2_run_check_fault(&ctx, g9_vs_load_with_sum, va,
@@ -81,12 +79,12 @@ bool test_ts_sum_01_vs_u1_sum0(void) {
 TEST_REGISTER(test_ts_sum_02_vs_u1_sum1);
 bool test_ts_sum_02_vs_u1_sum1(void) {
     TEST_BEGIN("TS-SUM-02: VS U=1 + SUM=1 -> success");
-    REQUIRE_VSATP_MODE(G9_VSMODE);
-    REQUIRE_HGATP_MODE(G9_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_vs_victim(&ctx, G9_VSMODE, G9_GMODE, va, G9_VS_RWX_U);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G9_VS_RWX_U);
 
     g9_sum_value = 1;
     trap_expect_begin();
@@ -106,13 +104,13 @@ bool test_ts_sum_02_vs_u1_sum1(void) {
 TEST_REGISTER(test_ts_sum_03_g_u0_independent);
 bool test_ts_sum_03_g_u0_independent(void) {
     TEST_BEGIN("TS-SUM-03: G U=0 unaffected by SUM -> guest-page-fault (21)");
-    REQUIRE_VSATP_MODE(G9_VSMODE);
-    REQUIRE_HGATP_MODE(G9_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
     /* VS U=1, G no-U (RWX without U bit). */
-    ts2_setup_with_dual_victim(&ctx, G9_VSMODE, G9_GMODE, va,
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va,
                                G9_VS_RWX_U, G9_G_RWX_NOU);
 
     g9_sum_value = 1;

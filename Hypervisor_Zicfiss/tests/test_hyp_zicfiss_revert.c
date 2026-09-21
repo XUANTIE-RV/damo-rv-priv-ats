@@ -28,7 +28,7 @@ bool test_hcfi_ss_69(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(false, true);
 
     /* SSPUSH should be Zimop no-op */
@@ -74,7 +74,7 @@ bool test_hcfi_ss_71(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(false, true);
 
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_read_ssp, 0);
@@ -94,7 +94,7 @@ bool test_hcfi_ss_72(void) {
     /* VS-stage part */
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(false, true);
 
     vs_pte_modify(&ctx, SS_PAGE_ADDR, PT_LEVEL_4K, PTE_SS_PAGE_FLAGS);
@@ -107,7 +107,7 @@ bool test_hcfi_ss_72(void) {
 
     /* VU-stage part: same reserved encoding at the VU level */
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     orig_h = cfi_setup_vs_sse(false, true);
     senvcfg_set(SENVCFG_SSE);
 
@@ -130,7 +130,7 @@ bool test_hcfi_ss_73(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Start with SSE=0 */
     uintptr_t orig_h = cfi_setup_vs_sse(false, true);
@@ -161,7 +161,7 @@ bool test_hcfi_ss_74(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Start with SSE=1 */
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
@@ -192,7 +192,7 @@ bool test_hcfi_ss_75(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Set SSE=0 first */
     uintptr_t orig_h = cfi_setup_vs_sse(false, true);

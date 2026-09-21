@@ -21,7 +21,7 @@ bool test_pbmt_reserved_load_fault(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -49,7 +49,7 @@ bool test_pbmt_reserved_store_fault(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -76,7 +76,7 @@ bool test_pbmt_reserved_exec_fault(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -106,7 +106,7 @@ bool test_pbmt_reserved_superpage_fault(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     /* Use 1GB identity mapping for code */
     int ret = setup_code_mapping_1g(&ctx);
@@ -120,7 +120,7 @@ bool test_pbmt_reserved_superpage_fault(void) {
      * Since 1GB mapping covers the entire region, we need to use
      * a 2MB mapping approach instead. Reset and use 2MB code mapping. */
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup (2MB)", ret == 0);
 

@@ -14,13 +14,13 @@
  *   MXR-05: MXR=0, read RX page succeeds (R=1 sufficient)
  */
 
-TEST_REGISTER(test_sv39_mxr01);
-bool test_sv39_mxr01(void) {
+SV_REGISTER(mxr01);
+bool SVFN(mxr01)(void) {
     TEST_BEGIN("MXR-01: MXR=0, read X-only page faults");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -36,13 +36,13 @@ bool test_sv39_mxr01(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_mxr02);
-bool test_sv39_mxr02(void) {
+SV_REGISTER(mxr02);
+bool SVFN(mxr02)(void) {
     TEST_BEGIN("MXR-02: MXR=1, read X-only page succeeds");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -58,13 +58,13 @@ bool test_sv39_mxr02(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_mxr03);
-bool test_sv39_mxr03(void) {
+SV_REGISTER(mxr03);
+bool SVFN(mxr03)(void) {
     TEST_BEGIN("MXR-03: MXR=1, read R page succeeds (no change)");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -80,13 +80,13 @@ bool test_sv39_mxr03(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_mxr04);
-bool test_sv39_mxr04(void) {
+SV_REGISTER(mxr04);
+bool SVFN(mxr04)(void) {
     TEST_BEGIN("MXR-04: MXR=1, write X-only page still faults");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -102,13 +102,13 @@ bool test_sv39_mxr04(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_mxr05);
-bool test_sv39_mxr05(void) {
+SV_REGISTER(mxr05);
+bool SVFN(mxr05)(void) {
     TEST_BEGIN("MXR-05: MXR=0, read RX page succeeds (R=1 sufficient)");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;

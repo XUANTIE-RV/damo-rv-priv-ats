@@ -36,12 +36,12 @@ bool test_hzamo_15_amo_htinst_transformed(void)
     TEST_BEGIN("HZAMO-15: AMO explicit G-stage fault htinst = 0/transformed");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amo_add_d, va);
@@ -70,7 +70,7 @@ static void hzamo_aqrl_case(uintptr_t (*probe)(uintptr_t), uintptr_t va,
                             uintptr_t g_flags, unsigned exp_aq, unsigned exp_rl)
 {
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, g_flags);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, g_flags);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, probe, va);
     bool fired = trap_was_triggered();
@@ -97,8 +97,8 @@ bool test_hzamo_16_htinst_aqrl(void)
     TEST_BEGIN("HZAMO-16: htinst preserves AMO aq/rl bits");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     hzamo_aqrl_case(hz_vs_amo_add_w_aq, va, HZ_G_RU, 1, 0);
@@ -117,12 +117,12 @@ bool test_hzamo_17_addr_offset_zero(void)
     TEST_BEGIN("HZAMO-17: AMO htinst Addr. Offset == 0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amo_add_w, va);
@@ -151,11 +151,11 @@ bool test_hzamo_18_implicit_walk_cause23(void)
     TEST_BEGIN("HZAMO-18: implicit VS-walk AMO fault -> cause 23 + read pseudo");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t va = (uintptr_t)test_data_area;
 
     uintptr_t pt_gpa = ts2_invalidate_vs_pt_in_g(&ctx, va, PT_LEVEL_4K);
@@ -188,12 +188,12 @@ bool test_hzamo_19_adue_write_pseudo(void)
     TEST_BEGIN("HZAMO-19: ADUE=1 AMO D-update fault -> write pseudoinst");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("VS leaf PTE resolvable", pte != NULL);
@@ -250,14 +250,14 @@ bool test_hzamo_20_explicit_vs_implicit(void)
     TEST_BEGIN("HZAMO-20: htinst disambiguates explicit vs implicit (23)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
 
     /* (a) explicit AMO data access fails in G-stage. */
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amo_add_w, va);
     bool fired_a = trap_was_triggered();
@@ -277,7 +277,7 @@ bool test_hzamo_20_explicit_vs_implicit(void)
 
     /* (b) implicit VS-stage PTE read fails in G-stage. */
     uintptr_t va_b = (uintptr_t)test_data_area;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t pt_gpa = ts2_invalidate_vs_pt_in_g(&ctx, va_b, PT_LEVEL_4K);
     TEST_ASSERT("(b) VS leaf PT GPA resolvable", pt_gpa != 0);
     trap_expect_begin();

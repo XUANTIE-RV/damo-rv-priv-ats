@@ -50,7 +50,7 @@ bool test_hcross_ssccptr_01(void) {
     gpt_pool_reset();
 
     /* Setup two-stage: VS=Sv39, G=Sv39x4 */
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Target VA in test region (already identity-mapped by ts2_setup_full) */
     uintptr_t test_va = (uintptr_t)test_data_area;
@@ -97,7 +97,7 @@ bool test_hcross_ssccptr_02(void) {
     gpt_pool_reset();
 
     /* Setup two-stage: VS=Bare (no VS-stage), G=Sv39x4 */
-    ts2_setup_full(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     /* Target VA in test region (identity-mapped at G-stage) */
     uintptr_t test_va = (uintptr_t)test_data_area;
@@ -143,7 +143,7 @@ bool test_hcross_ssccptr_03(void) {
     gpt_pool_reset();
 
     /* Setup two-stage: VS=Sv39, G=Sv39x4 */
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Target VA in test region (already identity-mapped by ts2_setup_full) */
     uintptr_t test_va = (uintptr_t)test_data_area;

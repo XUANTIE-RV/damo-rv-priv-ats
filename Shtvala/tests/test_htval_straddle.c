@@ -89,7 +89,7 @@ TEST_REGISTER(test_htval_str_01_load_straddle);
 bool test_htval_str_01_load_straddle(void) {
     TEST_BEGIN("HTVAL-STR-01: load straddle into V=0 page reports htval = GPA>>2");
     if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* Place the 8-byte access starting 1 byte before the fault page.
      * test_data_area is the page right before test_fault_page. */
@@ -110,7 +110,7 @@ TEST_REGISTER(test_htval_str_02_store_straddle);
 bool test_htval_str_02_store_straddle(void) {
     TEST_BEGIN("HTVAL-STR-02: store straddle into W=0 page reports htval = GPA>>2");
     if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t straddle = (uintptr_t)test_data_area + PAGE_SIZE_4K - 1;
     uintptr_t victim   = (uintptr_t)test_fault_page;
@@ -164,7 +164,7 @@ TEST_REGISTER(test_htval_str_03_fetch_straddle);
 bool test_htval_str_03_fetch_straddle(void) {
     TEST_BEGIN("HTVAL-STR-03: fetch straddle into V=0 page, cause=20, htval=GPA>>2");
     if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* Place the straddle point 2 bytes before the fault page.
      * A 4-byte instruction at this address spans into the fault page. */

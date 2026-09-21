@@ -123,6 +123,20 @@ make qemu-pmp EXTRA_CFLAGS='-DTEST_FILTER="PMP"'
 
 ---
 
+## Paging Mode Selection (SATP_MODE)
+
+By default, a single-stage (non-Hypervisor) paging suite runs under a per-suite macro `SUITE_SATP_MODE`, defined in that suite's `tests/test_helpers.h`. A mode-agnostic suite (e.g. `Ssccptr`, `Svade`) defaults it to `PLATFORM_SATP_MODE` -- the mode `common/capabilities.h` auto-selects from the platform config (`SV39_SUPPORTED`/`SV48_SUPPORTED`/`SV57_SUPPORTED` in `config/<platform>/rvtest_config.h`) with a "smallest-first" policy: Sv39 > Sv48 > Sv57, escalating to a larger mode only when the smaller one is unsupported. A mode-intrinsic suite (`Sv39`/`Sv48`/`Sv57`) instead defaults `SUITE_SATP_MODE` to its own fixed `SATP_MODE_SV*`.
+
+Passing `SATP_MODE=sv39|sv48|sv57` at build time overrides `SUITE_SATP_MODE` (via `-DSUITE_SATP_MODE=...`), which is useful for re-running the same suite under a different paging mode for comparison/diagnostics:
+
+```bash
+cd <test_dir>; make clean; make qemu SATP_MODE=sv48
+```
+
+Without `SATP_MODE`, behavior is identical to the default (zero impact). `PLATFORM_SATP_MODE` itself is purely platform-derived and is never forced. This knob drives the single-stage `satp` mode; two-stage Hypervisor suites use the separate `HGATP_MODE=`/`VSATP_MODE=` knobs (`SUITE_HGATP_MODE`/`SUITE_VSATP_MODE`). As with other command-line switches, run `make clean` before toggling it.
+
+---
+
 ## Compile-flag Injection (EXTRA_CFLAGS / EXTRA_ASFLAGS)
 
 `common/Makefile.common` lets you inject extra compile-time macros from the command line, targeting the C and assembly compilation units respectively:

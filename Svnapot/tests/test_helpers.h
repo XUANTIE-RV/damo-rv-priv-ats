@@ -21,6 +21,13 @@
 #include "vm/vm.h"
 #include "mem_ops.h"
 
+/* SUITE_SATP_MODE (this suite's S-stage paging mode) is set by the suite
+ * Makefile: `SUITE_SATP_MODE ?= PLATFORM_SATP_MODE`, overridable with
+ * `make SATP_MODE=sv39|sv48|sv57` (see common/Makefile.common). Every
+ * pt_init()/satp write below passes SUITE_SATP_MODE.
+ * NOTE: test_sv_modes.c deliberately exercises several Sv* modes by name
+ * and keeps its own hardcoded SATP_MODE_SV* values. */
+
 /* ===================================================================
  * NAPOT PTE Constants
  * =================================================================== */

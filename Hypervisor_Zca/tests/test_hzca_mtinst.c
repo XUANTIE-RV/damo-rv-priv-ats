@@ -36,8 +36,8 @@ bool test_hzca_21_mtinst_load(void)
     TEST_BEGIN("HZCA-21: c.lw fault into M-mode -> mtinst 0/transformed");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     /* to_hs = false -> medeleg[21] clear -> M-mode entry -> mtinst. */
@@ -64,8 +64,8 @@ bool test_hzca_22_mtinst_store(void)
     TEST_BEGIN("HZCA-22: c.sw fault into M-mode -> mtinst 0/transformed");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     /* to_hs = false -> medeleg[23] clear -> M-mode entry -> mtinst. */
@@ -96,8 +96,8 @@ bool test_hzca_23_mtinst_htinst_consistent(void)
     TEST_BEGIN("HZCA-23: mtinst and htinst transformed values consistent");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     /* (a) delegated to HS-mode -> htinst. */
@@ -144,11 +144,11 @@ bool test_hzca_24_mtinst_interrupt_zero(void)
     TEST_BEGIN("HZCA-24: mtinst == 0 on M-mode interrupt (V=1 context)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t saved_mie;
     asm volatile ("csrr %0, mie" : "=r"(saved_mie));

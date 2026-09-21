@@ -32,7 +32,7 @@ static bool test_napot_reserved_encoding(const char *name,
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -133,7 +133,7 @@ bool test_napot_reserved_level1(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     /* Use 2MB megapage mapping for code to avoid leaf conflict */
     int ret = setup_code_mapping(&ctx);
@@ -175,7 +175,7 @@ bool test_napot_reserved_level2(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     /* Set up code mapping using 2MB pages to avoid conflict with 1GB test */
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);

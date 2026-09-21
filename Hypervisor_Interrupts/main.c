@@ -4,7 +4,7 @@
  */
 
 /*
- * main.c - Hypervisor Interrupts Subset Test entry point
+ * main.c - Hypervisor Interrupts Compliance Test entry point
  *
  * See DOCS/testplan/Hypervisor_Interrupts_test_plan.md for the full test plan.
  *
@@ -27,7 +27,7 @@ int main(void) {
     uart_init();
     reset_state();
 
-    test_print_banner("RISC-V Hypervisor Interrupts Subset Test");
+    test_print_banner("RISC-V Hypervisor Interrupts Compliance Test");
 
     unsigned int test_count = (unsigned int)(
         (uintptr_t)_test_table_end - (uintptr_t)_test_table

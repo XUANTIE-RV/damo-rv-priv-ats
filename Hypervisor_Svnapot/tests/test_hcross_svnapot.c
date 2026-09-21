@@ -32,7 +32,7 @@ bool test_hcross_svnapot_01(void) {
 
     /* Full setup: VS-stage Bare, G-stage Sv39x4.
      * Maps kernel/UART at 2MB and test region at 4KB in G-stage. */
-    ts2_setup_full(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     /* Override first 64 KiB (16 pages) of test region with NAPOT PTE */
     uintptr_t test_gpa = TEST_REGION_BASE;
@@ -70,7 +70,7 @@ bool test_hcross_svnapot_02(void) {
     if (!SVNAPOT_AVAILABLE) TEST_SKIP("Svnapot not available");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     /* Override with reserved NAPOT encoding (ppn[0] low 4 bits = 0001) */
     uintptr_t test_gpa = TEST_REGION_BASE;
@@ -116,7 +116,7 @@ bool test_hcross_svnapot_03(void) {
     two_stage_ctx_t ctx;
 
     /* Full setup: both stages active with standard mappings */
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t test_gva = TEST_REGION_BASE;
     uintptr_t test_gpa = test_gva;  /* identity GVA->GPA */

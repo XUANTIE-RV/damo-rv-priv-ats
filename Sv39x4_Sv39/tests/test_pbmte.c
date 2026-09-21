@@ -29,8 +29,6 @@
 #error "SUITE_VSATP_MODE must be defined before including this file"
 #endif
 
-#define G18_GMODE   SUITE_HGATP_MODE
-#define G18_VSMODE  SUITE_VSATP_MODE
 
 /* Standard low-bit flags for a VS-stage S-leaf with full perms. */
 #define G18_VS_FULL  (PTE_V|PTE_R|PTE_W|PTE_X|PTE_A|PTE_D)
@@ -60,12 +58,12 @@ static inline void g18_disable_pbmte(void) { ts2_disable_pbmte(); }
 TEST_REGISTER(test_ts_pbmt_01_pbmte0_fault);
 bool test_ts_pbmt_01_pbmte0_fault(void) {
     TEST_BEGIN("TS-PBMT-01: PBMTE=0 + VS PBMT=NC -> page-fault (13)");
-    REQUIRE_VSATP_MODE(G18_VSMODE);
-    REQUIRE_HGATP_MODE(G18_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_data_area;
-    ts2_setup_with_vs_victim(&ctx, G18_VSMODE, G18_GMODE, va, G18_VS_FULL);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G18_VS_FULL);
     g18_vs_set_pbmt(&ctx, va, G18_PBMT_NC);
 
     /* Ensure PBMTE=0 (suite default; explicit for clarity). */
@@ -86,12 +84,12 @@ bool test_ts_pbmt_01_pbmte0_fault(void) {
 TEST_REGISTER(test_ts_pbmt_02_pbmte1_ok);
 bool test_ts_pbmt_02_pbmte1_ok(void) {
     TEST_BEGIN("TS-PBMT-02: PBMTE=1 + VS PBMT=NC -> translation OK");
-    REQUIRE_VSATP_MODE(G18_VSMODE);
-    REQUIRE_HGATP_MODE(G18_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_data_area;
-    ts2_setup_with_vs_victim(&ctx, G18_VSMODE, G18_GMODE, va, G18_VS_FULL);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G18_VS_FULL);
     g18_vs_set_pbmt(&ctx, va, G18_PBMT_NC);
 
     g18_enable_pbmte();

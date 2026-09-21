@@ -123,13 +123,13 @@ static uintptr_t test_smode_sfence05(uintptr_t arg) {
  * Group 12: SFENCE.VMA Instruction Tests
  * =================================================================== */
 
-TEST_REGISTER(test_sv39_sfence01);
-bool test_sv39_sfence01(void) {
+SV_REGISTER(sfence01);
+bool SVFN(sfence01)(void) {
     TEST_BEGIN("SFENCE-01: Permission change + sfence.vma takes effect");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Map test page with RW permission */
@@ -155,13 +155,13 @@ bool test_sv39_sfence01(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_sfence04);
-bool test_sv39_sfence04(void) {
+SV_REGISTER(sfence04);
+bool SVFN(sfence04)(void) {
     TEST_BEGIN("SFENCE-04: Mapping change + sfence.vma takes effect");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Map test_fault_page with RW */
@@ -187,13 +187,13 @@ bool test_sv39_sfence04(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_sfence05);
-bool test_sv39_sfence05(void) {
+SV_REGISTER(sfence05);
+bool SVFN(sfence05)(void) {
     TEST_BEGIN("SFENCE-05: Permission upgrade (R -> RW) + sfence.vma");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Map test page with R-only permission */
@@ -222,13 +222,13 @@ bool test_sv39_sfence05(void) {
  * Group 13: PTE Reserved Bits Check (RSVD-01 ~ RSVD-02)
  * =================================================================== */
 
-TEST_REGISTER(test_sv39_rsvd01);
-bool test_sv39_rsvd01(void) {
+SV_REGISTER(rsvd01);
+bool SVFN(rsvd01)(void) {
     TEST_BEGIN("RSVD-01: PTE bits[60:54] non-zero triggers load page fault");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Map test page normally first */
@@ -253,13 +253,13 @@ bool test_sv39_rsvd01(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_rsvd02);
-bool test_sv39_rsvd02(void) {
+SV_REGISTER(rsvd02);
+bool SVFN(rsvd02)(void) {
     TEST_BEGIN("RSVD-02: PTE bits[60:54] non-zero triggers store page fault");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Map test page normally first */
@@ -290,18 +290,18 @@ bool test_sv39_rsvd02(void) {
  * Group 14: Non-leaf PTE Reserved Fields (NLPTE-04)
  * =================================================================== */
 
-TEST_REGISTER(test_sv39_nlpte04);
-bool test_sv39_nlpte04(void) {
+SV_REGISTER(nlpte04);
+bool SVFN(nlpte04)(void) {
     TEST_BEGIN("NLPTE-04: Non-leaf PTE with D=A=U=0 works correctly");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     /*
      * Set up a 4KB identity mapping. The intermediate (non-leaf) PTEs
-     * at L2 and L1 should have D=0, A=0, U=0 by default (only PTE_V set).
-     * The leaf PTE at L0 has full permissions.
+     * should have D=0, A=0, U=0 by default (only PTE_V set). The leaf
+     * PTE at L0 has full permissions.
      *
      * This test verifies that non-leaf PTEs with D=A=U=0 do not cause
      * page faults during the walk.
@@ -313,18 +313,19 @@ bool test_sv39_nlpte04(void) {
                                         flags, PT_LEVEL_4K);
     TEST_ASSERT("4KB identity mapping setup", ret == 0);
 
-    /* Verify non-leaf PTEs at L2 and L1 have D=A=U=0 */
+    /* Verify the root-level non-leaf PTE has D=A=U=0 */
     uintptr_t test_va = (uintptr_t)test_data_area;
 
-    /* Check L2 (root) PTE */
+    /* Check the root PTE (level derived from SUITE_SATP_MODE) */
     uintptr_t *root = ctx.root_pt;
-    uintptr_t vpn2 = VA_VPN2(test_va);
-    uintptr_t l2_pte = root[vpn2];
-    TEST_ASSERT("L2 non-leaf PTE is valid", (l2_pte & PTE_V) != 0);
-    TEST_ASSERT("L2 non-leaf PTE is non-leaf",
-                (l2_pte & (PTE_R | PTE_W | PTE_X)) == 0);
-    TEST_ASSERT("L2 non-leaf PTE has D=A=U=0",
-                (l2_pte & (PTE_D | PTE_A | PTE_U)) == 0);
+    uintptr_t vpn_root = SUITE_ROOT_VPN(test_va);
+    uintptr_t root_pte = root[vpn_root];
+    TEST_ASSERT(SUITE_ROOT_LEVEL_STR " non-leaf PTE is valid",
+                (root_pte & PTE_V) != 0);
+    TEST_ASSERT(SUITE_ROOT_LEVEL_STR " non-leaf PTE is non-leaf",
+                (root_pte & (PTE_R | PTE_W | PTE_X)) == 0);
+    TEST_ASSERT(SUITE_ROOT_LEVEL_STR " non-leaf PTE has D=A=U=0",
+                (root_pte & (PTE_D | PTE_A | PTE_U)) == 0);
 
     /* Verify access works despite non-leaf PTEs having D=A=U=0 */
     uintptr_t result = vm_run_in_smode(&ctx, test_smode_read_write,

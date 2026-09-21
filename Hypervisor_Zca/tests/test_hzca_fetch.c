@@ -34,8 +34,8 @@ bool test_hzca_28_fetch_gpf_no_transformed(void)
     TEST_BEGIN("HZCA-28: compressed fetch guest-page-fault htinst not transformed");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t target = (uintptr_t)test_exec_page;
     /* Place a compressed instruction at the target for faithfulness; the
@@ -48,7 +48,7 @@ bool test_hzca_28_fetch_gpf_no_transformed(void)
     /* G-stage: readable+writable, NOT executable -> fetch guest-page
      * fault (cause=20). VS-stage keeps X=1 so the fault is a G-stage
      * (guest-page) fault, not a VS-stage instruction page fault. */
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, target, HZ_G_WNXU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, target, HZ_G_WNXU);
     hz_route_to_hs(1UL << CAUSE_INST_GUEST_PAGE_FAULT);
 
     trap_expect_begin();
@@ -85,15 +85,15 @@ bool test_hzca_29_fetch_vs_mem_contrast(void)
     TEST_BEGIN("HZCA-29: fetch-class vs memory-access-class htinst contrast");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* (a) compressed FETCH fault (cause=20) on a no-X G-stage page. */
     uintptr_t exec_target = (uintptr_t)test_exec_page;
     *(volatile uint16_t *)exec_target = 0x8082UL;   /* c.jr ra */
     asm volatile ("fence.i" ::: "memory");
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, exec_target, HZ_G_WNXU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, exec_target, HZ_G_WNXU);
     hz_route_to_hs(1UL << CAUSE_INST_GUEST_PAGE_FAULT);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, test_vs_exec_expect_fault, exec_target);

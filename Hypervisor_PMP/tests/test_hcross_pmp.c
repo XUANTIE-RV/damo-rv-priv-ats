@@ -43,7 +43,7 @@ bool test_hcross_pmp_01(void)
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_data_area;   /* identity: VA==GPA==SPA */
-    ts2_setup_full(&ctx, HPMP_VS_MODE, HPMP_G_MODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     hpmp_save_t save;
     hpmp_deny_page(va, &save);
@@ -69,7 +69,7 @@ bool test_hcross_pmp_02(void)
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_data_area;
-    ts2_setup_full(&ctx, HPMP_VS_MODE, HPMP_G_MODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     hpmp_save_t save;
     hpmp_deny_page(va, &save);
@@ -95,7 +95,7 @@ bool test_hcross_pmp_03(void)
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_exec_page;
-    ts2_setup_full(&ctx, HPMP_VS_MODE, HPMP_G_MODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     hpmp_save_t save;
     hpmp_deny_page(va, &save);
@@ -122,7 +122,7 @@ bool test_hcross_pmp_04(void)
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_data_area;
     /* VU setup: VS-stage leaf PTEs carry U=1 so VU-mode may access. */
-    ts2_setup_full_u(&ctx, HPMP_VS_MODE, HPMP_G_MODE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     hpmp_save_t save;
     hpmp_deny_page(va, &save);
@@ -168,7 +168,7 @@ bool test_hcross_pmp_05(void)
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_data_area;
-    ts2_setup_full(&ctx, HPMP_VS_MODE, HPMP_G_MODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t pt_pa = two_stage_vs_pt_page_addr(&ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("VS-stage leaf PT page resolvable", pt_pa != 0);
@@ -227,7 +227,7 @@ bool test_hcross_pmp_06(void)
 
     two_stage_ctx_t ctx;
     uintptr_t gpa = (uintptr_t)test_data_area;
-    ts2_setup_full(&ctx, HPMP_VS_MODE, HPMP_G_MODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t mid_pa = hpmp_g_mid_pt_page(&ctx, gpa);
     TEST_ASSERT("G-stage mid-level PT page resolvable", mid_pa != 0);
@@ -291,7 +291,7 @@ bool test_hcross_pmp_07(void)
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_data_area;
-    ts2_setup_full(&ctx, HPMP_VS_MODE, HPMP_G_MODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Phase 1: baseline access succeeds (translation caches may be
      * populated with the allow-all PMP attributes). */
@@ -358,7 +358,7 @@ bool test_hcross_pmp_08(void)
      * all U-bit checks and PMP is the sole possible denier. */
     uintptr_t vs_x = PTE_V | PTE_X | PTE_U | PTE_A | PTE_D;
     uintptr_t g_x  = PTE_V | PTE_X | PTE_U | PTE_A | PTE_D;
-    ts2_setup_with_dual_victim(&ctx, HPMP_VS_MODE, HPMP_G_MODE,
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                                va, vs_x, g_x);
     two_stage_enable(&ctx, 0);
     hstatus_set_spvp(PRIV_U);   /* VU-effective access */

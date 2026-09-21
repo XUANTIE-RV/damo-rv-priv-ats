@@ -27,21 +27,41 @@ common/vm/
 ├── page_table.c    # 页表池分配器、页表映射、恒等映射
 └── satp.c          # satp 控制、sfence.vma、PMP 辅助、vm_run_in_smode
 
-Sv39/
-├── Makefile        # ENABLE_VM=1, TARGET=sv39_test.elf
-├── kernel.ld       # 链接脚本（含 .page_tables 和 .smode_stack 段）
-└── main.c          # Sv39 测试用例（1GB/2MB/4KB 页恒等映射验证）
+Sv39/                # 单阶段 Sv39/Sv48/Sv57 套件的 master 目录（真实源码）
+├── Makefile        # ENABLE_VM=1, TARGET=sv39_test.elf,
+│                   #   CFLAGS += -DSUITE_SATP_MODE=SATP_MODE_SV39
+├── kernel.ld       # 链接脚本（.page_tables / .smode_stack / .vm_test_region 段）
+├── main.c          # 入口：按 SUITE_SATP_MODE 打印 banner，遍历 .test_table 执行用例
+└── tests/
+    ├── test_helpers.h     # 共享 helper + 全部按模式派生宏（见「分页模式配置机制」）
+    ├── test_register.c    # #include 各 test_*.c，用 SV_REGISTER 收集到 .test_table
+    ├── test_mapping.c     # MAP / SIGN 用例
+    ├── test_pte_valid.c   # VALID 用例
+    ├── test_pte_perms.c   # RWX 用例
+    ├── test_upriv.c       # UPRIV / SUM 用例
+    ├── test_mxr.c         # MXR 用例
+    ├── test_superpage.c   # ALIGN / WALK 用例
+    ├── test_ad_bits.c     # AD 用例
+    ├── test_satp.c        # SATP 用例
+    └── test_sfence_rsvd.c # SFENCE / RSVD / NLPTE 用例
 
-Sv48/                # 与 Sv39 结构相同，测试 Sv48 模式
-├── Makefile
-├── kernel.ld
-└── main.c
+Sv48/                # symlink 复用 Sv39/ 全部源码，仅 Makefile 独立
+├── Makefile         # TARGET=sv48_test.elf, -DSUITE_SATP_MODE=SATP_MODE_SV48
+├── kernel.ld -> ../Sv39/kernel.ld
+├── main.c    -> ../Sv39/main.c
+└── tests/*   -> ../../Sv39/tests/*    （11 个文件全部 symlink）
 
-Sv57/                # 与 Sv39 结构相同，测试 Sv57 模式
-├── Makefile
-├── kernel.ld
-└── main.c
+Sv57/                # 同 Sv48，Makefile 用 -DSUITE_SATP_MODE=SATP_MODE_SV57
 ```
+
+> **共享源码布局**：`Sv39/`、`Sv48/`、`Sv57/` 三套是同一份代码，仅靠各自 Makefile 的
+> `-DSUITE_SATP_MODE` 选择分页模式（镜像两阶段的 `Sv39x4/`、`Sv48x4/`、`Sv57x4/`）。
+> `Sv39/` 是 master 持有真实文件，`Sv48/`、`Sv57/` 的 `tests/*`、`main.c`、`kernel.ld`
+> 全部 symlink 到 `Sv39/`（git 中表现为文件模式 `100644 → 120000`）。
+>
+> 其它以 VM 为工作环境的 **模式无关** Sv\* 扩展套件（`Svade/`、`Svadu/`、`Svinval/`、
+> `Svnapot/`、`Svpbmt/`、`Svvptc/`、`Svrsw60t59b/` 等）也复用本框架，但它们各自持有独立
+> 源码、用 `SUITE_SATP_MODE ?= PLATFORM_SATP_MODE` 跟随平台（见下文）。
 
 ---
 
@@ -336,17 +356,34 @@ uintptr_t vm_run_in_umode(pt_context_t *ctx,
 在扩展的 Makefile 中设置 `ENABLE_VM = 1` 即可启用 VM 支持：
 
 ```makefile
-# Sv39/Makefile
+# Sv39/Makefile（模式内禀：钉死 Sv39）
 TARGET = sv39_test.elf
 ENABLE_VM = 1
-EXT_OBJS = main.o
+EXT_OBJS = \
+    main.o \
+    tests/test_register.o
 include ../common/Makefile.common
+
+# S-stage paging mode: Sv39（在 include 之后追加，故 per-dir -D 优先）
+CFLAGS += -DSUITE_SATP_MODE=SATP_MODE_SV39
+```
+
+模式无关的 Sv\* 扩展套件则改用 `?=` 跟随平台：
+
+```makefile
+# 例如 Svadu/Makefile（模式无关）
+TARGET = svadu_test.elf
+ENABLE_VM = 1
+include ../common/Makefile.common
+SUITE_SATP_MODE ?= PLATFORM_SATP_MODE
 ```
 
 `ENABLE_VM = 1` 会自动：
 - 将 `common/vm/page_table.o` 和 `common/vm/satp.o` 加入链接
 - 添加 `-DENABLE_VM` 编译宏
 - 添加 `-I$(VM_DIR)` 头文件搜索路径
+
+> `SUITE_SATP_MODE` 的完整语义、优先级与按模式派生宏见下文「分页模式配置机制」。
 
 ### 编译和运行
 
@@ -366,6 +403,74 @@ qemu-system-riscv64 -machine virt -nographic -bios none -kernel Sv39/sv39_test.e
 # 清理
 make clean
 ```
+
+---
+
+## 分页模式配置机制
+
+单阶段（非 Hypervisor）VM 套件的 S 阶段分页模式在编译期由两层协作确定：平台能力 `PLATFORM_SATP_MODE` 与套件选择 `SUITE_SATP_MODE`。
+
+### 平台能力：PLATFORM_SATP_MODE
+
+`common/capabilities.h`（force-include 到每个编译单元，纯预处理器、asm 安全）从平台 config（`config/<platform>/rvtest_config.h` 的 `SV39/48/57_SUPPORTED`）派生 `SV39/48/57_AVAILABLE`，再按“最小优先”（Sv39 > Sv48 > Sv57）选出平台默认可用的分页模式：
+
+- `PLATFORM_SATP_MODE`：S 阶段模式，取 SPEC 编码字面量（Bare=0 / Sv39=8 / Sv48=9 / Sv57=10；rv32 固定 Sv32=1）。
+- `PLATFORM_SATP_MODE` 纯由平台 config 派生、**永不被强制覆盖**，代表“该平台能用的默认模式”。
+
+> `capabilities.h` **刻意不提供** `#ifndef SUITE_SATP_MODE` 兜底：它被 force-include 在所有 `test_helpers.h` 之前，若在此兜底会抢占模式内禀套件（Sv39/48/57）的模式定义，使 Sv48/Sv57 静默塌缩为 Sv39。
+
+### 套件选择：SUITE_SATP_MODE
+
+每个套件实际运行的 S 阶段模式用 `SUITE_SATP_MODE` 表示，与平台能力解耦。约定两类：
+
+| 类型 | Makefile 写法 | 例子 |
+|------|---------------|------|
+| **模式无关** | `SUITE_SATP_MODE ?= PLATFORM_SATP_MODE`（跟随平台） | Svade / Svadu / Svinval / Svnapot / Svpbmt / Svvptc / Ssccptr / Sstvala / Sstvecd / Svbare / Ss_CSR / Ss_Exceptions / Svrsw60t59b |
+| **模式内禀** | `CFLAGS += -DSUITE_SATP_MODE=SATP_MODE_SV39/48/57`（钉死具体模式） | Sv39 / Sv48 / Sv57 |
+
+所有 working-mode 的调用点——`pt_init()`、`MAKE_SATP()`、`REQUIRE_SATP_MODE()` 门控——一律传 `SUITE_SATP_MODE`，不直接写 `PLATFORM_SATP_MODE` 或具体模式字面量。仅“以特定模式 WARL 行为为测试对象”的用例（如 satp 保留 MODE 枚举、跨模式切换的目标模式）保留显式常量。
+
+### 命令行覆盖与优先级
+
+`common/Makefile.common` 提供诊断旋钮，构建时临时改写套件模式：
+
+```
+make SATP_MODE=sv39|sv48|sv57     # -> -DSUITE_SATP_MODE=SATP_MODE_SV*
+```
+
+优先级：`命令行旋钮 > 套件 Makefile 的 SUITE_SATP_MODE ?= 默认 > test_helpers.h 的 #ifndef 兜底`。
+
+> 注意：模式内禀套件（Sv39/48/57）的 `-DSUITE_SATP_MODE=...` 是**裸 `CFLAGS +=`** 且追加在 `include ../common/Makefile.common` 之后，排在命令行旋钮 emit 的 `-D` 之后；同名宏后者生效，故对这三套 `make SATP_MODE=` 不改变其模式（与两阶段 Sv\*x4 一致）。模式无关套件用 `?=` 变量，命令行 `:=` 可正常覆盖。
+
+### 模式内禀套件的按模式派生宏（Sv39/48/57 共享源码）
+
+因为 Sv39/48/57 三套共享同一份 `Sv39/tests/` 源码，所有随模式变化的元素都在 `Sv39/tests/test_helpers.h` 中由 `SUITE_SATP_MODE` 派生，测试体保持逐字节一致：
+
+| 宏 | Sv39 | Sv48 | Sv57 | 用途 |
+|----|------|------|------|------|
+| `SUITE_MODE_NAME` | "Sv39" | "Sv48" | "Sv57" | banner / TEST_BEGIN 里的模式名 |
+| `SV_FN_BASE` | `test_sv39_` | `test_sv48_` | `test_sv57_` | 测试函数名前缀 |
+| `ID_MAP_1G/2M/4K` | MAP-01/02/03 | MAP-05/06/07 | MAP-08/09/10 | 统一 `vm_test_plan.md` ID 空间 |
+| `ID_SIGN_NONCANON` | SIGN-03 | SIGN-05 | SIGN-07 | 非规范 VA 用例 ID |
+| `ID_WALK_FULL` | WALK-01 | WALK-02 | WALK-03 | 完整遍历用例 ID |
+| `ID_SATP_ENABLE` | SATP-02 | SATP-03 | SATP-04 | 启用 VM 用例 ID |
+| `ID_SATP_SWITCH` | SATP-05 | SATP-06 | （无） | 模式切换用例 ID |
+| `SUITE_NONCANON_VA` | bit39 边界 | bit48 边界 | bit57 边界 | 非规范 VA 常量 |
+| `SUITE_ROOT_VPN` / `SUITE_ROOT_LEVEL_STR` | VA_VPN2 / "L2" | VA_VPN3 / "L3" | VA_VPN4 / "L4" | 根级 PTE 检查 |
+| `SUITE_WALK_DEPTH` | "three-level" | "four-level" | "five-level" | 遍历深度措辞 |
+| `SUITE_NEXT_MODE(_NAME)` | Sv48 | Sv57 | （无） | 模式切换目标 |
+
+配套的两个宏工具：
+- `SVFN(name)`：token-paste 出 `test_svXX_##name`，保留每模式独立符号名。
+- `SV_REGISTER(name)`：`TEST_REGISTER` 的本地等价宏。必需，因为 `TEST_REGISTER(fn)` 内部 `fn##_ptr` 的 `##` 会抑制函数式 `SVFN(x)` 实参展开，直接传会编译失败。
+
+Sv57 是最高模式、无更高级可切换，故模式切换用例用 `#if SUITE_SATP_MODE != SATP_MODE_SV57` 编译排除（Sv57 比 Sv39/Sv48 少 1 个用例：49 vs 50）。
+
+### 分页模式门控宏（REQUIRE_SATP_MODE）
+
+`common/hyp/hyp_test.h` 提供编译期门控 `REQUIRE_SATP_MODE(mode)`：`mode` 是否支持取自 config 声明的 `SV39/48/57_AVAILABLE`，不支持则 `TEST_SKIP`，**不做运行时 WARL 探测**。
+
+单阶段 Sv39/48/57 套件不引入 Hypervisor 头，故在 `Sv39/tests/test_helpers.h` 内定义了一份等价的本地 `REQUIRE_SATP_MODE`（用 `#ifndef` 保护），仅依赖 force-include 的 `SV39/48/57_AVAILABLE` 与 `test_framework.h` 的 `TEST_SKIP`。例如“启用 VM”用例用 `REQUIRE_SATP_MODE(SUITE_SATP_MODE)` 决定是否执行，取代早期 Sv48 独有的 `satp.MODE` 运行期 probe。
 
 ---
 
@@ -396,7 +501,7 @@ bool test_my_vm_test(void) {
     /* 1. 重置页表池并初始化上下文 */
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);  /* 或 SV48 / SV57 */
+    pt_init(&ctx, SUITE_SATP_MODE);  /* 套件工作模式；也可显式传 SATP_MODE_SV39/48/57 */
 
     /* 2. 设置恒等映射 */
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
@@ -484,35 +589,32 @@ vm_run_in_smode(&ctx, test_fn, arg);
 
 ## 已有测试用例
 
-### Sv39 测试 (Sv39/main.c)
+Sv39/Sv48/Sv57 共享 `Sv39/tests/` 下的同一套用例，按 Group 组织；完整清单与判定标准见测试计划 `DOCS/testplan/vm_test_plan.md`。各模式的测试 ID 取自该计划的统一 ID 空间，由 `test_helpers.h` 的按模式派生宏决定：
 
-| 测试 ID | 测试名称 | 页大小 | 映射区域 |
-|---------|----------|--------|----------|
-| SV39-01 | 1GB gigapage identity mapping | 1GB | 0x80000000 起 1GB |
-| SV39-02 | 2MB megapage identity mapping | 2MB | 0x80000000 起 32MB |
-| SV39-03 | 4KB page identity mapping | 4KB | 0x80000000 起 4MB |
+| Group | 文件 | 用例 | Sv39 ID | Sv48 ID | Sv57 ID |
+|-------|------|------|---------|---------|---------|
+| 1 基本映射 | test_mapping.c | 1G/2M/4K 恒等映射 | MAP-01/02/03 | MAP-05/06/07 | MAP-08/09/10 |
+| 2 符号扩展 | test_mapping.c | 非规范 VA 触发 page fault | SIGN-03 | SIGN-05 | SIGN-07 |
+| 3 PTE 有效性 | test_pte_valid.c | V=0 / R=0&W=1 | VALID-01~05 | 同 | 同 |
+| 4 权限位 | test_pte_perms.c | RWX 组合 | RWX-01~05 | 同 | 同 |
+| 5 U-bit | test_upriv.c | U/S-mode 访问 | UPRIV-03~07 | 同 | 同 |
+| 6 SUM | test_upriv.c | SUM 控制 | SUM-01~05 | 同 | 同 |
+| 7 MXR | test_mxr.c | MXR 控制 | MXR-01~05 | 同 | 同 |
+| 8 对齐 | test_superpage.c | superpage misalign | ALIGN-01~02 | 同 | 同 |
+| 9 遍历 | test_superpage.c | 完整遍历 + 非叶/中间叶 | WALK-01/04/05 | WALK-02/04/05 | WALK-03/04/05 |
+| 10 A/D 位 | test_ad_bits.c | A/D 管理 | AD-01~05 | 同 | 同 |
+| 11 satp | test_satp.c | Bare/启用/切换/ASID/保留 MODE | SATP-01/02/05/07/09 | SATP-01/03/06/07/09 | SATP-01/04/07/09 |
+| 12 SFENCE | test_sfence_rsvd.c | sfence.vma 生效 | SFENCE-01/04/05 | 同 | 同 |
+| 13 保留位 | test_sfence_rsvd.c | PTE 保留位 | RSVD-01~02 | 同 | 同 |
+| 14 非叶 PTE | test_sfence_rsvd.c | 非叶 D=A=U=0 | NLPTE-04 | 同 | 同 |
 
-### Sv48 测试 (Sv48/main.c)
+用例总数：**Sv39 = 50、Sv48 = 50、Sv57 = 49**（Sv57 无模式切换用例 SATP-05/06，因它是最高模式）。
 
-| 测试 ID | 测试名称 | 页大小 | 映射区域 |
-|---------|----------|--------|----------|
-| SV48-01 | 1GB gigapage identity mapping | 1GB | 0x80000000 起 1GB |
-| SV48-02 | 2MB megapage identity mapping | 2MB | 0x80000000 起 32MB |
-| SV48-03 | 4KB page identity mapping | 4KB | 0x80000000 起 4MB |
-
-### Sv57 测试 (Sv57/main.c)
-
-| 测试 ID | 测试名称 | 页大小 | 映射区域 |
-|---------|----------|--------|----------|
-| SV57-01 | 1GB gigapage identity mapping | 1GB | 0x80000000 起 1GB |
-| SV57-02 | 2MB megapage identity mapping | 2MB | 0x80000000 起 32MB |
-| SV57-03 | 4KB page identity mapping | 4KB | 0x80000000 起 4MB |
-
-每个测试用例的验证方法：
-1. 初始化页表上下文
-2. 设置恒等映射
-3. 通过 `vm_run_in_smode()` 在 S-mode 下执行读写测试
-4. 验证写入的 magic value 能正确读回
+每个用例的典型验证方法：
+1. `pt_pool_reset()` + `pt_init(&ctx, SUITE_SATP_MODE)` 初始化页表上下文
+2. `pt_setup_identity_mapping()` / `pt_map_page()` 建立映射
+3. 通过 `vm_run_in_smode()` / `vm_run_in_umode()` 在 S/U-mode 下执行读/写/执行测试
+4. 用 `TEST_ASSERT` 校验返回值（成功 / 期望的 page-fault cause）
 
 ---
 

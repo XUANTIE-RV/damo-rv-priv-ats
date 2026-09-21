@@ -22,7 +22,7 @@ bool test_hcfi_ss_49(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     ssp_write(SS_PAGE_ADDR + 0x100);
 
@@ -53,7 +53,7 @@ bool test_hcfi_ss_50(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     ssp_write(SS_PAGE_ADDR + 0x100);
     setup_deleg_to_vs(BIT(CAUSE_SOFTWARE_CHECK));
@@ -85,7 +85,7 @@ bool test_hcfi_ss_51(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     ssp_write(SS_PAGE_ADDR + 0x100);
     setup_deleg_to_hs(BIT(CAUSE_SOFTWARE_CHECK));
@@ -114,7 +114,7 @@ bool test_hcfi_ss_52(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     ssp_write(SS_PAGE_ADDR + 0x100);
     clear_all_deleg();
@@ -143,7 +143,7 @@ bool test_hcfi_ss_53(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     setup_deleg_to_vs(BIT(CAUSE_STORE_ACCESS_FAULT));
 
@@ -168,7 +168,7 @@ bool test_hcfi_ss_54(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     setup_deleg_to_hs(BIT(CAUSE_STORE_ACCESS_FAULT));
 
@@ -189,7 +189,7 @@ bool test_hcfi_ss_55(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     ssp_write(SS_PAGE_ADDR + 0x100);
     setup_deleg_to_vs(BIT(CAUSE_STORE_PAGE_FAULT));
@@ -215,7 +215,7 @@ bool test_hcfi_ss_56(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     ssp_write(SS_PAGE_ADDR + 0x100);
 
@@ -245,7 +245,7 @@ bool test_hcfi_ss_57(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     ssp_write(SS_PAGE_ADDR + 0x100);
     setup_deleg_to_vs(BIT(CAUSE_SOFTWARE_CHECK));
@@ -281,7 +281,7 @@ bool test_hcfi_ss_58(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     setup_deleg_to_hs(BIT(CAUSE_STORE_ACCESS_FAULT));
 

@@ -102,11 +102,11 @@ bool test_hzlasr_02_vs_exec_no_cause22(void)
     TEST_BEGIN("HZLASR-02: VS-mode load-acquire/store-release, never cause=22");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t va = (uintptr_t)test_data_area;
     hzlasr_store_le64(va, 0x0011223344556677ULL);
     hz_st_val = 0x0011223344556677ULL;
@@ -136,11 +136,11 @@ bool test_hzlasr_03_vu_exec_no_cause22(void)
     TEST_BEGIN("HZLASR-03: VU-mode load-acquire/store-release, never cause=22");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full_u(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t va = (uintptr_t)test_data_area;
     hzlasr_store_le64(va, 0x0011223344556677ULL);
     hz_st_val = 0x0011223344556677ULL;
@@ -185,8 +185,8 @@ bool test_hzlasr_04_vs_hs_semantic_parity(void)
     TEST_BEGIN("HZLASR-04: VS-mode Zalasr semantics == HS-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* (1) load-acquire byte sign-extension parity. */
     uintptr_t hs_addr = (uintptr_t)&hzlasr_hs_slot[0];
@@ -194,7 +194,7 @@ bool test_hzlasr_04_vs_hs_semantic_parity(void)
     uintptr_t hs_rd = run_in_priv(PRIV_S, hzlasr_sem_lb, hs_addr);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t vs_addr = (uintptr_t)test_data_area;
     hzlasr_store8(vs_addr, 0x81u);
     g_hz_ld_rd = 0;
@@ -217,7 +217,7 @@ bool test_hzlasr_04_vs_hs_semantic_parity(void)
     (void)run_in_priv(PRIV_S, hzlasr_sem_sb, hs_addr);
     uintptr_t hs_mem = hzlasr_load8(hs_addr);
 
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hzlasr_store8(vs_addr, 0x00u);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hzlasr_sem_sb, vs_addr);

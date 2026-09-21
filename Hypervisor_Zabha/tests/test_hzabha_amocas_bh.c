@@ -30,14 +30,14 @@ bool test_hzabha_32_amocas_bh_exec(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented (amocas.b/h sub-group)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
 
     /* VS-mode amocas.b success: cmp matches the byte. */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     *(volatile uint8_t *)va = 0x12u;
     hz_cas_cmp = 0x12u;
     hz_cas_swap = 0x34u;
@@ -57,7 +57,7 @@ bool test_hzabha_32_amocas_bh_exec(void)
                    *(volatile uint8_t *)va, (uintptr_t)0x34u);
 
     /* VS-mode amocas.h failure: cmp mismatches -> memory unchanged. */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     *(volatile uint16_t *)va = 0x1234u;
     hz_cas_cmp = 0x9999u;   /* mismatch */
     hz_cas_swap = 0x5678u;
@@ -71,7 +71,7 @@ bool test_hzabha_32_amocas_bh_exec(void)
                    *(volatile uint16_t *)va, (uintptr_t)0x1234u);
 
     /* VU-mode amocas.b success (U=1 pages). */
-    ts2_setup_full_u(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     *(volatile uint8_t *)va = 0x21u;
     hz_cas_cmp = 0x21u;
     hz_cas_swap = 0x43u;
@@ -99,14 +99,14 @@ bool test_hzabha_33_amocas_bh_write_perm(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented (amocas.b/h sub-group)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
 
     /* Success path (cmp matches) to W=0. */
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_R);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_R);
     *(volatile uint8_t *)va = 0x12u;
     hz_cas_cmp = 0x12u;
     hz_cas_swap = 0x34u;
@@ -121,7 +121,7 @@ bool test_hzabha_33_amocas_bh_write_perm(void)
                    cause_s, (uintptr_t)CAUSE_STORE_PAGE_FAULT);
 
     /* Failure path (cmp mismatches) to W=0 -> STILL store pf (15). */
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_R);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_R);
     *(volatile uint8_t *)va = 0x12u;
     hz_cas_cmp = 0x99u;   /* mismatch */
     hz_cas_swap = 0x34u;
@@ -149,12 +149,12 @@ bool test_hzabha_34_amocas_h_gstage(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented (amocas.b/h sub-group)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     *(volatile uint16_t *)va = 0x1234u;
     hz_cas_cmp = 0x1234u;   /* match -> success path */
     hz_cas_swap = 0x5678u;
@@ -192,14 +192,14 @@ bool test_hzabha_35_amocas_bh_htinst(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented (amocas.b/h sub-group)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
 
     /* amocas.b (funct3=000). */
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     *(volatile uint8_t *)va = 0x12u;
     hz_cas_cmp = 0x12u;
     hz_cas_swap = 0x34u;
@@ -221,7 +221,7 @@ bool test_hzabha_35_amocas_bh_htinst(void)
     }
 
     /* amocas.h (funct3=001). */
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     *(volatile uint16_t *)va = 0x1234u;
     hz_cas_cmp = 0x1234u;
     hz_cas_swap = 0x5678u;
@@ -257,8 +257,8 @@ bool test_hzabha_36_amocas_h_misaligned(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented (amocas.b/h sub-group)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
 #ifdef ZAMA16B_SUPPORTED
     uintptr_t off = 15UL;   /* straddle the 16-byte granule boundary */
@@ -268,7 +268,7 @@ bool test_hzabha_36_amocas_h_misaligned(void)
     uintptr_t mis = (uintptr_t)test_data_area + off;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     *(volatile uint64_t *)((uintptr_t)test_data_area & ~15UL) =
         0x0011223344556677ULL;
     hz_cas_cmp = 0x2233u;

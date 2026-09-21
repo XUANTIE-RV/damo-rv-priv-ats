@@ -123,11 +123,11 @@ bool test_hzlrsc_02_vs_exec_no_cause22(void)
     TEST_BEGIN("HZLRSC-02: VS-mode lr/sc succeed, never cause=22");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t va = (uintptr_t)test_data_area;
     *(volatile uint32_t *)va = 0;
 #if __riscv_xlen == 64
@@ -173,11 +173,11 @@ bool test_hzlrsc_03_vu_exec_no_cause22(void)
     TEST_BEGIN("HZLRSC-03: VU-mode lr.w/sc.w succeed, never cause=22");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full_u(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t va = (uintptr_t)test_data_area;
     *(volatile uint32_t *)va = 0;
 
@@ -209,8 +209,8 @@ bool test_hzlrsc_04_vs_hs_semantic_parity(void)
     TEST_BEGIN("HZLRSC-04: VS-mode LR/SC semantics == HS-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* HS-mode run on a physical slot. */
     uintptr_t hs_addr = (uintptr_t)&hzlrsc_hs_slot[0];
@@ -221,7 +221,7 @@ bool test_hzlrsc_04_vs_hs_semantic_parity(void)
 
     /* VS-mode run on the two-stage-mapped test region. */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t vs_addr = (uintptr_t)test_data_area;
     *(volatile uint32_t *)vs_addr = HZ_SEM_INIT_W;
     g_hz_sem_lr = g_hz_sem_sc = g_hz_sem_mem = 0;

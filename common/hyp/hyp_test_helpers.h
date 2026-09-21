@@ -45,7 +45,6 @@
 #include "hyp/test_vs_helpers.h"
 #include "hyp/hyp_trap.h"
 #include "hyp/hyp_vs_trap.h"
-#include "hyp/hyp_platform.h"
 
 /* Linker-provided test-region symbols (see Hypervisor/kernel.ld). */
 extern uint8_t test_data_area[];

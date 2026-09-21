@@ -55,8 +55,8 @@ bool test_hzca_07_c_lw_htinst(void)
     TEST_BEGIN("HZCA-07: c.lw load guest-page-fault htinst = 0/transformed");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzca_htinst_case("cause == load guest-page-fault (21)",
                      hz_vs_c_lw, HZ_G_INV, CAUSE_LOAD_GUEST_PAGE_FAULT,
                      HZCA_ENC_C_LW_A0, HZCA_EXP_LW_A0_A0);
@@ -69,8 +69,8 @@ bool test_hzca_08_c_sw_htinst(void)
     TEST_BEGIN("HZCA-08: c.sw store guest-page-fault htinst (store branch)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzca_htinst_case("cause == store/AMO guest-page-fault (23)",
                      hz_vs_c_sw, HZ_G_RU, CAUSE_STORE_GUEST_PAGE_FAULT,
                      HZCA_ENC_C_SW_A0, HZCA_EXP_SW_A0_A0);
@@ -84,8 +84,8 @@ bool test_hzca_09_c_ld_htinst(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     if (__riscv_xlen != 64) TEST_SKIP("RV64-only compressed doubleword instruction");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzca_htinst_case("cause == load guest-page-fault (21)",
                      hz_vs_c_ld, HZ_G_INV, CAUSE_LOAD_GUEST_PAGE_FAULT,
                      HZCA_ENC_C_LD_A0, HZCA_EXP_LD_A0_A0);
@@ -99,8 +99,8 @@ bool test_hzca_10_c_sd_htinst(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     if (__riscv_xlen != 64) TEST_SKIP("RV64-only compressed doubleword instruction");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzca_htinst_case("cause == store/AMO guest-page-fault (23)",
                      hz_vs_c_sd, HZ_G_RU, CAUSE_STORE_GUEST_PAGE_FAULT,
                      HZCA_ENC_C_SD_A0, HZCA_EXP_SD_A0_A0);
@@ -122,8 +122,8 @@ bool test_hzca_11_c_lwsp_htinst(void)
     TEST_BEGIN("HZCA-11: c.lwsp load guest-page-fault htinst");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzca_htinst_case("cause == load guest-page-fault (21)",
                      hz_vs_c_lwsp, HZ_G_INV, CAUSE_LOAD_GUEST_PAGE_FAULT,
                      HZCA_ENC_C_LWSP_A0, HZCA_EXP_LW_A0_SP);
@@ -136,8 +136,8 @@ bool test_hzca_12_c_swsp_htinst(void)
     TEST_BEGIN("HZCA-12: c.swsp store guest-page-fault htinst");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzca_htinst_case("cause == store/AMO guest-page-fault (23)",
                      hz_vs_c_swsp, HZ_G_RU, CAUSE_STORE_GUEST_PAGE_FAULT,
                      HZCA_ENC_C_SWSP_A0, HZCA_EXP_SW_A0_SP);
@@ -151,8 +151,8 @@ bool test_hzca_13_c_ldsp_htinst(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     if (__riscv_xlen != 64) TEST_SKIP("RV64-only compressed doubleword instruction");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzca_htinst_case("cause == load guest-page-fault (21)",
                      hz_vs_c_ldsp, HZ_G_INV, CAUSE_LOAD_GUEST_PAGE_FAULT,
                      HZCA_ENC_C_LDSP_A0, HZCA_EXP_LD_A0_SP);
@@ -166,8 +166,8 @@ bool test_hzca_14_c_sdsp_htinst(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     if (__riscv_xlen != 64) TEST_SKIP("RV64-only compressed doubleword instruction");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzca_htinst_case("cause == store/AMO guest-page-fault (23)",
                      hz_vs_c_sdsp, HZ_G_RU, CAUSE_STORE_GUEST_PAGE_FAULT,
                      HZCA_ENC_C_SDSP_A0, HZCA_EXP_SD_A0_SP);
@@ -187,8 +187,8 @@ bool test_hzca_15_load_store_format(void)
     TEST_BEGIN("HZCA-15: compressed load vs store transformed format");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     hzca_trap_t tl = hzca_fire_mem_fault(hz_vs_c_lw, va, HZ_G_INV,
@@ -249,8 +249,8 @@ bool test_hzca_16_fields_match_expanded(void)
     TEST_BEGIN("HZCA-16: transformed fields == expanded 32-bit instruction");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
 
@@ -305,8 +305,8 @@ bool test_hzca_17_compressed_marker_contrast(void)
     TEST_BEGIN("HZCA-17: bits[1:0]=01 (compressed) vs 11 (non-compressed)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     hzca_trap_t c = hzca_fire_mem_fault(hz_vs_c_lw, va, HZ_G_INV,
@@ -348,8 +348,8 @@ bool test_hzca_18_addr_offset_zero(void)
     TEST_BEGIN("HZCA-18: aligned compressed load/store Addr. Offset == 0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     hzca_trap_t l = hzca_fire_mem_fault(hz_vs_c_lw, va, HZ_G_INV,
@@ -383,8 +383,8 @@ bool test_hzca_19_htinst_may_be_zero(void)
     TEST_BEGIN("HZCA-19: htinst == 0 (legal) or exactly golden");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     hzca_trap_t t = hzca_fire_mem_fault(hz_vs_c_lw, va, HZ_G_INV,
@@ -420,14 +420,14 @@ bool test_hzca_20_misaligned_record(void)
     TEST_BEGIN("HZCA-20: (recording) misaligned c.lw Addr. Offset");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t victim = (uintptr_t)test_fault_page;
     uintptr_t mis_va = victim - 2;   /* word straddles into the victim */
 
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, victim, HZ_G_INV);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, victim, HZ_G_INV);
     hz_route_to_hs(1UL << CAUSE_LOAD_GUEST_PAGE_FAULT);
 
     trap_expect_begin();

@@ -53,7 +53,7 @@ void _setup_with_victim(two_stage_ctx_t *ctx,
                         uintptr_t victim_gpa,
                         uintptr_t victim_flags)
 {
-    _setup_with_victim_mode(ctx, victim_gpa, victim_flags, HGATP_MODE_SV39X4);
+    _setup_with_victim_mode(ctx, victim_gpa, victim_flags, SUITE_HGATP_MODE);
 }
 
 bool _vsfault_check(uintptr_t (*helper)(uintptr_t),
@@ -101,7 +101,7 @@ bool _fire_load_fault_mode(uintptr_t victim_gpa, uintptr_t flags, int g_mode) {
 }
 
 bool _fire_load_fault(uintptr_t victim_gpa, uintptr_t flags) {
-    return _fire_load_fault_mode(victim_gpa, flags, HGATP_MODE_SV39X4);
+    return _fire_load_fault_mode(victim_gpa, flags, SUITE_HGATP_MODE);
 }
 
 bool _fire_store_fault(uintptr_t victim_gpa, uintptr_t flags) {
@@ -159,7 +159,7 @@ bool _fire_two_stage_load_fault(uintptr_t test_gva, uintptr_t test_gpa,
 {
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* VS-stage: identity-map kernel at 2MB. */
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
@@ -205,7 +205,7 @@ uintptr_t _setup_imp_victim(two_stage_ctx_t *ctx,
 {
     return _setup_imp_victim_mode(ctx, test_va, victim_pt_level,
                                  victim_g_flags,
-                                 SATP_MODE_SV39, HGATP_MODE_SV39X4);
+                                 SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 }
 
 uintptr_t _setup_imp_victim_mode(two_stage_ctx_t *ctx,
@@ -288,7 +288,7 @@ bool _fire_hlvx_fault_priv(uintptr_t victim_gpa, uintptr_t flags,
 
     /* HLVX needs vsatp=Sv39 (not BARE) for unambiguous cause routing. */
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* VS-stage PTE.U bit must agree with effective privilege:
      *   PRIV_U (VU) -> set PTE.U=1
@@ -341,7 +341,7 @@ bool _fire_hlvx_fault(uintptr_t victim_gpa, uintptr_t flags) {
  * This verifies HLVX cause classification without VS-stage involvement. */
 bool _fire_hlvx_fault_bare(uintptr_t victim_gpa, uintptr_t flags) {
     two_stage_ctx_t ctx;
-    _setup_with_victim_mode(&ctx, victim_gpa, flags, HGATP_MODE_SV39X4);
+    _setup_with_victim_mode(&ctx, victim_gpa, flags, SUITE_HGATP_MODE);
 
     /* Enable G-stage (vsatp=BARE set inside _setup_with_victim_mode). */
     two_stage_enable(&ctx, /*vmid=*/0);
@@ -357,7 +357,7 @@ bool _fire_hlvx_fault_bare(uintptr_t victim_gpa, uintptr_t flags) {
 
 bool _fire_hlv_fault(uintptr_t victim_gpa, uintptr_t flags) {
     two_stage_ctx_t ctx;
-    _setup_with_victim_mode(&ctx, victim_gpa, flags, HGATP_MODE_SV39X4);
+    _setup_with_victim_mode(&ctx, victim_gpa, flags, SUITE_HGATP_MODE);
 
     two_stage_enable(&ctx, /*vmid=*/0);
 
@@ -372,7 +372,7 @@ bool _fire_hlv_fault(uintptr_t victim_gpa, uintptr_t flags) {
 
 bool _fire_hsv_fault(uintptr_t victim_gpa, uintptr_t flags) {
     two_stage_ctx_t ctx;
-    _setup_with_victim_mode(&ctx, victim_gpa, flags, HGATP_MODE_SV39X4);
+    _setup_with_victim_mode(&ctx, victim_gpa, flags, SUITE_HGATP_MODE);
 
     two_stage_enable(&ctx, /*vmid=*/0);
 

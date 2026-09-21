@@ -57,22 +57,27 @@ Hypervisor 扩展的测试比现有的 PMP / VM (Sv39/48/57) 测试复杂度更�
 
 ```
 common/hyp/
-├── hyp_defs.h        # CSR 地址、位域、cause code、hgatp 编码
-├── hyp_csr.c         # CSR 便捷操作 API
-├── hyp_priv.c        # 虚拟化特权级切换 (HS→VS→VU)
-├── hyp_trap.c        # HS-mode trap handler (处理 VS/VU-mode trap)
-├── hyp_trap_asm.S    # HS-mode trap entry (汇编)
-├── hyp_fence.c       # HFENCE.VVMA / HFENCE.GVMA 封装
-├── hyp_ldst.c        # HLV / HLVX / HSV 指令封装
-├── gstage_pt.c       # G-stage 页表管理 (hgatp, Sv39x4/48x4/57x4)
-├── two_stage.c       # 两阶段翻译组合管理
-├── hyp_reset.c       # Hypervisor 状态重置
-└── hyp_test.h        # Hypervisor 测试宏
+├── hyp_defs.h             # CSR 地址、位域、cause code、hgatp/vsatp 编码
+├── hyp_csr.c/.h           # CSR 操作 API（hstatus/hedeleg/hgatp/henvcfg、委托、WARL 探测）
+├── hyp_priv.c/.h          # 虚拟化特权级切换 (M↔HS↔VS↔VU)
+├── hyp_trap.c/.h          # HS/M-mode trap handler（捕获 VS/VU-mode trap）
+├── hyp_trap_asm.S         # HS/M-mode trap entry（汇编）
+├── hyp_vs_trap.c/.h       # VS-mode trap handler（委托到 VS 后由 guest 处理）
+├── hyp_fence.c/.h         # HFENCE.VVMA / HFENCE.GVMA 封装
+├── hyp_ldst.c/.h          # HLV / HLVX / HSV 指令封装
+├── gstage_pt.c/.h         # G-stage 页表管理 (hgatp, Sv39x4/48x4/57x4)
+├── two_stage.c/.h         # 两阶段翻译核心 (two_stage_init/enable/run_in_vs/vu)
+├── two_stage_helpers.c/.h # 两阶段场景助手 (ts2_setup_* / ts2_run_check_*)
+├── test_vs_helpers.c/.h   # VS-mode 触发器 (test_vs_load/store/exec_*)
+├── hyp_test_helpers.c/.h  # htinst golden 值、implicit-walk victim 构造
+├── hyp_reset.c/.h         # Hypervisor 状态重置 (hyp_reset_state)
+└── hyp_test.h             # 测试宏（REQUIRE_*_MODE / CHECK_* / EXPECT_* / HYP_TEST_END）
 
-hypervisor/              # 测试用例目录
-├── Makefile
+<套件目录>/                 # 如 Hypervisor_Zaamo/、Shtvala/、Sv39x4_Sv39/
+├── Makefile               # include ../common/Makefile.common；ENABLE_HYP/ENABLE_TWO_STAGE；SUITE_* 声明
 ├── kernel.ld
-└── main.c
+├── main.c
+└── tests/                 # 测试文件（#include 进 test_register.c 单一编译单元）
 ```
 
 ---
@@ -801,21 +806,26 @@ _CSR_READ_CASE(0x280)  /* vsatp */
 
 ### Makefile.common
 
-新增 `ENABLE_HYP` 条件编译支持：
+套件 Makefile 设 `ENABLE_HYP=1` 启用 H 扩展：链接 `common/hyp/` 目标、向 CFLAGS 与 ASFLAGS 注入 `-DENABLE_HYP -I$(HYP_DIR)`、并把 MARCH 重建为 `rvXXimach<扩展后缀>`（加入 `h`，保留套件已声明的扩展后缀）。`ENABLE_TWO_STAGE=1` 额外链接两阶段助手 `two_stage_helpers.o`。
 
 ```makefile
 ifdef ENABLE_HYP
-HYP_DIR = $(COMMON_DIR)/hyp
-HYP_OBJS = $(HYP_DIR)/hyp_csr.o $(HYP_DIR)/hyp_priv.o \
-            $(HYP_DIR)/hyp_trap.o $(HYP_DIR)/hyp_trap_asm.o \
-            $(HYP_DIR)/hyp_fence.o $(HYP_DIR)/hyp_ldst.o \
-            $(HYP_DIR)/gstage_pt.o $(HYP_DIR)/two_stage.o \
-            $(HYP_DIR)/hyp_reset.o
+HYP_DIR  = $(COMMON_DIR)/hyp
+HYP_OBJS = \
+    $(HYP_DIR)/hyp_csr.o       $(HYP_DIR)/hyp_priv.o \
+    $(HYP_DIR)/hyp_trap.o      $(HYP_DIR)/hyp_trap_asm.o \
+    $(HYP_DIR)/hyp_fence.o     $(HYP_DIR)/hyp_ldst.o \
+    $(HYP_DIR)/hyp_reset.o     $(HYP_DIR)/gstage_pt.o \
+    $(HYP_DIR)/two_stage.o     $(HYP_DIR)/test_vs_helpers.o \
+    $(HYP_DIR)/hyp_vs_trap.o   $(HYP_DIR)/hyp_test_helpers.o
+ifdef ENABLE_TWO_STAGE
+HYP_OBJS += $(HYP_DIR)/two_stage_helpers.o
+endif
 COMMON_OBJS += $(HYP_OBJS)
-CFLAGS += -DENABLE_HYP -I$(HYP_DIR)
-MARCH = rv64imac_zicsr_zifencei_h   # 添加 H 扩展
 endif
 ```
+
+分页模式相关的 `SUITE_SATP_MODE` / `SUITE_VSATP_MODE` / `SUITE_HGATP_MODE` 注入与命令行旋钮（`SATP_MODE` / `HGATP_MODE` / `VSATP_MODE`）见「分页模式配置机制」一节。
 
 ---
 
@@ -877,8 +887,11 @@ TEST_REGISTER(test_two_stage_identity_mapping);
 bool test_two_stage_identity_mapping(void) {
     TEST_BEGIN("2STAGE-01: Two-stage identity mapping read/write");
 
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
+
     two_stage_ctx_t ctx;
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
     uintptr_t flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_U | PTE_A | PTE_D;
@@ -905,7 +918,7 @@ bool test_hlv_in_hs_mode(void) {
     /* 设置 G-stage 映射 */
     gpt_context_t g_ctx;
     gpt_pool_reset();
-    gpt_init(&g_ctx, HGATP_MODE_SV39X4);
+    gpt_init(&g_ctx, SUITE_HGATP_MODE);
     /* ... setup mapping ... */
     gpt_enable(&g_ctx, 0);
 
@@ -966,224 +979,124 @@ QEMU virt 平台需要 `-cpu rv64,h=true`（或更新版本默认启用 H 扩展
 
 ---
 
-## H 子扩展通用测试基建（v2 增量）
+## 分页模式配置机制
 
-### 设计动机
+虚拟化测试的 VS 阶段与 G 阶段分页模式在编译期由三层协作确定。
 
-`Sha / Shtvala / Shvstvala / Shvstvecd / Shvsatpa / Shgatpa / Shcounterenw / Shlcofideleg` 这 8 个 H 子扩展从规范上看几乎全部都是"在 H 基线上，把某个原本可以由实现自由选择的写法收紧为强制"，对测试框架的诉求高度同构：
-- 平台是否实现该子扩展 → 决定整套用例是 SKIP 还是 RUN；
-- 触发某种 trap 路径 → 复用 H 基线的 VS-mode 触发 + 委托配置；
-- 检查 trap 入口瞬间的 CSR 字段（htval / vstval / vsepc / hstatus.GVA / htinst …） → 复用 trap_record；
-- 实现宽度 / MODE 子集 → 通过 WARL 探测获取。
+### 平台能力：PLATFORM_SATP_MODE / PLATFORM_HGATP_MODE
 
-为避免每接入一个子扩展就在 `common/hyp/` 里堆一批以扩展命名的 API，本节定义**按"行为语义"而非"扩展名"**命名的通用基建。
+`common/capabilities.h` 从平台 config（`config/<platform>/rvtest_config.h` 的 `SV39/48/57_SUPPORTED`）派生 `SV39/48/57_AVAILABLE`，再按“最小优先”（Sv39>Sv48>Sv57）选出平台可用的默认分页模式：
 
-> **设计原则**：通用层只放"H 基线本就该有"的能力；子扩展层只放"该扩展独有的 normative 收紧"。新接入子扩展的工作量约束在每扩展 5–30 行 header。
+- `PLATFORM_SATP_MODE`：S/VS 阶段模式（Bare=0 / Sv39=8 / Sv48=9 / Sv57=10；rv32 固定 Sv32=1）。
+- `PLATFORM_HGATP_MODE`：与之配对的 G 阶段模式（Sv39x4=8 / Sv48x4=9 / Sv57x4=10）。
 
-### 模块 11：平台能力矩阵（`common/hyp/platform_caps.h` / `.c`）
+`PLATFORM_*` 纯由平台 config 派生、**永不被强制覆盖**，代表“该平台能用的模式”。
+
+### 套件选择：SUITE_SATP_MODE / SUITE_VSATP_MODE / SUITE_HGATP_MODE
+
+每个套件实际运行的模式用 `SUITE_*` 表示，与平台能力解耦：
+
+- 单阶段（非 Hypervisor）套件：`SUITE_SATP_MODE`（S 阶段）。
+- 两阶段（Hypervisor / Sv\*x4）套件：`SUITE_VSATP_MODE`（VS 阶段）+ `SUITE_HGATP_MODE`（G 阶段）。
+
+约定：
+- **模式无关套件**：Makefile 里写 `SUITE_* ?= PLATFORM_*`，跟随平台。
+- **模式内禀套件**（如 `Sv39x4_Sv48` 专测某模式对）：Makefile 里写 `-DSUITE_HGATP_MODE=HGATP_MODE_SV39X4 -DSUITE_VSATP_MODE=SATP_MODE_SV48` 钉死具体模式。
+
+调用点（`REQUIRE_*_MODE` 门控、`two_stage_init` / `ts2_setup_*` 初始化）一律使用 `SUITE_*`，不直接写 `PLATFORM_*` 或具体模式字面量。
+
+### 命令行覆盖与优先级
+
+`common/Makefile.common` 提供三个诊断旋钮，构建时临时改写套件模式：
+
+```
+make SATP_MODE=sv39|sv48|sv57     # 单阶段套件   -> SUITE_SATP_MODE
+make HGATP_MODE=sv39|sv48|sv57    # 两阶段 G 阶段 -> SUITE_HGATP_MODE
+make VSATP_MODE=sv39|sv48|sv57    # 两阶段 VS 阶段 -> SUITE_VSATP_MODE
+```
+
+优先级：`命令行旋钮 > 套件 Makefile 的 SUITE_* ?= 默认 > 头文件 #ifndef 兜底`。两阶段兜底在 `common/hyp/two_stage_helpers.h`（`#ifndef SUITE_HGATP_MODE → PLATFORM_HGATP_MODE`、`#ifndef SUITE_VSATP_MODE → PLATFORM_SATP_MODE`）。
+
+> 兜底只在 include 了该头的编译单元内生效；含独立编译单元的套件（如单独的 `tests/test_helpers.o`）必须靠 Makefile 的全局 `-DSUITE_*`，故 `SUITE_* ?= PLATFORM_*` 不可省。
+
+### 分页模式门控宏（REQUIRE_*_MODE）
+
+`common/hyp/hyp_test.h` 提供编译期门控：`mode` 为架构 MODE 编码，是否支持取自 config 声明的 `SV39/48/57_AVAILABLE`，不做运行时 WARL 探测。
 
 ```c
-typedef struct {
-    /* CSR 实现宽度（WARL 探测得到，0 表示未探测）*/
-    uint8_t  htval_width_bits;
-    uint8_t  vstval_width_bits;
-    uint8_t  hgatp_vmid_width;
-    uint8_t  vsatp_asid_width;
+#define PAGING_MODE_UNAVAILABLE_(mode) ( \
+    ((mode) == 0)                     || \
+    ((mode) == 8  && !SV39_AVAILABLE) || \
+    ((mode) == 9  && !SV48_AVAILABLE) || \
+    ((mode) == 10 && !SV57_AVAILABLE))
 
-    /* MODE 支持位图（每位代表一个 MODE 是否被 WARL 接受）*/
-    uint16_t hgatp_modes;     /* bit BARE/SV39X4/SV48X4/SV57X4   */
-    uint16_t vsatp_modes;     /* bit BARE/SV39/SV48/SV57         */
-    uint16_t stvec_modes;     /* bit0=Direct, bit1=Vectored       */
-
-    /* 子扩展实现位（编译期宏 OR 运行期探测）*/
-    bool has_sha,           has_shtvala,    has_shvstvala,
-         has_shvstvecd,     has_shvsatpa,   has_shgatpa,
-         has_shcounterenw,  has_shlcofideleg;
-} platform_caps_t;
-
-extern platform_caps_t g_caps;
-void platform_caps_probe(void);          /* 测试套件 main 入口调用一次 */
+#define REQUIRE_HGATP_MODE(mode)  do { if (PAGING_MODE_UNAVAILABLE_(mode)) TEST_SKIP("hgatp mode not declared by platform config"); } while (0)
+#define REQUIRE_SATP_MODE(mode)   do { if (PAGING_MODE_UNAVAILABLE_(mode)) TEST_SKIP("satp mode not declared by platform config"); } while (0)
+#define REQUIRE_VSATP_MODE(mode)  do { if (PAGING_MODE_UNAVAILABLE_(mode)) TEST_SKIP("vsatp mode not declared by platform config"); } while (0)
 ```
 
-### 模块 12：通用门控宏（`common/hyp/hyp_test.h` 扩展）
+以特定模式 WARL 行为为测试对象的用例（如 `Shvsatpa` / `Shgatpa` / `Shtvala/test_htval_modes.c`）直接调用 `hgatp_supports_mode()` / `satp_supports_mode()` / `vsatp_supports_mode()`（`common/hyp/hyp_csr.h`）。
+
+## 两阶段翻译测试 API
+
+### 核心（`common/hyp/two_stage.h`）
 
 ```c
-#define REQUIRE_EXT(field)         do { if (!g_caps.field) TEST_SKIP(#field); } while(0)
-#define REQUIRE_HGATP_MODE(m)      do { if (!(g_caps.hgatp_modes & (1u<<(m)))) TEST_SKIP("hgatp mode"); } while(0)
-#define REQUIRE_VSATP_MODE(m)      do { if (!(g_caps.vsatp_modes & (1u<<(m)))) TEST_SKIP("vsatp mode"); } while(0)
-#define REQUIRE_STVEC_MODE(m)      do { if (!(g_caps.stvec_modes & (1u<<(m)))) TEST_SKIP("stvec mode"); } while(0)
+void      two_stage_init(two_stage_ctx_t *ctx, int vs_mode, int g_mode);
+void      two_stage_enable(two_stage_ctx_t *ctx, unsigned vmid);
+uintptr_t two_stage_run_in_vs(two_stage_ctx_t *ctx, uintptr_t (*fn)(uintptr_t), uintptr_t arg);
+uintptr_t two_stage_run_in_vu(two_stage_ctx_t *ctx, uintptr_t (*fn)(uintptr_t), uintptr_t arg);
+void      two_stage_cleanup(two_stage_ctx_t *ctx);
+int       two_stage_vs_map(...);   int two_stage_vs_identity(...);
+uintptr_t two_stage_vs_pt_page_addr(...);
 ```
 
-### 模块 13：通用委托封装（`common/hyp/hyp_csr.c` 扩展）
-
-不再为每种 trap 单独写 `delegate_xxx_to_hs`，统一改为掩码驱动：
+### 场景搭建助手（`common/hyp/two_stage_helpers.h`）
 
 ```c
-void delegate_causes_to_hs(uintptr_t cause_mask);   /* 仅 medeleg, hedeleg 清零 */
-void delegate_causes_to_vs(uintptr_t cause_mask);   /* medeleg + hedeleg 双层 */
-void delegate_ints_to_hs  (uintptr_t int_mask);
-void delegate_ints_to_vs  (uintptr_t int_mask);
-
-/* 预定义 mask 常量 */
-#define MASK_GPF       ((1ul<<20)|(1ul<<21)|(1ul<<23))
-#define MASK_VS_PF     ((1ul<<12)|(1ul<<13)|(1ul<<15))
-#define MASK_VS_ECALL  (1ul<<10)
-#define MASK_VIRT_INST (1ul<<22)
-#define MASK_LCOFI_INT (1ul<<13)   /* Shlcofideleg 用 */
+void ts2_setup_full(ctx, vs_mode, g_mode);                          /* VS+G 全恒等映射 */
+void ts2_setup_full_u(ctx, vs_mode, g_mode);                        /* VS 叶子带 U=1（VU 访问）*/
+void ts2_setup_with_g_victim(ctx, vs_mode, g_mode, gva, g_flags);   /* G 阶段 victim 页 */
+void ts2_setup_with_vs_victim(ctx, vs_mode, g_mode, va, vs_flags);  /* VS 阶段 victim 页 */
+void ts2_setup_with_dual_victim(ctx, vs_mode, g_mode, va, vs_flags, g_flags);
+void ts2_setup_non_identity(ctx, vs_mode, g_mode, va, gpa, spa, vs_flags, g_flags);
+void ts2_setup_granular(...);
+uintptr_t ts2_invalidate_vs_pt_in_g(ctx, va, level);   /* 制造 implicit VS-walk fault */
+bool      ts2_run_check_fault(ctx, fn, arg, exp_cause);
+uintptr_t ts2_run_check_no_fault(ctx, fn, arg);
+void      ts2_finish(ctx);
+void      ts2_enable_adue / ts2_disable_adue / ts2_enable_pbmte / ts2_disable_pbmte(void);
 ```
 
-> Shtvala 用 `delegate_causes_to_hs(MASK_GPF)`；Shvstvala 用 `delegate_causes_to_vs(MASK_VS_PF | MASK_VIRT_INST)`；Shlcofideleg 用 `delegate_ints_to_vs(MASK_LCOFI_INT)`。**同一组 API 全覆盖。**
+`vs_mode` / `g_mode` 实参统一传 `SUITE_VSATP_MODE` / `SUITE_HGATP_MODE`；模式内禀用例传具体 `SATP_MODE_*` / `HGATP_MODE_*`，Bare 场景传 `SATP_MODE_BARE` / `HGATP_MODE_BARE`。
 
-### 模块 14：通用 VS-mode 触发器（`common/hyp/test_vs_helpers.*` 扩展）
+### 委托与 VS-mode 触发器
 
-按内存访问语义而非按扩展命名：
+- 委托（`common/hyp/hyp_csr.h`）：`hedeleg_write()` / `hedeleg_read()` / `hideleg_write()`、`hyp_delegate_to_vs(cause_mask, ...)`（medeleg+hedeleg 双层委托到 VS）。
+- VS-mode 触发器（`common/hyp/test_vs_helpers.h`）：`test_vs_read_write`、`test_vs_load` / `test_vs_store`、`test_vs_load_expect_fault`（cause 21）/ `test_vs_store_expect_fault`（23）/ `test_vs_exec_expect_fault`（20）。作为 `two_stage_run_in_vs/vu` 或 `ts2_run_check_*` 的回调使用。
+
+### trap 字段断言宏（`common/hyp/hyp_test.h`）
+
+- htval / GVA：`CHECK_HTVAL(msg, gpa>>2)`、`CHECK_GVA(msg, expected)`。
+- VS-mode trap 记录（Shvstvala / Shvstvecd 用）：`CHECK_VSTVAL` / `CHECK_VSTVAL_NONZERO` / `CHECK_VSTVAL_ZERO`、`CHECK_VS_TRAP_CAUSE` / `CHECK_VS_TRAP_TVAL` / `CHECK_VS_TRAP_VECTORED_ENTRY`、`CHECK_IMPLICIT_FAULT_REPORT`。
+- 异常预期：`EXPECT_VIRTUAL_INST`（cause 22）、`EXPECT_ILLEGAL_INST`（2）、`EXPECT_ILLEGAL_OR_VIRTUAL_INST`、`EXPECT_GUEST_PAGE_FAULT(cause, stmt)`、`EXPECT_COUNTER_TRAP`、`VS_EXPECT_NO_TRAP`。
+- 收尾：`HYP_TEST_END()`（以 `hyp_reset_state()` 代替 `reset_state()`）。
+
+### CSR WARL 探测（`common/hyp/hyp_csr.h`）
 
 ```c
-/* 已存在 */
-uintptr_t test_vs_load_expect_fault (uintptr_t gva);   /* cause 21 */
-uintptr_t test_vs_store_expect_fault(uintptr_t gva);   /* cause 23 */
-uintptr_t test_vs_exec_expect_fault (uintptr_t gva);   /* cause 20 */
-
-/* v2 新增 */
-uintptr_t test_vs_load_n           (uintptr_t gva, size_t bytes);   /* misaligned/straddle */
-uintptr_t test_vs_fetch_straddle   (uintptr_t gva);                 /* 末 2B 落入下一页 */
-uintptr_t test_vs_csr_rw           (uintptr_t csr_and_val);         /* 触发 virtual-inst */
-uintptr_t test_vs_sret             (uintptr_t unused);              /* 配合 VTSR */
-uintptr_t test_vs_wfi              (uintptr_t unused);              /* 配合 VTW  */
-uintptr_t test_vs_sfence_vma       (uintptr_t va_asid);             /* 配合 VTVM */
+uintptr_t csr_warl_probe(unsigned csr_num, uintptr_t value);  /* 写 value、读回实际保留位 */
 ```
 
-### 模块 15：两阶段翻译"故障注入"接口（`common/hyp/two_stage.*` 重构扩展）
+分页模式支持探测用 `hgatp_supports_mode()` / `satp_supports_mode()` / `vsatp_supports_mode()`；VMID/ASID 宽度用 `hgatp_vmid_width()` / `satp_asid_width()` / `vsatp_asid_width()`。
 
-把原来的"恒等映射"+"按 victim flags 设置"模式抽象为**故障类型 + 模式参数**：
+## H 子扩展与交叉测试套件
 
-```c
-typedef enum {
-    FAULT_NONE,
-    FAULT_VS_STAGE_LOAD,        /* VS-stage 缺页：Shvstvala / 基线 */
-    FAULT_VS_STAGE_STORE,
-    FAULT_G_STAGE_EXPLICIT,     /* G-stage 显式访问缺页：Shtvala 主路径 */
-    FAULT_G_STAGE_IMPLICIT,     /* implicit VS-stage：Shtvala 第二段 */
-    FAULT_GPA_HIGH_BITS,        /* Sv*x4 高位越界：Shgatpa / Shtvala 共用 */
-    FAULT_STRADDLE,             /* 跨页：Shtvala / Shvstvala 共用 */
-} fault_kind_t;
+- **H 子扩展套件**（`Sha/`、`Shtvala/`、`Shvstvala/`、`Shvstvecd/`、`Shvsatpa/`、`Shgatpa/`、`Shcounterenw/`、`Shlcofideleg/`）：验证各 H 子扩展对 H 基线的 normative 收紧。`Shvsatpa` / `Shgatpa` 为模式内禀（逐模式探测 vsatp/hgatp 支持）；其余模式无关（`SUITE_* ?= PLATFORM_*`）。
+- **Hypervisor × 其他扩展交叉套件**（`Hypervisor_Zaamo/`、`Zabha/`、`Zacas/`、`Zalasr/`、`Zalrsc/`、`Zca/`、`Zicbom/`、`Zicbop/`、`Zicboz/`、`Zicfilp/`、`Zicfiss/`、`Zihintntl/`、`Ssnpm/`、`Smmpm/`、`Smnpm/`、`Ssccptr/`、`Svadu/`、`Svinval/`、`Svnapot/`、`Svpbmt/`、`Sstvala/`、`CSR/`、`Exceptions/`、`PMP/` 等）：验证 H 与原子 / 压缩 / CMO / CFI / PM / 分页等扩展的交互，均为模式无关。
+- **两阶段模式对套件**（`Sv39x4/`、`Sv48x4/`、`Sv57x4/` 及 `Sv*x4_Sv*` 9 个组合）：模式内禀，Makefile 钉死 `SUITE_HGATP_MODE` / `SUITE_VSATP_MODE`。9 个 `Sv*x4_Sv*` 组合套件通过 symlink 共享 `Sv39x4_Sv39/tests/` 源码，仅 Makefile 的 `-DSUITE_*` 与 `main.c` banner 不同。
 
-typedef struct {
-    int           vs_mode;        /* SATP_MODE_BARE/SV39/SV48/SV57 */
-    int           g_mode;         /* HGATP_MODE_BARE/SV39X4/...    */
-    fault_kind_t  fault;
-    uintptr_t     fault_gva;      /* 输入或框架推算 */
-    uintptr_t     fault_gpa;      /* 框架回写：用例直接 CHECK_HTVAL_EQ_SHIFTED */
-    size_t        access_bytes;   /* misaligned/straddle 时使用 */
-} two_stage_scene_t;
-
-int  two_stage_build   (two_stage_ctx_t *ctx, two_stage_scene_t *scene);
-void two_stage_activate(two_stage_ctx_t *ctx);
-```
-
-> 用例只声明"我要哪种故障"，框架返回期望 GPA/GVA。Shtvala / Shgatpa / Shvstvala / 基线两阶段翻译共用。
->
-> **现状**：v1 的 `two_stage_init` 仅支持 `vs_mode == SATP_MODE_BARE`，因此 `FAULT_VS_STAGE_*` / `FAULT_G_STAGE_IMPLICIT` 在框架补全 VS-stage 之前需在用例侧 `TEST_SKIP("requires VS-stage")`。
-
-### 模块 16：通用 trap 字段断言宏（`common/hyp/hyp_test.h` 扩展）
-
-按 CSR 字段 + 变体命名，每字段提供 `_EQ / _NONZERO / _ZERO / _SHIFTED` 共 4 个：
-
-```c
-/* 已存在：CHECK_HTVAL / CHECK_HTINST / CHECK_GVA */
-
-/* v2 新增 —— htval（GPA>>2）系列 */
-#define CHECK_HTVAL_EQ(msg, exp_shifted)    CHECK_HTVAL(msg, exp_shifted)
-#define CHECK_HTVAL_SHIFTED(msg, exp_gpa)   CHECK_HTVAL(msg, (uintptr_t)(exp_gpa) >> 2)
-#define CHECK_HTVAL_NONZERO(msg)            TEST_ASSERT_NEQ(msg, trap_get_htval(), 0UL)
-#define CHECK_HTVAL_ZERO(msg)               TEST_ASSERT_EQ (msg, trap_get_htval(), 0UL)
-
-/* htinst */
-#define CHECK_HTINST_NONZERO(msg)           TEST_ASSERT_NEQ(msg, trap_get_htinst(), 0UL)
-#define CHECK_HTINST_ZERO(msg)              TEST_ASSERT_EQ (msg, trap_get_htinst(), 0UL)
-
-/* hstatus.GVA */
-#define CHECK_GVA_SET(msg)                  TEST_ASSERT(msg, trap_get_gva())
-#define CHECK_GVA_CLEAR(msg)                TEST_ASSERT(msg, !trap_get_gva())
-
-/* vstval / vsepc / vscause —— Shvstvala / Shvstvecd 用，待 trap_record 增加这些字段后启用 */
-```
-
-> Shtvala 主要用 HTVAL 系列；Shvstvala 用 VSTVAL 系列；Shvstvecd 用 VSEPC + 向量；**完全对称**。
-
-### 模块 17：CSR WARL/MODE 通用探测（`common/hyp/hyp_csr.*` 扩展）
-
-```c
-/* 写 ~0、读回，得到 WARL 实际可保留位 */
-uintptr_t csr_warl_probe       (unsigned csr_num);
-unsigned  csr_field_width      (unsigned csr_num, unsigned shift, uintptr_t mask);
-unsigned  csr_mode_field_supported(unsigned csr_num,
-                                   unsigned mode_shift,
-                                   unsigned mode_max);  /* 返回 MODE 支持位图 */
-```
-
-### 模块 18：子扩展条件编译统一形式（`Makefile.common` 扩展）
-
-```makefile
-# 每个子扩展一个独立开关，叠加到 HYP_EXT_FLAGS
-HYP_EXT_FLAGS :=
-ifdef ENABLE_SHA          ; HYP_EXT_FLAGS += -DENABLE_SHA          ; endif
-ifdef ENABLE_SHTVALA      ; HYP_EXT_FLAGS += -DENABLE_SHTVALA      ; endif
-ifdef ENABLE_SHVSTVALA    ; HYP_EXT_FLAGS += -DENABLE_SHVSTVALA    ; endif
-ifdef ENABLE_SHVSTVECD    ; HYP_EXT_FLAGS += -DENABLE_SHVSTVECD    ; endif
-ifdef ENABLE_SHVSATPA     ; HYP_EXT_FLAGS += -DENABLE_SHVSATPA     ; endif
-ifdef ENABLE_SHGATPA      ; HYP_EXT_FLAGS += -DENABLE_SHGATPA      ; endif
-ifdef ENABLE_SHCOUNTERENW ; HYP_EXT_FLAGS += -DENABLE_SHCOUNTERENW ; endif
-ifdef ENABLE_SHLCOFIDELEG ; HYP_EXT_FLAGS += -DENABLE_SHLCOFIDELEG ; endif
-CFLAGS  += $(HYP_EXT_FLAGS)
-ASFLAGS += $(HYP_EXT_FLAGS)
-```
-
-### 与 v1 命名的对照（避免日后命名漂移）
-
-| v1 草案（Shtvala 专用） | v2 通用化命名 |
-|---|---|
-| `delegate_gpf_to_hs()` | `delegate_causes_to_hs(MASK_GPF)` |
-| `delegate_nongpf_traps_to_hs()` | `delegate_causes_to_hs(<other masks>)` |
-| `two_stage_setup_bare_vsatp_*x4_hgatp()` × 3 | `two_stage_build(scene{ .fault=FAULT_G_STAGE_EXPLICIT, .g_mode=SV*X4 })` |
-| `htval_warl_probe()` / `htval_impl_width_bits()` | `csr_warl_probe(CSR_HTVAL)` / `csr_field_width(CSR_HTVAL,...)` |
-| `hgatp_supported_modes_mask()` | `csr_mode_field_supported(CSR_HGATP, HGATP_MODE_SHIFT, 15)` |
-| `SHTVALA_REQUIRE` 散在 hyp_test.h | `REQUIRE_EXT(has_shtvala)` + 子扩展 header |
-| `CHECK_HTVAL_NONZERO/_ZERO/_RECONSTRUCT_GPA` | 同名宏，但与 `CHECK_VSTVAL_*` / `CHECK_VSEPC_*` 模板对齐 |
-| 子扩展直接散在 `hyp_csr.c` | `common/hyp/ext/<name>.h` 隔离，每扩展一个文件 |
-| Makefile 单开关 `ENABLE_SHTVALA` | 8 个子扩展统一形式 `ENABLE_SH<NAME>` + `HYP_EXT_FLAGS` |
-
-### 测试目录约定
-
-```
-Shtvala/           # 已实现：Shtvala 测试套件
-Shvstvala/         # 已实现：Shvstvala 测试套件
-Shvstvecd/         # 已实现：Shvstvecd 测试套件
-Shvsatpa/          # 已实现：Shvsatpa 测试套件
-Shgatpa/           # 已实现：Shgatpa 测试套件
-Shcounterenw/      # 已实现：Shcounterenw 测试套件
-Shlcofideleg/      # 已实现：Shlcofideleg 测试套件
-Sha/               # 已实现：Sha 测试套件
-```
-
-> **注意**：目录名使用首字母大写形式（如 `Shtvala/`），与 Sv*/Ss*/Sm* 等扩展目录命名风格一致。
-
-每个子目录一个 `Makefile`，统一 `include ../common/Makefile.common` 并打开自己的 `ENABLE_SH<NAME>`。
-
-### 落地状态（截至 v2）
-
-| 模块 | 状态 |
-|---|---|
-| 模块 11 platform_caps_t  | TODO（最低集合：has_shtvala / hgatp_modes / htval_width_bits） |
-| 模块 12 REQUIRE 宏       | TODO（先在 Shtvala 模块本地定义 SHTVALA_REQUIRE，框架收敛时上提） |
-| 模块 13 委托封装         | TODO（v1 已有 hedeleg_write，Shtvala 模块直接用 medeleg+CSRR/W 设置） |
-| 模块 14 VS-mode 触发器   | 已有 `test_vs_load_expect_fault/store_expect_fault/exec_expect_fault`；其余 v2 新增 |
-| 模块 15 故障注入接口     | 已有 `_setup_with_victim` 模式（Sv39x4），可作为 `FAULT_G_STAGE_EXPLICIT` 实现 |
-| 模块 16 trap 字段断言宏  | 已有 `CHECK_HTVAL/CHECK_HTINST/CHECK_GVA`；NONZERO/ZERO/SET/CLEAR 已在本次补齐 |
-| 模块 17 CSR WARL 探测    | TODO |
-| 模块 18 Makefile 子扩展开关 | 已收敛到 `ENABLE_HYP`；子扩展开关在 v2 阶段按需添加 |
-
-> 后续接入 Shvstvala / Shgatpa 等扩展时，**优先把对应模块 11/13/15/17 的 TODO 项落地**，再补该子扩展自身的 ext header；不要反过来在子扩展里塞专用 API。
+每个套件一个 `Makefile`，`include ../common/Makefile.common`，打开 `ENABLE_HYP=1`（两阶段再加 `ENABLE_TWO_STAGE=1`，按需 `ENABLE_VM` / `ENABLE_PMP`），并声明 `SUITE_*`。目录名用首字母大写形式（如 `Shtvala/`），与 `Sv*` / `Ss*` / `Sm*` 一致。
 
 ---
 
@@ -1250,12 +1163,21 @@ Trap return 测试（TRET-01~15）利用 `run_in_vs_mode`/`run_in_vu_mode` 底�
 ### 编译与运行
 
 ```bash
-cd Hypervisor
-make PLATFORM=qemu_virt        # 编译
-make qemu                      # 在 QEMU 上运行（需要 rv64,h=true）
+cd <套件目录>                 # 如 Hypervisor_CSR/、Shtvala/、Sv39x4_Sv39/
+make clean                    # 切换 CONFIG 或模式旋钮前必须先 clean（common/*.o 跨套件共享）
+make                          # 编译（默认 CONFIG=qemu-rv64-max）
+make qemu                     # 在 QEMU 上运行
+make spike                    # 在 Spike 上运行
+make sail                     # 在 Sail 上运行
+
+make CONFIG=ngf_c9502 qemu    # 指定平台配置
+
+# 诊断旋钮：临时改写套件分页模式（详见「分页模式配置机制」）
+make HGATP_MODE=sv48 VSATP_MODE=sv48 qemu    # 两阶段套件的 G / VS 阶段
+make SATP_MODE=sv57 qemu                      # 单阶段套件的 S 阶段
 ```
 
-QEMU CPU 配置: `rv64,h=true,sv39=true,sv48=true,sv57=true`
+QEMU 以 `-cpu max` 启动（rv64 + H + Sv39/48/57）。
 
 ---
 

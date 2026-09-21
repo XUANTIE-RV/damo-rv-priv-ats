@@ -40,9 +40,9 @@ extern uint8_t test_exec_target[];
 extern uint8_t __vm_test_region_start[];
 extern uint8_t __vm_test_region_end[];
 
-/* Suite translation modes: Sv39 (VS-stage) + Sv39x4 (G-stage). */
-#define HPMP_VS_MODE   SATP_MODE_SV39
-#define HPMP_G_MODE    HGATP_MODE_SV39X4
+/* Suite translation modes come from SUITE_VSATP_MODE / SUITE_HGATP_MODE,
+ * defaulted to PLATFORM_* in the Makefile and overridable per build via
+ * `make HGATP_MODE=sv39|sv48|sv57` / `VSATP_MODE=...`. */
 
 /* ===================================================================
  * Runtime capability gate
@@ -64,8 +64,8 @@ extern uint8_t __vm_test_region_end[];
     if (smepmp_is_supported() && (mseccfg_read() & MSECCFG_MML)) { \
         TEST_SKIP("mseccfg.MML active: S/U PMP semantics redefined"); \
     } \
-    REQUIRE_VSATP_MODE(HPMP_VS_MODE); \
-    REQUIRE_HGATP_MODE(HPMP_G_MODE); \
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE); \
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE); \
 } while (0)
 
 /* ===================================================================

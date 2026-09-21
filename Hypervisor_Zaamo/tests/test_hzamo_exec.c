@@ -125,11 +125,11 @@ bool test_hzamo_02_vs_exec_no_cause22(void)
     TEST_BEGIN("HZAMO-02: VS-mode AMOs execute, never cause=22");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t va = (uintptr_t)test_data_area;
 
     trap_expect_begin();
@@ -157,11 +157,11 @@ bool test_hzamo_03_vu_exec_no_cause22(void)
     TEST_BEGIN("HZAMO-03: VU-mode AMOs execute, never cause=22");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full_u(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t va = (uintptr_t)test_data_area;
 
     trap_expect_begin();
@@ -190,8 +190,8 @@ bool test_hzamo_04_vs_hs_semantic_parity(void)
     TEST_BEGIN("HZAMO-04: VS-mode AMO semantics == HS-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* HS-mode run. */
     uintptr_t hs_addr = (uintptr_t)&hzamo_hs_slot[0];
@@ -202,7 +202,7 @@ bool test_hzamo_04_vs_hs_semantic_parity(void)
 
     /* VS-mode run. */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t vs_addr = (uintptr_t)test_data_area;
     *(volatile uint32_t *)vs_addr = HZ_AMO_INIT_W;
     g_hz_amo_rd = g_hz_amo_mem = 0;

@@ -56,8 +56,17 @@ void two_stage_enable(two_stage_ctx_t *ctx, unsigned vmid) {
         uintptr_t root_ppn = ((uintptr_t)ctx->vs_ctx.root_pt) >> PAGE_SHIFT;
         uintptr_t vsatp = MAKE_SATP(ctx->vs_ctx.mode, 0, root_ppn);
         CSRW(CSR_VSATP, vsatp);
-        hfence_vvma_all();
     }
+
+    /* HFENCE.VVMA must follow *any* vsatp change, including the Bare
+     * case (vsatp=0) written above.  Without it, VS-stage TLB entries
+     * cached by an earlier paged vsatp (e.g. a prior Sv39/48/57 VS
+     * test) survive and get reused for the next VS-mode instruction
+     * fetch, translating the payload PC to a stale GPA that the current
+     * G-stage does not map -> an instruction guest-page-fault on real
+     * hardware.  Simulators that do not model VS-stage TLB staleness
+     * mask this.  gpt_enable() already issued HFENCE.GVMA for hgatp. */
+    hfence_vvma_all();
 }
 
 uintptr_t two_stage_run_in_vs(two_stage_ctx_t *ctx,
@@ -79,6 +88,11 @@ uintptr_t two_stage_run_in_vu(two_stage_ctx_t *ctx,
 void two_stage_cleanup(two_stage_ctx_t *ctx) {
     gpt_disable();
     CSRW(CSR_VSATP, 0);
+    /* Flush VS-stage TLB after clearing vsatp so this context's
+     * VS-stage entries cannot leak into a later VS-mode run (mirrors
+     * the HFENCE.VVMA in two_stage_enable).  gpt_disable() already
+     * issued HFENCE.GVMA. */
+    hfence_vvma_all();
     ctx->g_ctx.root_pt = NULL;
     if (ctx->vs_mode != SATP_MODE_BARE) {
         ctx->vs_ctx.root_pt = NULL;

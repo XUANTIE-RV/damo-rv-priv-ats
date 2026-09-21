@@ -18,6 +18,8 @@ TEST_REGISTER(test_napot_sv39);
 bool test_napot_sv39(void) {
     TEST_BEGIN("MODE-01: 64 KiB NAPOT page under Sv39");
 
+    if (!SV39_AVAILABLE) TEST_SKIP("Sv39 not usable on this platform");
+
     pt_context_t ctx;
     pt_pool_reset();
     pt_init(&ctx, SATP_MODE_SV39);
@@ -43,6 +45,8 @@ bool test_napot_sv39(void) {
 TEST_REGISTER(test_napot_sv48);
 bool test_napot_sv48(void) {
     TEST_BEGIN("MODE-02: 64 KiB NAPOT page under Sv48");
+
+    if (!SV48_AVAILABLE) TEST_SKIP("Sv48 not usable on this platform");
 
     pt_context_t ctx;
     pt_pool_reset();
@@ -73,6 +77,8 @@ TEST_REGISTER(test_napot_sv57);
 bool test_napot_sv57(void) {
     TEST_BEGIN("MODE-03: 64 KiB NAPOT page under Sv57");
 
+    if (!SV57_AVAILABLE) TEST_SKIP("Sv57 not usable on this platform");
+
     pt_context_t ctx;
     pt_pool_reset();
     pt_init(&ctx, SATP_MODE_SV57);
@@ -100,6 +106,8 @@ bool test_napot_sv57(void) {
 TEST_REGISTER(test_napot_mode_switch);
 bool test_napot_mode_switch(void) {
     TEST_BEGIN("MODE-04: Sv39->Sv48 switch NAPOT preserved");
+
+    if (!SV39_AVAILABLE || !SV48_AVAILABLE) TEST_SKIP("Sv39/Sv48 not usable on this platform");
 
     pt_context_t ctx;
     pt_pool_reset();
@@ -138,6 +146,8 @@ bool test_napot_mode_switch(void) {
 TEST_REGISTER(test_napot_sv39_dependency);
 bool test_napot_sv39_dependency(void) {
     TEST_BEGIN("MODE-05: Svnapot requires Sv39 support");
+
+    if (!SV39_AVAILABLE) TEST_SKIP("Sv39 not usable on this platform");
 
     /* Simply verify Sv39 mode is available by initializing page tables */
     pt_context_t ctx;

@@ -73,7 +73,7 @@ bool test_hzpm_2stg_02(void) {
     TEST_BEGIN("HZPM-2STG-02: VA sign-extend with two-stage active");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SATP_MODE_SV39);
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");

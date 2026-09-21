@@ -179,7 +179,7 @@ bool tent_07_trap_gva_one(void) {
     TEST_BEGIN("TENT-07: guest-page-fault trap sets GVA=1");
 
     /* Require G-stage translation mode. */
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* Clear hedeleg to force trap to HS/M-mode. */
     hedeleg_write(0x0);
@@ -420,7 +420,7 @@ TEST_REGISTER(tent_16_htval_delegated_gpf);
 bool tent_16_htval_delegated_gpf(void) {
     TEST_BEGIN("TENT-16: htval on GPF delegated to HS-mode (0 or GPA>>2)");
 
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t gpf_mask = (1UL << CAUSE_INST_GUEST_PAGE_FAULT) |
                          (1UL << CAUSE_LOAD_GUEST_PAGE_FAULT) |

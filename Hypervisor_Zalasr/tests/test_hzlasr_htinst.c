@@ -43,12 +43,12 @@ bool test_hzlasr_18_load_acq_htinst_transformed(void)
     TEST_BEGIN("HZLASR-18: load-acquire explicit G-stage fault htinst");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_INV);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_INV);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lw_aq, va);
@@ -83,12 +83,12 @@ bool test_hzlasr_19_store_rel_htinst_transformed(void)
     TEST_BEGIN("HZLASR-19: store-release explicit G-stage fault htinst");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     hz_st_val = 0x00009abcu;
 
     trap_expect_begin();
@@ -129,7 +129,7 @@ static void hzlasr_aqrl_case(uintptr_t (*probe)(uintptr_t), uintptr_t va,
                              unsigned exp_f5, unsigned exp_aq, unsigned exp_rl)
 {
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_INV);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_INV);
     hz_st_val = 0x00009abcu;
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, probe, va);
@@ -160,8 +160,8 @@ bool test_hzlasr_20_htinst_funct5_aqrl(void)
     TEST_BEGIN("HZLASR-20: htinst retains funct5 (load/store) + aq/rl bits");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     hzlasr_aqrl_case(hz_vs_lw_aq,   va, ZALASR_F5_LOAD,  1, 0);
@@ -182,14 +182,14 @@ bool test_hzlasr_21_addr_offset_zero(void)
     TEST_BEGIN("HZLASR-21: Zalasr htinst Addr. Offset == 0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
 
     /* store-release explicit G-stage fault. */
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     hz_st_val = 0x00009abcu;
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_sw_rl, va);
@@ -206,7 +206,7 @@ bool test_hzlasr_21_addr_offset_zero(void)
         printf("  [INFO] store-release htinst=0; Addr. Offset not observable\n");
 
     /* load-acquire explicit G-stage fault. */
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_INV);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_INV);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lw_aq, va);
     bool fired_l = trap_was_triggered();
@@ -235,14 +235,14 @@ bool test_hzlasr_22_implicit_walk_cause(void)
     TEST_BEGIN("HZLASR-22: implicit VS-walk fault -> load 21 (rec) / store 23");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
 
     /* (a) load-acquire implicit walk -> expect cause 21 (record-type). */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t pt_gpa_a = ts2_invalidate_vs_pt_in_g(&ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("(a) VS leaf PT GPA resolvable", pt_gpa_a != 0);
     trap_expect_begin();
@@ -260,7 +260,7 @@ bool test_hzlasr_22_implicit_walk_cause(void)
                              cause_a);
 
     /* (b) store-release implicit walk -> cause 23 (forced). */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hz_st_val = 0x00009abcu;
     uintptr_t pt_gpa_b = ts2_invalidate_vs_pt_in_g(&ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("(b) VS leaf PT GPA resolvable", pt_gpa_b != 0);
@@ -290,7 +290,7 @@ bool test_hzlasr_22_implicit_walk_cause(void)
 static void hzlasr_adue_write_pseudo(int is_store, uintptr_t va)
 {
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hz_st_val = 0x00009abcu;
 
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
@@ -343,8 +343,8 @@ bool test_hzlasr_23_adue_write_pseudo(void)
     TEST_BEGIN("HZLASR-23: ADUE=1 A/D-update fault -> write pseudoinst");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
 
@@ -373,14 +373,14 @@ bool test_hzlasr_24_explicit_vs_implicit(void)
     TEST_BEGIN("HZLASR-24: htinst disambiguates explicit vs implicit (23)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
 
     /* (a) explicit store-release data access fails in G-stage. */
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     hz_st_val = 0x00009abcu;
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_sw_rl, va);
@@ -401,7 +401,7 @@ bool test_hzlasr_24_explicit_vs_implicit(void)
 
     /* (b) implicit VS-stage PTE read fails in G-stage. */
     uintptr_t va_b = (uintptr_t)test_data_area;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hz_st_val = 0x00009abcu;
     uintptr_t pt_gpa = ts2_invalidate_vs_pt_in_g(&ctx, va_b, PT_LEVEL_4K);
     TEST_ASSERT("(b) VS leaf PT GPA resolvable", pt_gpa != 0);

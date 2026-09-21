@@ -37,8 +37,6 @@
 
 #include "hyp_ldst.h"
 
-#define G14_GMODE   SUITE_HGATP_MODE
-#define G14_VSMODE  SUITE_VSATP_MODE
 
 #define G14_VS_RWX  (PTE_V|PTE_R|PTE_W|PTE_X|PTE_A|PTE_D)
 #define G14_VS_RWXU (PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D)
@@ -97,7 +95,7 @@ static void g14_setup(two_stage_ctx_t *ctx, uintptr_t *out_va,
     *(volatile uint64_t *)spa = 0xCAFEBABE12345678ULL;
     *(volatile uint64_t *)va  = 0xAAAA0000AAAA0000ULL;
 
-    ts2_setup_non_identity(ctx, G14_VSMODE, G14_GMODE,
+    ts2_setup_non_identity(ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                            va, gpa, spa, vs_flags, G14_G_RWXU);
     /* Activate vsatp/hgatp without entering V=1. */
     two_stage_enable(ctx, /*vmid*/0);
@@ -112,8 +110,8 @@ static void g14_setup(two_stage_ctx_t *ctx, uintptr_t *out_va,
 TEST_REGISTER(test_ts_mprv_01_no_xlate);
 bool test_ts_mprv_01_no_xlate(void) {
     TEST_BEGIN("TS-MPRV-01: MPRV=0 -> direct physical access");
-    REQUIRE_VSATP_MODE(G14_VSMODE);
-    REQUIRE_HGATP_MODE(G14_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va, spa;
@@ -137,8 +135,8 @@ bool test_ts_mprv_01_no_xlate(void) {
 TEST_REGISTER(test_ts_mprv_02_vs_two_stage);
 bool test_ts_mprv_02_vs_two_stage(void) {
     TEST_BEGIN("TS-MPRV-02: MPRV+MPV=1+MPP=S -> VS-level two-stage");
-    REQUIRE_VSATP_MODE(G14_VSMODE);
-    REQUIRE_HGATP_MODE(G14_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va, spa;
@@ -161,8 +159,8 @@ bool test_ts_mprv_02_vs_two_stage(void) {
 TEST_REGISTER(test_ts_mprv_03_vu_two_stage);
 bool test_ts_mprv_03_vu_two_stage(void) {
     TEST_BEGIN("TS-MPRV-03: MPRV+MPV=1+MPP=U + VS U=1 -> VU two-stage");
-    REQUIRE_VSATP_MODE(G14_VSMODE);
-    REQUIRE_HGATP_MODE(G14_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va, spa;
@@ -184,8 +182,8 @@ bool test_ts_mprv_03_vu_two_stage(void) {
 TEST_REGISTER(test_ts_mprv_04_mpp_m);
 bool test_ts_mprv_04_mpp_m(void) {
     TEST_BEGIN("TS-MPRV-04: MPRV=1 + MPP=M -> direct physical");
-    REQUIRE_VSATP_MODE(G14_VSMODE);
-    REQUIRE_HGATP_MODE(G14_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va, spa;
@@ -208,8 +206,8 @@ bool test_ts_mprv_04_mpp_m(void) {
 TEST_REGISTER(test_ts_mprv_05_hlv_unaffected);
 bool test_ts_mprv_05_hlv_unaffected(void) {
     TEST_BEGIN("TS-MPRV-05: HLV.D unaffected by MPRV/MPV/MPP");
-    REQUIRE_VSATP_MODE(G14_VSMODE);
-    REQUIRE_HGATP_MODE(G14_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va, spa;

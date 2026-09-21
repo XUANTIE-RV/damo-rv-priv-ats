@@ -1,5 +1,5 @@
 # =====================================================================
-# Hypervisor Interrupts Subset Test
+# Hypervisor Interrupts Compliance Test
 #
 # Tests for the RISC-V Hypervisor (H) Extension interrupt behavior.
 # See DOCS/testplan/Hypervisor_Interrupts_test_plan.md for the full test plan.
@@ -21,3 +21,9 @@ EXT_OBJS = \
     tests/test_register.o
 
 include ../common/Makefile.common
+
+# Suite G-stage / VS-stage paging mode: follow the platform-selected mode
+# by default; override per build with `make HGATP_MODE=sv39|sv48|sv57`
+# and/or `VSATP_MODE=sv39|sv48|sv57` (see common/Makefile.common).
+SUITE_VSATP_MODE ?= PLATFORM_SATP_MODE
+SUITE_HGATP_MODE ?= PLATFORM_HGATP_MODE

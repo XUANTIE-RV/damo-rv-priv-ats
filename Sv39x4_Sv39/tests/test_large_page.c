@@ -32,8 +32,10 @@
 
 /*
  * Run a test with VS-stage at vs_level and G-stage at g_level.
- * For G-stage large pages (512G/256T), a single superpage maps all memory.
- * For VS-stage large pages (1G/512G/256T), a single superpage maps from VA=0.
+ * For G-stage large pages (512G/256T), a single superpage aligned to the
+ * test region covers kernel + test region (plus a separate UART page).
+ * For VS-stage large pages (1G/512G/256T), a single superpage maps from the
+ * superpage-aligned test region base.
  */
 static bool g23_run_one(int vs_mode, int g_mode, int vs_level, int g_level)
 {
@@ -44,7 +46,8 @@ static bool g23_run_one(int vs_mode, int g_mode, int vs_level, int g_level)
 
     /* G-stage mapping */
     if (g_level >= PT_LEVEL_512G) {
-        /* Single large superpage covers all memory (no separate low-mem) */
+        /* Single region-aligned superpage covers kernel + test region
+         * (and UART); no separate low-mem walk needed. */
         ts2_map_region_g(&ctx, g_level);
     } else if (g_level == PT_LEVEL_1G) {
         /* 1G superpages: cover test region, low memory, and UART */
@@ -69,7 +72,8 @@ static bool g23_run_one(int vs_mode, int g_mode, int vs_level, int g_level)
 
     /* VS-stage mapping */
     if (vs_level >= PT_LEVEL_512G) {
-        /* Single large superpage covers all memory (no separate low-mem) */
+        /* Single region-aligned superpage covers kernel + test region
+         * (and UART); no separate low-mem walk needed. */
         ts2_map_region_vs(&ctx, vs_level);
     } else if (vs_level == PT_LEVEL_1G) {
         /* 1G superpages: cover test region, low memory, and UART */

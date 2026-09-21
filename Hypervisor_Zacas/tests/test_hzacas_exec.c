@@ -132,11 +132,11 @@ bool test_hzacas_02_vs_exec_no_cause22(void)
     TEST_BEGIN("HZACAS-02: VS-mode amocas executes, never cause=22");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t va = (uintptr_t)test_data_area;
     *(volatile uint32_t *)va = 0x00005000u;
     hz_cas_cmp = 0x00005000u;
@@ -169,11 +169,11 @@ bool test_hzacas_03_vu_exec_no_cause22(void)
     TEST_BEGIN("HZACAS-03: VU-mode amocas executes, never cause=22");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full_u(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t va = (uintptr_t)test_data_area;
     *(volatile uint32_t *)va = 0x00007000u;
     hz_cas_cmp = 0x00007000u;
@@ -214,8 +214,8 @@ bool test_hzacas_04_vs_hs_semantic_parity(void)
     TEST_BEGIN("HZACAS-04: VS-mode amocas semantics == HS-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* HS-mode success run. */
     uintptr_t hs_addr = (uintptr_t)&hzacas_hs_slot[0];
@@ -228,7 +228,7 @@ bool test_hzacas_04_vs_hs_semantic_parity(void)
 
     /* VS-mode success run. */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t vs_addr = (uintptr_t)test_data_area;
     *(volatile uint32_t *)vs_addr = 0x00001234u;
     hz_cas_cmp = 0x00001234u;

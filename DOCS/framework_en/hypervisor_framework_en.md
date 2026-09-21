@@ -1019,50 +1019,47 @@ void platform_caps_init(platform_caps_t *caps);
 bool platform_has_ext(const platform_caps_t *caps, unsigned ext_id);
 ```
 
-### Module 12: Sub-extension REQUIRE Macros (`common/hyp/ext_require.h`)
+### Module 12: Paging-mode REQUIRE Macros (`common/hyp/hyp_test.h`)
 
 Unified conditional skip macros for test cases:
 
 ```c
+/* Compile-time paging-mode gate: `mode` is Bare=0/Sv39=8/Sv48=9/Sv57=10
+ * (G-stage Sv*x4 shares the same values); support comes from the platform
+ * config declaration (capabilities.h SV39/48/57_AVAILABLE), not a runtime
+ * WARL probe. Works for runtime `mode` too (SV*_AVAILABLE are 0/1).
+ * Tests whose SUBJECT is a specific MODE's WARL behaviour (Shgatpa/
+ * Shvsatpa, Shtvala/test_htval_modes.c) call *_supports_mode() directly. */
+#define PAGING_MODE_UNAVAILABLE_(mode) ( \
+    ((mode) == 0)                     || \
+    ((mode) == 8  && !SV39_AVAILABLE) || \
+    ((mode) == 9  && !SV48_AVAILABLE) || \
+    ((mode) == 10 && !SV57_AVAILABLE))
+
 /**
- * REQUIRE_EXT - Skip test if sub-extension is not implemented
- *
- * Usage: REQUIRE_EXT(has_shtvala);
+ * REQUIRE_HGATP_MODE - Skip if config does not declare this G-stage mode
  */
-#define REQUIRE_EXT(field) do { \
-    if (!platform_caps.field) { \
-        TEST_SKIP("requires " #field); \
-        return true; \
+#define REQUIRE_HGATP_MODE(mode) do { \
+    if (PAGING_MODE_UNAVAILABLE_(mode)) { \
+        TEST_SKIP("hgatp mode not declared by platform config"); \
     } \
 } while (0)
 
 /**
- * REQUIRE_HGATP_MODE - Skip if specific hgatp MODE is not supported
+ * REQUIRE_SATP_MODE - Skip if config does not declare this S-stage mode
  */
-#define REQUIRE_HGATP_MODE(mode_bit) do { \
-    if (!(platform_caps.hgatp_modes & (1U << (mode_bit)))) { \
-        TEST_SKIP("hgatp mode " #mode_bit " not supported"); \
-        return true; \
+#define REQUIRE_SATP_MODE(mode) do { \
+    if (PAGING_MODE_UNAVAILABLE_(mode)) { \
+        TEST_SKIP("satp mode not declared by platform config"); \
     } \
 } while (0)
 
 /**
- * REQUIRE_STVEC_MODE - Skip if specific stvec MODE is not supported
+ * REQUIRE_VSATP_MODE - Skip if config does not declare this VS-stage mode
  */
-#define REQUIRE_STVEC_MODE(mode_bit) do { \
-    if (!(platform_caps.stvec_modes & (1U << (mode_bit)))) { \
-        TEST_SKIP("stvec mode " #mode_bit " not supported"); \
-        return true; \
-    } \
-} while (0)
-
-/**
- * REQUIRE_VSATP_MODE - Skip if specific vsatp MODE is not supported
- */
-#define REQUIRE_VSATP_MODE(mode_bit) do { \
-    if (!(platform_caps.vsatp_modes & (1U << (mode_bit)))) { \
-        TEST_SKIP("vsatp mode " #mode_bit " not supported"); \
-        return true; \
+#define REQUIRE_VSATP_MODE(mode) do { \
+    if (PAGING_MODE_UNAVAILABLE_(mode)) { \
+        TEST_SKIP("vsatp mode not declared by platform config"); \
     } \
 } while (0)
 ```
@@ -1212,7 +1209,6 @@ ASFLAGS += $(HYP_EXT_FLAGS)
 | `two_stage_setup_bare_vsatp_*x4_hgatp()` × 3 | `two_stage_build(scene{ .fault=FAULT_G_STAGE_EXPLICIT, .g_mode=SV*X4 })` |
 | `htval_warl_probe()` / `htval_impl_width_bits()` | `csr_warl_probe(CSR_HTVAL)` / `csr_field_width(CSR_HTVAL,...)` |
 | `hgatp_supported_modes_mask()` | `csr_mode_field_supported(CSR_HGATP, HGATP_MODE_SHIFT, 15)` |
-| `SHTVALA_REQUIRE` scattered in hyp_test.h | `REQUIRE_EXT(has_shtvala)` + sub-extension header |
 | `CHECK_HTVAL_NONZERO/_ZERO/_RECONSTRUCT_GPA` | Same-named macros, but aligned with `CHECK_VSTVAL_*` / `CHECK_VSEPC_*` templates |
 | Sub-extensions scattered directly in `hyp_csr.c` | `common/hyp/ext/<name>.h` isolated, one file per extension |
 | Makefile single switch `ENABLE_SHTVALA` | 8 sub-extensions unified form `ENABLE_SH<NAME>` + `HYP_EXT_FLAGS` |

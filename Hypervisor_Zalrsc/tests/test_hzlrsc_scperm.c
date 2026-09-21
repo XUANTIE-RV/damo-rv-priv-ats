@@ -32,7 +32,7 @@ static int hzlrsc_failed_sc_vs(uintptr_t victim_va, uintptr_t resv_va,
                                uintptr_t exp_cause, const char *tag)
 {
     two_stage_ctx_t ctx;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, victim_va, vs_flags);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, victim_va, vs_flags);
     hz_resv_other_va = resv_va;
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, probe, victim_va);
@@ -54,12 +54,12 @@ bool test_hzlrsc_22_sc_valid_res_no_write(void)
     TEST_BEGIN("HZLRSC-22: SC (valid reservation) to W=0 -> store pf (15)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_R);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_R);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lrsc_w, va);
@@ -84,8 +84,8 @@ bool test_hzlrsc_23_failed_sc_no_write(void)
     TEST_BEGIN("HZLRSC-23: failed SC to W=0 -> still store pf (15)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     uintptr_t rw = (uintptr_t)test_data_area;
@@ -116,14 +116,14 @@ bool test_hzlrsc_24_failed_sc_gstage(void)
     TEST_BEGIN("HZLRSC-24: failed SC G-stage W=0 -> store guest-pf (23)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     uintptr_t rw = (uintptr_t)test_data_area;
 
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     hz_resv_other_va = rw;
     /* Route the guest-page fault into HS-mode so hstatus.GVA/SPV are
      * written by hardware (norm:hstatus_gva_op / spv_op). */
@@ -167,12 +167,12 @@ bool test_hzlrsc_25_lr_read_only_ok(void)
     TEST_BEGIN("HZLRSC-25: LR to R=1/W=0 page executes normally");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_R);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_R);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lr_w, va);
@@ -200,8 +200,8 @@ bool test_hzlrsc_26_sc_unreadable_store_class(void)
     TEST_BEGIN("HZLRSC-26: SC to R=0 page -> store pf (15), not load (13)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     uintptr_t rw = (uintptr_t)test_data_area;

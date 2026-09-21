@@ -34,8 +34,6 @@
 #error "SUITE_VSATP_MODE must be defined before including this file"
 #endif
 
-#define G16_GMODE   SUITE_HGATP_MODE
-#define G16_VSMODE  SUITE_VSATP_MODE
 
 /* G-stage RW (no X), no W bits used for VS-stage W=0 victim. */
 #define G16_G_INVALID     (0)
@@ -73,15 +71,15 @@ static uintptr_t vs_sw_straddle(uintptr_t arg) {
 TEST_REGISTER(test_ts_strd_01_load_g_invalid);
 bool test_ts_strd_01_load_g_invalid(void) {
     TEST_BEGIN("TS-STRD-01: load straddle, page2 G-invalid -> 21");
-    REQUIRE_VSATP_MODE(G16_VSMODE);
-    REQUIRE_HGATP_MODE(G16_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t page1 = (uintptr_t)test_fault_page;
     uintptr_t page2 = page1 + 0x1000UL;
     uintptr_t va    = page1 + 0x1000UL - 2UL;     /* lw spans page edge */
 
-    ts2_setup_full(&ctx, G16_VSMODE, G16_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     /* Invalidate the second page in G-stage. VS-stage stays valid. */
     ts2_g_override_4k(&ctx, page2, G16_G_INVALID);
 
@@ -132,8 +130,8 @@ bool test_ts_strd_01_load_g_invalid(void) {
 TEST_REGISTER(test_ts_strd_02_fetch_g_no_x);
 bool test_ts_strd_02_fetch_g_no_x(void) {
     TEST_BEGIN("TS-STRD-02: fetch straddle, page2 G no-X -> 20");
-    REQUIRE_VSATP_MODE(G16_VSMODE);
-    REQUIRE_HGATP_MODE(G16_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t page1 = (uintptr_t)test_exec_page;
@@ -151,7 +149,7 @@ bool test_ts_strd_02_fetch_g_no_x(void) {
     p16[0] = 0x8067;  /* low 16 bits of jr ra */
     p16[1] = 0x0000;  /* high 16 bits of jr ra */
 
-    ts2_setup_full(&ctx, G16_VSMODE, G16_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     /* Strip X in G-stage on page2 only. */
     ts2_g_override_4k(&ctx, page2, G16_G_RU_NOX);
 
@@ -196,8 +194,8 @@ bool test_ts_strd_02_fetch_g_no_x(void) {
 TEST_REGISTER(test_ts_strd_03_store_vs_no_w);
 bool test_ts_strd_03_store_vs_no_w(void) {
     TEST_BEGIN("TS-STRD-03: store straddle, page2 VS no-W -> 15");
-    REQUIRE_VSATP_MODE(G16_VSMODE);
-    REQUIRE_HGATP_MODE(G16_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t page1 = (uintptr_t)test_fault_page;
@@ -207,7 +205,7 @@ bool test_ts_strd_03_store_vs_no_w(void) {
     /* Build full identity, then override page2's VS-stage leaf to
      * R+X (no W). G-stage stays full RWX so any G-stage fault is
      * impossible -> the trap must be a VS-stage page-fault. */
-    ts2_setup_with_vs_victim(&ctx, G16_VSMODE, G16_GMODE,
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                              page2, G16_VS_RX_NOW);
 
     trap_expect_begin();

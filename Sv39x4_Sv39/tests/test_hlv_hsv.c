@@ -39,8 +39,6 @@
 
 #include "hyp_ldst.h"
 
-#define G13_GMODE   SUITE_HGATP_MODE
-#define G13_VSMODE  SUITE_VSATP_MODE
 
 #define G13_VS_RWX  (PTE_V|PTE_R|PTE_W|PTE_X|PTE_A|PTE_D)
 #define G13_VS_RWXU (PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D)
@@ -74,8 +72,8 @@ static uintptr_t g13_u_hlv_d_for_hu(uintptr_t arg) {
 TEST_REGISTER(test_ts_hlv_01_hs_load);
 bool test_ts_hlv_01_hs_load(void) {
     TEST_BEGIN("TS-HLV-01: HS-mode HLV.D -> reads guest VA");
-    REQUIRE_VSATP_MODE(G13_VSMODE);
-    REQUIRE_HGATP_MODE(G13_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
@@ -83,7 +81,7 @@ bool test_ts_hlv_01_hs_load(void) {
     /* Plant a known value at the SPA (identity-mapped). */
     *(volatile uint64_t *)va = 0xDEADBEEF12345678ULL;
 
-    ts2_setup_full(&ctx, G13_VSMODE, G13_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     /* Mark VS leaf as VS-level (SPVP will pick S/U). */
     two_stage_enable(&ctx, /*vmid*/0);
     /* SPVP=1 (VS-mode). */
@@ -107,14 +105,14 @@ bool test_ts_hlv_01_hs_load(void) {
 TEST_REGISTER(test_ts_hlv_02_hs_store);
 bool test_ts_hlv_02_hs_store(void) {
     TEST_BEGIN("TS-HLV-02: HS-mode HSV.D -> writes guest VA");
-    REQUIRE_VSATP_MODE(G13_VSMODE);
-    REQUIRE_HGATP_MODE(G13_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
     *(volatile uint64_t *)va = 0;
 
-    ts2_setup_full(&ctx, G13_VSMODE, G13_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     two_stage_enable(&ctx, 0);
     hstatus_set_spvp(PRIV_S);
 
@@ -137,13 +135,13 @@ bool test_ts_hlv_02_hs_store(void) {
 TEST_REGISTER(test_ts_hlv_03_spvp0_u0);
 bool test_ts_hlv_03_spvp0_u0(void) {
     TEST_BEGIN("TS-HLV-03: SPVP=0 + VS U=0 -> page fault");
-    REQUIRE_VSATP_MODE(G13_VSMODE);
-    REQUIRE_HGATP_MODE(G13_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
     /* dual: VS U=0 RWX, G U=1 RWX. */
-    ts2_setup_with_dual_victim(&ctx, G13_VSMODE, G13_GMODE,
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                                va, G13_VS_RWX, G13_G_RWXU);
     two_stage_enable(&ctx, 0);
     hstatus_set_spvp(PRIV_U);   /* effective VU */
@@ -169,14 +167,14 @@ bool test_ts_hlv_03_spvp0_u0(void) {
 TEST_REGISTER(test_ts_hlv_04_spvp1_u0);
 bool test_ts_hlv_04_spvp1_u0(void) {
     TEST_BEGIN("TS-HLV-04: SPVP=1 + VS U=0 -> success");
-    REQUIRE_VSATP_MODE(G13_VSMODE);
-    REQUIRE_HGATP_MODE(G13_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
     *(volatile uint64_t *)va = 0x4040404040404040ULL;
 
-    ts2_setup_with_dual_victim(&ctx, G13_VSMODE, G13_GMODE,
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                                va, G13_VS_RWX, G13_G_RWXU);
     two_stage_enable(&ctx, 0);
     hstatus_set_spvp(PRIV_S);   /* effective VS */
@@ -201,14 +199,14 @@ bool test_ts_hlv_04_spvp1_u0(void) {
 TEST_REGISTER(test_ts_hlv_05_sum_via_vsstatus);
 bool test_ts_hlv_05_sum_via_vsstatus(void) {
     TEST_BEGIN("TS-HLV-05: vsstatus.SUM controls SPVP=1 access to U=1");
-    REQUIRE_VSATP_MODE(G13_VSMODE);
-    REQUIRE_HGATP_MODE(G13_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
     *(volatile uint64_t *)va = 0x5050505050505050ULL;
 
-    ts2_setup_with_dual_victim(&ctx, G13_VSMODE, G13_GMODE,
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                                va, G13_VS_RWXU, G13_G_RWXU);
     two_stage_enable(&ctx, 0);
     hstatus_set_spvp(PRIV_S);
@@ -239,14 +237,14 @@ bool test_ts_hlv_05_sum_via_vsstatus(void) {
 TEST_REGISTER(test_ts_hlv_06_sstatus_mxr_vs);
 bool test_ts_hlv_06_sstatus_mxr_vs(void) {
     TEST_BEGIN("TS-HLV-06: sstatus.MXR overrides VS-stage X-only");
-    REQUIRE_VSATP_MODE(G13_VSMODE);
-    REQUIRE_HGATP_MODE(G13_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
     *(volatile uint64_t *)va = 0x6060606060606060ULL;
 
-    ts2_setup_with_dual_victim(&ctx, G13_VSMODE, G13_GMODE,
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                                va, G13_VS_X, G13_G_RWXU);
     two_stage_enable(&ctx, 0);
     hstatus_set_spvp(PRIV_S);
@@ -274,14 +272,14 @@ bool test_ts_hlv_06_sstatus_mxr_vs(void) {
 TEST_REGISTER(test_ts_hlv_07_sstatus_mxr_g);
 bool test_ts_hlv_07_sstatus_mxr_g(void) {
     TEST_BEGIN("TS-HLV-07: sstatus.MXR overrides G-stage X-only");
-    REQUIRE_VSATP_MODE(G13_VSMODE);
-    REQUIRE_HGATP_MODE(G13_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
     *(volatile uint64_t *)va = 0x7070707070707070ULL;
 
-    ts2_setup_with_dual_victim(&ctx, G13_VSMODE, G13_GMODE,
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                                va, G13_VS_RWX, G13_G_XU);
     two_stage_enable(&ctx, 0);
     hstatus_set_spvp(PRIV_S);
@@ -309,13 +307,13 @@ bool test_ts_hlv_07_sstatus_mxr_g(void) {
 TEST_REGISTER(test_ts_hlv_08_vsstatus_mxr_no_g);
 bool test_ts_hlv_08_vsstatus_mxr_no_g(void) {
     TEST_BEGIN("TS-HLV-08: vsstatus.MXR does not override G-stage X-only");
-    REQUIRE_VSATP_MODE(G13_VSMODE);
-    REQUIRE_HGATP_MODE(G13_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
 
-    ts2_setup_with_dual_victim(&ctx, G13_VSMODE, G13_GMODE,
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                                va, G13_VS_RWX, G13_G_XU);
     two_stage_enable(&ctx, 0);
     hstatus_set_spvp(PRIV_S);
@@ -346,14 +344,14 @@ bool test_ts_hlv_08_vsstatus_mxr_no_g(void) {
 TEST_REGISTER(test_ts_hlv_09_hlvx_wu);
 bool test_ts_hlv_09_hlvx_wu(void) {
     TEST_BEGIN("TS-HLV-09: HLVX.WU uses X permission instead of R");
-    REQUIRE_VSATP_MODE(G13_VSMODE);
-    REQUIRE_HGATP_MODE(G13_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
     *(volatile uint32_t *)va = 0x90909090U;
 
-    ts2_setup_with_dual_victim(&ctx, G13_VSMODE, G13_GMODE,
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                                va, G13_VS_XU, G13_G_XU);
     two_stage_enable(&ctx, 0);
     hstatus_set_spvp(PRIV_U);   /* HLVX uses U/VU effective ok */
@@ -387,12 +385,12 @@ static uintptr_t g13_vs_hlv_d(uintptr_t arg) {
 TEST_REGISTER(test_ts_hlv_10_v1_virt_inst);
 bool test_ts_hlv_10_v1_virt_inst(void) {
     TEST_BEGIN("TS-HLV-10: HLV.D in V=1 -> virt-inst (22)");
-    REQUIRE_VSATP_MODE(G13_VSMODE);
-    REQUIRE_HGATP_MODE(G13_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_full(&ctx, G13_VSMODE, G13_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, g13_vs_hlv_d, va);
@@ -413,12 +411,12 @@ bool test_ts_hlv_10_v1_virt_inst(void) {
 TEST_REGISTER(test_ts_hlv_11_u_hu0_illegal);
 bool test_ts_hlv_11_u_hu0_illegal(void) {
     TEST_BEGIN("TS-HLV-11: U-mode + HU=0 -> illegal-inst (2)");
-    REQUIRE_VSATP_MODE(G13_VSMODE);
-    REQUIRE_HGATP_MODE(G13_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_full_u(&ctx, G13_VSMODE, G13_GMODE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     two_stage_enable(&ctx, 0);
     hstatus_set_hu(false);
 
@@ -441,14 +439,14 @@ bool test_ts_hlv_11_u_hu0_illegal(void) {
 TEST_REGISTER(test_ts_hlv_12_u_hu1_ok);
 bool test_ts_hlv_12_u_hu1_ok(void) {
     TEST_BEGIN("TS-HLV-12: U-mode + HU=1 -> HLV.D succeeds");
-    REQUIRE_VSATP_MODE(G13_VSMODE);
-    REQUIRE_HGATP_MODE(G13_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
     *(volatile uint64_t *)va = 0xC0C0C0C0C0C0C0C0ULL;
 
-    ts2_setup_full_u(&ctx, G13_VSMODE, G13_GMODE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     two_stage_enable(&ctx, 0);
     hstatus_set_hu(true);
     /* SPVP=0 -> VU effective. ts2_setup_full_u maps test region with
@@ -486,8 +484,8 @@ bool test_ts_hlv_12_u_hu1_ok(void) {
 TEST_REGISTER(test_ts_hlv_13_load_widths);
 bool test_ts_hlv_13_load_widths(void) {
     TEST_BEGIN("TS-HLV-13: HLV.B/BU/H/HU/W/WU/D width and extension");
-    REQUIRE_VSATP_MODE(G13_VSMODE);
-    REQUIRE_HGATP_MODE(G13_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
@@ -499,7 +497,7 @@ bool test_ts_hlv_13_load_widths(void) {
     *(volatile uint64_t *)(va + 16) = 0x0000000080000002ULL; /* word */
     *(volatile uint64_t *)(va + 24) = 0x8000000000000003ULL; /* dword */
 
-    ts2_setup_full(&ctx, G13_VSMODE, G13_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     two_stage_enable(&ctx, /*vmid*/0);
     hstatus_set_spvp(PRIV_S);
 
@@ -540,8 +538,8 @@ bool test_ts_hlv_13_load_widths(void) {
 TEST_REGISTER(test_ts_hlv_14_store_widths);
 bool test_ts_hlv_14_store_widths(void) {
     TEST_BEGIN("TS-HLV-14: HSV.B/H/W/D store width isolation");
-    REQUIRE_VSATP_MODE(G13_VSMODE);
-    REQUIRE_HGATP_MODE(G13_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
@@ -552,7 +550,7 @@ bool test_ts_hlv_14_store_widths(void) {
     *(volatile uint64_t *)(va + 72) = 0xFFFFFFFFFFFFFFFFULL;
     *(volatile uint64_t *)(va + 80) = 0xFFFFFFFFFFFFFFFFULL;
 
-    ts2_setup_full(&ctx, G13_VSMODE, G13_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     two_stage_enable(&ctx, /*vmid*/0);
     hstatus_set_spvp(PRIV_S);
 
