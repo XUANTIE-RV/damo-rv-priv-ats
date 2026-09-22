@@ -50,16 +50,6 @@
 #include "hyp/two_stage_helpers.h"
 #include "hyp/hyp_test_helpers.h"
 
-/* Suite two-stage modes (default Sv39 + Sv39x4; Makefile may override). */
-#ifndef SUITE_VSATP_MODE
-#define SUITE_VSATP_MODE   SATP_MODE_SV39
-#endif
-#ifndef SUITE_HGATP_MODE
-#define SUITE_HGATP_MODE   HGATP_MODE_SV39X4
-#endif
-#define HZ_VSMODE   SUITE_VSATP_MODE
-#define HZ_GMODE    SUITE_HGATP_MODE
-
 /* ===================================================================
  * Capability gating
  *
@@ -322,7 +312,7 @@ static inline hzca_trap_t hzca_fire_mem_fault(uintptr_t (*probe)(uintptr_t),
     r.htval = 0; r.tval = 0; r.epc = 0;
 
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, g_flags);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, g_flags);
     if (to_hs)
         hz_route_to_hs(1UL << exp_cause);   /* HS entry -> htinst */
     else

@@ -27,8 +27,6 @@
 #error "SUITE_VSATP_MODE must be defined before including this file"
 #endif
 
-#define G20_GMODE   SUITE_HGATP_MODE
-#define G20_VSMODE  SUITE_VSATP_MODE
 
 /* VS-stage victim PTE: present-but-invalid encoding (V=0). */
 #define G20_VS_INVALID    (0)
@@ -55,12 +53,12 @@ static uintptr_t vs_lw_misaligned(uintptr_t arg) {
 TEST_REGISTER(test_ts_prio_01_misalign_vs_v0);
 bool test_ts_prio_01_misalign_vs_v0(void) {
     TEST_BEGIN("TS-PRIO-01: misalign + VS V=0 -> page-fault (13)");
-    REQUIRE_VSATP_MODE(G20_VSMODE);
-    REQUIRE_HGATP_MODE(G20_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_data_area;
-    ts2_setup_with_vs_victim(&ctx, G20_VSMODE, G20_GMODE,
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                              va, G20_VS_INVALID);
 
     trap_expect_begin();
@@ -95,14 +93,14 @@ bool test_ts_prio_01_misalign_vs_v0(void) {
 TEST_REGISTER(test_ts_prio_02_gstage_first);
 bool test_ts_prio_02_gstage_first(void) {
     TEST_BEGIN("TS-PRIO-02: G-stage implicit fault preempts VS PTE check");
-    REQUIRE_VSATP_MODE(G20_VSMODE);
-    REQUIRE_HGATP_MODE(G20_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_data_area;
 
     /* Build full identity, then mark the VS-stage leaf PTE V=0. */
-    ts2_setup_with_vs_victim(&ctx, G20_VSMODE, G20_GMODE,
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                              va, G20_VS_INVALID);
 
     /* Now invalidate the VS-stage leaf PT page in G-stage. The PT

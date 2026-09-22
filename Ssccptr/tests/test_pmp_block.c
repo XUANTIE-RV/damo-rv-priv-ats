@@ -21,7 +21,7 @@ bool test_ssccptr_pmp_block_l0_load(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -57,7 +57,7 @@ bool test_ssccptr_pmp_block_l0_store(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -93,7 +93,7 @@ bool test_ssccptr_pmp_block_l0_fetch(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
     init_exec_page();
 
@@ -130,7 +130,7 @@ bool test_ssccptr_pmp_block_l1_load(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -189,7 +189,7 @@ bool test_ssccptr_pmp_block_root_load(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -246,7 +246,7 @@ bool test_ssccptr_pmp_restore(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;

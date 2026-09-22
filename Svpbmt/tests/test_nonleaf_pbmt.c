@@ -21,7 +21,7 @@ bool test_nonleaf_pbmt_nc_fault(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -59,7 +59,7 @@ bool test_nonleaf_pbmt_io_fault(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -95,7 +95,7 @@ bool test_nonleaf_pbmt_rsvd_fault(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -131,7 +131,7 @@ bool test_nonleaf_pbmt_zero_ok(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -174,7 +174,7 @@ bool test_nonleaf_pbmt_root_fault(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);

@@ -27,12 +27,12 @@ bool test_hzpm_vs_01(void) {
     TEST_BEGIN("HZPM-VS-01: PMLEN7 tagged load in VS-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     *(volatile uint64_t *)HZPM_DATA1 = HZPM_MAGIC1;
     uintptr_t tagged = pm_tag_address(HZPM_DATA1, pm_max_tag(7), 7);
@@ -51,12 +51,12 @@ bool test_hzpm_vs_02(void) {
     TEST_BEGIN("HZPM-VS-02: PMLEN16 tagged load in VS-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN16))
         TEST_SKIP("PMLEN=16 not supported for VS-mode");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     *(volatile uint64_t *)HZPM_DATA1 = HZPM_MAGIC2;
     uintptr_t tagged = pm_tag_address(HZPM_DATA1, pm_max_tag(16), 16);
@@ -74,12 +74,12 @@ bool test_hzpm_vs_03(void) {
     TEST_BEGIN("HZPM-VS-03: PMLEN7 tagged store in VS-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     *(volatile uint64_t *)HZPM_DATA2 = 0;
     uintptr_t tagged = pm_tag_address(HZPM_DATA2, pm_alt_tag(7), 7);
@@ -98,12 +98,12 @@ bool test_hzpm_vs_04(void) {
     TEST_BEGIN("HZPM-VS-04: PMLEN7 amoadd.d via tagged VA in VS-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     *(volatile uint64_t *)HZPM_DATA2 = 100;
     uintptr_t tagged = pm_tag_address(HZPM_DATA2, pm_max_tag(7), 7);
@@ -123,12 +123,12 @@ bool test_hzpm_vs_05(void) {
     TEST_BEGIN("HZPM-VS-05: different tags, same location (VS-mode)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     *(volatile uint64_t *)HZPM_DATA1 = HZPM_MAGIC3;
     uintptr_t tagged_a = pm_tag_address(HZPM_DATA1, 0x55, 7);
@@ -149,11 +149,11 @@ bool test_hzpm_vs_06(void) {
     TEST_BEGIN("HZPM-VS-06: PM disabled, tagged VA page-fault (VS)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     pm_set_vsmode(PMM_DISABLED);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     uintptr_t tagged = pm_tag_address(HZPM_DATA1, pm_max_tag(7), 7);
 
@@ -180,12 +180,12 @@ bool test_hzpm_vs_07(void) {
     TEST_BEGIN("HZPM-VS-07: VA sign-extend correctness in VS-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     /* Map a high-half canonical Sv39 VA (bits[63:39] all ones,
      * bit 56 = 1) to the scratch GPA. After tagging bits[63:57],
@@ -215,7 +215,7 @@ bool test_hzpm_vs_08(void) {
     TEST_BEGIN("HZPM-VS-08: VS PM independent of menvcfg.PMM");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
@@ -226,7 +226,7 @@ bool test_hzpm_vs_08(void) {
     TEST_ASSERT_EQ("menvcfg.PMM disabled", pm_get_smode(), PMM_DISABLED);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     *(volatile uint64_t *)HZPM_DATA1 = HZPM_MAGIC2;
     uintptr_t tagged = pm_tag_address(HZPM_DATA1, pm_max_tag(7), 7);
@@ -249,12 +249,12 @@ bool test_hzpm_vs_09(void) {
     TEST_BEGIN("HZPM-VS-09: GPA zero-extend (vsatp=Bare, VS-mode)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     /* norm:pm_ignore_pa: with vsatp.MODE=Bare the effective address
      * is a GPA and the upper PMLEN bits are replaced with 0.
@@ -278,11 +278,11 @@ bool test_hzpm_vs_10(void) {
     TEST_BEGIN("HZPM-VS-10: PM disabled, tagged GPA guest-page-fault");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     pm_set_vsmode(PMM_DISABLED);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     /* With PM disabled the tagged GPA keeps bits[63:57] set, which
      * exceeds the Sv39x4 GPA width -> guest-page-fault (cause=21). */

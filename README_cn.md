@@ -122,6 +122,20 @@ make qemu-pmp EXTRA_CFLAGS='-DTEST_FILTER="PMP"'
 ```
 ---
 
+## 分页模式选择（SATP_MODE）
+
+默认情况下，单阶段（非 Hypervisor）分页测试集运行在各自的 `SUITE_SATP_MODE` 宏下，该宏在每个测试集的 `tests/test_helpers.h` 中定义。模式无关的测试集（如 `Ssccptr`、`Svade`）将其默认回退到 `PLATFORM_SATP_MODE`——即 `common/capabilities.h` 依据平台配置（`config/<platform>/rvtest_config.h` 中的 `SV39_SUPPORTED`/`SV48_SUPPORTED`/`SV57_SUPPORTED`）自动选定的模式，策略为“最小优先”：Sv39 > Sv48 > Sv57，仅当较小模式不被平台支持时才升级到更大的模式。模式内禀的测试集（`Sv39`/`Sv48`/`Sv57`）则将 `SUITE_SATP_MODE` 默认为其固定的 `SATP_MODE_SV*`。
+
+编译时传入 `SATP_MODE=sv39|sv48|sv57` 可覆盖 `SUITE_SATP_MODE`（通过 `-DSUITE_SATP_MODE=...`），便于在不同分页模式下重跑同一测试集做对比诊断：
+
+```bash
+cd <test_dir>; make clean; make qemu SATP_MODE=sv48
+```
+
+不传 `SATP_MODE` 时行为与默认完全一致（零影响）。`PLATFORM_SATP_MODE` 本身完全由平台派生，不会被强制覆盖。该开关作用于单阶段 `satp` 模式；两阶段 Hypervisor 测试集使用独立的 `HGATP_MODE=`/`VSATP_MODE=` 开关（`SUITE_HGATP_MODE`/`SUITE_VSATP_MODE`）。与其他命令行开关一样，切换该参数前必须先执行 `make clean`。
+
+---
+
 ## 编译宏注入（EXTRA_CFLAGS / EXTRA_ASFLAGS）
 
 `common/Makefile.common` 支持在命令行注入额外编译宏，分别作用于 C 与汇编编译单元：

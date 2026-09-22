@@ -24,14 +24,14 @@
 /* Common two-stage setup: VS-stage Sv39 + G-stage Sv39x4, then
  * activate both stages without entering VS-mode (for HLV/HSV). */
 static void hlv_setup(two_stage_ctx_t *ctx) {
-    ts2_setup_full(ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     two_stage_enable(ctx, /*vmid=*/0);
 }
 
 /* Same, but with U=1 VS-stage mappings: required for HLV/HSV
  * accesses performed as though in VU-mode (SPVP=0). */
 static void hlv_setup_u(two_stage_ctx_t *ctx) {
-    ts2_setup_full_u(ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full_u(ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     two_stage_enable(ctx, /*vmid=*/0);
 }
 
@@ -41,8 +41,8 @@ bool test_hzpm_hlv_01(void) {
     TEST_BEGIN("HZPM-HLV-01: HLV in HS-mode, SPVP=1 uses henvcfg.PMM");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
@@ -69,8 +69,8 @@ bool test_hzpm_hlv_02(void) {
     TEST_BEGIN("HZPM-HLV-02: HLV in HS-mode, SPVP=1, PM off -> fault");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     pm_set_vsmode(PMM_DISABLED);
 
     two_stage_ctx_t ctx;
@@ -103,8 +103,8 @@ bool test_hzpm_hlv_03(void) {
     TEST_BEGIN("HZPM-HLV-03: HLV in HS-mode, SPVP=0 uses senvcfg.PMM");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!hzpm_try_set_u_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for U/VU-mode");
 
@@ -131,8 +131,8 @@ bool test_hzpm_hlv_04(void) {
     TEST_BEGIN("HZPM-HLV-04: HUPMM ineffective for HLV in HS-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* sec:hstatus HUPMM paragraph: in HS- and M-modes, PM for
      * HLV/HSV performed as though in VU-mode is controlled by
@@ -171,8 +171,8 @@ bool test_hzpm_hlv_05(void) {
     TEST_BEGIN("HZPM-HLV-05: HLV in M-mode, SPVP=0 uses senvcfg.PMM");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!hzpm_try_set_u_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for U/VU-mode");
 
@@ -201,8 +201,8 @@ bool test_hzpm_hlv_06(void) {
     TEST_BEGIN("HZPM-HLV-06: HLV in M-mode, SPVP=1 uses henvcfg.PMM");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
@@ -227,8 +227,8 @@ bool test_hzpm_hlv_07(void) {
     TEST_BEGIN("HZPM-HLV-07: HLV in U-mode, SPVP=0 uses HUPMM");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!hzpm_try_set_hupmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for HUPMM");
 
@@ -256,8 +256,8 @@ bool test_hzpm_hlv_08(void) {
     TEST_BEGIN("HZPM-HLV-08: senvcfg.PMM ineffective for HLV in U-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* sec:hstatus HUPMM paragraph: in U-mode, PM for HLV/HSV
      * performed as though in VU-mode is controlled by hstatus.HUPMM
@@ -297,8 +297,8 @@ bool test_hzpm_hlv_09(void) {
     TEST_BEGIN("HZPM-HLV-09: HSV in HS-mode, SPVP=1 tagged store");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
@@ -326,8 +326,8 @@ bool test_hzpm_hlv_10(void) {
     TEST_BEGIN("HZPM-HLV-10: MPRV does not affect HLV PM selection");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 

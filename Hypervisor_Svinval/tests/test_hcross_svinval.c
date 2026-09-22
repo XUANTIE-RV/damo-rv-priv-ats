@@ -40,7 +40,7 @@ bool test_hcross_svinval_01(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t test_va = (uintptr_t)test_data_area;
 
@@ -81,7 +81,7 @@ bool test_hcross_svinval_02(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t test_va = (uintptr_t)test_data_area;
     uintptr_t test_gpa = test_va;  /* identity mapping */
@@ -123,7 +123,7 @@ bool test_hcross_svinval_03(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t va1 = (uintptr_t)test_data_area;
     uintptr_t va2 = (uintptr_t)test_fault_page;
@@ -165,7 +165,7 @@ bool test_hcross_svinval_04(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t va1 = (uintptr_t)test_data_area;
     uintptr_t va2 = (uintptr_t)test_fault_page;
@@ -209,7 +209,7 @@ bool test_hcross_svinval_05(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t test_va = (uintptr_t)test_data_area;
     uintptr_t test_gpa = test_va;
@@ -250,7 +250,7 @@ bool test_hcross_svinval_06(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t test_va = (uintptr_t)test_data_area;
     uintptr_t test_gpa = test_va;
@@ -295,7 +295,7 @@ bool test_hcross_svinval_07(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     trap_expect_begin();
     two_stage_run_in_vs(&ctx, vs_exec_hinval_vvma, 0);
@@ -326,7 +326,7 @@ bool test_hcross_svinval_08(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     trap_expect_begin();
     two_stage_run_in_vs(&ctx, vs_exec_hinval_gvma, 0);
@@ -357,7 +357,7 @@ bool test_hcross_svinval_09(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     trap_expect_begin();
     two_stage_run_in_vu(&ctx, vu_exec_hinval_vvma, 0);
@@ -388,7 +388,7 @@ bool test_hcross_svinval_10(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     trap_expect_begin();
     two_stage_run_in_vu(&ctx, vu_exec_hinval_gvma, 0);
@@ -419,7 +419,7 @@ bool test_hcross_svinval_11(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     trap_expect_begin();
     two_stage_run_in_vu(&ctx, vu_exec_sfence_w_inval, 0);
@@ -450,7 +450,7 @@ bool test_hcross_svinval_12(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     trap_expect_begin();
     two_stage_run_in_vu(&ctx, vu_exec_sfence_inval_ir, 0);
@@ -481,7 +481,7 @@ bool test_hcross_svinval_13(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Ensure hstatus.VTVM=0 */
     uintptr_t hstatus = hstatus_read();
@@ -513,7 +513,7 @@ bool test_hcross_svinval_14(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Ensure hstatus.VTVM=0 */
     uintptr_t hstatus = hstatus_read();
@@ -547,7 +547,7 @@ bool test_hcross_svinval_15(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     trap_expect_begin();
     two_stage_run_in_vu(&ctx, vu_exec_sinval_vma, 0);

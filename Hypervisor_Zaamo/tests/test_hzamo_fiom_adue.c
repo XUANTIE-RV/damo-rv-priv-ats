@@ -31,7 +31,7 @@ static void hzamo_fiom_case(int fiom, uintptr_t (*probe)(uintptr_t))
     *(volatile uint32_t *)va = 0x1000u;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t he = henvcfg_read();
     if (fiom) he |= HZ_HENVCFG_FIOM; else he &= ~HZ_HENVCFG_FIOM;
     henvcfg_write(he);
@@ -60,8 +60,8 @@ bool test_hzamo_25_fiom1(void)
     TEST_BEGIN("HZAMO-25: FIOM=1 VS-mode amoadd.w.aq executable");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzamo_fiom_case(1, hz_vs_amo_add_w_aq);
 #if __riscv_xlen == 64
     hzamo_fiom_case(1, hz_vs_amo_swap_d_rl);
@@ -80,8 +80,8 @@ bool test_hzamo_26_fiom0(void)
     TEST_BEGIN("HZAMO-26: FIOM=0 control VS-mode amoadd.w.aq");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzamo_fiom_case(0, hz_vs_amo_add_w_aq);
     HYP_TEST_END();
 }
@@ -96,12 +96,12 @@ bool test_hzamo_27_adue0_a0(void)
     TEST_BEGIN("HZAMO-27: ADUE=0 + A=0 -> Svade store pf (15)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     ts2_disable_adue();
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("VS leaf PTE resolvable", pte != NULL);
@@ -138,12 +138,12 @@ bool test_hzamo_28_adue0_d0_forced(void)
     TEST_BEGIN("HZAMO-28: ADUE=0 + A=1/D=0 AMO -> store pf (15, forced)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     ts2_disable_adue();
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("VS leaf PTE resolvable", pte != NULL);
@@ -176,12 +176,12 @@ bool test_hzamo_29_adue1_hw_update(void)
     TEST_BEGIN("HZAMO-29: ADUE=1 AMO -> hardware A/D update, no fault");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("VS leaf PTE resolvable", pte != NULL);
     if (pte == NULL) { ts2_finish(&ctx); HYP_TEST_END(); }

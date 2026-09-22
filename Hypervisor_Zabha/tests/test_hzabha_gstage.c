@@ -33,12 +33,12 @@ bool test_hzabha_10_bh_amo_gstage_fault(void)
     TEST_BEGIN("HZABHA-10: byte/half AMO G-stage fault -> guest-pf (23)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     *(volatile uint64_t *)va = 0x0011223344556677ULL;
 
     trap_expect_begin();
@@ -69,14 +69,14 @@ bool test_hzabha_11_gva_spv(void)
     TEST_BEGIN("HZABHA-11: guest byte/half AMO trap -> GVA=1 and SPV=1");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
 
     /* VS source. */
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     *(volatile uint64_t *)va = 0x0011223344556677ULL;
     hz_clear_gva_spv();
     hz_route_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
@@ -98,7 +98,7 @@ bool test_hzabha_11_gva_spv(void)
     TEST_ASSERT_EQ("VS source: stval == faulting GVA", tval, va);
 
     /* VU source. */
-    ts2_setup_full_u(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     ts2_g_override_4k(&ctx, va, HZ_G_RU);
     hz_clear_gva_spv();
     hz_route_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
@@ -129,12 +129,12 @@ bool test_hzabha_12_htval_gpa(void)
     TEST_BEGIN("HZABHA-12: guest byte/half AMO fault -> htval == GPA>>2 or 0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     *(volatile uint64_t *)va = 0x0011223344556677ULL;
 
     trap_expect_begin();
@@ -162,12 +162,12 @@ bool test_hzabha_13_vs_stage_htval_zero(void)
     TEST_BEGIN("HZABHA-13: VS-stage byte/half AMO fault -> htval == 0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_R);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_R);
     *(volatile uint64_t *)va = 0x0011223344556677ULL;
 
     trap_expect_begin();
@@ -196,12 +196,12 @@ bool test_hzabha_14_hsv_b_spv0_gva1(void)
 {
     TEST_BEGIN("HZABHA-14: HSV.B explicit access -> SPV=0 but GVA=1");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_INV);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_INV);
     two_stage_enable(&ctx, 0);
     hstatus_set_spvp(PRIV_S);
     hz_clear_gva_spv();

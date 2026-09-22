@@ -42,12 +42,12 @@ bool test_hzabha_15_bh_amo_htinst_transformed(void)
     TEST_BEGIN("HZABHA-15: byte/half AMO explicit G-stage fault htinst");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     hzabha_setup_gstage(va);
 
     trap_expect_begin();
@@ -77,14 +77,14 @@ bool test_hzabha_16_htinst_funct3_width(void)
     TEST_BEGIN("HZABHA-16: htinst retains funct3 width (.b=000/.h=001)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
 
     /* .b (funct3=000). */
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     hzabha_setup_gstage(va);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amo_add_b, va);
@@ -101,7 +101,7 @@ bool test_hzabha_16_htinst_funct3_width(void)
         printf("  [INFO] byte AMO htinst=0; funct3 not observable\n");
 
     /* .h (funct3=001). */
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     hzabha_setup_gstage(va);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amo_add_h, va);
@@ -134,7 +134,7 @@ static void hzabha_aqrl_case(uintptr_t (*probe)(uintptr_t), uintptr_t va,
                              unsigned exp_aq, unsigned exp_rl)
 {
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     hzabha_setup_gstage(va);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, probe, va);
@@ -162,8 +162,8 @@ bool test_hzabha_17_htinst_aqrl(void)
     TEST_BEGIN("HZABHA-17: htinst preserves byte/half AMO aq/rl bits");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     hzabha_aqrl_case(hz_vs_amo_add_b_aq, va, 1, 0);
@@ -182,12 +182,12 @@ bool test_hzabha_18_addr_offset_zero(void)
     TEST_BEGIN("HZABHA-18: byte/half AMO htinst Addr. Offset == 0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     hzabha_setup_gstage(va);
 
     trap_expect_begin();
@@ -217,11 +217,11 @@ bool test_hzabha_19_implicit_walk_cause23(void)
     TEST_BEGIN("HZABHA-19: implicit VS-walk byte AMO fault -> cause 23");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t va = (uintptr_t)test_data_area;
     hzabha_setup_gstage(va);
 
@@ -254,12 +254,12 @@ bool test_hzabha_20_adue_write_pseudo(void)
     TEST_BEGIN("HZABHA-20: ADUE=1 byte AMO D-update fault -> write pseudoinst");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hzabha_setup_gstage(va);
 
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
@@ -317,14 +317,14 @@ bool test_hzabha_21_explicit_vs_implicit(void)
     TEST_BEGIN("HZABHA-21: htinst disambiguates explicit vs implicit (23)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
 
     /* (a) explicit byte AMO data access fails in G-stage. */
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     hzabha_setup_gstage(va);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amo_add_b, va);
@@ -343,7 +343,7 @@ bool test_hzabha_21_explicit_vs_implicit(void)
 
     /* (b) implicit VS-stage PTE read fails in G-stage. */
     uintptr_t va_b = (uintptr_t)test_data_area;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hzabha_setup_gstage(va_b);
     uintptr_t pt_gpa = ts2_invalidate_vs_pt_in_g(&ctx, va_b, PT_LEVEL_4K);
     TEST_ASSERT("(b) VS leaf PT GPA resolvable", pt_gpa != 0);

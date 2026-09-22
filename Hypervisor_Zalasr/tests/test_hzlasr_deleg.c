@@ -33,7 +33,7 @@ static int hzlasr_store_vs_fault(uintptr_t victim_va, uintptr_t vs_flags,
                                  const char *tag)
 {
     two_stage_ctx_t ctx;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, victim_va, vs_flags);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, victim_va, vs_flags);
     hz_st_val = 0x00009abcu;
 
     int fired;
@@ -70,7 +70,7 @@ static int hzlasr_load_vs_fault(uintptr_t victim_va, uintptr_t vs_flags,
                                 uintptr_t *obs_cause, uintptr_t *obs_rd)
 {
     two_stage_ctx_t ctx;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, victim_va, vs_flags);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, victim_va, vs_flags);
 
     hyp_delegate_to_vs((1UL << CAUSE_LOAD_PAGE_FAULT), 0);
     hz_vs_handler_install();
@@ -129,8 +129,8 @@ bool test_hzlasr_06_load_acq_ro_page_executes(void)
     TEST_BEGIN("HZLASR-06: load-acquire to R=1/W=0 VS page executes (read ok)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     /* The test region is identity-mapped (VA==GPA==SPA), so preset the
@@ -166,8 +166,8 @@ bool test_hzlasr_07_load_acq_r0_record(void)
     TEST_BEGIN("HZLASR-07: load-acquire to R=0 VS page -> fault (record cause)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     uintptr_t obs = 0, rd = 0;
@@ -190,8 +190,8 @@ bool test_hzlasr_08_store_rel_w0_store_fault(void)
     TEST_BEGIN("HZLASR-08: store-release to R=1/W=0 -> store pf (15) to VS");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     int ok_w = hzlasr_store_vs_fault(va, HZ_VS_R, hz_vs_sw_rl,
@@ -218,8 +218,8 @@ bool test_hzlasr_09_store_rel_unreadable_store_class(void)
     TEST_BEGIN("HZLASR-09: store-release to R=0 -> store pf (15), not load");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     int ok = hzlasr_store_vs_fault(va, HZ_VS_XONLY, hz_vs_sw_rl,
@@ -240,8 +240,8 @@ bool test_hzlasr_10_load_vs_store_permission(void)
     TEST_BEGIN("HZLASR-10: same R=1/W=0 page: lw.aq ok, sw.rl -> store pf (15)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     hzlasr_store_le32(va, 0x00005678u);
@@ -276,14 +276,14 @@ bool test_hzlasr_11_hedeleg0_to_hs(void)
     TEST_BEGIN("HZLASR-11: hedeleg=0 -> load/store-release VS fault at HS/M");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALASR_AVAILABLE) TEST_SKIP("Zalasr not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
 
     /* load-acquire to R=0, hedeleg[13]=0 -> captured at HS/M; record cause. */
     two_stage_ctx_t ctx;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_XONLY);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_XONLY);
     hedeleg_write(hedeleg_read() & ~(1UL << CAUSE_LOAD_PAGE_FAULT));
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lw_aq, va);

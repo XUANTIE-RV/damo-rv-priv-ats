@@ -51,7 +51,7 @@ bool test_ntl_hyp_06(void)
 
     /* VS-stage valid (identity, S-level RWX) + G-stage invalid on
      * the victim 4KB page. */
-    ts2_setup_with_g_victim(&ctx, SATP_MODE_SV39, SUITE_HGATP_MODE,
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                             victim, 0 /* invalid */);
 
     /* Run 1: ntl.p1 + ld (armed). */

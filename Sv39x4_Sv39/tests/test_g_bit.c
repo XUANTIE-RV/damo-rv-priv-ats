@@ -20,8 +20,6 @@
 #error "SUITE_VSATP_MODE must be defined before including this file"
 #endif
 
-#define G17_GMODE   SUITE_HGATP_MODE
-#define G17_VSMODE  SUITE_VSATP_MODE
 
 #define G17_VS_FULL       (PTE_V|PTE_R|PTE_W|PTE_X|PTE_A|PTE_D)
 #define G17_G_FULL_GBIT   (PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D|PTE_G)
@@ -29,13 +27,13 @@
 TEST_REGISTER(test_ts_gbit_01_ignored);
 bool test_ts_gbit_01_ignored(void) {
     TEST_BEGIN("TS-GBIT-01: G-stage PTE G=1 -> ignored, translation OK");
-    REQUIRE_VSATP_MODE(G17_VSMODE);
-    REQUIRE_HGATP_MODE(G17_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_data_area;
     /* G-stage leaf carries G=1 plus full RWXU AD; VS-stage is normal. */
-    ts2_setup_with_dual_victim(&ctx, G17_VSMODE, G17_GMODE,
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                                va, G17_VS_FULL, G17_G_FULL_GBIT);
 
     uintptr_t r = ts2_run_check_no_fault(&ctx, test_vs_read_write, va);

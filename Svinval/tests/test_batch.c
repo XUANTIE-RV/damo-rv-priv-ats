@@ -29,7 +29,7 @@ bool test_sinval_batch_3pages(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Use the vm_test_region for 3 test pages */
@@ -84,7 +84,7 @@ bool test_sinval_batch_mixed_perms(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Use the vm_test_region for 3 test pages */
@@ -148,7 +148,7 @@ bool test_sinval_batch_16pages(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     #define BATCH_COUNT 16
@@ -207,7 +207,7 @@ bool test_sinval_batch_mixed_rs1(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Use the vm_test_region for 3 test pages */

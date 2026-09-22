@@ -24,13 +24,13 @@
  * Group 5: U-bit and Privilege Access Control (UPRIV-03 ~ UPRIV-07)
  * =================================================================== */
 
-TEST_REGISTER(test_sv39_upriv03);
-bool test_sv39_upriv03(void) {
+SV_REGISTER(upriv03);
+bool SVFN(upriv03)(void) {
     TEST_BEGIN("UPRIV-03: U=1 page, S-mode read with SUM=0 faults");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -45,13 +45,13 @@ bool test_sv39_upriv03(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_upriv04);
-bool test_sv39_upriv04(void) {
+SV_REGISTER(upriv04);
+bool SVFN(upriv04)(void) {
     TEST_BEGIN("UPRIV-04: U=1 page, S-mode write with SUM=0 faults");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -66,13 +66,13 @@ bool test_sv39_upriv04(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_upriv05);
-bool test_sv39_upriv05(void) {
+SV_REGISTER(upriv05);
+bool SVFN(upriv05)(void) {
     TEST_BEGIN("UPRIV-05: U=1 page, S-mode exec always faults");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_exec_page;
@@ -90,13 +90,13 @@ bool test_sv39_upriv05(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_upriv06);
-bool test_sv39_upriv06(void) {
+SV_REGISTER(upriv06);
+bool SVFN(upriv06)(void) {
     TEST_BEGIN("UPRIV-06: U=0 page, S-mode read/write succeeds");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -112,13 +112,13 @@ bool test_sv39_upriv06(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_upriv07);
-bool test_sv39_upriv07(void) {
+SV_REGISTER(upriv07);
+bool SVFN(upriv07)(void) {
     TEST_BEGIN("UPRIV-07: U=0 page, S-mode exec succeeds");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_exec_page;
@@ -138,13 +138,13 @@ bool test_sv39_upriv07(void) {
  * Group 6: SUM Bit Control (SUM-01 ~ SUM-05)
  * =================================================================== */
 
-TEST_REGISTER(test_sv39_sum01);
-bool test_sv39_sum01(void) {
+SV_REGISTER(sum01);
+bool SVFN(sum01)(void) {
     TEST_BEGIN("SUM-01: SUM=1, S-mode read U-page succeeds");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -160,13 +160,13 @@ bool test_sv39_sum01(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_sum02);
-bool test_sv39_sum02(void) {
+SV_REGISTER(sum02);
+bool SVFN(sum02)(void) {
     TEST_BEGIN("SUM-02: SUM=1, S-mode write U-page succeeds");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -182,13 +182,13 @@ bool test_sv39_sum02(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_sum03);
-bool test_sv39_sum03(void) {
+SV_REGISTER(sum03);
+bool SVFN(sum03)(void) {
     TEST_BEGIN("SUM-03: SUM=0, S-mode read U-page faults");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -204,13 +204,13 @@ bool test_sv39_sum03(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_sum04);
-bool test_sv39_sum04(void) {
+SV_REGISTER(sum04);
+bool SVFN(sum04)(void) {
     TEST_BEGIN("SUM-04: SUM=0, S-mode write U-page faults");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -225,13 +225,13 @@ bool test_sv39_sum04(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_sum05);
-bool test_sv39_sum05(void) {
+SV_REGISTER(sum05);
+bool SVFN(sum05)(void) {
     TEST_BEGIN("SUM-05: SUM=1, S-mode exec U-page still faults");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_exec_page;

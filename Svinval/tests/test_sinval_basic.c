@@ -28,7 +28,7 @@ bool test_sinval_vma_permission_upgrade(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Map test page: R-only */
@@ -68,7 +68,7 @@ bool test_sinval_vma_mapping_invalidation(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Map test page: RW */
@@ -110,7 +110,7 @@ bool test_sinval_vma_permission_downgrade(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Map test page: RWX */
@@ -150,7 +150,7 @@ bool test_sinval_vma_pa_remap(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Prepare two physical pages with different data */
@@ -196,7 +196,7 @@ bool test_sinval_vma_global_flush(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Map two test pages: both R-only */
@@ -241,7 +241,7 @@ bool test_sinval_vma_2m_megapage(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Map the vm_test_region's 2MB-aligned megapage with R-only */
@@ -300,7 +300,7 @@ bool test_sinval_vma_1g_gigapage(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
 

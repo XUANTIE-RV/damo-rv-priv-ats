@@ -81,13 +81,34 @@
  * =================================================================== */
 
 /**
- * REQUIRE_HGATP_MODE - Skip test if platform does not support given mode.
+ * PAGING_MODE_UNAVAILABLE_ - Compile-time helper shared by the paging-mode
+ * gates below. `mode` is an architectural satp/vsatp/hgatp MODE encoding:
+ * Bare=0, Sv39=8, Sv48=9, Sv57=10 (the G-stage Sv*x4 modes share the same
+ * encodings). Support is taken from the platform config declaration
+ * normalized in capabilities.h (SV39/48/57_AVAILABLE), NOT from a runtime
+ * WARL probe -- see capabilities.h design note #5 (config-declaration
+ * driven; runtime probes are fragile and have produced false negatives).
+ * The SV*_AVAILABLE flags are compile-time 0/1, so this also evaluates
+ * correctly when `mode` is a runtime value (e.g. a per-mode loop variable).
+ */
+#define PAGING_MODE_UNAVAILABLE_(mode) ( \
+    ((mode) == 0)                     || \
+    ((mode) == 8  && !SV39_AVAILABLE) || \
+    ((mode) == 9  && !SV48_AVAILABLE) || \
+    ((mode) == 10 && !SV57_AVAILABLE))
+
+/**
+ * REQUIRE_HGATP_MODE - Skip test if the platform config does not declare
+ * the given G-stage paging mode.
  *
- * Uses the canonical probe-and-restore via hgatp_supports_mode().
+ * Compile-time gate on SV39/48/57_AVAILABLE via PAGING_MODE_UNAVAILABLE_.
+ * Tests whose SUBJECT is the runtime WARL behaviour of a specific MODE
+ * (e.g. Shgatpa/Shvsatpa, Shtvala/test_htval_modes.c) call
+ * hgatp_supports_mode() directly instead of relying on this gate.
  */
 #define REQUIRE_HGATP_MODE(mode) do { \
-    if (!hgatp_supports_mode(mode)) { \
-        TEST_SKIP("hgatp mode not supported by platform"); \
+    if (PAGING_MODE_UNAVAILABLE_(mode)) { \
+        TEST_SKIP("hgatp mode not declared by platform config"); \
     } \
 } while (0)
 
@@ -165,14 +186,14 @@
  * =================================================================== */
 
 #define REQUIRE_SATP_MODE(mode) do { \
-    if (!satp_supports_mode(mode)) { \
-        TEST_SKIP("satp mode not supported by platform"); \
+    if (PAGING_MODE_UNAVAILABLE_(mode)) { \
+        TEST_SKIP("satp mode not declared by platform config"); \
     } \
 } while (0)
 
 #define REQUIRE_VSATP_MODE(mode) do { \
-    if (!vsatp_supports_mode(mode)) { \
-        TEST_SKIP("vsatp mode not supported by platform"); \
+    if (PAGING_MODE_UNAVAILABLE_(mode)) { \
+        TEST_SKIP("vsatp mode not declared by platform config"); \
     } \
 } while (0)
 

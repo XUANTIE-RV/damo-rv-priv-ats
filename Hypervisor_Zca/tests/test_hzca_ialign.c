@@ -56,14 +56,14 @@ bool test_hzca_25_vs_jump_2byte_aligned(void)
     TEST_BEGIN("HZCA-25: VS-mode jump to 2-byte-aligned compressed, no cause=0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t target = (uintptr_t)test_exec_page + 2;  /* 2-aligned, not 4 */
     hzca_place_c_ret_at(target);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, test_vs_exec_expect_fault, target);
@@ -98,14 +98,14 @@ bool test_hzca_26_vu_jump_2byte_aligned(void)
     TEST_BEGIN("HZCA-26: VU-mode jump to 2-byte-aligned address, no cause=0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t target = (uintptr_t)test_exec_page + 2;
     hzca_place_c_ret_at(target);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full_u(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     trap_expect_begin();
     (void)two_stage_run_in_vu(&ctx, test_vs_exec_expect_fault, target);
@@ -137,15 +137,15 @@ bool test_hzca_27_32bit_on_16bit_boundary(void)
     TEST_BEGIN("HZCA-27: 32-bit instruction on a 16-bit boundary, no cause=0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* A 32-bit nop starting at test_exec_page+2 (odd 16-bit boundary). */
     uintptr_t target = (uintptr_t)test_exec_page + 2;
     hzca_place_nop32_then_ret_at(target);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, test_vs_exec_expect_fault, target);

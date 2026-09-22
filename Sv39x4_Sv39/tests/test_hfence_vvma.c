@@ -25,8 +25,6 @@
 #error "SUITE_VSATP_MODE must be defined before including this file"
 #endif
 
-#define G10_GMODE   SUITE_HGATP_MODE
-#define G10_VSMODE  SUITE_VSATP_MODE
 
 #define G10_VS_RWX  (PTE_V|PTE_R|PTE_W|PTE_X|PTE_A|PTE_D)
 #define G10_VS_INV  (0)
@@ -82,12 +80,12 @@ static void g10_hfence_all_adapter(uintptr_t va, uintptr_t asid) {
 TEST_REGISTER(test_ts_hv_01_global);
 bool test_ts_hv_01_global(void) {
     TEST_BEGIN("TS-HV-01: hfence.vvma x0,x0 -> new PTE visible");
-    REQUIRE_VSATP_MODE(G10_VSMODE);
-    REQUIRE_HGATP_MODE(G10_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_full(&ctx, G10_VSMODE, G10_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Warm up: first access succeeds. */
     (void)ts2_run_check_no_fault(&ctx, test_vs_read_write, va);
@@ -106,12 +104,12 @@ bool test_ts_hv_01_global(void) {
 TEST_REGISTER(test_ts_hv_02_by_va);
 bool test_ts_hv_02_by_va(void) {
     TEST_BEGIN("TS-HV-02: hfence.vvma vaddr,x0 -> new PTE visible");
-    REQUIRE_VSATP_MODE(G10_VSMODE);
-    REQUIRE_HGATP_MODE(G10_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_full(&ctx, G10_VSMODE, G10_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     (void)ts2_run_check_no_fault(&ctx, test_vs_read_write, va);
 
     uintptr_t cause = g10_invalidate_then_hfence_then_load(
@@ -130,12 +128,12 @@ bool test_ts_hv_02_by_va(void) {
 TEST_REGISTER(test_ts_hv_03_by_asid);
 bool test_ts_hv_03_by_asid(void) {
     TEST_BEGIN("TS-HV-03: hfence.vvma x0,asid -> new PTE visible");
-    REQUIRE_VSATP_MODE(G10_VSMODE);
-    REQUIRE_HGATP_MODE(G10_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_full(&ctx, G10_VSMODE, G10_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     (void)ts2_run_check_no_fault(&ctx, test_vs_read_write, va);
 
     /* hfence.vvma x0, asid=0 (our default vsatp.ASID). spec: when
@@ -155,8 +153,8 @@ bool test_ts_hv_03_by_asid(void) {
 TEST_REGISTER(test_ts_hv_04_tvm_no_trap);
 bool test_ts_hv_04_tvm_no_trap(void) {
     TEST_BEGIN("TS-HV-04: mstatus.TVM=1 does not trap HFENCE.VVMA in HS");
-    REQUIRE_VSATP_MODE(G10_VSMODE);
-    REQUIRE_HGATP_MODE(G10_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* Set mstatus.TVM=1 (bit 20). */
     asm volatile ("csrs mstatus, %0" :: "r"((uintptr_t)MSTATUS_TVM));
@@ -179,8 +177,8 @@ bool test_ts_hv_04_tvm_no_trap(void) {
 TEST_REGISTER(test_ts_hv_05_vtvm_no_trap);
 bool test_ts_hv_05_vtvm_no_trap(void) {
     TEST_BEGIN("TS-HV-05: hstatus.VTVM=1 does not trap HFENCE.VVMA in HS");
-    REQUIRE_VSATP_MODE(G10_VSMODE);
-    REQUIRE_HGATP_MODE(G10_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* Set hstatus.VTVM=1 (bit 20). */
     asm volatile ("csrs hstatus, %0" :: "r"((uintptr_t)HSTATUS_VTVM));
@@ -202,11 +200,11 @@ bool test_ts_hv_05_vtvm_no_trap(void) {
 TEST_REGISTER(test_ts_hv_06_v1_virt_inst);
 bool test_ts_hv_06_v1_virt_inst(void) {
     TEST_BEGIN("TS-HV-06: HFENCE.VVMA in VS-mode -> virt-inst (22)");
-    REQUIRE_VSATP_MODE(G10_VSMODE);
-    REQUIRE_HGATP_MODE(G10_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, G10_VSMODE, G10_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, g10_vs_hfence_vvma_all, 0);

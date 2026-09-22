@@ -29,7 +29,7 @@ bool test_hzpm_hs_01(void) {
     TEST_BEGIN("HZPM-HS-01: PMLEN7 tagged load in HS-mode (Sv39)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMNPM_AVAILABLE) TEST_SKIP("Smnpm (menvcfg.PMM) not implemented");
-    REQUIRE_SATP_SV39();
+    REQUIRE_SATP_MODE(SUITE_SATP_MODE);
     if (!hzpm_try_set_s_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for S/HS-mode");
 
@@ -78,8 +78,8 @@ bool test_hzpm_hs_03(void) {
     TEST_BEGIN("HZPM-HS-03: HS PM independent of VS PM");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMNPM_AVAILABLE) TEST_SKIP("Smnpm (menvcfg.PMM) not implemented");
-    REQUIRE_SATP_SV39();
-    REQUIRE_VSATP_SV39();
+    REQUIRE_SATP_MODE(SUITE_SATP_MODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!detect_ssnpm_hyp())
         TEST_SKIP("Ssnpm hyp controls not implemented");
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
@@ -111,7 +111,7 @@ bool test_hzpm_hs_03(void) {
 
     /* (b) VS-mode tagged load must succeed (VS PM on) */
     two_stage_ctx_t vctx;
-    ts2_setup_full(&vctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full(&vctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     *(volatile uint64_t *)HZPM_DATA1 = HZPM_MAGIC1;
     uintptr_t vtagged = pm_tag_address(HZPM_DATA1, pm_max_tag(7), 7);
@@ -129,7 +129,7 @@ bool test_hzpm_hs_04(void) {
     TEST_BEGIN("HZPM-HS-04: menvcfg.PMM does not affect VS-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMNPM_AVAILABLE) TEST_SKIP("Smnpm (menvcfg.PMM) not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!detect_ssnpm_hyp())
         TEST_SKIP("Ssnpm hyp controls not implemented");
     if (!hzpm_try_set_s_pmm(PMM_PMLEN7))
@@ -140,7 +140,7 @@ bool test_hzpm_hs_04(void) {
     TEST_ASSERT_EQ("henvcfg.PMM disabled", pm_get_vsmode(), PMM_DISABLED);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     uintptr_t tagged = pm_tag_address(HZPM_DATA1, pm_max_tag(7), 7);
 
@@ -166,7 +166,7 @@ bool test_hzpm_hs_05(void) {
     TEST_BEGIN("HZPM-HS-05: menvcfg.PMM does not affect VU-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMNPM_AVAILABLE) TEST_SKIP("Smnpm (menvcfg.PMM) not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!detect_ssnpm())
         TEST_SKIP("Ssnpm not implemented");
     if (!hzpm_try_set_s_pmm(PMM_PMLEN7))
@@ -177,7 +177,7 @@ bool test_hzpm_hs_05(void) {
     TEST_ASSERT_EQ("senvcfg.PMM disabled", pm_get_umode(), PMM_DISABLED);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     uintptr_t tagged = pm_tag_address(HZPM_DATA1, pm_max_tag(7), 7);
 
@@ -203,7 +203,7 @@ bool test_hzpm_hs_06(void) {
     TEST_BEGIN("HZPM-HS-06: PMLEN7 amoadd.d in HS-mode (Sv39)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMNPM_AVAILABLE) TEST_SKIP("Smnpm (menvcfg.PMM) not implemented");
-    REQUIRE_SATP_SV39();
+    REQUIRE_SATP_MODE(SUITE_SATP_MODE);
     if (!hzpm_try_set_s_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for S/HS-mode");
 

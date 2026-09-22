@@ -20,7 +20,7 @@ bool test_napot_tlb_full_region(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -48,7 +48,7 @@ bool test_napot_tlb_replace_standard(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -108,7 +108,7 @@ bool test_napot_tlb_v0(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);

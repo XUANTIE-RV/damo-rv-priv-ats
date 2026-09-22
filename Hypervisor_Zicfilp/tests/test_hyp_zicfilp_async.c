@@ -43,7 +43,7 @@ bool test_hcfi_lp_42(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -115,7 +115,7 @@ bool test_hcfi_lp_43(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -172,7 +172,7 @@ bool test_hcfi_lp_44(void) {
     gpt_pool_reset();
     /* Map test_exec_target with X=0 so the fetch faults; the default
      * ts2_setup_full maps the whole test region RWX. */
-    ts2_setup_with_vs_victim(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4,
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE,
                              (uintptr_t)test_exec_target,
                              VS_FLAGS_RW_S_AD);
 

@@ -43,12 +43,12 @@ bool test_hzlrsc_09_lr_gstage_fault(void)
     TEST_BEGIN("HZLRSC-09: LR G-stage fault -> load guest-page-fault (21)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_INV);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_INV);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lr_w, va);
@@ -79,12 +79,12 @@ bool test_hzlrsc_10_sc_gstage_fault(void)
     TEST_BEGIN("HZLRSC-10: SC G-stage fault -> store guest-page-fault (23)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lrsc_w, va);
@@ -115,14 +115,14 @@ bool test_hzlrsc_11_gva_spv(void)
     TEST_BEGIN("HZLRSC-11: guest LR/SC trap -> GVA=1 and SPV=1");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
 
     /* LR (cause 21). */
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_INV);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_INV);
     hz_clear_gva_spv();
     hz_route_to_hs(1UL << CAUSE_LOAD_GUEST_PAGE_FAULT);
     trap_expect_begin();
@@ -144,7 +144,7 @@ bool test_hzlrsc_11_gva_spv(void)
     TEST_ASSERT_EQ("LR guest fault: stval == faulting GVA", tval, va);
 
     /* SC (cause 23). */
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     hz_clear_gva_spv();
     hz_route_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
     trap_expect_begin();
@@ -175,13 +175,13 @@ bool test_hzlrsc_12_htval_gpa(void)
     TEST_BEGIN("HZLRSC-12: guest LR/SC fault -> htval == GPA>>2 or 0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;   /* GPA == VA (identity) */
 
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_INV);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_INV);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lr_w, va);
     bool fired = trap_was_triggered();
@@ -207,13 +207,13 @@ bool test_hzlrsc_13_vs_stage_htval_zero(void)
     TEST_BEGIN("HZLRSC-13: VS-stage LR fault -> htval == 0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
 
     two_stage_ctx_t ctx;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_XONLY);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_XONLY);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lr_w, va);
     bool fired = trap_was_triggered();
@@ -242,13 +242,13 @@ bool test_hzlrsc_14_hlv_spv0_gva1(void)
 {
     TEST_BEGIN("HZLRSC-14: HLV.W explicit access -> SPV=0 but GVA=1");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
 
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_INV);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_INV);
     two_stage_enable(&ctx, 0);        /* activate vsatp/hgatp, stay in HS */
     hstatus_set_spvp(PRIV_S);         /* effective privilege = VS */
     hz_clear_gva_spv();

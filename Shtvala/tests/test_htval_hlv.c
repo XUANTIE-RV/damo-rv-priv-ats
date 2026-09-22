@@ -45,7 +45,7 @@ TEST_REGISTER(test_htval_hlv_01a_hlvx_vu);
 bool test_htval_hlv_01a_hlvx_vu(void) {
     TEST_BEGIN("HTVAL-HLV-01a: HLVX.WU @ VU (SPVP=0) gpf reports mtval2 = GPA>>2");
     if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t target = (uintptr_t)test_fault_page;
     /* V=0, HLVX.WU through invalid G-stage PTE, effective priv = VU.
@@ -67,7 +67,7 @@ TEST_REGISTER(test_htval_hlv_01b_hlvx_vs);
 bool test_htval_hlv_01b_hlvx_vs(void) {
     TEST_BEGIN("HTVAL-HLV-01b: HLVX.WU @ VS (SPVP=1) gpf reports mtval2 = GPA>>2");
     if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t target = (uintptr_t)test_fault_page;
     /* V=0, HLVX.WU through invalid G-stage PTE, effective priv = VS.
@@ -89,7 +89,7 @@ TEST_REGISTER(test_htval_hlv_02_hlv);
 bool test_htval_hlv_02_hlv(void) {
     TEST_BEGIN("HTVAL-HLV-02: HLV.D gpf (V=0) reports mtval2 = GPA>>2");
     if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t target = (uintptr_t)test_fault_page;
     /* V=0 -> invalid G-stage PTE -> HLV.D raises CAUSE_LOAD_GUEST_PAGE_FAULT.
@@ -110,7 +110,7 @@ TEST_REGISTER(test_htval_hlv_03_hsv);
 bool test_htval_hlv_03_hsv(void) {
     TEST_BEGIN("HTVAL-HLV-03: HSV.D gpf (V=0) reports mtval2 = GPA>>2");
     if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t target = (uintptr_t)test_fault_page;
     /* V=0 -> invalid G-stage PTE -> HSV.D raises CAUSE_STORE_GUEST_PAGE_FAULT.
@@ -131,7 +131,7 @@ TEST_REGISTER(test_htval_hlv_04_hlvx_bare);
 bool test_htval_hlv_04_hlvx_bare(void) {
     TEST_BEGIN("HTVAL-HLV-04: HLVX.WU (vsatp=BARE) gpf reports mtval2 = GPA>>2");
     if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t target = (uintptr_t)test_fault_page;
     /* V=0, HLVX.WU with vsatp=BARE: VA is directly used as GPA.

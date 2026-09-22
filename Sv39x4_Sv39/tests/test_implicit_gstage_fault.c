@@ -39,8 +39,6 @@
 #error "SUITE_VSATP_MODE must be defined before including this file"
 #endif
 
-#define G6_GMODE   SUITE_HGATP_MODE
-#define G6_VSMODE  SUITE_VSATP_MODE
 
 /* RV64 H-extension pseudoinstructions reported in htinst when a fault
  * stems from an *implicit* memory access during page-table walk:
@@ -90,11 +88,11 @@ static int g6_vs_root_level(two_stage_ctx_t *ctx) {
 TEST_REGISTER(test_ts_impl_01_root_unmapped_load);
 bool test_ts_impl_01_root_unmapped_load(void) {
     TEST_BEGIN("TS-IMPL-01: VS-leaf PT unmapped in G; load -> cause=21");
-    REQUIRE_VSATP_MODE(G6_VSMODE);
-    REQUIRE_HGATP_MODE(G6_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, G6_VSMODE, G6_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
 
@@ -139,13 +137,13 @@ bool test_ts_impl_01_root_unmapped_load(void) {
 TEST_REGISTER(test_ts_impl_03_pt_readonly_store);
 bool test_ts_impl_03_pt_readonly_store(void) {
     TEST_BEGIN("TS-IMPL-03: VS-PT G-readonly + D=0 store (write pseudoinst)");
-    REQUIRE_VSATP_MODE(G6_VSMODE);
-    REQUIRE_HGATP_MODE(G6_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     gpt_pool_reset();
     pt_pool_reset();
-    two_stage_init(&ctx, G6_VSMODE, G6_GMODE);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     /* Bring up the canonical full layout, then patch VS leaf flags:
@@ -153,7 +151,7 @@ bool test_ts_impl_03_pt_readonly_store(void) {
      * D=0 so the store requires a D-bit update. (W must be 1: the
      * permission check precedes the A/D step in the translation
      * algorithm, so with W=0 a hardware D-update can never occur.) */
-    ts2_setup_full(&ctx, G6_VSMODE, G6_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     {
         uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
         TEST_ASSERT("VS leaf PTE resolvable", pte != NULL);
@@ -222,11 +220,11 @@ bool test_ts_impl_03_pt_readonly_store(void) {
 TEST_REGISTER(test_ts_impl_04_pt_no_u);
 bool test_ts_impl_04_pt_no_u(void) {
     TEST_BEGIN("TS-IMPL-04: VS-PT G-stage U=0 -> implicit fault");
-    REQUIRE_VSATP_MODE(G6_VSMODE);
-    REQUIRE_HGATP_MODE(G6_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, G6_VSMODE, G6_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     uintptr_t pt_gpa = two_stage_vs_pt_page_addr(&ctx, va, PT_LEVEL_4K);
@@ -254,11 +252,11 @@ bool test_ts_impl_04_pt_no_u(void) {
 TEST_REGISTER(test_ts_impl_06_fetch);
 bool test_ts_impl_06_fetch(void) {
     TEST_BEGIN("TS-IMPL-06: VS-fetch with VS-PT G-unmapped -> cause=20");
-    REQUIRE_VSATP_MODE(G6_VSMODE);
-    REQUIRE_HGATP_MODE(G6_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, G6_VSMODE, G6_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     int root_level = g6_vs_root_level(&ctx);
     uintptr_t va = (uintptr_t)test_exec_page;

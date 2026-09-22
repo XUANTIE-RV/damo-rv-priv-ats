@@ -27,8 +27,6 @@
 #error "SUITE_VSATP_MODE must be defined before including this file"
 #endif
 
-#define G22_GMODE   SUITE_HGATP_MODE
-#define G22_VSMODE  SUITE_VSATP_MODE
 
 extern uintptr_t run_in_priv(unsigned priv,
                              uintptr_t (*fn)(uintptr_t), uintptr_t arg);
@@ -46,11 +44,11 @@ static uintptr_t vs_sinval_vma(uintptr_t arg) {
 TEST_REGISTER(test_ts_sinv_01_vtvm_sinval);
 bool test_ts_sinv_01_vtvm_sinval(void) {
     TEST_BEGIN("TS-SINV-01: VTVM=1 + VS SINVAL.VMA -> virt-inst (22)");
-    REQUIRE_VSATP_MODE(G22_VSMODE);
-    REQUIRE_HGATP_MODE(G22_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, G22_VSMODE, G22_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     /* Set hstatus.VTVM via csrs (read-modify-write masking VTVM). */
     asm volatile ("csrs hstatus, %0" :: "r"((uintptr_t)HSTATUS_VTVM));
 
@@ -78,7 +76,7 @@ static uintptr_t hs_hinval_gvma(uintptr_t arg) {
 TEST_REGISTER(test_ts_sinv_02_tvm_hinval);
 bool test_ts_sinv_02_tvm_hinval(void) {
     TEST_BEGIN("TS-SINV-02: TVM=1 + HS HINVAL.GVMA -> illegal-inst (2)");
-    REQUIRE_HGATP_MODE(G22_GMODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* Set mstatus.TVM to trap HS-mode fence instructions. */
     asm volatile ("csrs mstatus, %0" :: "r"((uintptr_t)MSTATUS_TVM));

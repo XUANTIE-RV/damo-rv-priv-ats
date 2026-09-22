@@ -119,7 +119,6 @@ HYP_OBJS = \
     $(HYP_DIR)/two_stage.o \
     $(HYP_DIR)/test_vs_helpers.o \
     $(HYP_DIR)/hyp_vs_trap.o \
-    $(HYP_DIR)/hyp_platform.o \
     $(HYP_DIR)/hyp_test_helpers.o
 ifdef ENABLE_TWO_STAGE
 HYP_OBJS += $(HYP_DIR)/two_stage_helpers.o
@@ -187,6 +186,88 @@ CFLAGS += -D LOG_LEVEL=$(LOG_LEVEL)
 CFLAGS += -D MEM_BASE=$(MEM_BASE)
 CFLAGS += -MMD -MP
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
+
+# ---------------------------------------------------------------------
+# SUITE_SATP_MODE -- the S/HS-stage paging mode a single-stage (non
+# Hypervisor) suite actually runs under (consumed by pt_init, satp
+# writes and REQUIRE_SATP_MODE). This is the single-stage counterpart
+# of the SUITE_VSATP_MODE / SUITE_HGATP_MODE block below.
+#
+# Precedence, highest first:
+#   1. make command line `SATP_MODE=sv39|sv48|sv57`, mapped to the
+#      architectural SATP_MODE_SV* macro name below -- lets a
+#      mode-agnostic suite be re-run under a different Sv* mode for
+#      diagnostics.
+#   2. the suite's tests/test_helpers.h `#ifndef SUITE_SATP_MODE`
+#      fallback: PLATFORM_SATP_MODE for a mode-agnostic suite, or a
+#      fixed SATP_MODE_SV* for a mode-intrinsic suite (Sv39/Sv48/Sv57).
+#
+# The -D is emitted from this single place through a lazily-expanded
+# $(if), so nothing is emitted (and the header fallback wins) unless
+# SATP_MODE is passed on the make command line. PLATFORM_SATP_MODE in
+# capabilities.h stays purely platform-derived and is never forced.
+# ---------------------------------------------------------------------
+ifdef SATP_MODE
+  ifeq ($(SATP_MODE),sv39)
+    SUITE_SATP_MODE := SATP_MODE_SV39
+  else ifeq ($(SATP_MODE),sv48)
+    SUITE_SATP_MODE := SATP_MODE_SV48
+  else ifeq ($(SATP_MODE),sv57)
+    SUITE_SATP_MODE := SATP_MODE_SV57
+  else
+    $(error Unknown SATP_MODE=$(SATP_MODE); use sv39, sv48 or sv57)
+  endif
+endif
+CFLAGS += $(if $(SUITE_SATP_MODE),-DSUITE_SATP_MODE=$(SUITE_SATP_MODE))
+
+# ---------------------------------------------------------------------
+# SUITE_HGATP_MODE / SUITE_VSATP_MODE -- the G-stage / VS-stage paging
+# mode a two-stage suite actually runs under (consumed by ts2_setup_*,
+# two_stage_init and REQUIRE_HGATP_MODE / REQUIRE_VSATP_MODE).
+#
+# Precedence, highest first:
+#   1. make command line `HGATP_MODE=sv39|sv48|sv57` and/or
+#      `VSATP_MODE=sv39|sv48|sv57`, mapped to the architectural MODE
+#      macro name below -- lets a mode-agnostic suite be re-run under a
+#      different mode for diagnostics.
+#   2. the suite Makefile default, e.g. `SUITE_HGATP_MODE ?=
+#      PLATFORM_HGATP_MODE` (follow the platform) or a fixed
+#      `HGATP_MODE_SV48X4` (mode-intrinsic suite).
+#   3. two_stage_helpers.h's `#ifndef` fallback (HGATP_MODE_SV39X4 /
+#      SATP_MODE_SV39) when a suite sets neither.
+#
+# The -D is emitted from this single place through a lazily-expanded
+# $(if), so a suite may set SUITE_*_MODE before OR after including this
+# file (CFLAGS is recursively expanded). Suites that still hardcode their
+# own `-DSUITE_*_MODE=...` (e.g. the Sv*x4 two-stage suites) leave
+# SUITE_*_MODE undefined here, so nothing extra is emitted and there is
+# no double -D. The command-line mapping uses `:=` so it wins over a
+# suite's `?=` default.
+# ---------------------------------------------------------------------
+ifdef HGATP_MODE
+  ifeq ($(HGATP_MODE),sv39)
+    SUITE_HGATP_MODE := HGATP_MODE_SV39X4
+  else ifeq ($(HGATP_MODE),sv48)
+    SUITE_HGATP_MODE := HGATP_MODE_SV48X4
+  else ifeq ($(HGATP_MODE),sv57)
+    SUITE_HGATP_MODE := HGATP_MODE_SV57X4
+  else
+    $(error Unknown HGATP_MODE=$(HGATP_MODE); use sv39, sv48 or sv57)
+  endif
+endif
+ifdef VSATP_MODE
+  ifeq ($(VSATP_MODE),sv39)
+    SUITE_VSATP_MODE := SATP_MODE_SV39
+  else ifeq ($(VSATP_MODE),sv48)
+    SUITE_VSATP_MODE := SATP_MODE_SV48
+  else ifeq ($(VSATP_MODE),sv57)
+    SUITE_VSATP_MODE := SATP_MODE_SV57
+  else
+    $(error Unknown VSATP_MODE=$(VSATP_MODE); use sv39, sv48 or sv57)
+  endif
+endif
+CFLAGS += $(if $(SUITE_HGATP_MODE),-DSUITE_HGATP_MODE=$(SUITE_HGATP_MODE))
+CFLAGS += $(if $(SUITE_VSATP_MODE),-DSUITE_VSATP_MODE=$(SUITE_VSATP_MODE))
 
 # Disable PIE
 ifeq ($(TOOLCHAIN),clang)

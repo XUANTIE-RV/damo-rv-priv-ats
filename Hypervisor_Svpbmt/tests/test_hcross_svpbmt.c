@@ -41,7 +41,7 @@ bool test_hcross_svpbmt_01(void) {
     ts2_enable_pbmte();
 
     /* Full setup: VS-stage Bare, G-stage Sv39x4 */
-    ts2_setup_full(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     uintptr_t test_gpa = TEST_REGION_BASE;
 
@@ -85,7 +85,7 @@ bool test_hcross_svpbmt_02(void) {
     ts2_enable_pbmte();
 
     /* Both stages active */
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t test_gva = TEST_REGION_BASE;
 
@@ -134,7 +134,7 @@ bool test_hcross_svpbmt_03(void) {
     two_stage_ctx_t ctx;
     ts2_enable_pbmte();
 
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t test_gva = TEST_REGION_BASE;
 
@@ -189,7 +189,7 @@ bool test_hcross_svpbmt_04(void) {
     /* hgatp.MODE=0 (Bare): G-stage disabled.
      * ts2_setup_full handles Bare G-stage correctly by skipping
      * G-stage mappings. */
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     uintptr_t test_gva = TEST_REGION_BASE;
 

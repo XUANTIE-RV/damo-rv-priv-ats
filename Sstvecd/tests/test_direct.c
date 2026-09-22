@@ -166,7 +166,7 @@ bool test_sstvecd_dir_03_load_pagefault(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     int rc = sstvecd_setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup ok", rc == 0);
 
@@ -209,7 +209,7 @@ bool test_sstvecd_int_01_ssip(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     int rc = sstvecd_setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup ok", rc == 0);
 

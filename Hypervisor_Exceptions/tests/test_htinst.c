@@ -136,7 +136,7 @@ TEST_REGISTER(htinst_load_gpf);
 bool htinst_load_gpf(void) {
     TEST_BEGIN("TINST-03: htinst on load guest-page-fault (0 or golden)");
 
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t victim_gpa = (uintptr_t)test_fault_page;
     /* G-stage leaf: readable NOT (no R/W/X) -> load guest-page-fault. */
@@ -160,7 +160,7 @@ TEST_REGISTER(htinst_store_gpf);
 bool htinst_store_gpf(void) {
     TEST_BEGIN("TINST-04: htinst on store guest-page-fault (0 or golden)");
 
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t victim_gpa = (uintptr_t)test_fault_page;
     /* G-stage leaf: R but NOT W -> store guest-page-fault. */
@@ -189,8 +189,8 @@ TEST_REGISTER(htinst_implicit_vs_fault);
 bool htinst_implicit_vs_fault(void) {
     TEST_BEGIN("TINST-05: htinst pseudoinstruction on implicit VS-stage read fault");
 
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
-    REQUIRE_VSATP_MODE(SATP_MODE_SV39);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t test_va = HYP_IMP_TEST_VA;
@@ -229,8 +229,8 @@ TEST_REGISTER(htinst_ad_update);
 bool htinst_ad_update(void) {
     TEST_BEGIN("TINST-06: htinst write pseudoinstruction on implicit A/D update fault");
 
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
-    REQUIRE_VSATP_MODE(SATP_MODE_SV39);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t test_va = HYP_IMP_TEST_VA;
@@ -272,7 +272,7 @@ TEST_REGISTER(htinst_bits_encoding);
 bool htinst_bits_encoding(void) {
     TEST_BEGIN("TINST-07: transformed instruction field structure");
 
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t victim_gpa = (uintptr_t)test_fault_page;
     uintptr_t flags = PTE_V | PTE_U | PTE_A | PTE_D;
@@ -329,7 +329,7 @@ bool htinst_compressed_encoding(void) {
     TEST_SKIP("C extension not available in this test build");
 #endif
 
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t victim_gpa = (uintptr_t)test_fault_page;
     /* G-stage leaf: readable NOT (no R/W/X) -> load guest-page-fault. */
@@ -380,12 +380,12 @@ TEST_REGISTER(htinst_page_fault_no_pseudo);
 bool htinst_page_fault_no_pseudo(void) {
     TEST_BEGIN("TINST-09: page-fault htinst is 0 or transformed (no pseudoinst)");
 
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
-    REQUIRE_VSATP_MODE(SATP_MODE_SV39);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
 
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     uintptr_t r_start = (uintptr_t)__vm_test_region_start;

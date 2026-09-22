@@ -157,8 +157,8 @@ bool test_hzca_01_exec_all_modes(void)
     TEST_BEGIN("HZCA-01: HS/VS/VU compressed comp+jump execute, no cause=22");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* HS-mode (V=0). */
     trap_expect_begin();
@@ -171,7 +171,7 @@ bool test_hzca_01_exec_all_modes(void)
 
     /* VS-mode (V=1). */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     trap_expect_begin();
     uintptr_t vs_r = two_stage_run_in_vs(&ctx, hz_comp_jump_probe, 0);
     bool vs_fired = trap_was_triggered();
@@ -187,7 +187,7 @@ bool test_hzca_01_exec_all_modes(void)
     ts2_finish(&ctx);
 
     /* VU-mode (V=1, U). */
-    ts2_setup_full_u(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     trap_expect_begin();
     uintptr_t vu_r = two_stage_run_in_vu(&ctx, hz_comp_jump_probe, 0);
     bool vu_fired = trap_was_triggered();
@@ -215,8 +215,8 @@ bool test_hzca_02_vs_hs_lwsw_parity(void)
     TEST_BEGIN("HZCA-02: VS-mode c.lw/c.sw semantics == HS-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* HS-mode run on a physical slot. */
     uintptr_t hs_addr = (uintptr_t)&hzca_hs_slot[0];
@@ -230,7 +230,7 @@ bool test_hzca_02_vs_hs_lwsw_parity(void)
 
     /* VS-mode run on the two-stage-mapped test region. */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t vs_addr = (uintptr_t)test_data_area;
     *(volatile uint32_t *)vs_addr = 0;
     trap_expect_begin();
@@ -260,11 +260,11 @@ bool test_hzca_03_vu_lwsw_exec(void)
     TEST_BEGIN("HZCA-03: VU-mode c.lw/c.sw execute, never cause=22");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full_u(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t va = (uintptr_t)test_data_area;
     *(volatile uint32_t *)va = 0;
 
@@ -299,11 +299,11 @@ bool test_hzca_04_vs_sp_based(void)
     TEST_BEGIN("HZCA-04: VS-mode sp-based compressed access normal");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     trap_expect_begin();
     uintptr_t r = two_stage_run_in_vs(&ctx, hz_sp_based_normal, 0);
@@ -334,11 +334,11 @@ bool test_hzca_05_rv64_doubleword(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
     if (__riscv_xlen != 64) TEST_SKIP("RV64-only compressed doubleword instruction");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t va = (uintptr_t)test_data_area;
     *(volatile uint64_t *)va = 0;
 
@@ -371,8 +371,8 @@ bool test_hzca_06_vs_mixed_seq(void)
     TEST_BEGIN("HZCA-06: VS-mode mixed 16/32-bit sequence == HS-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZCA_AVAILABLE) TEST_SKIP("Zca not declared (ZCA_SUPPORTED)");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* HS-mode baseline. */
     trap_expect_begin();
@@ -383,7 +383,7 @@ bool test_hzca_06_vs_mixed_seq(void)
 
     /* VS-mode run under two-stage translation. */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     trap_expect_begin();
     uintptr_t vs_r = two_stage_run_in_vs(&ctx, hz_mixed_seq, 0);
     bool vs_fired = trap_was_triggered();

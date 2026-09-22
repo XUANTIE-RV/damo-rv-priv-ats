@@ -14,13 +14,13 @@
  *   RWX-05: RWX page: all access succeeds
  */
 
-TEST_REGISTER(test_sv39_rwx01);
-bool test_sv39_rwx01(void) {
+SV_REGISTER(rwx01);
+bool SVFN(rwx01)(void) {
     TEST_BEGIN("RWX-01: R-only page: read succeeds, write faults");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -38,13 +38,13 @@ bool test_sv39_rwx01(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_rwx02);
-bool test_sv39_rwx02(void) {
+SV_REGISTER(rwx02);
+bool SVFN(rwx02)(void) {
     TEST_BEGIN("RWX-02: RW page: read/write succeed, exec faults");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_exec_page;
@@ -66,13 +66,13 @@ bool test_sv39_rwx02(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_rwx03);
-bool test_sv39_rwx03(void) {
+SV_REGISTER(rwx03);
+bool SVFN(rwx03)(void) {
     TEST_BEGIN("RWX-03: X-only page: exec succeeds, read/write fault");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_exec_page;
@@ -94,13 +94,13 @@ bool test_sv39_rwx03(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_rwx04);
-bool test_sv39_rwx04(void) {
+SV_REGISTER(rwx04);
+bool SVFN(rwx04)(void) {
     TEST_BEGIN("RWX-04: RX page: read/exec succeed, write faults");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_exec_page;
@@ -122,13 +122,13 @@ bool test_sv39_rwx04(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_rwx05);
-bool test_sv39_rwx05(void) {
+SV_REGISTER(rwx05);
+bool SVFN(rwx05)(void) {
     TEST_BEGIN("RWX-05: RWX page: all access succeeds");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_exec_page;

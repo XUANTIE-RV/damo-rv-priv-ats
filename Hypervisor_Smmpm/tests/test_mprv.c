@@ -27,8 +27,8 @@ TEST_REGISTER(test_hzpm_mprv_01);
 bool test_hzpm_mprv_01(void) {
     TEST_BEGIN("HZPM-MPRV-01: MPRV MPV=1 MPP=S uses henvcfg.PMM");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
-    REQUIRE_VSATP_SV39();
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!detect_ssnpm_hyp())
         TEST_SKIP("Ssnpm hyp controls not implemented");
     pm_set_vsmode(PMM_PMLEN7);
@@ -40,7 +40,7 @@ bool test_hzpm_mprv_01(void) {
         pm_set_mmode(PMM_DISABLED);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     two_stage_enable(&ctx, /*vmid=*/0);
 
     *(volatile uint64_t *)HZPM_DATA1 = HZPM_MAGIC1;
@@ -64,8 +64,8 @@ TEST_REGISTER(test_hzpm_mprv_02);
 bool test_hzpm_mprv_02(void) {
     TEST_BEGIN("HZPM-MPRV-02: MPRV MPV=1 MPP=U uses senvcfg.PMM");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
-    REQUIRE_VSATP_SV39();
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!detect_ssnpm())
         TEST_SKIP("Ssnpm not implemented");
     pm_set_umode(PMM_PMLEN7);
@@ -77,7 +77,7 @@ bool test_hzpm_mprv_02(void) {
 
     /* U=1 mappings required for effective-VU access */
     two_stage_ctx_t ctx;
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     two_stage_enable(&ctx, /*vmid=*/0);
 
     *(volatile uint64_t *)HZPM_DATA1 = HZPM_MAGIC2;
@@ -100,8 +100,8 @@ bool test_hzpm_mprv_03(void) {
     TEST_BEGIN("HZPM-MPRV-03: mseccfg.PMM not applied to effective VS");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMMPM_AVAILABLE) TEST_SKIP("Smmpm (mseccfg.PMM) not implemented");
-    REQUIRE_VSATP_SV39();
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!detect_ssnpm_hyp())
         TEST_SKIP("Ssnpm hyp controls not implemented");
     pm_set_mmode(PMM_PMLEN7);
@@ -114,7 +114,7 @@ bool test_hzpm_mprv_03(void) {
     TEST_ASSERT_EQ("henvcfg.PMM disabled", pm_get_vsmode(), PMM_DISABLED);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     two_stage_enable(&ctx, /*vmid=*/0);
 
     uintptr_t tagged = pm_tag_address(HZPM_DATA1, pm_max_tag(7), 7);

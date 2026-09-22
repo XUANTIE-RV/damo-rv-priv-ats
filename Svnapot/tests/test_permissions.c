@@ -20,7 +20,7 @@ bool test_napot_perm_read_only(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -52,7 +52,7 @@ bool test_napot_perm_rw(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -78,7 +78,7 @@ bool test_napot_perm_rx(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -110,7 +110,7 @@ bool test_napot_perm_no_exec(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -141,7 +141,7 @@ bool test_napot_perm_u_bit(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -171,7 +171,7 @@ bool test_napot_perm_u_sum(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -200,7 +200,7 @@ bool test_napot_perm_consistency(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);

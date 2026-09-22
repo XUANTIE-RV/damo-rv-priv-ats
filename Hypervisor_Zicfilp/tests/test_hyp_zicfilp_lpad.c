@@ -36,7 +36,7 @@ bool test_hcfi_lp_25(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -71,7 +71,7 @@ bool test_hcfi_lp_26(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -108,7 +108,7 @@ bool test_hcfi_lp_27(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -143,7 +143,7 @@ bool test_hcfi_lp_28(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -184,7 +184,7 @@ bool test_hcfi_lp_29(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -228,7 +228,7 @@ bool test_hcfi_lp_30(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -286,7 +286,7 @@ bool test_hcfi_lp_31(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -345,7 +345,7 @@ bool test_hcfi_lp_32(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -386,7 +386,7 @@ bool test_hcfi_lp_33(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);

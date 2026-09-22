@@ -45,14 +45,14 @@ bool test_hzabha_22_byte_amo_never_misaligned(void)
     TEST_BEGIN("HZABHA-22: byte AMO at odd address -> no alignment fault");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     uintptr_t odd = va + 1;   /* odd address: always valid for a byte AMO */
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     *(volatile uint64_t *)va = 0x0011223344556677ULL;
 
     trap_expect_begin();
@@ -83,8 +83,8 @@ bool test_hzabha_23_misaligned_half_amo(void)
     TEST_BEGIN("HZABHA-23: misaligned half AMO (no MAG) -> cause 6/7");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t off = HZABHA_MAG_DECLARED ? HZABHA_H_MIS_STRADDLE
                                         : HZABHA_H_MIS_INTRA;
@@ -92,7 +92,7 @@ bool test_hzabha_23_misaligned_half_amo(void)
 
     /* Part A: hedeleg[6]/[7]=0 -> captured at HS/M level. */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     *(volatile uint64_t *)((uintptr_t)test_data_area & ~15UL) =
         0x0011223344556677ULL;
     hedeleg_write(hedeleg_read() & ~((1UL << 6) | (1UL << 7)));
@@ -111,7 +111,7 @@ bool test_hzabha_23_misaligned_half_amo(void)
                                  CAUSE_STORE_ACCESS_FAULT));
 
     /* Part B: hedeleg[6]/[7]=1 -> delivered to VS-mode. */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     *(volatile uint64_t *)((uintptr_t)test_data_area & ~15UL) =
         0x0011223344556677ULL;
     hyp_delegate_to_vs((1UL << 6) | (1UL << 7), 0);
@@ -139,8 +139,8 @@ bool test_hzabha_24_mag_intra_no_fault(void)
     TEST_BEGIN("HZABHA-24: MAG intra-granule misaligned half AMO -> no fault");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!HZABHA_MAG_DECLARED)
         TEST_SKIP("platform declares no misaligned atomicity granule (Zama16b)");
 
@@ -148,7 +148,7 @@ bool test_hzabha_24_mag_intra_no_fault(void)
     uintptr_t mis = va + HZABHA_H_MIS_INTRA;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     *(volatile uint64_t *)va = 0x0011223344556677ULL;
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amo_add_h, mis);
@@ -176,8 +176,8 @@ bool test_hzabha_25_mag_intra_gstage_fault(void)
     TEST_BEGIN("HZABHA-25: MAG intra-granule half AMO G-stage W=0 -> cause 23");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!HZABHA_MAG_DECLARED)
         TEST_SKIP("platform declares no misaligned atomicity granule (Zama16b)");
 
@@ -185,7 +185,7 @@ bool test_hzabha_25_mag_intra_gstage_fault(void)
     uintptr_t mis = va + HZABHA_H_MIS_INTRA;
 
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     *(volatile uint64_t *)va = 0x0011223344556677ULL;
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amo_add_h, mis);
@@ -220,15 +220,15 @@ bool test_hzabha_26_misaligned_trap_context(void)
     TEST_BEGIN("HZABHA-26: misaligned half AMO HS-mode trap context");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t off = HZABHA_MAG_DECLARED ? HZABHA_H_MIS_STRADDLE
                                         : HZABHA_H_MIS_INTRA;
     uintptr_t mis = (uintptr_t)test_data_area + off;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     *(volatile uint64_t *)((uintptr_t)test_data_area & ~15UL) =
         0x0011223344556677ULL;
     hedeleg_write(hedeleg_read() & ~((1UL << 6) | (1UL << 7)));

@@ -16,7 +16,6 @@
 #include "encoding.h"
 #include "vm/vm.h"
 #include "hyp/two_stage_helpers.h"
-#include "hyp/hyp_platform.h"
 #include "pm/pm_cfg.h"
 #include "pm/pm_addr.h"
 
@@ -64,10 +63,10 @@ static uintptr_t hzpm_load64(uintptr_t addr) {
     return (uintptr_t)*(volatile uint64_t *)addr;
 }
 
-/* HS-mode (S-mode, V=0) Sv39 identity VM setup */
+/* HS-mode (S-mode, V=0) identity VM setup under SUITE_SATP_MODE */
 static void hzpm_setup_hs_vm(pt_context_t *ctx) {
     pt_pool_reset();
-    pt_init(ctx, SATP_MODE_SV39);
+    pt_init(ctx, SUITE_SATP_MODE);
     pt_setup_identity_mapping(ctx, PLATFORM_MEM_BASE, PLATFORM_MEM_SIZE,
         PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D, PT_LEVEL_2M);
 }

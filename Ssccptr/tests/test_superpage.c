@@ -20,7 +20,7 @@ bool test_ssccptr_super_sv39_2m_load(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     /* Use 2 MiB megapage identity mapping for code+data area */
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
@@ -46,7 +46,7 @@ bool test_ssccptr_super_sv39_2m_store(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     uintptr_t flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
@@ -70,7 +70,7 @@ bool test_ssccptr_super_sv39_2m_fetch(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     /* Fill exec page within the 2M region with nop+ret */
     init_exec_page();
@@ -99,7 +99,7 @@ bool test_ssccptr_super_sv39_1g_load(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
     uintptr_t flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
@@ -122,7 +122,7 @@ bool test_ssccptr_super_sv39_1g_store(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
     uintptr_t flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
@@ -145,7 +145,7 @@ bool test_ssccptr_super_sv39_1g_fetch(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     init_exec_page();
 
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);

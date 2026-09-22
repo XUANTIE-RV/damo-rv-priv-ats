@@ -31,7 +31,7 @@ static int hzabha_amo_vs_fault(uintptr_t victim_va, uintptr_t vs_flags,
                                const char *tag)
 {
     two_stage_ctx_t ctx;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, victim_va, vs_flags);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, victim_va, vs_flags);
     *(volatile uint64_t *)victim_va = 0x0011223344556677ULL;
 
     int fired;
@@ -93,8 +93,8 @@ bool test_hzabha_06_bh_amo_vs_store_fault(void)
     TEST_BEGIN("HZABHA-06: byte/half AMO to W=0 -> store pf (15) to VS");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     int ok_b = hzabha_amo_vs_fault(va, HZ_VS_R, hz_vs_amo_add_b,
@@ -119,8 +119,8 @@ bool test_hzabha_07_bh_amo_unreadable_store_class(void)
     TEST_BEGIN("HZABHA-07: byte/half AMO to R=0 -> store pf (15), not load");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     int ok_b = hzabha_amo_vs_fault(va, HZ_VS_XONLY, hz_vs_amo_add_b,
@@ -145,8 +145,8 @@ bool test_hzabha_08_hedeleg0_to_hs(void)
     TEST_BEGIN("HZABHA-08: hedeleg[15]=0 -> byte/half AMO fault at HS/M (15)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     int ok = hzabha_amo_vs_fault(va, HZ_VS_R, hz_vs_amo_add_b,
@@ -167,8 +167,8 @@ bool test_hzabha_09_width_independent_permission(void)
     TEST_BEGIN("HZABHA-09: .b/.h/.w all -> store pf (15) on R=1/W=0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     int ok_b = hzabha_amo_vs_fault(va, HZ_VS_R, hz_vs_amo_add_b,

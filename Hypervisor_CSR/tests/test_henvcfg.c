@@ -162,7 +162,7 @@ static uintptr_t vs_exec_fence_io(uintptr_t arg) {
 static void setup_vs_two_stage(two_stage_ctx_t *ctx) {
     gpt_pool_reset();
     pt_pool_reset();
-    two_stage_init(ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_U | PTE_A | PTE_D;
 

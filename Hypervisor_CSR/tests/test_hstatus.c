@@ -505,7 +505,7 @@ bool test_hstat_20(void) {
     /* Note: This test requires G-stage translation */
     /* Using REQUIRE_HGATP_MODE would SKIP without proper setup */
     /* Simplified: fire a VS load fault which should set GVA */
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     fire_vs_load_fault((uintptr_t)test_fault_page, PTE_R);
     TEST_ASSERT("GPF trap triggered", trap_was_triggered());
     CHECK_GVA("GVA should be 1 on guest-page-fault", true);
@@ -545,7 +545,7 @@ bool test_hstat_22(void) {
 
     /* This test requires G-stage setup */
     /* ECALL should not set GVA as it's not a translation fault */
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     fire_vs_load_fault((uintptr_t)test_fault_page, PTE_R);
     TEST_ASSERT("trap triggered", trap_was_triggered());
     /* For guest-page-fault, GVA should be 1 */
@@ -562,7 +562,7 @@ bool test_hstat_23(void) {
     TEST_BEGIN("HSTAT-23: GVA bit behavior");
 
     /* Simplified test: verify GVA bit exists and is accessible */
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     fire_vs_load_fault((uintptr_t)test_fault_page, 0); /* No permissions */
     TEST_ASSERT("trap triggered", trap_was_triggered());
     CHECK_GVA("GVA=1 on VS access fault with G-stage", true);

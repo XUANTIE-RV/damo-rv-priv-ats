@@ -213,7 +213,7 @@ bool test_shvstvecd_dir_03_load_page_fault(void) {
      * UNMAPPED_VA_1 deliberately NOT mapped. G-stage identity. */
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* VS-stage: identity map kernel region at 2MB granule */
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);

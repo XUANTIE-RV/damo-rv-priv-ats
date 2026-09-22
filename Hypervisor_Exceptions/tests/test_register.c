@@ -4,7 +4,7 @@
  */
 
 /*
- * test_register.c - Hypervisor Exceptions Subset Test Registration
+ * test_register.c - Hypervisor Exceptions Compliance Test Registration
  *
  * All test cases are organized by Group, matching
  * DOCS/testplan/Hypervisor_Exceptions_test_plan.md.

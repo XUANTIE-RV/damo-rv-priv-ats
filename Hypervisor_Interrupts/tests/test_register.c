@@ -4,7 +4,7 @@
  */
 
 /*
- * test_register.c - Hypervisor Interrupts Subset Test Registration
+ * test_register.c - Hypervisor Interrupts Compliance Test Registration
  *
  * All test cases are organized by Group, matching
  * DOCS/testplan/Hypervisor_Interrupts_test_plan.md.

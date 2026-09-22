@@ -70,7 +70,7 @@ bool test_napot_sfence_global(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -121,7 +121,7 @@ bool test_napot_sfence_global_single(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -168,7 +168,7 @@ bool test_napot_sfence_per_page(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -209,7 +209,7 @@ bool test_napot_sfence_removal(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -251,7 +251,7 @@ bool test_napot_sfence_upgrade(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -296,7 +296,7 @@ bool test_napot_sfence_single_addr(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);

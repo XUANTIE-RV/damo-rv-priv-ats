@@ -75,7 +75,7 @@ TEST_REGISTER(mtval2_gpf_trap);
 bool mtval2_gpf_trap(void) {
     TEST_BEGIN("MTVAL-02: mtval2 on guest-page-fault trap to M-mode");
 
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t victim_gpa = (uintptr_t)test_fault_page;
     uintptr_t flags = PTE_V | PTE_U | PTE_A | PTE_D;  /* no R/W/X */
@@ -167,7 +167,7 @@ TEST_REGISTER(mtinst_gpf_trap);
 bool mtinst_gpf_trap(void) {
     TEST_BEGIN("MTVAL-05: mtinst on M-mode guest-page-fault trap");
 
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t victim_gpa = (uintptr_t)test_fault_page;
     uintptr_t flags = PTE_V | PTE_U | PTE_A | PTE_D;  /* no R/W/X */
@@ -198,8 +198,8 @@ TEST_REGISTER(mtval2_implicit_walk);
 bool mtval2_implicit_walk(void) {
     TEST_BEGIN("MTVAL-06: mtval2 on implicit VS-stage walk fault");
 
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
-    REQUIRE_VSATP_MODE(SATP_MODE_SV39);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t test_va = HYP_IMP_TEST_VA;

@@ -30,7 +30,7 @@ static void hzabha_fiom_case(int fiom, uintptr_t (*probe)(uintptr_t))
     *(volatile uint64_t *)va = 0x0011223344556677ULL;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t he = henvcfg_read();
     if (fiom) he |= HZ_HENVCFG_FIOM; else he &= ~HZ_HENVCFG_FIOM;
     henvcfg_write(he);
@@ -59,8 +59,8 @@ bool test_hzabha_27_fiom1(void)
     TEST_BEGIN("HZABHA-27: FIOM=1 VS-mode amoadd.b.aq executable");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzabha_fiom_case(1, hz_vs_amo_add_b_aq);
     printf("  [INFO] FIOM ordering effect requires multi-hart: %s\n",
            HZABHA_SMP_SKIP_REASON);
@@ -76,8 +76,8 @@ bool test_hzabha_28_fiom0(void)
     TEST_BEGIN("HZABHA-28: FIOM=0 control VS-mode amoadd.b.aq");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzabha_fiom_case(0, hz_vs_amo_add_b_aq);
     HYP_TEST_END();
 }
@@ -92,12 +92,12 @@ bool test_hzabha_29_adue0_a0(void)
     TEST_BEGIN("HZABHA-29: ADUE=0 + A=0 byte/half AMO -> Svade store pf (15)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     ts2_disable_adue();
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("VS leaf PTE resolvable", pte != NULL);
@@ -135,12 +135,12 @@ bool test_hzabha_30_adue0_d0_forced(void)
     TEST_BEGIN("HZABHA-30: ADUE=0 + A=1/D=0 byte/half AMO -> store pf (15)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     ts2_disable_adue();
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("VS leaf PTE resolvable", pte != NULL);
@@ -174,12 +174,12 @@ bool test_hzabha_31_adue1_hw_update(void)
     TEST_BEGIN("HZABHA-31: ADUE=1 byte/half AMO -> hardware A/D update");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t *pte = pt_get_pte(&ctx.vs_ctx, va, PT_LEVEL_4K);
     TEST_ASSERT("VS leaf PTE resolvable", pte != NULL);
     if (pte == NULL) { ts2_finish(&ctx); HYP_TEST_END(); }

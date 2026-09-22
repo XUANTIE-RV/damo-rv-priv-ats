@@ -53,12 +53,12 @@ bool test_hzlrsc_06_lr_vs_load_fault(void)
     TEST_BEGIN("HZLRSC-06: LR VS-stage R=0 -> load page-fault (13) to VS");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_XONLY);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_XONLY);
 
     hyp_delegate_to_vs((1UL << CAUSE_LOAD_PAGE_FAULT), 0);
     hz_vs_handler_install();
@@ -102,13 +102,13 @@ bool test_hzlrsc_07_sc_vs_store_fault(void)
     TEST_BEGIN("HZLRSC-07: SC VS-stage R=1/W=0 -> store page-fault (15) to VS");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
     /* R=1/W=0 so the LR succeeds and only the SC faults. */
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_R);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_R);
 
     hyp_delegate_to_vs((1UL << CAUSE_STORE_PAGE_FAULT), 0);
     hz_vs_handler_install();
@@ -142,14 +142,14 @@ bool test_hzlrsc_08_hedeleg0_not_to_vs(void)
     TEST_BEGIN("HZLRSC-08: hedeleg=0 -> LR/SC faults stay at HS/M (13/15)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
 
     /* --- LR read fault (cause 13), hedeleg[13]=0 --- */
     two_stage_ctx_t ctx;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_XONLY);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_XONLY);
     hedeleg_write(hedeleg_read() & ~(1UL << CAUSE_LOAD_PAGE_FAULT));
     hz_vs_handler_install();
 
@@ -167,7 +167,7 @@ bool test_hzlrsc_08_hedeleg0_not_to_vs(void)
     TEST_ASSERT("LR fault NOT delegated to VS-mode", !vs_lr);
 
     /* --- SC write fault (cause 15), hedeleg[15]=0 --- */
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_R);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_R);
     hedeleg_write(hedeleg_read() & ~(1UL << CAUSE_STORE_PAGE_FAULT));
     hz_vs_handler_install();
 

@@ -94,7 +94,7 @@ bool test_hcross_svadu_02(void) {
     gpt_pool_reset();
 
     /* Setup two-stage: VS=Sv39, G=Sv39x4 */
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Enable ADUE: menvcfg.ADUE=1 + henvcfg.ADUE=1 */
     menvcfg_adue_set(1);
@@ -154,7 +154,7 @@ bool test_hcross_svadu_03(void) {
     gpt_pool_reset();
 
     /* Setup two-stage: VS=Sv39, G=Sv39x4 */
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Enable ADUE: menvcfg.ADUE=1 + henvcfg.ADUE=1 */
     menvcfg_adue_set(1);
@@ -215,7 +215,7 @@ bool test_hcross_svadu_04(void) {
     gpt_pool_reset();
 
     /* Setup two-stage: VS=Sv39, G=Sv39x4 */
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Disable ADUE: menvcfg.ADUE=0 + henvcfg.ADUE=0 */
     menvcfg_adue_set(0);
@@ -288,7 +288,7 @@ bool test_hcross_svadu_05(void) {
     gpt_pool_reset();
 
     /* Setup two-stage: VS=Sv39, G=Sv39x4 */
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Initial: menvcfg.ADUE=0, henvcfg.ADUE=1
      * Note: henvcfg.ADUE is read-only zero when menvcfg.ADUE=0
@@ -367,7 +367,7 @@ bool test_hcross_svadu_06(void) {
     gpt_pool_reset();
 
     /* Setup two-stage: VS=Sv39, G=Sv39x4 */
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Initial: menvcfg.ADUE=1, henvcfg.ADUE=1 */
     menvcfg_adue_set(1);
@@ -474,7 +474,7 @@ bool test_hcross_svadu_07(void) {
     gpt_pool_reset();
 
     /* Setup two-stage: VS=Sv39, G=Sv39x4 */
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* menvcfg.ADUE=1 (keep enabled so henvcfg.ADUE is writable) */
     menvcfg_adue_set(1);

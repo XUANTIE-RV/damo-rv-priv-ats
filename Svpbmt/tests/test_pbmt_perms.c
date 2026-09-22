@@ -21,7 +21,7 @@ bool test_pbmt_nc_readonly_store_fault(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -49,7 +49,7 @@ bool test_pbmt_io_readonly_store_fault(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -76,7 +76,7 @@ bool test_pbmt_nc_noexec_fault(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -106,7 +106,7 @@ bool test_pbmt_io_noexec_fault(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -136,7 +136,7 @@ bool test_pbmt_nc_ubit_smode_fault(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -166,7 +166,7 @@ bool test_pbmt_nc_ubit_sum_ok(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -196,7 +196,7 @@ bool test_pbmt_io_misaligned_load(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -226,7 +226,7 @@ bool test_pbmt_io_misaligned_store(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);
@@ -255,7 +255,7 @@ bool test_pbmt_pma_misaligned_load(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     int ret = setup_code_mapping(&ctx);
     TEST_ASSERT("code mapping setup", ret == 0);

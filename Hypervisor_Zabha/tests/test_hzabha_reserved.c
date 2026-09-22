@@ -55,8 +55,8 @@ bool test_hzabha_37_reserved_lrsc_cause2(void)
     TEST_BEGIN("HZABHA-37: reserved byte/half lr/sc -> cause=2, not 22");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* VS-mode: all four reserved encodings. */
     hzabha_reserved_case(hz_vs_lr_b_reserved, 0, "lr.b (reserved)");

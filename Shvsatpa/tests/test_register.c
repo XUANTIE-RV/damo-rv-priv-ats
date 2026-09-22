@@ -23,7 +23,6 @@
 #include "hyp/hyp_csr.h"
 #include "hyp/hyp_priv.h"
 #include "hyp/hyp_defs.h"
-#include "hyp/hyp_platform.h"
 #include "hyp/two_stage.h"
 #include "hyp/gstage_pt.h"
 

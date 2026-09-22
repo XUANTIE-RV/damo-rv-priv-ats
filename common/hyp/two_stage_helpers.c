@@ -406,8 +406,24 @@ void ts2_map_low_mem_vs(two_stage_ctx_t *ctx)
 void ts2_map_region_g(two_stage_ctx_t *ctx, int level)
 {
     if (level >= PT_LEVEL_512G) {
-        /* 512G or 256T superpage: GPA=0 → SPA=0 covers all memory */
-        (void)gpt_map_page(&ctx->g_ctx, 0, 0, G_FLAGS_RWXU_AD, level);
+        /* 512G/256T superpage: anchor it to the superpage-aligned base of
+         * the test region rather than GPA=0. On high-MEM_BASE platforms
+         * (e.g. NGF-C9502, MEM_BASE=0x800008000000 ~128TB) a superpage at
+         * GPA=0 only covers [0, size) and misses the test region entirely,
+         * causing a load/store guest-page-fault. Aligning to the region base
+         * keeps behavior identical on low-MEM_BASE platforms (base==0). */
+        uintptr_t sz   = PAGE_SIZE_AT_LEVEL(level);
+        uintptr_t base = TEST_REGION_BASE & ~(sz - 1);
+        (void)gpt_map_page(&ctx->g_ctx, base, base, G_FLAGS_RWXU_AD, level);
+        /* The UART may live far below the test region and thus outside
+         * this superpage; map it separately so console output still works
+         * when the caller relies on a single large page (no low-mem map). */
+        uintptr_t uart_pg = PLATFORM_UART0_BASE & ~(PAGE_SIZE_4K - 1);
+        if (uart_pg < base || uart_pg >= base + sz) {
+            (void)gpt_map_page(&ctx->g_ctx, uart_pg, uart_pg,
+                               PTE_V|PTE_R|PTE_W|PTE_U|PTE_A|PTE_D,
+                               PT_LEVEL_4K);
+        }
     } else if (level == PT_LEVEL_1G) {
         uintptr_t base1g = TEST_REGION_BASE & ~(PAGE_SIZE_1G - 1);
         (void)gpt_map_page(&ctx->g_ctx, base1g, base1g,
@@ -430,8 +446,19 @@ void ts2_map_region_g(two_stage_ctx_t *ctx, int level)
 void ts2_map_region_vs(two_stage_ctx_t *ctx, int level)
 {
     if (level >= PT_LEVEL_512G) {
-        /* 512G or 256T superpage: VA=0 → GPA=0 covers all memory */
-        (void)pt_map_page(&ctx->vs_ctx, 0, 0, VS_FLAGS_RWX_S_AD, level);
+        /* 512G/256T superpage: anchor to the superpage-aligned base of the
+         * test region (VA==GPA identity) instead of VA=0. See the matching
+         * comment in ts2_map_region_g(): a VA=0 superpage misses the region
+         * on high-MEM_BASE platforms. base==0 on low-MEM_BASE platforms. */
+        uintptr_t sz   = PAGE_SIZE_AT_LEVEL(level);
+        uintptr_t base = TEST_REGION_BASE & ~(sz - 1);
+        (void)pt_map_page(&ctx->vs_ctx, base, base, VS_FLAGS_RWX_S_AD, level);
+        /* Map the UART page separately when it falls outside the superpage. */
+        uintptr_t uart_pg = PLATFORM_UART0_BASE & ~(PAGE_SIZE_4K - 1);
+        if (uart_pg < base || uart_pg >= base + sz) {
+            (void)pt_map_page(&ctx->vs_ctx, uart_pg, uart_pg,
+                              PTE_V|PTE_R|PTE_W|PTE_A|PTE_D, PT_LEVEL_4K);
+        }
     } else if (level == PT_LEVEL_1G) {
         uintptr_t base1g = TEST_REGION_BASE & ~(PAGE_SIZE_1G - 1);
         (void)pt_map_page(&ctx->vs_ctx, base1g, base1g,

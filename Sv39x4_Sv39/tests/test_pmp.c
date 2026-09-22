@@ -35,8 +35,6 @@
 
 #include "pmp/pmp_cfg.h"
 
-#define G19_GMODE   SUITE_HGATP_MODE
-#define G19_VSMODE  SUITE_VSATP_MODE
 
 /* Save/restore PMP entries 0 and 1 around a deny window. */
 typedef struct {
@@ -68,13 +66,13 @@ static void g19_pmp_restore(const g19_pmp_save_t *save) {
 TEST_REGISTER(test_ts_pmp_01_spa_denied);
 bool test_ts_pmp_01_spa_denied(void) {
     TEST_BEGIN("TS-PMP-01: PMP denies final SPA -> load-access-fault (5)");
-    REQUIRE_VSATP_MODE(G19_VSMODE);
-    REQUIRE_HGATP_MODE(G19_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_data_area;     /* identity == SPA */
 
-    ts2_setup_full(&ctx, G19_VSMODE, G19_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     g19_pmp_save_t save;
     g19_pmp_deny_page(va, &save);

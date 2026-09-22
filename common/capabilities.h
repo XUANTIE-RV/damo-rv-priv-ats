@@ -526,4 +526,108 @@
 #define SMAIA_AVAILABLE 0
 #endif
 
+/* --- Sv39 / Sv48 / Sv57 (paged virtual-memory schemes, RV64) ---------- */
+/* A platform declares the Sv* modes it can actually USE. This is a
+ * platform-INTEGRATION statement, not a core-WARL statement: e.g.
+ * NGF-C9502 maps DRAM at 0x800008000000, whose identity VA (VA=PA) is
+ * non-canonical for Sv39 (norm:Sv39_va_signext: bits 63-39 must equal
+ * bit 38) and for Sv48 (norm:Sv48_va_signext: bits 63-48 must equal
+ * bit 47), so only Sv57 is usable there even though the core accepts all
+ * three satp MODE values. Such a platform simply omits SV39_SUPPORTED /
+ * SV48_SUPPORTED from its rvtest_config.h. */
+
+#ifdef SV39_SUPPORTED
+#define SV39_AVAILABLE 1
+#else
+#define SV39_AVAILABLE 0
+#endif
+
+#ifdef SV48_SUPPORTED
+#define SV48_AVAILABLE 1
+#else
+#define SV48_AVAILABLE 0
+#endif
+
+#ifdef SV57_SUPPORTED
+#define SV57_AVAILABLE 1
+#else
+#define SV57_AVAILABLE 0
+#endif
+
+/* -------------------------------------------------------------------
+ * Platform interrupt-device capabilities. These <X>_SUPPORTED flags are
+ * declared per-platform in config/<platform>/platform_config.h (NOT in the
+ * udb-generated ISA-extension list), and normalized to 1/0 here.
+ *
+ * MSWI_SUPPORTED marks a machine software-interrupt device: an msip MMIO
+ * register provided by a SiFive CLINT or an ACLINT MSWI node. When it is
+ * absent (e.g. NGF-C9502 / XIAOHUI-C9501, which expose only a per-hart
+ * ACLINT MTIMER plus AIA IMSIC/APLIC), machine software interrupts
+ * (mcause 3) cannot be triggered and mip.MSIP cannot be set via MMIO, so
+ * tests that drive them through the msip register must skip. */
+#ifdef MSWI_SUPPORTED
+#define MSWI_AVAILABLE 1
+#else
+#define MSWI_AVAILABLE 0
+#endif
+
+/* ===================================================================
+ * PLATFORM_SATP_MODE / PLATFORM_HGATP_MODE -- default paging mode
+ * ===================================================================
+ * The canonical S/VS-stage paging mode a suite should use when it does
+ * not test one specific Sv* mode. Selection prefers the SMALLEST usable
+ * mode (Sv39 > Sv48 > Sv57); a larger mode is chosen only when the
+ * smaller ones are unsupported on this platform. This lets one binary
+ * adapt to platforms with different physical memory maps.
+ *
+ * The values below are the architectural satp/hgatp MODE encodings
+ * (fixed by the privileged spec):
+ *   rv64: Bare=0, Sv39=8, Sv48=9, Sv57=10;
+ *         G-stage Sv39x4=8, Sv48x4=9, Sv57x4=10
+ *   rv32: Bare=0, Sv32=1
+ * capabilities.h is force-included before ss_defs.h/sh_defs.h and must
+ * stay preprocessor-only (asm-safe), so the numeric literals are used
+ * directly instead of the SATP_MODE_* / HGATP_MODE_* symbols.
+ *
+ * PLATFORM_SATP_MODE is purely platform-derived and is NEVER overridden
+ * here. A build that wants to re-run a suite under a different Sv* mode
+ * for diagnostics overrides the per-suite SUITE_SATP_MODE instead, via
+ * -DSUITE_SATP_MODE=<SATP_MODE_SV*> (see the SATP_MODE knob in
+ * common/Makefile.common). SUITE_SATP_MODE is defined per suite, NOT
+ * here: a mode-agnostic suite sets `SUITE_SATP_MODE ?= PLATFORM_SATP_MODE`
+ * in its own Makefile (so the build emits the -D), while a mode-intrinsic
+ * suite (Sv39/Sv48/Sv57) pins its own fixed SATP_MODE_SV* behind an
+ * `#ifndef` in tests/test_helpers.h. This mirrors how the two-stage
+ * suites parameterize SUITE_VSATP_MODE / SUITE_HGATP_MODE.
+ *
+ * Deliberately NO `#ifndef SUITE_SATP_MODE` fallback lives here: this
+ * file is force-included BEFORE every tests/test_helpers.h, so a fallback
+ * here would preempt the mode-intrinsic Sv39/Sv48/Sv57 definitions and
+ * silently collapse them onto PLATFORM_SATP_MODE (e.g. Sv48 running Sv39).
+ * The per-suite Makefile `?=` is the single source for mode-agnostic
+ * suites; Sv39/Sv48/Sv57 rely on their own test_helpers.h definition. */
+
+#if __riscv_xlen == 32
+#define PLATFORM_SATP_MODE      1   /* Sv32 */
+#elif SV39_AVAILABLE
+#define PLATFORM_SATP_MODE      8   /* Sv39 */
+#elif SV48_AVAILABLE
+#define PLATFORM_SATP_MODE      9   /* Sv48 */
+#elif SV57_AVAILABLE
+#define PLATFORM_SATP_MODE      10  /* Sv57 */
+#else
+#define PLATFORM_SATP_MODE      0   /* Bare */
+#endif
+
+/* G-stage mode strictly paired with the selected S/VS-stage mode. */
+#if PLATFORM_SATP_MODE == 8
+#define PLATFORM_HGATP_MODE     8   /* Sv39x4 */
+#elif PLATFORM_SATP_MODE == 9
+#define PLATFORM_HGATP_MODE     9   /* Sv48x4 */
+#elif PLATFORM_SATP_MODE == 10
+#define PLATFORM_HGATP_MODE     10  /* Sv57x4 */
+#else
+#define PLATFORM_HGATP_MODE     0   /* Bare */
+#endif
+
 #endif /* COMMON_CAPABILITIES_H */

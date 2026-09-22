@@ -1,6 +1,6 @@
 CASE,TOTAL,PASS,FAIL,SKIP
 Hypervisor_CSR,129,115,4,10
-Hypervisor_Interrupts,41,22,19,0
+Hypervisor_Interrupts,41,24,17,0
 Hypervisor_Exceptions,129,120,5,4
 Sha,28,27,0,1
 Shcounterenw,22,19,0,3

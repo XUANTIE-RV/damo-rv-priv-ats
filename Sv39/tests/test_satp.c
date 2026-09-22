@@ -4,23 +4,28 @@
  */
 
 /*
- * test_satp.c - Group 11: satp CSR Control (SATP-01/02/05/07/09)
+ * test_satp.c - Group 11: satp CSR Control
  *
- * Tests:
- *   SATP-01: MODE=Bare disables VM
- *   SATP-02: MODE=Sv39 enables VM
- *   SATP-05: Mode switch Sv39 -> Sv48
- *   SATP-07: ASID basic functionality
- *   SATP-09: Unsupported MODE value (WARL behavior)
+ * Shared by Sv39/Sv48/Sv57; per-mode test IDs, function names, the
+ * report mode name and the mode-switch target are derived from
+ * SUITE_SATP_MODE in test_helpers.h. ID mapping (vm_test_plan.md):
+ *   enable-VM: SATP-02 (Sv39) / SATP-03 (Sv48) / SATP-04 (Sv57)
+ *   switch:    SATP-05 (Sv39 -> Sv48) / SATP-06 (Sv48 -> Sv57)
+ * SATP-01/07/09 are identical across modes. Sv57 is the highest mode,
+ * so it has no mode-switch test (compiled out with #if below).
+ *
+ * Whether a mode-specific case runs is decided by the compile-time
+ * REQUIRE_SATP_MODE gate (platform config declaration), NOT by a
+ * runtime probe of satp.MODE.
  */
 
-TEST_REGISTER(test_sv39_satp01);
-bool test_sv39_satp01(void) {
+SV_REGISTER(satp01);
+bool SVFN(satp01)(void) {
     TEST_BEGIN("SATP-01: MODE=Bare disables VM");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Write satp with MODE=Bare (0) */
@@ -36,13 +41,14 @@ bool test_sv39_satp01(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_satp02);
-bool test_sv39_satp02(void) {
-    TEST_BEGIN("SATP-02: MODE=Sv39 enables VM");
+SV_REGISTER(SFX_SATP_ENABLE);
+bool SVFN(SFX_SATP_ENABLE)(void) {
+    TEST_BEGIN(ID_SATP_ENABLE ": MODE=" SUITE_MODE_NAME " enables VM");
+    REQUIRE_SATP_MODE(SUITE_SATP_MODE);
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Map test_data_area (in the separate VM test region) */
@@ -54,48 +60,57 @@ bool test_sv39_satp02(void) {
     /* Enable VM and verify it works */
     uintptr_t result = vm_run_in_smode(&ctx, test_smode_read_write,
                                         (uintptr_t)test_data_area);
-    TEST_ASSERT("Sv39 VM enabled, read/write succeeds", result == 0);
+    TEST_ASSERT(SUITE_MODE_NAME " VM enabled, read/write succeeds", result == 0);
 
     pt_pool_reset();
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_satp05);
-bool test_sv39_satp05(void) {
-    TEST_BEGIN("SATP-05: Mode switch Sv39 -> Sv48");
+/* Sv57 is the highest supported mode: there is no higher mode to switch
+ * to, so the mode-switch test exists only for Sv39 (-> Sv48) and Sv48
+ * (-> Sv57). */
+#if SUITE_SATP_MODE != SATP_MODE_SV57
+SV_REGISTER(SFX_SATP_SWITCH);
+bool SVFN(SFX_SATP_SWITCH)(void) {
+    TEST_BEGIN(ID_SATP_SWITCH ": Mode switch " SUITE_MODE_NAME
+               " -> " SUITE_NEXT_MODE_NAME);
+    REQUIRE_SATP_MODE(SUITE_SATP_MODE);
+    REQUIRE_SATP_MODE(SUITE_NEXT_MODE);
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
 
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
     uintptr_t flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
     pt_setup_identity_mapping(&ctx, base, PAGE_SIZE_1G, flags, PT_LEVEL_1G);
 
-    /* Sv39 test */
+    /* Current-mode test */
     uintptr_t result = vm_run_in_smode(&ctx, test_smode_read_write,
                                         (uintptr_t)test_data_area);
-    TEST_ASSERT("Sv39 read/write succeeds", result == 0);
+    TEST_ASSERT(SUITE_MODE_NAME " read/write succeeds", result == 0);
 
-    /* Switch to Sv48 */
-    vm_switch_mode(&ctx, SATP_MODE_SV48);
+    /* Switch to the next higher mode */
+    vm_switch_mode(&ctx, SUITE_NEXT_MODE);
 
-    /* Sv48 test */
+    /* Next-mode test */
     result = vm_run_in_smode(&ctx, test_smode_read_write,
                               (uintptr_t)test_data_area);
-    TEST_ASSERT("Sv48 read/write succeeds after switch", result == 0);
+    TEST_ASSERT(SUITE_NEXT_MODE_NAME " read/write succeeds after switch",
+                result == 0);
 
     pt_pool_reset();
     TEST_END();
 }
+#endif /* SUITE_SATP_MODE != SATP_MODE_SV57 */
 
-TEST_REGISTER(test_sv39_satp07);
-bool test_sv39_satp07(void) {
+SV_REGISTER(satp07);
+bool SVFN(satp07)(void) {
     TEST_BEGIN("SATP-07: ASID basic functionality");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Map test_data_area (in the separate VM test region) */
@@ -107,7 +122,7 @@ bool test_sv39_satp07(void) {
     /* Set ASID to a non-zero value and verify it's retained */
     unsigned test_asid = 42;
     uintptr_t root_ppn = (uintptr_t)ctx.root_pt >> PAGE_SHIFT;
-    uintptr_t satp_val = MAKE_SATP(SATP_MODE_SV39, test_asid, root_ppn);
+    uintptr_t satp_val = MAKE_SATP(SUITE_SATP_MODE, test_asid, root_ppn);
     CSRW(satp, satp_val);
     vm_sfence_vma(0, 0);
 
@@ -129,8 +144,8 @@ bool test_sv39_satp07(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_satp09);
-bool test_sv39_satp09(void) {
+SV_REGISTER(satp09);
+bool SVFN(satp09)(void) {
     TEST_BEGIN("SATP-09: Unsupported MODE value (WARL behavior)");
 
     /*

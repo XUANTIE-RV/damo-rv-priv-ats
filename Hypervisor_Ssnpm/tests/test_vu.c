@@ -24,12 +24,12 @@ bool test_hzpm_vu_01(void) {
     TEST_BEGIN("HZPM-VU-01: PMLEN7 tagged load in VU-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!hzpm_try_set_u_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for U/VU-mode");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     *(volatile uint64_t *)HZPM_DATA1 = HZPM_MAGIC1;
     uintptr_t tagged = pm_tag_address(HZPM_DATA1, pm_max_tag(7), 7);
@@ -47,12 +47,12 @@ bool test_hzpm_vu_02(void) {
     TEST_BEGIN("HZPM-VU-02: PMLEN16 tagged load in VU-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!hzpm_try_set_u_pmm(PMM_PMLEN16))
         TEST_SKIP("PMLEN=16 not supported for U/VU-mode");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     *(volatile uint64_t *)HZPM_DATA1 = HZPM_MAGIC2;
     uintptr_t tagged = pm_tag_address(HZPM_DATA1, pm_max_tag(16), 16);
@@ -70,12 +70,12 @@ bool test_hzpm_vu_03(void) {
     TEST_BEGIN("HZPM-VU-03: PMLEN7 tagged store in VU-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!hzpm_try_set_u_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for U/VU-mode");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     *(volatile uint64_t *)HZPM_DATA2 = 0;
     uintptr_t tagged = pm_tag_address(HZPM_DATA2, pm_alt_tag(7), 7);
@@ -94,11 +94,11 @@ bool test_hzpm_vu_04(void) {
     TEST_BEGIN("HZPM-VU-04: PM disabled, tagged VA page-fault (VU)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     pm_set_umode(PMM_DISABLED);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     uintptr_t tagged = pm_tag_address(HZPM_DATA1, pm_max_tag(7), 7);
 
@@ -122,7 +122,7 @@ bool test_hzpm_vu_05(void) {
     TEST_BEGIN("HZPM-VU-05: VS-mode writes senvcfg.PMM (no VS CSR)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm not implemented");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!hzpm_try_set_u_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for U/VU-mode");
 
@@ -140,7 +140,7 @@ bool test_hzpm_vu_05(void) {
      * runs (no ts2_finish in between). The tagged access uses the
      * GPA zero-extend path (norm:pm_ignore_pa). */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     /* Guest OS (VS-mode) configures its own VU-mode PM */
     pm_set_umode(PMM_DISABLED);
@@ -166,7 +166,7 @@ bool test_hzpm_vu_06(void) {
     TEST_BEGIN("HZPM-VU-06: VU PM independent of VS PM");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!hzpm_try_set_u_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for U/VU-mode");
 
@@ -176,7 +176,7 @@ bool test_hzpm_vu_06(void) {
 
     /* Part 1: U=1 mappings, VU tagged load succeeds (VU PM on) */
     two_stage_ctx_t ctx;
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     *(volatile uint64_t *)HZPM_DATA1 = HZPM_MAGIC1;
     uintptr_t tagged = pm_tag_address(HZPM_DATA1, pm_max_tag(7), 7);
@@ -189,7 +189,7 @@ bool test_hzpm_vu_06(void) {
     /* Part 2: S-level mappings (VS-mode cannot fetch from U=1
      * pages), VS tagged load faults (VS PM off): invalid Sv39 VA. */
     two_stage_ctx_t sctx;
-    ts2_setup_full(&sctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full(&sctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     trap_expect_begin();
     two_stage_run_in_vs(&sctx, hzpm_load64, tagged);
@@ -211,12 +211,12 @@ bool test_hzpm_vu_07(void) {
     TEST_BEGIN("HZPM-VU-07: GPA zero-extend (vsatp=Bare, VU-mode)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm not implemented");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!hzpm_try_set_u_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for U/VU-mode");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full_u(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    ts2_setup_full_u(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     /* norm:pm_ignore_pa: with vsatp.MODE=Bare the VU effective
      * address is a GPA; the upper PMLEN bits are replaced with 0. */

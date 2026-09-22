@@ -21,7 +21,7 @@ bool test_ssccptr_tlb_repeated_load(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -44,7 +44,7 @@ bool test_ssccptr_tlb_repeated_store(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -67,7 +67,7 @@ bool test_ssccptr_tlb_repeated_fetch(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
     init_exec_page();
 
@@ -91,7 +91,7 @@ bool test_ssccptr_tlb_alternating(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t va1 = (uintptr_t)test_data_area;

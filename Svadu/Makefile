@@ -16,3 +16,8 @@ EXT_OBJS = \
     tests/test_register.o
 
 include ../common/Makefile.common
+
+# Suite S-stage paging mode: follow the platform-selected mode by default;
+# override per build with `make SATP_MODE=sv39|sv48|sv57` (see
+# common/Makefile.common).
+SUITE_SATP_MODE ?= PLATFORM_SATP_MODE

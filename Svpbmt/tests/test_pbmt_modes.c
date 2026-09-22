@@ -31,6 +31,8 @@ TEST_REGISTER(test_pbmt_sv39_nc);
 bool test_pbmt_sv39_nc(void) {
     TEST_BEGIN("MODE-01: Sv39 + PBMT=NC load/store");
 
+    if (!SV39_AVAILABLE) TEST_SKIP("Sv39 not usable on this platform");
+
     pt_context_t ctx;
     pt_pool_reset();
     pt_init(&ctx, SATP_MODE_SV39);
@@ -66,6 +68,8 @@ TEST_REGISTER(test_pbmt_sv48_nc);
 bool test_pbmt_sv48_nc(void) {
     TEST_BEGIN("MODE-02: Sv48 + PBMT=NC load/store");
 
+    if (!SV48_AVAILABLE) TEST_SKIP("Sv48 not usable on this platform");
+
     pt_context_t ctx;
     pt_pool_reset();
     pt_init(&ctx, SATP_MODE_SV48);
@@ -100,6 +104,8 @@ bool test_pbmt_sv48_nc(void) {
 TEST_REGISTER(test_pbmt_sv57_nc);
 bool test_pbmt_sv57_nc(void) {
     TEST_BEGIN("MODE-03: Sv57 + PBMT=NC load/store");
+
+    if (!SV57_AVAILABLE) TEST_SKIP("Sv57 not usable on this platform");
 
     pt_context_t ctx;
     pt_pool_reset();

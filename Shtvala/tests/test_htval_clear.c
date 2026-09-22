@@ -152,7 +152,7 @@ TEST_REGISTER(test_htval_clr_05_gpf_then_ecall);
 bool test_htval_clr_05_gpf_then_ecall(void) {
     TEST_BEGIN("HTVAL-CLR-05: htval=0 on VS ecall after GPF");
     if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t target = (uintptr_t)test_fault_page;
     uintptr_t flags  = (G_FLAGS_RWXU_AD & ~PTE_R);
@@ -191,7 +191,7 @@ TEST_REGISTER(test_htval_clr_06_gpf_then_illegal);
 bool test_htval_clr_06_gpf_then_illegal(void) {
     TEST_BEGIN("HTVAL-CLR-06: htval=0 on VS illegal-inst after GPF");
     if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t target = (uintptr_t)test_fault_page;
     uintptr_t flags  = (G_FLAGS_RWXU_AD & ~PTE_R);
@@ -218,7 +218,7 @@ TEST_REGISTER(test_htval_clr_07_gpf_then_pagefault);
 bool test_htval_clr_07_gpf_then_pagefault(void) {
     TEST_BEGIN("HTVAL-CLR-07: htval=0 on VS page-fault after GPF");
     if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t target = (uintptr_t)test_fault_page;
     uintptr_t flags  = (G_FLAGS_RWXU_AD & ~PTE_R);
@@ -234,7 +234,7 @@ bool test_htval_clr_07_gpf_then_pagefault(void) {
      * (cause=13) because it is NOT in VS-stage mapping. */
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t lo_base  = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     uintptr_t r_start  = (uintptr_t)__vm_test_region_start;
@@ -279,7 +279,7 @@ TEST_REGISTER(test_htval_clr_08_gpf_then_virtual_inst);
 bool test_htval_clr_08_gpf_then_virtual_inst(void) {
     TEST_BEGIN("HTVAL-CLR-08: htval=0 on virtual-instruction after GPF");
     if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t target = (uintptr_t)test_fault_page;
     uintptr_t flags  = (G_FLAGS_RWXU_AD & ~PTE_R);

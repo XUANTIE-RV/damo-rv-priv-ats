@@ -369,22 +369,24 @@ static inline uint64_t ts2_mprv_load_d(uintptr_t addr) {
 }
 
 /* ===================================================================
- * Suite default G-stage mode
+ * Suite default paging modes (G-stage and VS-stage)
  *
- * Each suite's test_register.c is expected to define SUITE_HGATP_MODE
- * (e.g. HGATP_MODE_SV39X4 in Sv39x4) BEFORE including the shared
- * Group test files. The default below is provided for direct use of
- * this header outside any suite glue.
+ * A mode-intrinsic suite (e.g. Sv39x4) pins SUITE_HGATP_MODE /
+ * SUITE_VSATP_MODE to a fixed MODE (via its Makefile -D or an explicit
+ * #define) BEFORE including the shared Group test files. A mode-agnostic
+ * suite leaves them undefined and gets the platform-selected mode
+ * (PLATFORM_HGATP_MODE / PLATFORM_SATP_MODE from capabilities.h) via the
+ * fallback below. NOTE: this fallback only reaches translation units that
+ * include this header; a suite with separate TUs (e.g. a standalone
+ * tests/test_helpers.o) must still define SUITE_*_MODE in its Makefile so
+ * it is emitted as a global -D visible in every TU.
  * =================================================================== */
 #ifndef SUITE_HGATP_MODE
-#define SUITE_HGATP_MODE   HGATP_MODE_SV39X4
+#define SUITE_HGATP_MODE   PLATFORM_HGATP_MODE
 #endif
 
-/* Pair of "preferred" VS-stage modes for the suite. Most Group tests
- * use SATP_MODE_SV39 as the canonical VS mode; suites may override
- * via SUITE_VSATP_MODE if the corresponding Sv* mode is unsupported. */
 #ifndef SUITE_VSATP_MODE
-#define SUITE_VSATP_MODE   SATP_MODE_SV39
+#define SUITE_VSATP_MODE   PLATFORM_SATP_MODE
 #endif
 
 #endif /* TWO_STAGE_HELPERS_H */

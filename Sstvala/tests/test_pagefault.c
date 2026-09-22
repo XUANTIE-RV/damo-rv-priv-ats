@@ -38,7 +38,7 @@ bool test_sstvala_lpf_01(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
     /* UNMAPPED_VA is deliberately not mapped */
 
@@ -61,7 +61,7 @@ bool test_sstvala_lpf_02(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Map test_fault_page with full permissions */
@@ -86,7 +86,7 @@ bool test_sstvala_spf_01(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Map read-only page: V=1, R=1, W=0 */
@@ -114,7 +114,7 @@ bool test_sstvala_spf_02(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
     /* UNMAPPED_VA is deliberately not mapped */
 
@@ -137,7 +137,7 @@ bool test_sstvala_ipf_01(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
     /* UNMAPPED_VA is not mapped -> fetch triggers inst page-fault */
 
@@ -160,7 +160,7 @@ bool test_sstvala_ipf_02(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
     init_exec_page();
 
@@ -194,7 +194,7 @@ bool test_sstvala_lpf_03(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t result = vm_run_in_smode(&ctx, smode_load_addr, NONCANONICAL_VA);

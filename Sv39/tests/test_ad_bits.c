@@ -30,7 +30,7 @@
 static bool detect_svade(void) {
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     if (setup_code_mapping(&ctx) != 0)
         return false;
 
@@ -46,8 +46,8 @@ static bool detect_svade(void) {
     return (result == CAUSE_LPF);
 }
 
-TEST_REGISTER(test_sv39_ad01);
-bool test_sv39_ad01(void) {
+SV_REGISTER(ad01);
+bool SVFN(ad01)(void) {
     TEST_BEGIN("AD-01: A=0 load triggers page fault (Svade)");
 
     if (!detect_svade()) {
@@ -58,7 +58,7 @@ bool test_sv39_ad01(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -73,8 +73,8 @@ bool test_sv39_ad01(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_ad02);
-bool test_sv39_ad02(void) {
+SV_REGISTER(ad02);
+bool SVFN(ad02)(void) {
     TEST_BEGIN("AD-02: A=0 store triggers page fault (Svade)");
 
     if (!detect_svade()) {
@@ -85,7 +85,7 @@ bool test_sv39_ad02(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -100,8 +100,8 @@ bool test_sv39_ad02(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_ad03);
-bool test_sv39_ad03(void) {
+SV_REGISTER(ad03);
+bool SVFN(ad03)(void) {
     TEST_BEGIN("AD-03: A=1,D=0 store triggers page fault (Svade)");
 
     if (!detect_svade()) {
@@ -112,7 +112,7 @@ bool test_sv39_ad03(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -127,13 +127,13 @@ bool test_sv39_ad03(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_ad04);
-bool test_sv39_ad04(void) {
+SV_REGISTER(ad04);
+bool SVFN(ad04)(void) {
     TEST_BEGIN("AD-04: A=1,D=0 load succeeds (D not checked for loads)");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -148,13 +148,13 @@ bool test_sv39_ad04(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_ad05);
-bool test_sv39_ad05(void) {
+SV_REGISTER(ad05);
+bool SVFN(ad05)(void) {
     TEST_BEGIN("AD-05: A=1,D=1 normal read/write succeeds");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;

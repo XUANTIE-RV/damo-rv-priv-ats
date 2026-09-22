@@ -41,7 +41,7 @@ bool test_shvstvala_ima_01(void) {
     /* Two-stage identity map for VS-mode execution */
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     uintptr_t r_start = (uintptr_t)__vm_test_region_start;
@@ -90,7 +90,7 @@ bool test_shvstvala_lma_01(void) {
     /* Two-stage identity map */
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     uintptr_t r_start = (uintptr_t)__vm_test_region_start;
@@ -144,7 +144,7 @@ bool test_shvstvala_sma_01(void) {
     /* Two-stage identity map */
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
     uintptr_t r_start = (uintptr_t)__vm_test_region_start;

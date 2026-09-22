@@ -355,17 +355,34 @@ Relevant section definitions in linker script:
 Set `ENABLE_VM = 1` in extended Makefile to enable VM support:
 
 ```makefile
-# Sv39/Makefile
+# Sv39/Makefile (mode-intrinsic: pinned to Sv39)
 TARGET = sv39_test.elf
 ENABLE_VM = 1
-EXT_OBJS = main.o
+EXT_OBJS = \
+    main.o \
+    tests/test_register.o
 include ../common/Makefile.common
+
+# S-stage paging mode: Sv39 (appended after include, so the per-dir -D wins)
+CFLAGS += -DSUITE_SATP_MODE=SATP_MODE_SV39
+```
+
+Mode-agnostic Sv\* extension suites instead follow the platform via `?=`:
+
+```makefile
+# e.g. Svadu/Makefile (mode-agnostic)
+TARGET = svadu_test.elf
+ENABLE_VM = 1
+include ../common/Makefile.common
+SUITE_SATP_MODE ?= PLATFORM_SATP_MODE
 ```
 
 `ENABLE_VM = 1` automatically:
 - Links `common/vm/page_table.o` and `common/vm/satp.o`
 - Adds `-DENABLE_VM` compile macro
 - Adds `-I$(VM_DIR)` header search path
+
+> The full semantics, priority and per-mode derived macros of `SUITE_SATP_MODE` are described in "Paging Mode Configuration" below.
 
 ### Compile and Run
 
@@ -385,6 +402,80 @@ qemu-system-riscv64 -machine virt -nographic -bios none -kernel Sv39/sv39_test.e
 # Clean
 make clean
 ```
+
+---
+
+## Paging Mode Configuration
+
+For single-stage (non-Hypervisor) VM suites, the S-stage paging mode is determined at compile time by two cooperating layers: the platform capability `PLATFORM_SATP_MODE` and the suite selection `SUITE_SATP_MODE`.
+
+### Suite Organization: Shared Sources for Sv39/Sv48/Sv57
+
+`Sv39/`, `Sv48/` and `Sv57/` are a single shared code base; only the `-DSUITE_SATP_MODE` in each directory's Makefile selects the paging mode (mirroring the two-stage `Sv39x4/`, `Sv48x4/`, `Sv57x4/` suites). `Sv39/` is the master holding the real files; `Sv48/` and `Sv57/` reuse `tests/*`, `main.c` and `kernel.ld` via symlinks (shown in git as file mode `100644 -> 120000`), keeping only their own Makefile.
+
+Other **mode-agnostic** Sv\* extension suites that use VM as their working environment (`Svade/`, `Svadu/`, `Svinval/`, `Svnapot/`, `Svpbmt/`, `Svvptc/`, `Svrsw60t59b/`, etc.) also build on this framework, but each keeps its own sources and follows the platform via `SUITE_SATP_MODE ?= PLATFORM_SATP_MODE`.
+
+### Platform Capability: PLATFORM_SATP_MODE
+
+`common/capabilities.h` (force-included into every translation unit; preprocessor-only, asm-safe) derives `SV39/48/57_AVAILABLE` from the platform config (`SV39/48/57_SUPPORTED` in `config/<platform>/rvtest_config.h`), then selects the platform's default usable paging mode with a "smallest-first" policy (Sv39 > Sv48 > Sv57):
+
+- `PLATFORM_SATP_MODE`: the S-stage mode, using SPEC encoding literals (Bare=0 / Sv39=8 / Sv48=9 / Sv57=10; rv32 fixed to Sv32=1).
+- `PLATFORM_SATP_MODE` is purely platform-derived and **never force-overridden**; it represents "the default mode this platform can use".
+
+> `capabilities.h` **deliberately provides no** `#ifndef SUITE_SATP_MODE` fallback: it is force-included before every `test_helpers.h`, so a fallback there would preempt the mode-intrinsic suites' (Sv39/48/57) mode definition and silently collapse Sv48/Sv57 to Sv39.
+
+### Suite Selection: SUITE_SATP_MODE
+
+The S-stage mode a suite actually runs is expressed by `SUITE_SATP_MODE`, decoupled from the platform capability. Two conventions:
+
+| Kind | Makefile form | Examples |
+|------|---------------|----------|
+| **Mode-agnostic** | `SUITE_SATP_MODE ?= PLATFORM_SATP_MODE` (follow platform) | Svade / Svadu / Svinval / Svnapot / Svpbmt / Svvptc / Ssccptr / Sstvala / Sstvecd / Svbare / Ss_CSR / Ss_Exceptions / Svrsw60t59b |
+| **Mode-intrinsic** | `CFLAGS += -DSUITE_SATP_MODE=SATP_MODE_SV39/48/57` (pin a specific mode) | Sv39 / Sv48 / Sv57 |
+
+All working-mode call sites — `pt_init()`, `MAKE_SATP()`, `REQUIRE_SATP_MODE()` gates — pass `SUITE_SATP_MODE`, never `PLATFORM_SATP_MODE` or a literal mode. Only cases whose *subject* is a specific mode's WARL behavior (e.g. the satp reserved-MODE enumeration, or the target mode of a cross-mode switch) keep explicit constants.
+
+### Command-line Override and Priority
+
+`common/Makefile.common` provides a diagnostic knob to temporarily rewrite the suite mode at build time:
+
+```
+make SATP_MODE=sv39|sv48|sv57     # -> -DSUITE_SATP_MODE=SATP_MODE_SV*
+```
+
+Priority: `command-line knob > suite Makefile's SUITE_SATP_MODE ?= default > test_helpers.h #ifndef fallback`.
+
+> Note: for the mode-intrinsic suites (Sv39/48/57) the `-DSUITE_SATP_MODE=...` is a **bare `CFLAGS +=`** appended *after* `include ../common/Makefile.common`, so it comes after the `-D` emitted by the command-line knob; for a duplicate macro the later one wins, hence `make SATP_MODE=` does not change these three suites' mode (consistent with the two-stage Sv\*x4 suites). Mode-agnostic suites use a `?=` variable, which the command-line `:=` overrides normally.
+
+### Per-mode Derived Macros (Sv39/48/57 shared sources)
+
+Because Sv39/48/57 share the same `Sv39/tests/` sources, every mode-varying element is derived from `SUITE_SATP_MODE` in `Sv39/tests/test_helpers.h`, keeping the test bodies byte-identical:
+
+| Macro | Sv39 | Sv48 | Sv57 | Purpose |
+|-------|------|------|------|---------|
+| `SUITE_MODE_NAME` | "Sv39" | "Sv48" | "Sv57" | mode name in banner / TEST_BEGIN |
+| `SV_FN_BASE` | `test_sv39_` | `test_sv48_` | `test_sv57_` | test function name prefix |
+| `ID_MAP_1G/2M/4K` | MAP-01/02/03 | MAP-05/06/07 | MAP-08/09/10 | unified `vm_test_plan.md` ID space |
+| `ID_SIGN_NONCANON` | SIGN-03 | SIGN-05 | SIGN-07 | non-canonical VA case ID |
+| `ID_WALK_FULL` | WALK-01 | WALK-02 | WALK-03 | full-walk case ID |
+| `ID_SATP_ENABLE` | SATP-02 | SATP-03 | SATP-04 | enable-VM case ID |
+| `ID_SATP_SWITCH` | SATP-05 | SATP-06 | (none) | mode-switch case ID |
+| `SUITE_NONCANON_VA` | bit39 boundary | bit48 boundary | bit57 boundary | non-canonical VA constant |
+| `SUITE_ROOT_VPN` / `SUITE_ROOT_LEVEL_STR` | VA_VPN2 / "L2" | VA_VPN3 / "L3" | VA_VPN4 / "L4" | root-level PTE check |
+| `SUITE_WALK_DEPTH` | "three-level" | "four-level" | "five-level" | walk-depth wording |
+| `SUITE_NEXT_MODE(_NAME)` | Sv48 | Sv57 | (none) | mode-switch target |
+
+Two companion macro utilities:
+- `SVFN(name)`: token-pastes `test_svXX_##name`, preserving a distinct symbol name per mode.
+- `SV_REGISTER(name)`: a local equivalent of `TEST_REGISTER`. Required because `TEST_REGISTER(fn)`'s internal `fn##_ptr` paste suppresses expansion of a function-like `SVFN(x)` argument, so passing it directly would fail to compile.
+
+Sv57 is the highest mode with no higher mode to switch to, so the mode-switch case is compiled out with `#if SUITE_SATP_MODE != SATP_MODE_SV57` (Sv57 has one fewer case than Sv39/Sv48: 49 vs 50).
+
+### Paging Mode Gate Macro (REQUIRE_SATP_MODE)
+
+`common/hyp/hyp_test.h` provides the compile-time gate `REQUIRE_SATP_MODE(mode)`: whether `mode` is supported comes from the config-declared `SV39/48/57_AVAILABLE`; if unsupported it does `TEST_SKIP`, with **no runtime WARL probe**.
+
+The single-stage Sv39/48/57 suites do not include the Hypervisor headers, so an equivalent local `REQUIRE_SATP_MODE` is defined in `Sv39/tests/test_helpers.h` (guarded by `#ifndef`), depending only on the force-included `SV39/48/57_AVAILABLE` and `TEST_SKIP` from `test_framework.h`. For example, the "enable VM" case uses `REQUIRE_SATP_MODE(SUITE_SATP_MODE)` to decide whether to run, replacing the former Sv48-only runtime `satp.MODE` probe.
 
 ---
 
@@ -415,7 +506,7 @@ bool test_my_vm_test(void) {
     /* 1. Reset page table pool and initialize context */
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);  /* or SV48 / SV57 */
+    pt_init(&ctx, SUITE_SATP_MODE);  /* suite working mode; or pass SATP_MODE_SV39/48/57 explicitly */
 
     /* 2. Setup identity mapping */
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
@@ -503,35 +594,32 @@ vm_run_in_smode(&ctx, test_fn, arg);
 
 ## Existing Test Cases
 
-### Sv39 Tests (Sv39/main.c)
+Sv39/Sv48/Sv57 share the same set of cases under `Sv39/tests/`, organized by Group; the full list and pass criteria are in the test plan `DOCS/testplan/vm_test_plan.md`. Each mode's test IDs come from the plan's unified ID space, selected by the per-mode derived macros in `test_helpers.h`:
 
-| Test ID | Test Name | Page Size | Mapping Region |
-|---------|-----------|-----------|----------------|
-| SV39-01 | 1GB gigapage identity mapping | 1GB | 1GB starting at 0x80000000 |
-| SV39-02 | 2MB megapage identity mapping | 2MB | 32MB starting at 0x80000000 |
-| SV39-03 | 4KB page identity mapping | 4KB | 4MB starting at 0x80000000 |
+| Group | File | Cases | Sv39 ID | Sv48 ID | Sv57 ID |
+|-------|------|-------|---------|---------|---------|
+| 1 Basic mapping | test_mapping.c | 1G/2M/4K identity mapping | MAP-01/02/03 | MAP-05/06/07 | MAP-08/09/10 |
+| 2 Sign extension | test_mapping.c | non-canonical VA -> page fault | SIGN-03 | SIGN-05 | SIGN-07 |
+| 3 PTE validity | test_pte_valid.c | V=0 / R=0&W=1 | VALID-01~05 | same | same |
+| 4 Permission bits | test_pte_perms.c | RWX combinations | RWX-01~05 | same | same |
+| 5 U-bit | test_upriv.c | U/S-mode access | UPRIV-03~07 | same | same |
+| 6 SUM | test_upriv.c | SUM control | SUM-01~05 | same | same |
+| 7 MXR | test_mxr.c | MXR control | MXR-01~05 | same | same |
+| 8 Alignment | test_superpage.c | superpage misalign | ALIGN-01~02 | same | same |
+| 9 Walk | test_superpage.c | full walk + non-leaf/intermediate leaf | WALK-01/04/05 | WALK-02/04/05 | WALK-03/04/05 |
+| 10 A/D bits | test_ad_bits.c | A/D management | AD-01~05 | same | same |
+| 11 satp | test_satp.c | Bare/enable/switch/ASID/reserved MODE | SATP-01/02/05/07/09 | SATP-01/03/06/07/09 | SATP-01/04/07/09 |
+| 12 SFENCE | test_sfence_rsvd.c | sfence.vma takes effect | SFENCE-01/04/05 | same | same |
+| 13 Reserved bits | test_sfence_rsvd.c | PTE reserved bits | RSVD-01~02 | same | same |
+| 14 Non-leaf PTE | test_sfence_rsvd.c | non-leaf D=A=U=0 | NLPTE-04 | same | same |
 
-### Sv48 Tests (Sv48/main.c)
+Total cases: **Sv39 = 50, Sv48 = 50, Sv57 = 49** (Sv57 has no mode-switch case SATP-05/06 since it is the highest mode).
 
-| Test ID | Test Name | Page Size | Mapping Region |
-|---------|-----------|-----------|----------------|
-| SV48-01 | 1GB gigapage identity mapping | 1GB | 1GB starting at 0x80000000 |
-| SV48-02 | 2MB megapage identity mapping | 2MB | 32MB starting at 0x80000000 |
-| SV48-03 | 4KB page identity mapping | 4KB | 4MB starting at 0x80000000 |
-
-### Sv57 Tests (Sv57/main.c)
-
-| Test ID | Test Name | Page Size | Mapping Region |
-|---------|-----------|-----------|----------------|
-| SV57-01 | 1GB gigapage identity mapping | 1GB | 1GB starting at 0x80000000 |
-| SV57-02 | 2MB megapage identity mapping | 2MB | 32MB starting at 0x80000000 |
-| SV57-03 | 4KB page identity mapping | 4KB | 4MB starting at 0x80000000 |
-
-Verification method for each test case:
-1. Initialize page table context
-2. Setup identity mapping
-3. Execute read-write test in S-mode via `vm_run_in_smode()`
-4. Verify that written magic value can be correctly read back
+Typical verification method per case:
+1. `pt_pool_reset()` + `pt_init(&ctx, SUITE_SATP_MODE)` to initialize the page table context
+2. `pt_setup_identity_mapping()` / `pt_map_page()` to build mappings
+3. Execute read/write/exec tests in S/U-mode via `vm_run_in_smode()` / `vm_run_in_umode()`
+4. Use `TEST_ASSERT` to check the return value (success / expected page-fault cause)
 
 ---
 

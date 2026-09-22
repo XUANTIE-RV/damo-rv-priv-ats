@@ -42,14 +42,14 @@ bool test_hzlrsc_27_misaligned_lr(void)
     TEST_BEGIN("HZLRSC-27: misaligned LR -> cause 4/5, deleg per hedeleg");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t mis = (uintptr_t)test_data_area + 2;   /* 2-byte aligned */
 
     /* Part A: hedeleg[4]/[5] = 0 -> captured at HS/M level. */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hedeleg_write(hedeleg_read() & ~((1UL << 4) | (1UL << 5)));
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lr_w, mis);
@@ -65,7 +65,7 @@ bool test_hzlrsc_27_misaligned_lr(void)
     printf("  [INFO] (A) misaligned LR cause=%lu\n", (unsigned long)cause_a);
 
     /* Part B: hedeleg[4]/[5] = 1 -> delivered to VS-mode. */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hyp_delegate_to_vs((1UL << 4) | (1UL << 5), 0);
     hz_vs_handler_install();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lr_w, mis);
@@ -91,14 +91,14 @@ bool test_hzlrsc_28_misaligned_sc(void)
     TEST_BEGIN("HZLRSC-28: misaligned SC -> cause 6/7, deleg per hedeleg");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t mis = (uintptr_t)test_data_area + 2;
 
     /* Part A: hedeleg[6]/[7] = 0 -> captured at HS/M level. */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hedeleg_write(hedeleg_read() & ~((1UL << 6) | (1UL << 7)));
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_sc_w, mis);
@@ -114,7 +114,7 @@ bool test_hzlrsc_28_misaligned_sc(void)
     printf("  [INFO] (A) misaligned SC cause=%lu\n", (unsigned long)cause_a);
 
     /* Part B: hedeleg[6]/[7] = 1 -> delivered to VS-mode. */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hyp_delegate_to_vs((1UL << 6) | (1UL << 7), 0);
     hz_vs_handler_install();
     (void)two_stage_run_in_vs(&ctx, hz_vs_sc_w, mis);
@@ -142,14 +142,14 @@ bool test_hzlrsc_29_misaligned_trap_context(void)
     TEST_BEGIN("HZLRSC-29: misaligned LR/SC HS-mode trap context");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t mis = (uintptr_t)test_data_area + 2;
 
     /* LR misaligned: route causes 4/5 into HS-mode for GVA/SPV. */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hedeleg_write(hedeleg_read() & ~((1UL << 4) | (1UL << 5)));
     hz_clear_gva_spv();
     hz_route_to_hs((1UL << 4) | (1UL << 5));
@@ -181,7 +181,7 @@ bool test_hzlrsc_29_misaligned_trap_context(void)
                        (htinst >> 15) & 0x1FUL, (uintptr_t)0);
 
     /* SC misaligned: same context, store/AMO class. */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hedeleg_write(hedeleg_read() & ~((1UL << 6) | (1UL << 7)));
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_sc_w, mis);

@@ -28,7 +28,7 @@ bool test_sinval_ordering_complete(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Initial mapping: RW */
@@ -74,7 +74,7 @@ bool test_sinval_ordering_missing_w_inval(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Initial mapping: RW */
@@ -120,7 +120,7 @@ bool test_sinval_ordering_missing_inval_ir(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Initial mapping: RW */
@@ -170,7 +170,7 @@ bool test_sinval_ordering_equivalence(void) {
     /* --- Test with SFENCE.VMA --- */
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping (sfence)", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -193,7 +193,7 @@ bool test_sinval_ordering_equivalence(void) {
 
     /* --- Test with three-instruction sequence --- */
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping (sinval)", setup_code_mapping(&ctx) == 0);
 
     pt_map_page(&ctx, test_va, test_va,
@@ -236,7 +236,7 @@ bool test_sinval_ordering_sfence_as_fence(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Initial mapping: R-only */
@@ -277,7 +277,7 @@ bool test_sinval_ordering_multi_sinval_sfence(void) {
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     /* Map two test pages: R-only */

@@ -116,12 +116,12 @@ bool test_hzpm_trap_01(void) {
     TEST_BEGIN("HZPM-TRAP-01: vstval contains transformed address");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     /* Delegate load page-fault (cause=13) to VS-mode */
     hyp_delegate_to_vs(1ULL << CAUSE_LOAD_PAGE_FAULT, 0);
@@ -153,12 +153,12 @@ bool test_hzpm_trap_02(void) {
     TEST_BEGIN("HZPM-TRAP-02: stval contains transformed GVA");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     /* Tagged GPA whose *transformed* (zero-extended) address is
      * unmapped in G-stage -> guest-page-fault to HS/M. stval must
@@ -228,12 +228,12 @@ bool test_hzpm_trap_04(void) {
 #endif
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     /* Delegate breakpoint (cause=3) to VS-mode */
     hyp_delegate_to_vs(1ULL << CAUSE_BREAKPOINT, 0);
@@ -274,12 +274,12 @@ bool test_hzpm_trap_05(void) {
     TEST_BEGIN("HZPM-TRAP-05: MXR suppresses PM in VS-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     /* norm:pm_mxr_exception: when MXR is in effect at the effective
      * privilege mode, pointer masking does not apply. With
@@ -311,12 +311,12 @@ bool test_hzpm_trap_06(void) {
     TEST_BEGIN("HZPM-TRAP-06: instruction fetch not masked (VS-mode)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SSNPM_AVAILABLE) TEST_SKIP("Ssnpm hyp controls (henvcfg.PMM/hstatus.HUPMM) not implemented");
-    REQUIRE_VSATP_SV39();
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     if (!hzpm_try_set_vs_pmm(PMM_PMLEN7))
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);
 
     /* norm:pm_not_apply_implicit: PM does not apply to instruction
      * fetches. Jumping to a tagged function address must fault

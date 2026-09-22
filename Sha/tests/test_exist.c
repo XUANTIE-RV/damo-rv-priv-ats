@@ -113,13 +113,13 @@ bool test_sha_exist_shvsatpa(void) {
     TEST_BEGIN("SHA-EXIST-06: Shvsatpa (vsatp supports satp modes)");
 
     /* Probe satp for Sv39 */
-    bool satp_sv39 = satp_supports_mode(SATP_MODE_SV39);
+    bool satp_sv39 = satp_supports_mode(PLATFORM_SATP_MODE);
     if (!satp_sv39) {
         TEST_SKIP("satp does not support Sv39, cannot verify Shvsatpa");
     }
 
     /* Shvsatpa: vsatp must also support Sv39 */
-    bool vsatp_sv39 = vsatp_supports_mode(SATP_MODE_SV39);
+    bool vsatp_sv39 = vsatp_supports_mode(PLATFORM_SATP_MODE);
     TEST_ASSERT("vsatp supports Sv39 (same as satp)", vsatp_sv39);
 
     HYP_TEST_END();
@@ -147,12 +147,12 @@ TEST_REGISTER(test_sha_exist_shgatpa_svnnx4);
 bool test_sha_exist_shgatpa_svnnx4(void) {
     TEST_BEGIN("SHA-EXIST-08: Shgatpa (hgatp SvNNx4 per satp SvNN)");
 
-    bool satp_sv39 = satp_supports_mode(SATP_MODE_SV39);
+    bool satp_sv39 = satp_supports_mode(PLATFORM_SATP_MODE);
     if (!satp_sv39) {
         TEST_SKIP("satp does not support Sv39");
     }
 
-    bool hgatp_sv39x4 = hgatp_supports_mode(HGATP_MODE_SV39X4);
+    bool hgatp_sv39x4 = hgatp_supports_mode(PLATFORM_HGATP_MODE);
     TEST_ASSERT("hgatp supports Sv39x4 (Shgatpa: satp Sv39 -> hgatp Sv39x4)",
                 hgatp_sv39x4);
 

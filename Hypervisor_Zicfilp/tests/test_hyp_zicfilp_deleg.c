@@ -72,7 +72,7 @@ bool test_hcfi_lp_35(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -125,7 +125,7 @@ bool test_hcfi_lp_36(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -179,7 +179,7 @@ bool test_hcfi_lp_37(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -222,7 +222,7 @@ bool test_hcfi_lp_38(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -271,7 +271,7 @@ bool test_hcfi_lp_39(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -322,7 +322,7 @@ bool test_hcfi_lp_40(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);
@@ -379,7 +379,7 @@ bool test_hcfi_lp_41(void) {
     two_stage_ctx_t ctx;
     pt_pool_reset();
     gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     mseccfg_set(MSECCFG_MLPE);

@@ -32,7 +32,6 @@
 #include "hyp/test_vs_helpers.h"
 #include "hyp/hyp_trap.h"
 #include "hyp/hyp_vs_trap.h"
-#include "hyp/hyp_platform.h"
 #include "hyp_svinval_insn.h"
 
 /* ===================================================================

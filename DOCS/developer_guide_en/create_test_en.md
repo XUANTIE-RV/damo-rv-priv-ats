@@ -356,7 +356,6 @@ void hsv_d(uintptr_t addr, uint64_t val);  /* Write doubleword (RV64) */
 | `CHECK_HTVAL(msg, expected_gpa_shifted)` | Check htval value |
 | `CHECK_HTINST(msg, expected)` | Check htinst value |
 | `CHECK_GVA(msg, expected)` | Check hstatus.GVA |
-| `REQUIRE_EXT(field)` | Skip if sub-extension not implemented |
 
 **Delegation Helpers:**
 

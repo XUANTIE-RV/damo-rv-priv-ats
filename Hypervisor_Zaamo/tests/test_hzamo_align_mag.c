@@ -48,8 +48,8 @@ bool test_hzamo_21_misaligned_amo(void)
     TEST_BEGIN("HZAMO-21: misaligned AMO (no MAG) -> cause 6/7");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* Granule-straddling offset when MAG is declared, else any misaligned. */
     uintptr_t off = HZAMO_MAG_DECLARED ? HZAMO_MIS_STRADDLE : HZAMO_MIS_INTRA;
@@ -57,7 +57,7 @@ bool test_hzamo_21_misaligned_amo(void)
 
     /* Part A: hedeleg[6]/[7]=0 -> captured at HS/M level. */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hedeleg_write(hedeleg_read() & ~((1UL << 6) | (1UL << 7)));
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amo_add_w, mis);
@@ -74,7 +74,7 @@ bool test_hzamo_21_misaligned_amo(void)
                                 CAUSE_STORE_ACCESS_FAULT));
 
     /* Part B: hedeleg[6]/[7]=1 -> delivered to VS-mode. */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hyp_delegate_to_vs((1UL << 6) | (1UL << 7), 0);
     hz_vs_handler_install();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amo_add_w, mis);
@@ -100,15 +100,15 @@ bool test_hzamo_22_mag_intra_no_fault(void)
     TEST_BEGIN("HZAMO-22: MAG intra-granule misaligned AMO -> no fault");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!HZAMO_MAG_DECLARED)
         TEST_SKIP("platform declares no misaligned atomicity granule (Zama16b)");
 
     uintptr_t mis = (uintptr_t)test_data_area + HZAMO_MIS_INTRA;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amo_add_w, mis);
     bool fired = trap_was_triggered();
@@ -135,8 +135,8 @@ bool test_hzamo_23_mag_intra_gstage_fault(void)
     TEST_BEGIN("HZAMO-23: MAG intra-granule AMO G-stage W=0 -> cause 23");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     if (!HZAMO_MAG_DECLARED)
         TEST_SKIP("platform declares no misaligned atomicity granule (Zama16b)");
 
@@ -144,7 +144,7 @@ bool test_hzamo_23_mag_intra_gstage_fault(void)
     uintptr_t mis = va + HZAMO_MIS_INTRA;
 
     two_stage_ctx_t ctx;
-    ts2_setup_with_g_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_G_RU);
+    ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amo_add_w, mis);
     bool fired = trap_was_triggered();
@@ -177,14 +177,14 @@ bool test_hzamo_24_misaligned_trap_context(void)
     TEST_BEGIN("HZAMO-24: misaligned AMO HS-mode trap context");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAAMO_AVAILABLE) TEST_SKIP("Zaamo not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t off = HZAMO_MAG_DECLARED ? HZAMO_MIS_STRADDLE : HZAMO_MIS_INTRA;
     uintptr_t mis = (uintptr_t)test_data_area + off;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hedeleg_write(hedeleg_read() & ~((1UL << 6) | (1UL << 7)));
     hz_clear_gva_spv();
     hz_route_to_hs((1UL << 6) | (1UL << 7));

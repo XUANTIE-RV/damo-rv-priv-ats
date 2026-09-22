@@ -24,14 +24,14 @@ bool test_hzacas_34_no_guest_cas_equivalent(void)
 {
     TEST_BEGIN("HZACAS-34: (record) HLV/HSV exist, no guest-amocas equivalent");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     *(volatile uint64_t *)va = 0xDEADBEEF12345678ULL;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     two_stage_enable(&ctx, 0);
     hstatus_set_spvp(PRIV_S);
 

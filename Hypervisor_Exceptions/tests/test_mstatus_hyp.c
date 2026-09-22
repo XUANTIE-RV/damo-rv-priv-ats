@@ -174,7 +174,7 @@ TEST_REGISTER(mstatus_gva_m_mode);
 bool mstatus_gva_m_mode(void) {
     TEST_BEGIN("MSTAT-05: Verify M-mode GVA correctness");
 
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* Fire a VS load fault to trigger GPF trap to M-mode.
      * Clear PTE_R so the G-stage leaf is non-readable, causing a
@@ -375,12 +375,12 @@ TEST_REGISTER(mstatus_mprv_hlv_hsv);
 bool mstatus_mprv_hlv_hsv(void) {
     TEST_BEGIN("MSTAT-13: Verify MPRV does not affect HLV/HSV");
 
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* Set up G-stage identity mapping + VS-stage Bare. */
     gpt_pool_reset();
     two_stage_ctx_t ctx;
-    two_stage_init(&ctx, SATP_MODE_BARE, HGATP_MODE_SV39X4);
+    two_stage_init(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     /* Identity-map low memory (kernel/UART region). */
     uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);

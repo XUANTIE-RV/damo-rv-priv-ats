@@ -34,7 +34,7 @@ bool test_hcfi_ss_15(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(false, true);
 
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_read_ssp, 0);
@@ -52,7 +52,7 @@ bool test_hcfi_ss_16(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
 
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_write_ssp, 0xCAFE);
@@ -73,7 +73,7 @@ bool test_hcfi_ss_17(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, false);
 
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_read_ssp, 0);
@@ -91,7 +91,7 @@ bool test_hcfi_ss_18(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(false, true);
     senvcfg_set(SENVCFG_SSE);
 
@@ -110,7 +110,7 @@ bool test_hcfi_ss_19(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     senvcfg_clear(SENVCFG_SSE);
 
@@ -130,7 +130,7 @@ bool test_hcfi_ss_20(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
     senvcfg_set(SENVCFG_SSE);
 
@@ -153,7 +153,7 @@ bool test_hcfi_ss_21(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full_u(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, false);
 
     uintptr_t r = two_stage_run_in_vu(&ctx, vu_read_ssp, 0);
@@ -171,7 +171,7 @@ bool test_hcfi_ss_22(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
 
     /* VS-mode writes ssp.
@@ -198,7 +198,7 @@ bool test_hcfi_ss_23(void) {
 
     two_stage_ctx_t ctx;
     pt_pool_reset(); gpt_pool_reset();
-    ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
 
     /* Set ssp to non-XLEN-aligned value */

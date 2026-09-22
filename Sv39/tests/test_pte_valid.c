@@ -14,13 +14,13 @@
  *   VALID-05: R=0,W=1 reserved encoding triggers store page fault
  */
 
-TEST_REGISTER(test_sv39_valid01);
-bool test_sv39_valid01(void) {
+SV_REGISTER(valid01);
+bool SVFN(valid01)(void) {
     TEST_BEGIN("VALID-01: V=0 PTE triggers load page fault");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -35,13 +35,13 @@ bool test_sv39_valid01(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_valid02);
-bool test_sv39_valid02(void) {
+SV_REGISTER(valid02);
+bool SVFN(valid02)(void) {
     TEST_BEGIN("VALID-02: V=0 PTE triggers store page fault");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -56,13 +56,13 @@ bool test_sv39_valid02(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_valid03);
-bool test_sv39_valid03(void) {
+SV_REGISTER(valid03);
+bool SVFN(valid03)(void) {
     TEST_BEGIN("VALID-03: V=0 PTE triggers instruction page fault");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_exec_page;
@@ -78,13 +78,13 @@ bool test_sv39_valid03(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_valid04);
-bool test_sv39_valid04(void) {
+SV_REGISTER(valid04);
+bool SVFN(valid04)(void) {
     TEST_BEGIN("VALID-04: R=0,W=1 reserved encoding triggers load page fault");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -99,13 +99,13 @@ bool test_sv39_valid04(void) {
     TEST_END();
 }
 
-TEST_REGISTER(test_sv39_valid05);
-bool test_sv39_valid05(void) {
+SV_REGISTER(valid05);
+bool SVFN(valid05)(void) {
     TEST_BEGIN("VALID-05: R=0,W=1 reserved encoding triggers store page fault");
 
     pt_context_t ctx;
     pt_pool_reset();
-    pt_init(&ctx, SATP_MODE_SV39);
+    pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;

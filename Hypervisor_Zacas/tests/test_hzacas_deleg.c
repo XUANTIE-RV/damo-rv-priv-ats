@@ -30,7 +30,7 @@ static int hzacas_cas_vs_fault(uintptr_t victim_va, uintptr_t vs_flags,
                                uintptr_t exp_cause, const char *tag)
 {
     two_stage_ctx_t ctx;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, victim_va, vs_flags);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, victim_va, vs_flags);
     /* Preset the page through the identity mapping (M-mode). */
     *(volatile uint32_t *)victim_va = 0x00001000u;
 
@@ -97,8 +97,8 @@ bool test_hzacas_06_cas_success_no_write(void)
     TEST_BEGIN("HZACAS-06: success amocas to W=0 -> store pf (15) to VS");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     int ok = hzacas_cas_vs_fault((uintptr_t)test_fault_page, HZ_VS_R,
                                  /*match*/1, /*deleg*/1,
@@ -121,8 +121,8 @@ bool test_hzacas_07_cas_failed_no_write(void)
     TEST_BEGIN("HZACAS-07: FAILED amocas to W=0 -> still store pf (15)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     int ok = hzacas_cas_vs_fault((uintptr_t)test_fault_page, HZ_VS_R,
                                  /*match*/0, /*deleg*/1,
@@ -144,12 +144,12 @@ bool test_hzacas_08_cas_unreadable_store_class(void)
     TEST_BEGIN("HZACAS-08: amocas to R=0 page -> store pf (15), not load (13)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_fault_page;
     two_stage_ctx_t ctx;
-    ts2_setup_with_vs_victim(&ctx, HZ_VSMODE, HZ_GMODE, va, HZ_VS_XONLY);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_VS_XONLY);
     *(volatile uint32_t *)va = 0x00001000u;
     hz_cas_cmp = 0x00001000u;
     hz_cas_swap = 0x00002000u;
@@ -180,8 +180,8 @@ bool test_hzacas_09_hedeleg0_to_hs(void)
     TEST_BEGIN("HZACAS-09: hedeleg[15]=0 -> amocas fault stays at HS/M (15)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     int ok_s = hzacas_cas_vs_fault((uintptr_t)test_fault_page, HZ_VS_R,
                                    /*match*/1, /*deleg*/0,
@@ -207,8 +207,8 @@ bool test_hzacas_10_success_failed_consistency(void)
     TEST_BEGIN("HZACAS-10: success and failed CAS both -> store pf (15)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     int ok_s = hzacas_cas_vs_fault((uintptr_t)test_fault_page, HZ_VS_R,
                                    /*match*/1, /*deleg*/0,

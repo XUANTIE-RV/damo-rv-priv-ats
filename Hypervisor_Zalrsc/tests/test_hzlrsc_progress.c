@@ -73,14 +73,14 @@ bool test_hzlrsc_35_constrained_forward_progress(void)
     TEST_BEGIN("HZLRSC-35: VS-mode constrained LR/SC loop forward progress");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     *(volatile uint32_t *)va = 0;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     trap_expect_begin();
     uintptr_t ok = two_stage_run_in_vs(&ctx, hz_vs_constrained_loop_w, va);
@@ -110,14 +110,14 @@ bool test_hzlrsc_36_constrained_with_hyp_intervention(void)
     TEST_BEGIN("HZLRSC-36: constrained loop compliant under hyp intervention");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     *(volatile uint32_t *)va = 0;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Bounded rounds: each round runs a constrained loop attempt in
      * VS-mode; between rounds the hypervisor (M-mode) stores to the same
@@ -185,14 +185,14 @@ bool test_hzlrsc_37_unconstrained_record(void)
     TEST_BEGIN("HZLRSC-37: (record) unconstrained LR/SC sequence");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     *(volatile uint32_t *)va = 0;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     trap_expect_begin();
     uintptr_t succ = two_stage_run_in_vs(&ctx, hz_vs_unconstrained_seq_w, va);
@@ -222,14 +222,14 @@ bool test_hzlrsc_38_reservation_survival_record(void)
     TEST_BEGIN("HZLRSC-38: (record) reservation survival across trap round-trip");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZALRSC_AVAILABLE) TEST_SKIP("Zalrsc not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     uintptr_t va = (uintptr_t)test_data_area;
     *(volatile uint32_t *)va = 0;
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Phase 1: VS-mode lr.w establishes a reservation, then the trampoline
      * ecall exits to the hypervisor (a trap round-trip). */

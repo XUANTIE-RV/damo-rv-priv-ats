@@ -87,11 +87,11 @@ bool test_hzabha_02_vs_exec_no_cause22(void)
     TEST_BEGIN("HZABHA-02: VS-mode byte/half AMOs execute, never cause=22");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t va = (uintptr_t)test_data_area;
     *(volatile uint64_t *)va = 0x0011223344556677ULL;
 
@@ -120,11 +120,11 @@ bool test_hzabha_03_vu_exec_no_cause22(void)
     TEST_BEGIN("HZABHA-03: VU-mode byte/half AMOs execute, never cause=22");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
-    ts2_setup_full_u(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t va = (uintptr_t)test_data_area;
     *(volatile uint64_t *)va = 0x0011223344556677ULL;
 
@@ -169,8 +169,8 @@ bool test_hzabha_04_vs_hs_semantic_parity(void)
     TEST_BEGIN("HZABHA-04: VS-mode byte/half AMO semantics == HS-mode");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZABHA_AVAILABLE) TEST_SKIP("Zabha not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* HS-mode byte run: old byte 0x81 -> rd sign-extended. */
     uintptr_t hs_addr = (uintptr_t)&hzabha_hs_slot[0];
@@ -180,7 +180,7 @@ bool test_hzabha_04_vs_hs_semantic_parity(void)
 
     /* VS-mode byte run. */
     two_stage_ctx_t ctx;
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t vs_addr = (uintptr_t)test_data_area;
     *(volatile uint8_t *)vs_addr = 0x81u;
     g_hz_bh_rd = 0;
@@ -199,7 +199,7 @@ bool test_hzabha_04_vs_hs_semantic_parity(void)
     /* Half-word parity. */
     *(volatile uint16_t *)hs_addr = 0x8001u;
     uintptr_t hs_rd_h = run_in_priv(PRIV_S, hzabha_bh_semantic_h, hs_addr);
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     *(volatile uint16_t *)vs_addr = 0x8001u;
     g_hz_bh_rd = 0;
     trap_expect_begin();

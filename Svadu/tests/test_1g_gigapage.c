@@ -24,7 +24,7 @@
 static uintptr_t setup_1g_dual_mapping_svadu(pt_context_t *ctx,
                                              uintptr_t test_flags) {
     pt_pool_reset();
-    pt_init(ctx, SATP_MODE_SV39);
+    pt_init(ctx, SUITE_SATP_MODE);
 
     /* Round UP to next 1GB boundary so the gigapage region is fully
      * backed by real DRAM. For 1GB-aligned MEM_BASE this is a no-op. */

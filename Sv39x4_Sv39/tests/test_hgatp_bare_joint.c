@@ -31,8 +31,6 @@
 #error "SUITE_VSATP_MODE must be defined before including this file"
 #endif
 
-#define G25_VSMODE  SUITE_VSATP_MODE
-#define G25_GMODE   SUITE_HGATP_MODE
 
 /* norm:hgatp_mode_bare_trans: guest-page-fault (20/21/23) can never
  * be raised while hgatp.MODE=Bare. */
@@ -52,12 +50,12 @@ static bool g25_cause_not_guest_fault(uintptr_t cause)
 TEST_REGISTER(test_ts_bare_01_vs_fault_code);
 bool test_ts_bare_01_vs_fault_code(void) {
     TEST_BEGIN("TS-BARE-01: VS-stage fault stays page-fault under G=Bare");
-    REQUIRE_VSATP_MODE(G25_VSMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
     /* VS-stage victim PTE V=0; G-stage Bare (no tables at all). */
-    ts2_setup_with_vs_victim(&ctx, G25_VSMODE, HGATP_MODE_BARE, va, 0);
+    ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE, va, 0);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, test_vs_load_expect_fault, va);
@@ -191,11 +189,11 @@ bool test_ts_bare_03_mprv_mpv(void) {
 TEST_REGISTER(test_ts_bare_04_bare_to_sv);
 bool test_ts_bare_04_bare_to_sv(void) {
     TEST_BEGIN("TS-BARE-04: Bare -> Sv*x4 switch with HFENCE.GVMA");
-    REQUIRE_HGATP_MODE(G25_GMODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_BARE, G25_GMODE);
+    two_stage_init(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     /* Pre-build the identity G-stage mapping while hgatp is Bare. */
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
@@ -232,11 +230,11 @@ bool test_ts_bare_04_bare_to_sv(void) {
 TEST_REGISTER(test_ts_bare_05_sv_to_bare);
 bool test_ts_bare_05_sv_to_bare(void) {
     TEST_BEGIN("TS-BARE-05: Sv*x4 -> Bare switch with HFENCE.GVMA");
-    REQUIRE_HGATP_MODE(G25_GMODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_BARE, G25_GMODE);
+    two_stage_init(&ctx, SATP_MODE_BARE, SUITE_HGATP_MODE);
 
     uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
     int ret = two_stage_setup_identity(&ctx, base, PAGE_SIZE_1G,

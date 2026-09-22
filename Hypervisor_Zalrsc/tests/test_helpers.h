@@ -39,16 +39,6 @@
 #include "hyp/two_stage_helpers.h"
 #include "hyp/hyp_test_helpers.h"
 
-/* Suite two-stage modes (default Sv39 + Sv39x4; Makefile may override). */
-#ifndef SUITE_VSATP_MODE
-#define SUITE_VSATP_MODE   SATP_MODE_SV39
-#endif
-#ifndef SUITE_HGATP_MODE
-#define SUITE_HGATP_MODE   HGATP_MODE_SV39X4
-#endif
-#define HZ_VSMODE   SUITE_VSATP_MODE
-#define HZ_GMODE    SUITE_HGATP_MODE
-
 /* ===================================================================
  * Feature availability
  *

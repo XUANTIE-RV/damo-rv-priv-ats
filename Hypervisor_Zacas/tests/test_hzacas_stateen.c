@@ -28,8 +28,8 @@ bool test_hzacas_36_hstateen0_no_gate(void)
     TEST_BEGIN("HZACAS-36: hstateen0=0 does not gate amocas in VS/VU");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZACAS_AVAILABLE) TEST_SKIP("Zacas not implemented");
-    REQUIRE_VSATP_MODE(HZ_VSMODE);
-    REQUIRE_HGATP_MODE(HZ_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     if (!SMSTATEEN_AVAILABLE)
         TEST_SKIP("Smstateen not implemented");
@@ -50,7 +50,7 @@ bool test_hzacas_36_hstateen0_no_gate(void)
     two_stage_ctx_t ctx;
 
     /* VS-mode: success-path amocas.w, expect no trap / no cause=2/22. */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     *(volatile uint32_t *)va = 0x00001000u;
     hz_cas_cmp = 0x00001000u;
     hz_cas_swap = 0x00002000u;
@@ -62,7 +62,7 @@ bool test_hzacas_36_hstateen0_no_gate(void)
     ts2_finish(&ctx);
 
     /* VS-mode: failure-path amocas.w. */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     *(volatile uint32_t *)va = 0x00003000u;
     hz_cas_cmp = 0x00009999u;   /* mismatch */
     hz_cas_swap = 0x00004000u;
@@ -74,7 +74,7 @@ bool test_hzacas_36_hstateen0_no_gate(void)
     ts2_finish(&ctx);
 
     /* VU-mode: success-path amocas.w (U=1 pages). */
-    ts2_setup_full_u(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     *(volatile uint32_t *)va = 0x00005000u;
     hz_cas_cmp = 0x00005000u;
     hz_cas_swap = 0x00006000u;
@@ -87,7 +87,7 @@ bool test_hzacas_36_hstateen0_no_gate(void)
 
 #if __riscv_xlen == 64
     /* VS-mode: amocas.d success path. */
-    ts2_setup_full(&ctx, HZ_VSMODE, HZ_GMODE);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     *(volatile uint64_t *)va = 0x0000000010000000ULL;
     hz_cas_cmp = 0x0000000010000000ULL;
     hz_cas_swap = 0x0000000020000000ULL;

@@ -31,8 +31,6 @@
 #error "SUITE_VSATP_MODE must be defined before including this file"
 #endif
 
-#define G8_GMODE   SUITE_HGATP_MODE
-#define G8_VSMODE  SUITE_VSATP_MODE
 
 #ifndef SSTATUS_MXR
 #define SSTATUS_MXR  (1UL << 19)
@@ -79,12 +77,12 @@ static void g8_run_capture(two_stage_ctx_t *ctx,
 TEST_REGISTER(test_ts_mxr_01_no_mxr);
 bool test_ts_mxr_01_no_mxr(void) {
     TEST_BEGIN("TS-MXR-01: VS X-only + no MXR -> page-fault (13)");
-    REQUIRE_VSATP_MODE(G8_VSMODE);
-    REQUIRE_HGATP_MODE(G8_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_dual_victim(&ctx, G8_VSMODE, G8_GMODE, va,
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va,
                                G8_VS_X, G8_G_RWXU);
     g8_set_sstatus_mxr(0);
     g8_set_vsstatus_mxr(0);
@@ -103,12 +101,12 @@ bool test_ts_mxr_01_no_mxr(void) {
 TEST_REGISTER(test_ts_mxr_02_vs_mxr);
 bool test_ts_mxr_02_vs_mxr(void) {
     TEST_BEGIN("TS-MXR-02: VS X-only + vsstatus.MXR=1 -> success");
-    REQUIRE_VSATP_MODE(G8_VSMODE);
-    REQUIRE_HGATP_MODE(G8_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_dual_victim(&ctx, G8_VSMODE, G8_GMODE, va,
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va,
                                G8_VS_X, G8_G_RWXU);
     g8_set_sstatus_mxr(0);
     g8_set_vsstatus_mxr(1);
@@ -127,12 +125,12 @@ bool test_ts_mxr_02_vs_mxr(void) {
 TEST_REGISTER(test_ts_mxr_03_vs_mxr_no_g);
 bool test_ts_mxr_03_vs_mxr_no_g(void) {
     TEST_BEGIN("TS-MXR-03: vsstatus.MXR cannot override G X-only");
-    REQUIRE_VSATP_MODE(G8_VSMODE);
-    REQUIRE_HGATP_MODE(G8_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_dual_victim(&ctx, G8_VSMODE, G8_GMODE, va,
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va,
                                G8_VS_RWX, G8_G_XU);
     g8_set_sstatus_mxr(0);
     g8_set_vsstatus_mxr(1);
@@ -152,12 +150,12 @@ bool test_ts_mxr_03_vs_mxr_no_g(void) {
 TEST_REGISTER(test_ts_mxr_04_hs_mxr);
 bool test_ts_mxr_04_hs_mxr(void) {
     TEST_BEGIN("TS-MXR-04: sstatus.MXR=1 overrides both stages");
-    REQUIRE_VSATP_MODE(G8_VSMODE);
-    REQUIRE_HGATP_MODE(G8_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_dual_victim(&ctx, G8_VSMODE, G8_GMODE, va,
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va,
                                G8_VS_X, G8_G_XU);
     g8_set_sstatus_mxr(1);
     g8_set_vsstatus_mxr(0);
@@ -176,12 +174,12 @@ bool test_ts_mxr_04_hs_mxr(void) {
 TEST_REGISTER(test_ts_mxr_05_both_mxr);
 bool test_ts_mxr_05_both_mxr(void) {
     TEST_BEGIN("TS-MXR-05: sstatus.MXR + vsstatus.MXR both = 1 -> success");
-    REQUIRE_VSATP_MODE(G8_VSMODE);
-    REQUIRE_HGATP_MODE(G8_GMODE);
+    REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
+    REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_fault_page;
-    ts2_setup_with_dual_victim(&ctx, G8_VSMODE, G8_GMODE, va,
+    ts2_setup_with_dual_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va,
                                G8_VS_X, G8_G_XU);
     g8_set_sstatus_mxr(1);
     g8_set_vsstatus_mxr(1);
