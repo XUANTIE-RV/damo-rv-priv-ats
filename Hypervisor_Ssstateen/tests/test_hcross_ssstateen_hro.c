@@ -40,7 +40,7 @@ bool test_hcross_sssta_39(void)
     if (rb != 0)
     {
         /* Some bits are RO1 */
-        printf("  hstateen0 RO1 bits: 0x%lx\n", (unsigned long)rb);
+        LOG_D("hstateen0 RO1 bits: 0x%lx\n", (unsigned long)rb);
 
         /* For each RO1 bit, verify mstateen0 same bit is also RO1 */
         for (int bit = 0; bit < 64; bit++)
@@ -56,7 +56,7 @@ bool test_hcross_sssta_39(void)
 
             if (!(ms_rb & mask))
             {
-                printf("  FAIL: hstateen0 bit %d is RO1 but mstateen0 is not\n", bit);
+                LOG_E("hstateen0 bit %d is RO1 but mstateen0 is not\n", bit);
                 all_ok = false;
             }
         }
@@ -94,7 +94,7 @@ bool test_hcross_sssta_40(void)
     bool all_ok = true;
     if (rb != 0)
     {
-        printf("  hstateen1 RO1 bits: 0x%lx\n", (unsigned long)rb);
+        LOG_D("hstateen1 RO1 bits: 0x%lx\n", (unsigned long)rb);
         for (int bit = 0; bit < 64; bit++)
         {
             uintptr_t mask = 1UL << bit;
@@ -106,7 +106,7 @@ bool test_hcross_sssta_40(void)
             mstateen_write(1, ms);
             if (!(ms_rb & mask))
             {
-                printf("  FAIL: hstateen1 bit %d RO1 but mstateen1 not\n", bit);
+                LOG_E("hstateen1 bit %d RO1 but mstateen1 not\n", bit);
                 all_ok = false;
             }
         }
@@ -144,7 +144,7 @@ bool test_hcross_sssta_41(void)
     bool all_ok = true;
     if (rb != 0)
     {
-        printf("  hstateen2 RO1 bits: 0x%lx\n", (unsigned long)rb);
+        LOG_D("hstateen2 RO1 bits: 0x%lx\n", (unsigned long)rb);
         for (int bit = 0; bit < 64; bit++)
         {
             uintptr_t mask = 1UL << bit;
@@ -156,7 +156,7 @@ bool test_hcross_sssta_41(void)
             mstateen_write(2, ms);
             if (!(ms_rb & mask))
             {
-                printf("  FAIL: hstateen2 bit %d RO1 but mstateen2 not\n", bit);
+                LOG_E("hstateen2 bit %d RO1 but mstateen2 not\n", bit);
                 all_ok = false;
             }
         }
@@ -194,7 +194,7 @@ bool test_hcross_sssta_42(void)
     bool all_ok = true;
     if (rb != 0)
     {
-        printf("  hstateen3 RO1 bits: 0x%lx\n", (unsigned long)rb);
+        LOG_D("hstateen3 RO1 bits: 0x%lx\n", (unsigned long)rb);
         for (int bit = 0; bit < 64; bit++)
         {
             uintptr_t mask = 1UL << bit;
@@ -206,7 +206,7 @@ bool test_hcross_sssta_42(void)
             mstateen_write(3, ms);
             if (!(ms_rb & mask))
             {
-                printf("  FAIL: hstateen3 bit %d RO1 but mstateen3 not\n", bit);
+                LOG_E("hstateen3 bit %d RO1 but mstateen3 not\n", bit);
                 all_ok = false;
             }
         }
@@ -244,7 +244,7 @@ bool test_hcross_sssta_43(void)
     bool has_roz = (rb != ~0UL);
     TEST_ASSERT("hstateen0 has reserved ROZ bits", has_roz);
 
-    printf("  hstateen0 readback after all-1: 0x%lx\n", (unsigned long)rb);
+    LOG_D("hstateen0 readback after all-1: 0x%lx\n", (unsigned long)rb);
 
     hstateen_write(0, saved_h);
     mstateen_write(0, saved_m);
@@ -284,14 +284,14 @@ bool test_hcross_sssta_44(void)
     {
         if ((rb & optional_bits[i].bit) == 0)
         {
-            printf("  %s: ROZ (extension not implemented)\n",
-                   optional_bits[i].name);
+            LOG_I("%s: ROZ (extension not implemented)\n",
+                  optional_bits[i].name);
             roz_count++;
         }
         else
         {
-            printf("  %s: writable (extension present)\n",
-                   optional_bits[i].name);
+            LOG_I("%s: writable (extension present)\n",
+                  optional_bits[i].name);
         }
     }
     (void)roz_count;
@@ -334,8 +334,8 @@ bool test_hcross_sssta_45(void)
     uintptr_t rb_zero = hstateen_read(0);
 
     /* RO1 bits may prevent full zero; masked check */
-    printf("  writable_mask: 0x%lx, zero readback: 0x%lx\n",
-           (unsigned long)writable_mask, (unsigned long)rb_zero);
+    LOG_D("writable_mask: 0x%lx, zero readback: 0x%lx\n",
+          (unsigned long)writable_mask, (unsigned long)rb_zero);
 
     TEST_ASSERT("hstateen0 zero write is valid WARL operation", 1);
 

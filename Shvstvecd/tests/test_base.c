@@ -29,8 +29,8 @@ bool test_shvstvecd_base_01_zero(void) {
 
     VSTVEC_SAVE();
 
-    vstvec_write_raw((uintptr_t)0x0);
-    uintptr_t rb = vstvec_read_raw();
+    vstvec_write((uintptr_t)0x0);
+    uintptr_t rb = vstvec_read();
     TEST_ASSERT("readback == 0x0", rb == 0x0UL);
 
     VSTVEC_RESTORE();
@@ -47,8 +47,8 @@ bool test_shvstvecd_base_02_platform_mem_base(void) {
     TEST_ASSERT("PLATFORM_MEM_BASE is 4-byte aligned",
                 (target & VSTVEC_MODE_MASK) == 0);
 
-    vstvec_write_raw(target);
-    uintptr_t rb = vstvec_read_raw();
+    vstvec_write(target);
+    uintptr_t rb = vstvec_read();
     TEST_ASSERT("BASE field == PLATFORM_MEM_BASE",
                 (rb & VSTVEC_BASE_MASK) == target);
     TEST_ASSERT("MODE field == 0 (Direct)",
@@ -65,8 +65,8 @@ bool test_shvstvecd_base_03_cross_1g(void) {
     VSTVEC_SAVE();
 
     uintptr_t target = 0x40000004UL;        /* 1 GiB + 4, 4-byte aligned */
-    vstvec_write_raw(target);
-    uintptr_t rb = vstvec_read_raw();
+    vstvec_write(target);
+    uintptr_t rb = vstvec_read();
     TEST_ASSERT("readback == 0x40000004 (BASE preserved, MODE=0)",
                 rb == target);
 
@@ -84,8 +84,8 @@ bool test_shvstvecd_base_04_high_bit_39(void) {
      * 4-byte aligned address. If BASE WARL-truncates high bits,
      * this assertion fails -- indicating Shvstvecd not truly enabled. */
     uintptr_t target = 1UL << 39;           /* 0x8000000000 */
-    vstvec_write_raw(target);
-    uintptr_t rb = vstvec_read_raw();
+    vstvec_write(target);
+    uintptr_t rb = vstvec_read();
     TEST_ASSERT("readback == 0x8000000000 "
                 "(high bit preserved -> Shvstvecd active)",
                 rb == target);
@@ -108,8 +108,8 @@ bool test_shvstvecd_base_06_independent_of_mode(void) {
 
     for (unsigned i = 0; i < n; i++) {
         uintptr_t target = bases[i] | VSTVEC_MODE_DIRECT;
-        vstvec_write_raw(target);
-        uintptr_t rb = vstvec_read_raw();
+        vstvec_write(target);
+        uintptr_t rb = vstvec_read();
         TEST_ASSERT("BASE preserved across rewrite",
                     (rb & VSTVEC_BASE_MASK) == bases[i]);
         TEST_ASSERT("MODE remains Direct (=0)",
@@ -134,11 +134,11 @@ bool test_shvstvecd_base_07_high_bit_scan(void) {
     for (unsigned i = 0; i < n; i++) {
         int k = ks[i];
         uintptr_t target = 1UL << k;
-        vstvec_write_raw(target);
-        uintptr_t rb = vstvec_read_raw();
+        vstvec_write(target);
+        uintptr_t rb = vstvec_read();
         if (rb != target) {
-            printf("    [DETAIL] k=%d wrote 0x%lx readback 0x%lx\n",
-                   k, (unsigned long)target, (unsigned long)rb);
+            LOG_D("k=%d wrote 0x%lx readback 0x%lx\n",
+                  k, (unsigned long)target, (unsigned long)rb);
         }
         TEST_ASSERT("readback == 1<<k (Shvstvecd holds any 4-aligned BASE)",
                     rb == target);
@@ -157,8 +157,8 @@ bool test_shvstvecd_base_08_max_address(void) {
     /* VSXLEN=64: maximum valid 4-byte-aligned address with bit 63=0.
      * Shvstvecd requires "any valid 4-byte-aligned address". */
     uintptr_t target = 0x7FFFFFFFFFFFFFFCUL;
-    vstvec_write_raw(target);
-    uintptr_t rb = vstvec_read_raw();
+    vstvec_write(target);
+    uintptr_t rb = vstvec_read();
     TEST_ASSERT("readback == 0x7FFFFFFFFFFFFFFC (address space upper bound)",
                 rb == target);
 

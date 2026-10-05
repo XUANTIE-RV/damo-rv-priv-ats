@@ -17,12 +17,10 @@
 #include "hyp_test_helpers.h"
 
 /* Sstatus writable bits used in substitution tests. */
-#define SSTATUS_SIE   (1UL << 1)
 #define SSTATUS_SPIE  (1UL << 5)
-#define SSTATUS_MXR   (1UL << 19)
 
 /* Test value covering common writable sstatus/vsstatus bits. */
-#define VSSTATUS_TEST_VAL  (SSTATUS_SPIE | SSTATUS_MXR)
+#define VSSTATUS_TEST_VAL  (SSTATUS_SPIE | SSTATUS_MXR_BIT)
 
 /* ===================================================================
  * VCSR-01: V=1 read sstatus accesses vsstatus
@@ -101,7 +99,7 @@ bool test_vcsr_03(void)
     asm volatile ("csrr %0, " CSR_STR(CSR_SSTATUS) : "=r"(orig_sstatus));
 
     /* Set SIE in real HS-level sstatus. */
-    uintptr_t hs_val = SSTATUS_SIE;
+    uintptr_t hs_val = SSTATUS_SIE_BIT;
     asm volatile ("csrw " CSR_STR(CSR_SSTATUS) ", %0" :: "r"(orig_sstatus | hs_val));
 
     /* Confirm the write took effect. */
@@ -116,7 +114,7 @@ bool test_vcsr_03(void)
     asm volatile ("csrr %0, " CSR_STR(CSR_SSTATUS) : "=r"(hs_after));
 
     TEST_ASSERT_EQ("HS-level sstatus.SIE preserved after VS write",
-                   hs_after & SSTATUS_SIE, hs_before & SSTATUS_SIE);
+                   hs_after & SSTATUS_SIE_BIT, hs_before & SSTATUS_SIE_BIT);
 
     /* Restore original sstatus. */
     asm volatile ("csrw " CSR_STR(CSR_SSTATUS) ", %0" :: "r"(orig_sstatus));
@@ -324,12 +322,12 @@ bool test_vcsr_08(void)
     asm volatile ("csrr %0, " CSR_STR(CSR_SSTATUS) : "=r"(orig_sstatus));
 
     /* Set HS-level sstatus.SIE = 1. */
-    asm volatile ("csrw " CSR_STR(CSR_SSTATUS) ", %0" :: "r"(orig_sstatus | SSTATUS_SIE));
+    asm volatile ("csrw " CSR_STR(CSR_SSTATUS) ", %0" :: "r"(orig_sstatus | SSTATUS_SIE_BIT));
 
     /* Write vsstatus.SIE = 0. */
     uintptr_t vsstatus_val;
     asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus_val));
-    vsstatus_val &= ~SSTATUS_SIE;
+    vsstatus_val &= ~SSTATUS_SIE_BIT;
     asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus_val));
 
     /* Read HS-level sstatus — SIE should still be 1. */
@@ -337,18 +335,18 @@ bool test_vcsr_08(void)
     asm volatile ("csrr %0, " CSR_STR(CSR_SSTATUS) : "=r"(hs_read));
 
     TEST_ASSERT_EQ("HS sstatus.SIE unaffected by vsstatus.SIE=0",
-                   hs_read & SSTATUS_SIE, SSTATUS_SIE);
+                   hs_read & SSTATUS_SIE_BIT, SSTATUS_SIE_BIT);
 
     /* Write vsstatus.SIE = 1. */
     asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus_val));
-    vsstatus_val |= SSTATUS_SIE;
+    vsstatus_val |= SSTATUS_SIE_BIT;
     asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus_val));
 
     /* Read HS-level sstatus — SIE should still be 1 (unchanged). */
     asm volatile ("csrr %0, " CSR_STR(CSR_SSTATUS) : "=r"(hs_read));
 
     TEST_ASSERT_EQ("HS sstatus.SIE unaffected by vsstatus.SIE=1",
-                   hs_read & SSTATUS_SIE, SSTATUS_SIE);
+                   hs_read & SSTATUS_SIE_BIT, SSTATUS_SIE_BIT);
 
     /* Restore original sstatus. */
     asm volatile ("csrw " CSR_STR(CSR_SSTATUS) ", %0" :: "r"(orig_sstatus));
@@ -678,8 +676,6 @@ bool test_vcsr_16(void)
      * HS-mode and VS-mode. Without this, VS-mode senvcfg access
      * traps as a virtual-instruction exception, which is
      * SPEC-compliant but prevents testing norm:H_scsrs_nomatch. */
-#define STATEEN0_ENVCFG_BIT  (1ULL << 62)
-#define STATEEN0_SE0_BIT     (1ULL << 63)
     uintptr_t orig_mstateen0 = 0;
     uintptr_t orig_hstateen0 = 0;
     bool smstateen_present = false;
@@ -695,7 +691,7 @@ bool test_vcsr_16(void)
         smstateen_present = true;
         /* Enable ENVCFG (for HS-mode senvcfg access) and SE0
          * (for hstateen0 access) in mstateen0. */
-        asm volatile ("csrs " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(STATEEN0_ENVCFG_BIT | STATEEN0_SE0_BIT) : "memory");
+        asm volatile ("csrs " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(STATEEN0_ENVCFG | STATEEN0_SE0) : "memory");
 
         /* Enable ENVCFG in hstateen0 for VS-mode senvcfg access. */
         trap_expect_begin();
@@ -705,11 +701,9 @@ bool test_vcsr_16(void)
 
         if (!hstateen_trapped) {
             hstateen0_saved = true;
-            asm volatile ("csrs " CSR_STR(CSR_HSTATEEN0) ", %0" :: "r"(STATEEN0_ENVCFG_BIT) : "memory");
+            asm volatile ("csrs " CSR_STR(CSR_HSTATEEN0) ", %0" :: "r"(STATEEN0_ENVCFG) : "memory");
         }
     }
-#undef STATEEN0_ENVCFG_BIT
-#undef STATEEN0_SE0_BIT
 
     /* Probe for a writable field in senvcfg.
      * FIOM (bit 0) may be read-only zero per norm:menvcfg_fiom_rdonly0_ok
@@ -757,7 +751,7 @@ bool test_vcsr_16(void)
         TEST_ASSERT_EQ("M-mode senvcfg read/write",
                        m_read & test_mask, test_val & test_mask);
     } else {
-        printf("  [INFO] senvcfg has no writable fields (all read-only zero)\n");
+        LOG_W("senvcfg has no writable fields (all read-only zero)\n");
     }
 
     /* Part B: VS-mode reads senvcfg — should succeed (no trap).

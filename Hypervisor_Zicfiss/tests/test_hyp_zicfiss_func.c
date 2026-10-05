@@ -34,7 +34,7 @@ bool test_hcfi_ss_59(void) {
     r = two_stage_run_in_vs(&ctx, vs_exec_sspopchk, 0);
     TEST_ASSERT("SSPOPCHK matches and succeeds", r == 0);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-60: VS-mode C.SSPUSH/C.SSPOPCHK basic flow */
@@ -46,7 +46,7 @@ bool test_hcfi_ss_60(void) {
     /* KNOWN GAP (not implemented): compressed SS instructions
      * (C.SSPUSH/C.SSPOPCHK) are not directly tested; they share the
      * same functional path as the 32-bit forms (HCFI-SS-59). */
-    printf("    Note: C.SSPUSH/C.SSPOPCHK flow not implemented (known gap)\n");
+    LOG_W("C.SSPUSH/C.SSPOPCHK flow not implemented (known gap)\n");
     HYP_TEST_END();
 }
 
@@ -71,7 +71,7 @@ bool test_hcfi_ss_61(void) {
                    *(volatile uint32_t *)SS_PAGE_ADDR,
                    (uint32_t)SSAMOSWAP_W_VAL);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-62: VS-mode SSAMOSWAP.D atomic exchange */
@@ -95,7 +95,7 @@ bool test_hcfi_ss_62(void) {
                    (uint64_t)*(volatile uint32_t *)SS_PAGE_ADDR,
                    (uint64_t)SSAMOSWAP_D_VAL);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-63: VS-mode SSPOPCHK mismatch -> software-check */
@@ -125,7 +125,7 @@ bool test_hcfi_ss_63(void) {
     TEST_ASSERT_EQ("tval = shadow stack fault (3)",
                    trap_get_tval(), (uintptr_t)SWCHECK_SHADOW_STACK_FAULT);
 
-    cfi_restore_henvcfg(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-64: VS-mode Shadow Stack guard page detection */
@@ -148,11 +148,11 @@ bool test_hcfi_ss_64(void) {
 
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_exec_sspush, 0);
     /* Should trigger access-fault when crossing to non-SS page */
-    printf("    guard page result = %lu\n", (unsigned long)r);
+    LOG_D("guard page result = %lu\n", (unsigned long)r);
     TEST_ASSERT("access-fault or success at page boundary",
                 r == CAUSE_STORE_ACCESS_FAULT || r == 0);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-65: VS-mode non-idempotent memory SS -> access-fault */
@@ -166,7 +166,7 @@ bool test_hcfi_ss_65(void) {
      * cannot be tested without a device memory region mapped as
      * non-idempotent. Expected: store/AMO access-fault
      * (norm:ssmp_ss_idempotent_memory). Tracked as a known gap. */
-    printf("    Note: non-idempotent memory test not implemented (known gap)\n");
+    LOG_W("non-idempotent memory test not implemented (known gap)\n");
     HYP_TEST_END();
 }
 
@@ -181,7 +181,7 @@ bool test_hcfi_ss_66(void) {
      * AMOSwap-level PMA support cannot be tested without a dedicated
      * PMA region. Expected: store/AMO access-fault. Tracked as a
      * known gap. */
-    printf("    Note: non-AMOSwap PMA test not implemented (known gap)\n");
+    LOG_W("non-AMOSwap PMA test not implemented (known gap)\n");
     HYP_TEST_END();
 }
 
@@ -196,7 +196,7 @@ bool test_hcfi_ss_67(void) {
     pt_pool_reset(); gpt_pool_reset();
     ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
-    senvcfg_set(SENVCFG_SSE);
+    senvcfg_set_bits(SENVCFG_SSE);
     ssp_write(SS_PAGE_ADDR + 0x100);
 
     vs_pte_modify(&ctx, SS_PAGE_ADDR, PT_LEVEL_4K, PTE_SS_PAGE_FLAGS | PTE_U);
@@ -204,8 +204,8 @@ bool test_hcfi_ss_67(void) {
     uintptr_t r = two_stage_run_in_vu(&ctx, vu_exec_sspush, 0);
     TEST_ASSERT("VU-mode SSPUSH succeeds", r == 0);
 
-    senvcfg_clear(SENVCFG_SSE);
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    senvcfg_clear_bits(SENVCFG_SSE);
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-68: VS-mode ssp persists across traps */
@@ -234,5 +234,5 @@ bool test_hcfi_ss_68(void) {
     uintptr_t val = ssp_read();
     TEST_ASSERT_EQ("ssp persists across traps", val, (uintptr_t)0x1238);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }

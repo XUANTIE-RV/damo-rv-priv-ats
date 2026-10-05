@@ -94,7 +94,7 @@ bool test_sha_stateen_hstateen123_bit63(void) {
         hstateen_set_bits(i, STATEEN_BIT63);
         uintptr_t rb1 = hstateen_read(i);
         if ((rb1 & STATEEN_BIT63) == 0) {
-            printf("  hstateen%d bit 63 not implemented (read-only zero)\n", i);
+            LOG_W("hstateen%d bit 63 not implemented (read-only zero)\n", i);
             hstateen_write(i, saved);
             continue;
         }
@@ -103,7 +103,7 @@ bool test_sha_stateen_hstateen123_bit63(void) {
         hstateen_clear_bits(i, STATEEN_BIT63);
         uintptr_t rb0 = hstateen_read(i);
         if ((rb0 & STATEEN_BIT63) != 0) {
-            printf("  hstateen%d bit 63 failed to clear\n", i);
+            LOG_E("hstateen%d bit 63 failed to clear\n", i);
             hstateen_write(i, saved);
             TEST_ASSERT("hstateen bit 63 clear failed", false);
             HYP_TEST_END();
@@ -116,7 +116,7 @@ bool test_sha_stateen_hstateen123_bit63(void) {
     if (implemented == 0)
         TEST_SKIP("hstateen1/2/3 not implemented (bit 63 read-only zero, SPEC optional)");
 
-    printf("  %d of 3 hstateenN (N=1,2,3) implemented\n", implemented);
+    LOG_I("%d of 3 hstateenN (N=1,2,3) implemented\n", implemented);
     HYP_TEST_END();
 }
 
@@ -148,10 +148,10 @@ bool test_sha_stateen_hstateen0_reserved_roz(void) {
      * implementations (except bit 58 which may be Sscofpmf). */
     uintptr_t reserved_mask = 0x7UL << 59;  /* bits 61:59 */
     uintptr_t reserved_readback = rb & reserved_mask;
-    printf("  hstateen0 readback after all-1 write: 0x%lx\n",
-           (unsigned long)rb);
-    printf("  reserved bits [61:59] readback: 0x%lx (expect 0)\n",
-           (unsigned long)reserved_readback);
+    LOG_D("hstateen0 readback after all-1 write: 0x%lx\n",
+          (unsigned long)rb);
+    LOG_D("reserved bits [61:59] readback: 0x%lx (expect 0)\n",
+          (unsigned long)reserved_readback);
 
     /* Note: This is a soft check. Some bits in [62:0] may be defined
      * by extensions (e.g., bit 58 for Sscofpmf, bit 1 for Fcsr, etc.).

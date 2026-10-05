@@ -25,40 +25,23 @@
 #define G14_BARE_VS  SATP_MODE_BARE
 #define G14_BARE_G   HGATP_MODE_BARE
 
-/* Save/restore PMP entries 0 and 1 around a deny window
- * (mirrors the Group 19 technique of the two-stage test plan). */
-typedef struct {
-    pmp_entry_t e0;
-    pmp_entry_t e1;
-} g14_pmp_save_t;
+/* PMP deny-window helpers from common/pmp/pmp_cfg.h. */
+typedef pmp_save_t g14_pmp_save_t;
 
 static void g14_pmp_deny_page(uintptr_t pa, g14_pmp_save_t *save)
 {
-    pmp_get_entry(0, &save->e0);
-    pmp_get_entry(1, &save->e1);
-
-    /* Entry 0: deny target 4KB (cfg=0 -> no R/W/X). */
-    pmp_entry_t deny = PMP_ENTRY_NAPOT(pa & ~0xfffUL, 0x1000UL, 0);
-    pmp_set_entry(0, &deny);
-    /* Entry 1: allow all RWX (NAPOT spanning low 54 bits). */
-    pmp_entry_t allow = PMP_ENTRY_NAPOT(0, (uintptr_t)1UL << 54, PMP_RWX);
-    pmp_set_entry(1, &allow);
+    pmp_deny_page_4k(pa, save);
 }
 
 static void g14_pmp_restore(const g14_pmp_save_t *save)
 {
-    pmp_set_entry(0, &save->e0);
-    pmp_set_entry(1, &save->e1);
+    pmp_restore(save);
 }
 
 /* norm:hgatp_mode_bare_trans: guest-page-fault (20/21/23) can never
- * be raised while hgatp.MODE=Bare. */
-static bool g14_cause_not_guest_fault(uintptr_t cause)
-{
-    return cause != CAUSE_INST_GUEST_PAGE_FAULT &&
-           cause != CAUSE_LOAD_GUEST_PAGE_FAULT &&
-           cause != CAUSE_STORE_GUEST_PAGE_FAULT;
-}
+ * be raised while hgatp.MODE=Bare.
+ * cause_is_guest_page_fault() from common/cause_defs.h. */
+#define g14_cause_not_guest_fault(c)  (!cause_is_guest_page_fault(c))
 
 /* The .vm_test_region is NOLOAD, so test_exec_page content is
  * indeterminate. Plant a 32-bit `jr ra` (0x00008067) at its start so

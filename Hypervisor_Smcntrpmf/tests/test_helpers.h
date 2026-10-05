@@ -18,14 +18,15 @@
 #include "test_framework.h"
 #include "hyp/hyp_priv.h"
 #include "hyp/hyp_reset.h"
+#include "hyp/hyp_csr.h"
 
 /* ===================================================================
  * Smcntrpmf CSR addresses and field masks
+ *
+ * mcounteren / hcounteren accessors are provided by common/hyp/hyp_csr.h.
  * =================================================================== */
 #define CSR_MCYCLECFG_ADDR     0x321
 #define CSR_MINSTRETCFG_ADDR   0x322
-#define CSR_MCOUNTEREN_ADDR    0x306
-#define CSR_HCOUNTEREN_ADDR    0x606
 
 /* xINH bit positions (shared encoding with Sscofpmf mhpmevent).
  * Bit 63 (OF) is read-only zero for mcyclecfg/minstretcfg. */
@@ -62,34 +63,6 @@ static inline uintptr_t minstretcfg_read(void)
 static inline void minstretcfg_write(uintptr_t v)
 {
     asm volatile("csrw " CSR_STR(CSR_MINSTRETCFG_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-/* ===================================================================
- * mcounteren / hcounteren helpers
- * =================================================================== */
-static inline void mcounteren_set(uintptr_t bits)
-{
-    asm volatile("csrs " CSR_STR(CSR_MCOUNTEREN_ADDR) ", %0" :: "r"(bits) : "memory");
-}
-
-static inline void mcounteren_clear(uintptr_t bits)
-{
-    asm volatile("csrc " CSR_STR(CSR_MCOUNTEREN_ADDR) ", %0" :: "r"(bits) : "memory");
-}
-
-static inline void hcounteren_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_HCOUNTEREN_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline void hcounteren_set(uintptr_t bits)
-{
-    asm volatile("csrs " CSR_STR(CSR_HCOUNTEREN_ADDR) ", %0" :: "r"(bits) : "memory");
-}
-
-static inline void hcounteren_clear(uintptr_t bits)
-{
-    asm volatile("csrc " CSR_STR(CSR_HCOUNTEREN_ADDR) ", %0" :: "r"(bits) : "memory");
 }
 
 /* ===================================================================

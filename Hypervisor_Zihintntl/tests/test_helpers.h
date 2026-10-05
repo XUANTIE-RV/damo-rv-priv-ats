@@ -320,8 +320,4 @@ static inline void ntl_capture_rep(ntl_trap_rep_t *r)
 extern uint8_t __vm_test_region_start[];
 extern uint8_t __vm_test_region_end[];
 
-#ifndef TEST_REGION_BASE
-#define TEST_REGION_BASE  ((uintptr_t)__vm_test_region_start)
-#endif
-
 #endif /* HYPERVISOR_ZIHINTNTL_TEST_HELPERS_H */

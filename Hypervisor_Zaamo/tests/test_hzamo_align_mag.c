@@ -66,8 +66,8 @@ bool test_hzamo_21_misaligned_amo(void)
     trap_expect_end();
     ts2_finish(&ctx);
 
-    printf("  [INFO] (A) misaligned AMO @+off=%lu cause=%lu fired=%d\n",
-           (unsigned long)off, (unsigned long)cause_a, (int)fired_a);
+    LOG_D("(A) misaligned AMO @+off=%lu cause=%lu fired=%d\n",
+          (unsigned long)off, (unsigned long)cause_a, (int)fired_a);
     TEST_ASSERT("(A) misaligned AMO faulted (not MAG-covered)", fired_a);
     TEST_ASSERT("(A) cause in store/AMO class {6,7} (never load 4/5)",
                 hzamo_cause_in2(cause_a, CAUSE_STORE_ADDR_MISALIGN,
@@ -117,8 +117,8 @@ bool test_hzamo_22_mag_intra_no_fault(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  [INFO] MAG intra-granule AMO trapped cause=%lu\n",
-               (unsigned long)cause);
+        LOG_D("MAG intra-granule AMO trapped cause=%lu\n",
+              (unsigned long)cause);
     TEST_ASSERT("MAG intra-granule misaligned AMO raised no alignment "
                 "exception (norm:misaligned_atomicity_granule_size)", !fired);
 
@@ -154,8 +154,8 @@ bool test_hzamo_23_mag_intra_gstage_fault(void)
     trap_expect_end();
     ts2_finish(&ctx);
 
-    printf("  [INFO] MAG intra G-stage AMO: fired=%d cause=%lu htval=0x%lx\n",
-           (int)fired, (unsigned long)cause, (unsigned long)htval);
+    LOG_D("MAG intra G-stage AMO: fired=%d cause=%lu htval=0x%lx\n",
+          (int)fired, (unsigned long)cause, (unsigned long)htval);
     TEST_ASSERT("MAG intra-granule AMO G-stage fault fired", fired);
     TEST_ASSERT_EQ("cause == store/AMO guest-page-fault (23)",
                    cause, (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);
@@ -187,7 +187,7 @@ bool test_hzamo_24_misaligned_trap_context(void)
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hedeleg_write(hedeleg_read() & ~((1UL << 6) | (1UL << 7)));
     hz_clear_gva_spv();
-    hz_route_to_hs((1UL << 6) | (1UL << 7));
+    hyp_route_exc_to_hs((1UL << 6) | (1UL << 7));
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amo_add_w, mis);
     bool fired = trap_was_triggered();
@@ -198,11 +198,11 @@ bool test_hzamo_24_misaligned_trap_context(void)
     bool gva = trap_get_gva();
     bool spv = trap_get_spv();
     trap_expect_end();
-    hz_unroute_from_hs((1UL << 6) | (1UL << 7));
+    hyp_unroute_exc_from_hs((1UL << 6) | (1UL << 7));
     ts2_finish(&ctx);
 
-    printf("  [INFO] misaligned AMO: cause=%lu tval=0x%lx gva=%d spv=%d\n",
-           (unsigned long)cause, (unsigned long)tval, (int)gva, (int)spv);
+    LOG_D("misaligned AMO: cause=%lu tval=0x%lx gva=%d spv=%d\n",
+          (unsigned long)cause, (unsigned long)tval, (int)gva, (int)spv);
     TEST_ASSERT("misaligned AMO faulted", fired);
     TEST_ASSERT("cause in store/AMO class {6,7}",
                 hzamo_cause_in2(cause, CAUSE_STORE_ADDR_MISALIGN,

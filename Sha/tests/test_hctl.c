@@ -135,14 +135,6 @@ bool test_sha_hctl_bit63_zero_sstateen0_roz(void) {
 
 /* ---- SHA-HCTL-05: hstateen0 CSRIND gate on siselect/sireg ---- */
 
-/* CSR addresses for Sscsrind CSRs */
-#define CSR_SISELECT    0x150
-#define CSR_SIREG       0x151
-
-/* CSRIND bit in stateen0: bit 60 per smstateen spec.
- * Controls VS/VU access to siselect/sireg (really vsiselect/vsireg). */
-#define STATEEN0_CSRIND  (1UL << 60)
-
 /* VS-mode helper: read siselect (CSR 0x150) */
 static uintptr_t _vs_read_siselect(uintptr_t arg) {
     (void)arg;

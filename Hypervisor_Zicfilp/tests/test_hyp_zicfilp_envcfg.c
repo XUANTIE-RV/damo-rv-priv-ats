@@ -40,7 +40,7 @@ bool test_hcfi_lp_01(void) {
     bool lpe_writable = (val & HENVCFG_LPE) != 0;
 
     if (lpe_writable) {
-        printf("    henvcfg.LPE is writable (Zicfilp implemented)\n");
+        LOG_I("henvcfg.LPE is writable (Zicfilp implemented)\n");
 
         /* Clear LPE */
         henvcfg_write(orig & ~HENVCFG_LPE);
@@ -48,7 +48,7 @@ bool test_hcfi_lp_01(void) {
         TEST_ASSERT("henvcfg.LPE can be cleared to 0",
                     (val & HENVCFG_LPE) == 0);
     } else {
-        printf("    henvcfg.LPE is read-only zero (Zicfilp not implemented)\n");
+        LOG_I("henvcfg.LPE is read-only zero (Zicfilp not implemented)\n");
         TEST_ASSERT("henvcfg.LPE reads as 0 when not implemented",
                     (val & HENVCFG_LPE) == 0);
     }
@@ -94,7 +94,7 @@ bool test_hcfi_lp_02(void) {
     TEST_ASSERT("no trap when LPE=0 and target has LPAD",
                 result == 0);
 
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -136,7 +136,7 @@ bool test_hcfi_lp_03(void) {
                 result == 0);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -168,7 +168,7 @@ bool test_hcfi_lp_04(void) {
     TEST_ASSERT("LPAD as no-op with LPE=0 (no trap)",
                 result == 0);
 
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -211,7 +211,7 @@ bool test_hcfi_lp_05(void) {
                    trap_get_tval(), (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -251,7 +251,7 @@ bool test_hcfi_lp_06(void) {
     TEST_ASSERT("no trap when LPE=0 and target is non-LPAD",
                 result == 0);
 
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -276,7 +276,7 @@ bool test_hcfi_lp_07(void) {
 
     /* Set henvcfg.LPE=1, menvcfg.LPE=1, senvcfg.LPE=0 */
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    senvcfg_clear(SENVCFG_LPE);
+    senvcfg_clear_bits(SENVCFG_LPE);
     mseccfg_set(MSECCFG_MLPE);
 
     /* Prepare code: NOP (NOT LPAD) + RET */
@@ -293,7 +293,7 @@ bool test_hcfi_lp_07(void) {
                 result == 0);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -318,7 +318,7 @@ bool test_hcfi_lp_08(void) {
 
     /* Set henvcfg.LPE=1, menvcfg.LPE=1, senvcfg.LPE=1 */
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    senvcfg_set(SENVCFG_LPE);
+    senvcfg_set_bits(SENVCFG_LPE);
     mseccfg_set(MSECCFG_MLPE);
 
     /* Prepare code: NOP (NOT LPAD) + RET */
@@ -336,9 +336,9 @@ bool test_hcfi_lp_08(void) {
     TEST_ASSERT_EQ("tval = landing pad fault (2)",
                    trap_get_tval(), (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
-    senvcfg_clear(SENVCFG_LPE);
+    senvcfg_clear_bits(SENVCFG_LPE);
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -394,7 +394,7 @@ bool test_hcfi_lp_09(void) {
                    trap_get_tval(), (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -411,7 +411,7 @@ bool test_hcfi_lp_10(void) {
     /* Zicfilp is config-declared, so henvcfg.LPE is writable and this
      * read-only-zero test does not apply. */
     if (ZICFILP_AVAILABLE) {
-        printf("    Zicfilp is implemented, LPE is writable\n");
+        LOG_W("Zicfilp is implemented, LPE is writable\n");
         TEST_SKIP("Zicfilp is implemented, skip read-only-zero test");
     }
 

@@ -25,10 +25,10 @@ bool test_hcross_sscsrind_22(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
 
-    uintptr_t orig_m = mstateen0_read();
+    uintptr_t orig_m = mstateen_read(0);
 
     /* Clear mstateen0[60] (CSRIND) */
-    mstateen0_clear(MSTATEEN0_CSRIND);
+    mstateen_clear_bits(0, MSTATEEN0_CSRIND);
 
     /*
      * HS-mode (V=0) access vsiselect.
@@ -46,7 +46,7 @@ bool test_hcross_sscsrind_22(void)
     }
     trap_expect_end();
 
-    mstateen0_write(orig_m);
+    mstateen_write(0, orig_m);
     HYP_TEST_END();
 }
 
@@ -61,10 +61,10 @@ bool test_hcross_sscsrind_23(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
 
-    uintptr_t orig_m = mstateen0_read();
+    uintptr_t orig_m = mstateen_read(0);
 
     /* Clear mstateen0[60] */
-    mstateen0_clear(MSTATEEN0_CSRIND);
+    mstateen_clear_bits(0, MSTATEEN0_CSRIND);
 
     /* HS-mode access vsireg */
     trap_expect_begin();
@@ -79,7 +79,7 @@ bool test_hcross_sscsrind_23(void)
     }
     trap_expect_end();
 
-    mstateen0_write(orig_m);
+    mstateen_write(0, orig_m);
     HYP_TEST_END();
 }
 
@@ -95,12 +95,12 @@ bool test_hcross_sscsrind_24(void)
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    uintptr_t orig_m = mstateen0_read();
-    uintptr_t orig_h = hstateen0_read();
+    uintptr_t orig_m = mstateen_read(0);
+    uintptr_t orig_h = hstateen_read(0);
 
     /* mstateen0[60]=1, hstateen0[60]=0 */
-    mstateen0_set(MSTATEEN0_CSRIND);
-    hstateen0_clear(HSTATEEN0_CSRIND);
+    mstateen_set_bits(0, MSTATEEN0_CSRIND);
+    hstateen_clear_bits(0, HSTATEEN0_CSRIND);
 
     /*
      * VS-mode reads siselect (remapped to vsiselect).
@@ -117,8 +117,8 @@ bool test_hcross_sscsrind_24(void)
     }
     trap_expect_end();
 
-    mstateen0_write(orig_m);
-    hstateen0_write(orig_h);
+    mstateen_write(0, orig_m);
+    hstateen_write(0, orig_h);
     HYP_TEST_END();
 }
 
@@ -134,12 +134,12 @@ bool test_hcross_sscsrind_25(void)
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    uintptr_t orig_m = mstateen0_read();
-    uintptr_t orig_h = hstateen0_read();
+    uintptr_t orig_m = mstateen_read(0);
+    uintptr_t orig_h = hstateen_read(0);
 
     /* mstateen0[60]=1, hstateen0[60]=0 */
-    mstateen0_set(MSTATEEN0_CSRIND);
-    hstateen0_clear(HSTATEEN0_CSRIND);
+    mstateen_set_bits(0, MSTATEEN0_CSRIND);
+    hstateen_clear_bits(0, HSTATEEN0_CSRIND);
 
     /* VS-mode reads sireg (remapped to vsireg) */
     trap_expect_begin();
@@ -153,8 +153,8 @@ bool test_hcross_sscsrind_25(void)
     }
     trap_expect_end();
 
-    mstateen0_write(orig_m);
-    hstateen0_write(orig_h);
+    mstateen_write(0, orig_m);
+    hstateen_write(0, orig_h);
     HYP_TEST_END();
 }
 
@@ -170,26 +170,26 @@ bool test_hcross_sscsrind_26(void)
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    uintptr_t orig_m = mstateen0_read();
-    uintptr_t orig_h = hstateen0_read();
+    uintptr_t orig_m = mstateen_read(0);
+    uintptr_t orig_h = hstateen_read(0);
     uintptr_t orig_sel;
     if (!vsiselect_read_safe(&orig_sel))
     {
-        mstateen0_write(orig_m);
-        hstateen0_write(orig_h);
+        mstateen_write(0, orig_m);
+        hstateen_write(0, orig_h);
         TEST_SKIP("vsiselect not accessible from M-mode");
     }
 
     /* Enable access: mstateen0[60]=1, hstateen0[60]=1 */
-    mstateen0_set(MSTATEEN0_CSRIND);
-    hstateen0_set(HSTATEEN0_CSRIND);
+    mstateen_set_bits(0, MSTATEEN0_CSRIND);
+    hstateen_set_bits(0, HSTATEEN0_CSRIND);
 
     /* Set vsiselect to a legal value (0 = reserved but accessible) */
     if (!vsiselect_write_safe(0))
     {
         vsiselect_write_safe(orig_sel);
-        mstateen0_write(orig_m);
-        hstateen0_write(orig_h);
+        mstateen_write(0, orig_m);
+        hstateen_write(0, orig_h);
         TEST_SKIP("vsiselect write 0 trapped");
     }
 
@@ -216,8 +216,8 @@ bool test_hcross_sscsrind_26(void)
     }
 
     vsiselect_write_safe(orig_sel);
-    mstateen0_write(orig_m);
-    hstateen0_write(orig_h);
+    mstateen_write(0, orig_m);
+    hstateen_write(0, orig_h);
     HYP_TEST_END();
 }
 
@@ -233,8 +233,8 @@ bool test_hcross_sscsrind_27(void)
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    uintptr_t orig_m = mstateen0_read();
-    uintptr_t orig_h = hstateen0_read();
+    uintptr_t orig_m = mstateen_read(0);
+    uintptr_t orig_h = hstateen_read(0);
 
     /*
      * KEY TEST: mstateen0[60]=1, hstateen0[60]=0
@@ -248,8 +248,8 @@ bool test_hcross_sscsrind_27(void)
      * hypervisor needs to trap and handle.
      */
 
-    mstateen0_set(MSTATEEN0_CSRIND);
-    hstateen0_clear(HSTATEEN0_CSRIND);
+    mstateen_set_bits(0, MSTATEEN0_CSRIND);
+    hstateen_clear_bits(0, HSTATEEN0_CSRIND);
 
     /* VS-mode reads siselect */
     trap_expect_begin();
@@ -272,7 +272,7 @@ bool test_hcross_sscsrind_27(void)
     }
     trap_expect_end();
 
-    mstateen0_write(orig_m);
-    hstateen0_write(orig_h);
+    mstateen_write(0, orig_m);
+    hstateen_write(0, orig_h);
     HYP_TEST_END();
 }

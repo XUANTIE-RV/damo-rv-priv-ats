@@ -40,22 +40,7 @@ bool test_shvstvala_ima_01(void) {
 
     /* Two-stage identity map for VS-mode execution */
     two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
-
-    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
-    uintptr_t lo_end  = r_start & ~(PAGE_SIZE_2M - 1);
-    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    two_stage_vs_identity(&ctx, lo_base, lo_end - lo_base,
-                          vs_flags, PT_LEVEL_2M);
-    uintptr_t r_size = (uintptr_t)__vm_test_region_end - r_start;
-    two_stage_vs_identity(&ctx, r_start, r_size, vs_flags, PT_LEVEL_4K);
-
-    two_stage_setup_identity(&ctx, lo_base, lo_end - lo_base,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
-    two_stage_setup_identity(&ctx, r_start, r_size,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Without C extension, IALIGN=32. Jump target with bit 1 set
      * (but bit 0 cleared by JALR) gives a 2-byte aligned address
@@ -89,22 +74,7 @@ bool test_shvstvala_lma_01(void) {
 
     /* Two-stage identity map */
     two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
-
-    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
-    uintptr_t lo_end  = r_start & ~(PAGE_SIZE_2M - 1);
-    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    two_stage_vs_identity(&ctx, lo_base, lo_end - lo_base,
-                          vs_flags, PT_LEVEL_2M);
-    uintptr_t r_size = (uintptr_t)__vm_test_region_end - r_start;
-    two_stage_vs_identity(&ctx, r_start, r_size, vs_flags, PT_LEVEL_4K);
-
-    two_stage_setup_identity(&ctx, lo_base, lo_end - lo_base,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
-    two_stage_setup_identity(&ctx, r_start, r_size,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Misaligned address: base + 3 (not 8-byte aligned for ld) */
     uintptr_t misaligned_addr = ((uintptr_t)test_data_area) + 3;
@@ -143,22 +113,7 @@ bool test_shvstvala_sma_01(void) {
 
     /* Two-stage identity map */
     two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
-
-    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
-    uintptr_t lo_end  = r_start & ~(PAGE_SIZE_2M - 1);
-    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    two_stage_vs_identity(&ctx, lo_base, lo_end - lo_base,
-                          vs_flags, PT_LEVEL_2M);
-    uintptr_t r_size = (uintptr_t)__vm_test_region_end - r_start;
-    two_stage_vs_identity(&ctx, r_start, r_size, vs_flags, PT_LEVEL_4K);
-
-    two_stage_setup_identity(&ctx, lo_base, lo_end - lo_base,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
-    two_stage_setup_identity(&ctx, r_start, r_size,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Misaligned address: base + 5 (not 8-byte aligned for sd) */
     uintptr_t misaligned_addr = ((uintptr_t)test_data_area) + 5;

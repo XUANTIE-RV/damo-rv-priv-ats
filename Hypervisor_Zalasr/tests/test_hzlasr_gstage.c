@@ -132,7 +132,7 @@ bool test_hzlasr_14_gva_spv(void)
     ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
     hz_st_val = 0x00009abcu;
     hz_clear_gva_spv();
-    hz_route_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
+    hyp_route_exc_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_sw_rl, va);
     bool fired = trap_was_triggered();
@@ -140,11 +140,11 @@ bool test_hzlasr_14_gva_spv(void)
     bool spv = trap_get_spv();
     uintptr_t tval = trap_get_tval();
     trap_expect_end();
-    hz_unroute_from_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
+    hyp_unroute_exc_from_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
     ts2_finish(&ctx);
 
-    printf("  [INFO] VS-source store-release fault: gva=%d spv=%d tval=0x%lx\n",
-           (int)gva, (int)spv, (unsigned long)tval);
+    LOG_D("VS-source store-release fault: gva=%d spv=%d tval=0x%lx\n",
+          (int)gva, (int)spv, (unsigned long)tval);
     TEST_ASSERT("VS-source store-release guest fault fired", fired);
     TEST_ASSERT_EQ("VS source: GVA=1", (uintptr_t)gva, (uintptr_t)1);
     TEST_ASSERT("VS source: SPV=1 (trap from V=1)", spv);
@@ -155,18 +155,18 @@ bool test_hzlasr_14_gva_spv(void)
     ts2_g_override_4k(&ctx, va, HZ_G_RU);
     hz_st_val = 0x00009abcu;
     hz_clear_gva_spv();
-    hz_route_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
+    hyp_route_exc_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
     trap_expect_begin();
     (void)two_stage_run_in_vu(&ctx, hz_vs_sw_rl, va);
     bool fired2 = trap_was_triggered();
     bool gva2 = trap_get_gva();
     bool spv2 = trap_get_spv();
     trap_expect_end();
-    hz_unroute_from_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
+    hyp_unroute_exc_from_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
     ts2_finish(&ctx);
 
-    printf("  [INFO] VU-source store-release fault: gva=%d spv=%d\n",
-           (int)gva2, (int)spv2);
+    LOG_D("VU-source store-release fault: gva=%d spv=%d\n",
+          (int)gva2, (int)spv2);
     TEST_ASSERT("VU-source store-release guest fault fired", fired2);
     TEST_ASSERT_EQ("VU source: GVA=1", (uintptr_t)gva2, (uintptr_t)1);
     TEST_ASSERT("VU source: SPV=1 (trap from V=1)", spv2);
@@ -201,8 +201,8 @@ bool test_hzlasr_15_htval_gpa(void)
     TEST_ASSERT("store-release guest fault fired", fired);
     TEST_ASSERT("htval == 0 or GPA>>2 (baseline norm:htval_trapval)",
                 htval == 0 || htval == (va >> 2));
-    printf("  [INFO] store-release guest fault htval=0x%lx (GPA>>2=0x%lx)\n",
-           (unsigned long)htval, (unsigned long)(va >> 2));
+    LOG_D("store-release guest fault htval=0x%lx (GPA>>2=0x%lx)\n",
+          (unsigned long)htval, (unsigned long)(va >> 2));
 
     HYP_TEST_END();
 }
@@ -262,7 +262,7 @@ bool test_hzlasr_17_hlv_hsv_spv0_gva1(void)
     two_stage_enable(&ctx, 0);
     hstatus_set_spvp(PRIV_S);
     hz_clear_gva_spv();
-    hz_route_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
+    hyp_route_exc_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
     trap_expect_begin();
     (void)run_in_priv(PRIV_S, hzlasr_hs_hsv_w, va);
     bool st_fired = trap_was_triggered();
@@ -270,11 +270,11 @@ bool test_hzlasr_17_hlv_hsv_spv0_gva1(void)
     bool st_gva = trap_get_gva();
     bool st_spv = trap_get_spv();
     trap_expect_end();
-    hz_unroute_from_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
+    hyp_unroute_exc_from_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
     ts2_finish(&ctx);
 
-    printf("  [INFO] HSV.W fault: cause=%lu gva=%d spv=%d\n",
-           (unsigned long)st_cause, (int)st_gva, (int)st_spv);
+    LOG_D("HSV.W fault: cause=%lu gva=%d spv=%d\n",
+          (unsigned long)st_cause, (int)st_gva, (int)st_spv);
     TEST_ASSERT("HSV.W guest-page fault fired", st_fired);
     TEST_ASSERT_EQ("HSV.W cause == store/AMO guest-page-fault (23)",
                    st_cause, (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);
@@ -287,7 +287,7 @@ bool test_hzlasr_17_hlv_hsv_spv0_gva1(void)
     two_stage_enable(&ctx, 0);
     hstatus_set_spvp(PRIV_S);
     hz_clear_gva_spv();
-    hz_route_to_hs(1UL << CAUSE_LOAD_GUEST_PAGE_FAULT);
+    hyp_route_exc_to_hs(1UL << CAUSE_LOAD_GUEST_PAGE_FAULT);
     trap_expect_begin();
     (void)run_in_priv(PRIV_S, hzlasr_hs_hlv_w, va);
     bool ld_fired = trap_was_triggered();
@@ -295,11 +295,11 @@ bool test_hzlasr_17_hlv_hsv_spv0_gva1(void)
     bool ld_gva = trap_get_gva();
     bool ld_spv = trap_get_spv();
     trap_expect_end();
-    hz_unroute_from_hs(1UL << CAUSE_LOAD_GUEST_PAGE_FAULT);
+    hyp_unroute_exc_from_hs(1UL << CAUSE_LOAD_GUEST_PAGE_FAULT);
     ts2_finish(&ctx);
 
-    printf("  [INFO] HLV.W fault: cause=%lu gva=%d spv=%d\n",
-           (unsigned long)ld_cause, (int)ld_gva, (int)ld_spv);
+    LOG_D("HLV.W fault: cause=%lu gva=%d spv=%d\n",
+          (unsigned long)ld_cause, (int)ld_gva, (int)ld_spv);
     TEST_ASSERT("HLV.W guest-page fault fired", ld_fired);
     TEST_ASSERT_EQ("HLV.W cause == load guest-page-fault (21)",
                    ld_cause, (uintptr_t)CAUSE_LOAD_GUEST_PAGE_FAULT);

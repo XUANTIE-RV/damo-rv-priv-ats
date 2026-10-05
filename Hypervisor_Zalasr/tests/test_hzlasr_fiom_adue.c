@@ -60,7 +60,7 @@ static void hzlasr_fiom_case(int fiom)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("FIOM setting: load-acquire/store-release executable", !fired);
     TEST_ASSERT_NEQ("FIOM setting: no virtual-instruction (cause=22)",
                     cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
@@ -82,8 +82,8 @@ bool test_hzlasr_29_fiom1(void)
     REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzlasr_fiom_case(1);
-    printf("  [INFO] FIOM ordering effect requires multi-hart: %s\n",
-           HZLASR_SMP_SKIP_REASON);
+    LOG_I("FIOM ordering effect requires multi-hart: %s\n",
+          HZLASR_SMP_SKIP_REASON);
     HYP_TEST_END();
 }
 
@@ -231,8 +231,8 @@ bool test_hzlasr_33_adue1_hw_update(void)
     ts2_finish(&ctx);
 
     if (fired_l)
-        printf("  UNEXPECTED TRAP (load-acquire): cause=%lu\n",
-               (unsigned long)cause_l);
+        LOG_E("UNEXPECTED TRAP (load-acquire): cause=%lu\n",
+              (unsigned long)cause_l);
     TEST_ASSERT("(a) ADUE=1 load-acquire completed with no page fault", !fired_l);
     TEST_ASSERT("(a) hardware set PTE.A", (pte_l & PTE_A) != 0);
     TEST_ASSERT("(a) hardware did NOT set PTE.D (load-acquire is a pure read)",
@@ -260,8 +260,8 @@ bool test_hzlasr_33_adue1_hw_update(void)
     ts2_finish(&ctx);
 
     if (fired_s)
-        printf("  UNEXPECTED TRAP (store-release): cause=%lu\n",
-               (unsigned long)cause_s);
+        LOG_E("UNEXPECTED TRAP (store-release): cause=%lu\n",
+              (unsigned long)cause_s);
     TEST_ASSERT("(b) ADUE=1 store-release completed with no page fault", !fired_s);
     TEST_ASSERT("(b) hardware set PTE.A", (pte_s & PTE_A) != 0);
     TEST_ASSERT("(b) hardware set PTE.D (store-release writes)",

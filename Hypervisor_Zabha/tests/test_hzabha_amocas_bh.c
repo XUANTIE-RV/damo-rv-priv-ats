@@ -49,7 +49,7 @@ bool test_hzabha_32_amocas_bh_exec(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("VS-mode amocas.b (success) took no trap", !fired);
     TEST_ASSERT_NEQ("VS-mode amocas.b not cause=22",
                     cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
@@ -160,7 +160,7 @@ bool test_hzabha_34_amocas_h_gstage(void)
     hz_cas_swap = 0x5678u;
 
     hz_clear_gva_spv();
-    hz_route_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
+    hyp_route_exc_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amocas_h_probe, va);
     bool fired = trap_was_triggered();
@@ -169,7 +169,7 @@ bool test_hzabha_34_amocas_h_gstage(void)
     bool spv = trap_get_spv();
     uintptr_t htval = fired ? trap_get_htval() : 0;
     trap_expect_end();
-    hz_unroute_from_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
+    hyp_unroute_exc_from_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
     ts2_finish(&ctx);
 
     TEST_ASSERT("amocas.h G-stage fault fired", fired);
@@ -217,7 +217,7 @@ bool test_hzabha_35_amocas_bh_htinst(void)
         TEST_ASSERT_EQ("amocas.b htinst funct3 == 000 (.b)",
                        (htinst_b >> 12) & 0x7UL, (uintptr_t)0x0UL);
     } else {
-        printf("  [INFO] amocas.b htinst=0; funct5/funct3 not observable\n");
+        LOG_I("amocas.b htinst=0; funct5/funct3 not observable\n");
     }
 
     /* amocas.h (funct3=001). */
@@ -239,7 +239,7 @@ bool test_hzabha_35_amocas_bh_htinst(void)
         TEST_ASSERT_EQ("amocas.h htinst funct3 == 001 (.h)",
                        (htinst_h >> 12) & 0x7UL, (uintptr_t)0x1UL);
     } else {
-        printf("  [INFO] amocas.h htinst=0; funct5/funct3 not observable\n");
+        LOG_I("amocas.h htinst=0; funct5/funct3 not observable\n");
     }
 
     HYP_TEST_END();
@@ -281,8 +281,8 @@ bool test_hzabha_36_amocas_h_misaligned(void)
     trap_expect_end();
     ts2_finish(&ctx);
 
-    printf("  [INFO] misaligned amocas.h @+off=%lu: fired=%d cause=%lu\n",
-           (unsigned long)off, (int)fired, (unsigned long)cause);
+    LOG_D("misaligned amocas.h @+off=%lu: fired=%d cause=%lu\n",
+          (unsigned long)off, (int)fired, (unsigned long)cause);
     TEST_ASSERT("misaligned amocas.h (granule-straddling) faulted", fired);
     TEST_ASSERT("cause in store/AMO class {6,7}",
                 cause == CAUSE_STORE_ADDR_MISALIGN ||

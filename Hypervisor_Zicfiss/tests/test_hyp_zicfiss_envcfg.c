@@ -38,12 +38,12 @@ bool test_hcfi_ss_01(void) {
     bool sse_writable = (val & HENVCFG_SSE) != 0;
 
     if (sse_writable) {
-        printf("    henvcfg.SSE is writable (Zicfiss implemented)\n");
+        LOG_I("henvcfg.SSE is writable (Zicfiss implemented)\n");
         henvcfg_write(orig & ~HENVCFG_SSE);
         val = henvcfg_read();
         TEST_ASSERT("henvcfg.SSE can be cleared", (val & HENVCFG_SSE) == 0);
     } else {
-        printf("    henvcfg.SSE is read-only zero\n");
+        LOG_I("henvcfg.SSE is read-only zero\n");
         TEST_ASSERT("henvcfg.SSE reads 0 when not implemented",
                     (val & HENVCFG_SSE) == 0);
     }
@@ -74,7 +74,7 @@ bool test_hcfi_ss_02(void) {
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_exec_sspush, 0);
     TEST_ASSERT("SSPUSH executes without exception (SSE=1)", r == 0);
 
-    cfi_restore_henvcfg(orig_h);
+    henvcfg_write(orig_h);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -97,7 +97,7 @@ bool test_hcfi_ss_03(void) {
     r = two_stage_run_in_vs(&ctx, vs_exec_sspopchk, 0);
     TEST_ASSERT("SSPOPCHK as Zimop no-op (SSE=0)", r == 0);
 
-    cfi_restore_henvcfg(orig_h);
+    henvcfg_write(orig_h);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -113,7 +113,7 @@ bool test_hcfi_ss_04(void) {
      * tested here. The 16-bit instructions share the same functional
      * path; if 32-bit reversion works (HCFI-SS-03), 16-bit reversion
      * follows the same rule. Tracked as a known gap. */
-    printf("    Note: C.SSPUSH/C.SSPOPCHK reversion not implemented (known gap)\n");
+    LOG_W("C.SSPUSH/C.SSPOPCHK reversion not implemented (known gap)\n");
     HYP_TEST_END();
 }
 
@@ -138,7 +138,7 @@ bool test_hcfi_ss_05(void) {
     TEST_ASSERT("page-fault when pte.xwr=010 and SSE=0",
                 r == CAUSE_STORE_PAGE_FAULT || r == CAUSE_STORE_ACCESS_FAULT);
 
-    cfi_restore_henvcfg(orig_h);
+    henvcfg_write(orig_h);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -156,7 +156,7 @@ bool test_hcfi_ss_06(void) {
 
     /* First enable henvcfg.SSE and set senvcfg.SSE=1. */
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
-    senvcfg_set(SENVCFG_SSE);
+    senvcfg_set_bits(SENVCFG_SSE);
 
     /* Now disable henvcfg.SSE: per norm:henvcfg_sse_op, senvcfg.SSE
      * becomes read-only zero from the VS-mode perspective. */
@@ -170,8 +170,8 @@ bool test_hcfi_ss_06(void) {
                 (g_vs_senvcfg_val & SENVCFG_SSE) == 0);
 
     /* Restore: re-enable henvcfg.SSE first, then clear senvcfg.SSE */
-    cfi_restore_henvcfg(orig_h);
-    senvcfg_clear(SENVCFG_SSE);
+    henvcfg_write(orig_h);
+    senvcfg_clear_bits(SENVCFG_SSE);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -188,7 +188,7 @@ bool test_hcfi_ss_07(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_h = cfi_setup_vs_sse(false, true);
-    senvcfg_clear(SENVCFG_SSE);
+    senvcfg_clear_bits(SENVCFG_SSE);
 
     /* VS-mode write senvcfg.SSE=1. The CSR access itself must be
      * allowed (Smstateen gates are opened by the suite setup); only
@@ -201,7 +201,7 @@ bool test_hcfi_ss_07(void) {
     TEST_ASSERT("senvcfg.SSE stays 0 after write (henvcfg.SSE=0)",
                 (val & SENVCFG_SSE) == 0);
 
-    cfi_restore_henvcfg(orig_h);
+    henvcfg_write(orig_h);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -218,7 +218,7 @@ bool test_hcfi_ss_08(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
-    senvcfg_clear(SENVCFG_SSE);
+    senvcfg_clear_bits(SENVCFG_SSE);
 
     /* VS-mode write senvcfg.SSE=1. The write must actually execute
      * (no trap); a trapped write would leave senvcfg.SSE=0 and the
@@ -231,8 +231,8 @@ bool test_hcfi_ss_08(void) {
     TEST_ASSERT("senvcfg.SSE=1 after write (henvcfg.SSE=1)",
                 (val & SENVCFG_SSE) != 0);
 
-    senvcfg_clear(SENVCFG_SSE);
-    cfi_restore_henvcfg(orig_h);
+    senvcfg_clear_bits(SENVCFG_SSE);
+    henvcfg_write(orig_h);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -254,7 +254,7 @@ bool test_hcfi_ss_09(void) {
     TEST_ASSERT_EQ("virtual-instruction exception from SSAMOSWAP",
                    r, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
 
-    cfi_restore_henvcfg(orig_h);
+    henvcfg_write(orig_h);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -280,7 +280,7 @@ bool test_hcfi_ss_10(void) {
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_exec_ssamoswap_w, SS_PAGE_ADDR);
     TEST_ASSERT("SSAMOSWAP.W executes without exception (SSE=1)", r == 0);
 
-    cfi_restore_henvcfg(orig_h);
+    henvcfg_write(orig_h);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -306,7 +306,7 @@ bool test_hcfi_ss_11(void) {
     TEST_ASSERT_EQ("illegal-instruction from SSAMOSWAP (menvcfg.SSE=0)",
                    r, (uintptr_t)CAUSE_ILLEGAL_INST);
 
-    cfi_restore_henvcfg(orig_h);
+    henvcfg_write(orig_h);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -323,13 +323,13 @@ bool test_hcfi_ss_12(void) {
     ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
-    senvcfg_clear(SENVCFG_SSE);
+    senvcfg_clear_bits(SENVCFG_SSE);
     ssp_write(SS_PAGE_ADDR + 0x100);
 
     uintptr_t r = two_stage_run_in_vu(&ctx, vu_exec_sspush, 0);
     TEST_ASSERT("SSPUSH as Zimop in VU-mode (senvcfg.SSE=0)", r == 0);
 
-    cfi_restore_henvcfg(orig_h);
+    henvcfg_write(orig_h);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -343,7 +343,7 @@ bool test_hcfi_ss_13(void) {
     /* Zicfiss is config-declared, so henvcfg.SSE is writable and this
      * read-only-zero test does not apply. */
     if (ZICFISS_AVAILABLE) {
-        printf("    Zicfiss is implemented, SSE is writable\n");
+        LOG_W("Zicfiss is implemented, SSE is writable\n");
         TEST_SKIP("Zicfiss is implemented, skip read-only-zero test");
     }
 
@@ -374,7 +374,7 @@ bool test_hcfi_ss_14(void) {
     TEST_ASSERT_EQ("page-fault (not access-fault) for pte.xwr=010 when SSE=0",
                    r, (uintptr_t)CAUSE_LOAD_PAGE_FAULT);
 
-    cfi_restore_henvcfg(orig_h);
+    henvcfg_write(orig_h);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }

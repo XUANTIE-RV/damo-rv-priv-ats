@@ -689,12 +689,10 @@ TEST_REGISTER(test_vsie_22);
 bool test_vsie_22(void) {
     TEST_BEGIN("VSIE-22: hideleg[13]=0, vsip/vsie LCOFI read-only zero");
 
-#define LCOFI_BIT  (1UL << 13)
-
     /* First check if Shlcofideleg is implemented at all. */
     uintptr_t saved_hideleg = hideleg_read();
-    hideleg_write(saved_hideleg | LCOFI_BIT);
-    bool lcofi_supported = ((hideleg_read() & LCOFI_BIT) != 0);
+    hideleg_write(saved_hideleg | MIP_LCOFIP);
+    bool lcofi_supported = ((hideleg_read() & MIP_LCOFIP) != 0);
     hideleg_write(saved_hideleg);
 
     if (!lcofi_supported) {
@@ -703,27 +701,27 @@ bool test_vsie_22(void) {
         uintptr_t vsip_val = vsip_read();
         uintptr_t vsie_val = vsie_read();
         TEST_ASSERT("vsip.LCOFIP=0 when Shlcofideleg not implemented",
-                    (vsip_val & LCOFI_BIT) == 0);
+                    (vsip_val & MIP_LCOFIP) == 0);
         TEST_ASSERT("vsie.LCOFIE=0 when Shlcofideleg not implemented",
-                    (vsie_val & LCOFI_BIT) == 0);
+                    (vsie_val & MIP_LCOFIP) == 0);
     } else {
         /* Shlcofideleg is implemented. Clear hideleg[13] and verify
          * vsip.LCOFIP and vsie.LCOFIE are read-only zero. */
-        hideleg_write(saved_hideleg & ~LCOFI_BIT);
+        hideleg_write(saved_hideleg & ~MIP_LCOFIP);
 
         /* Try to set vsie.LCOFIE from M-mode. */
         uintptr_t saved_vsie = vsie_read();
-        vsie_write(saved_vsie | LCOFI_BIT);
+        vsie_write(saved_vsie | MIP_LCOFIP);
 
         /* Read vsie from M-mode. */
         uintptr_t vsie_val = vsie_read();
         TEST_ASSERT("vsie.LCOFIE=0 when hideleg[13]=0",
-                    (vsie_val & LCOFI_BIT) == 0);
+                    (vsie_val & MIP_LCOFIP) == 0);
 
         /* Read vsip from M-mode. */
         uintptr_t vsip_val = vsip_read();
         TEST_ASSERT("vsip.LCOFIP=0 when hideleg[13]=0",
-                    (vsip_val & LCOFI_BIT) == 0);
+                    (vsip_val & MIP_LCOFIP) == 0);
 
         /* Restore. */
         vsie_write(saved_vsie);

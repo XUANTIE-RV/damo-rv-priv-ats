@@ -81,15 +81,10 @@
 /* ===================================================================
  * HS-mode routing (htinst vs mtinst observation)
  *
- * A guest-page fault from VS/VU-mode is taken into HS-mode when
- * medeleg[cause]=1 (hedeleg[20/21/23] are read-only-0, so it never
- * reaches VS-mode) and into M-mode when medeleg[cause]=0. Hardware
- * writes htinst on the HS-mode entry and mtinst on the M-mode entry;
- * the framework snapshots whichever applies into trap_record.htinst
- * (hyp_capture_s / hyp_capture_m), read back via trap_get_htinst().
+ * hyp_route_exc_to_hs() / hyp_unroute_exc_from_hs() from
+ * common/hyp/hyp_test_helpers.h control medeleg bits to route
+ * exceptions into HS-mode (htinst) or M-mode (mtinst).
  * =================================================================== */
-static inline void hz_route_to_hs(uintptr_t mask)    { CSRS(medeleg, mask); }
-static inline void hz_unroute_from_hs(uintptr_t mask) { CSRC(medeleg, mask); }
 
 /* ===================================================================
  * Compressed instruction encodings
@@ -264,9 +259,9 @@ static inline uintptr_t hzca_assert_xtinst_compressed(const char *msg,
     uintptr_t golden = hzca_golden_from(expanded, tval, orig_va);
     TEST_ASSERT("golden transformed value computable", golden != 0);
     if (!(xtinst == 0 || xtinst == golden)) {
-        printf("  [INFO] %s: trap-inst-reg=0x%lx golden=0x%lx tval=0x%lx\n",
-               msg, (unsigned long)xtinst, (unsigned long)golden,
-               (unsigned long)tval);
+        LOG_W("%s: trap-inst-reg=0x%lx golden=0x%lx tval=0x%lx\n",
+              msg, (unsigned long)xtinst, (unsigned long)golden,
+              (unsigned long)tval);
     }
     TEST_ASSERT(msg, xtinst == 0 || xtinst == golden);
     return golden;
@@ -314,9 +309,9 @@ static inline hzca_trap_t hzca_fire_mem_fault(uintptr_t (*probe)(uintptr_t),
     two_stage_ctx_t ctx;
     ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, g_flags);
     if (to_hs)
-        hz_route_to_hs(1UL << exp_cause);   /* HS entry -> htinst */
+        hyp_route_exc_to_hs(1UL << exp_cause);   /* HS entry -> htinst */
     else
-        hz_unroute_from_hs(1UL << exp_cause); /* M entry -> mtinst */
+        hyp_unroute_exc_from_hs(1UL << exp_cause); /* M entry -> mtinst */
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, probe, va);
@@ -330,7 +325,7 @@ static inline hzca_trap_t hzca_fire_mem_fault(uintptr_t (*probe)(uintptr_t),
     }
     trap_expect_end();
 
-    hz_unroute_from_hs(1UL << exp_cause);
+    hyp_unroute_exc_from_hs(1UL << exp_cause);
     ts2_finish(&ctx);
     return r;
 }

@@ -88,7 +88,7 @@ bool test_hzamo_01_hs_exec(void)
     uintptr_t cause = fired ? trap_get_cause() : 0;
     trap_expect_end();
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("all 9 .w AMOs executed in HS-mode without exception", !fired);
 
     /* amoadd.w data semantics: rd = old value, memory = old + addend. */
@@ -140,7 +140,7 @@ bool test_hzamo_02_vs_exec_no_cause22(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("VS-mode AMO set took no trap", !fired);
     TEST_ASSERT_NEQ("VS-mode AMO did not report cause=22",
                     cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
@@ -172,7 +172,7 @@ bool test_hzamo_03_vu_exec_no_cause22(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("VU-mode AMO set took no trap", !fired);
     TEST_ASSERT_NEQ("VU-mode AMO did not report cause=22",
                     cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);

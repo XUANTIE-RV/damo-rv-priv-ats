@@ -19,10 +19,10 @@ bool test_hcross_smsta_03(void) {
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t orig = mstateen0_read();
+    uintptr_t orig = mstateen_read(0);
 
     /* Clear SE0 (bit 63) */
-    mstateen0_clear(MSTATEEN0_SE0);
+    mstateen_clear_bits(0, MSTATEEN0_SE0);
 
     /* HS-mode access to hstateen0 should trigger illegal-instruction.
      * Since we are in M-mode and HS-mode uses the same trap path,
@@ -30,9 +30,9 @@ bool test_hcross_smsta_03(void) {
      * is present and V=0). */
     SMSTATEEN_TEST_SMODE_BLOCKED(
         "HS-mode hstateen0 read blocked (SE0=0)",
-        hstateen0_read());
+        hstateen_read(0));
 
-    mstateen0_write(orig);
+    mstateen_write(0, orig);
     TEST_END();
 }
 
@@ -43,12 +43,12 @@ TEST_REGISTER(test_hcross_smsta_04);
 bool test_hcross_smsta_04(void) {
     TEST_BEGIN("HCROSS-SMSTA-04: mstateen0 bit 63 writability conditions");
 
-    uintptr_t orig = mstateen0_read();
+    uintptr_t orig = mstateen_read(0);
     bool has_h = H_AVAILABLE;
 
     /* Try to write bit 63 */
-    mstateen0_set(MSTATEEN0_SE0);
-    uintptr_t val = mstateen0_read();
+    mstateen_set_bits(0, MSTATEEN0_SE0);
+    uintptr_t val = mstateen_read(0);
     bool writable = (val & MSTATEEN0_SE0) != 0;
 
     if (has_h) {
@@ -59,12 +59,12 @@ bool test_hcross_smsta_04(void) {
          * all read-only zero. Either way is valid. */
         TEST_ASSERT("bit 63 writability check done", true);
         if (writable) {
-            printf("  INFO: bit 63 is writable (sstateen0 has writable bits)\n");
+            LOG_I("bit 63 is writable (sstateen0 has writable bits)\n");
         } else {
-            printf("  INFO: bit 63 is RO0 (no H ext and sstateen0 all RO0)\n");
+            LOG_I("bit 63 is RO0 (no H ext and sstateen0 all RO0)\n");
         }
     }
 
-    mstateen0_write(orig);
+    mstateen_write(0, orig);
     TEST_END();
 }

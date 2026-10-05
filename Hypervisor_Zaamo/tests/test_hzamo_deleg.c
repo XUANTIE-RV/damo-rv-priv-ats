@@ -181,7 +181,7 @@ bool test_hzamo_09_lr_vs_amo_permission(void)
     trap_expect_end();
     ts2_finish(&ctx);
     if (lr_fired)
-        printf("  UNEXPECTED LR TRAP: cause=%lu\n", (unsigned long)lr_cause);
+        LOG_E("UNEXPECTED LR TRAP: cause=%lu\n", (unsigned long)lr_cause);
     TEST_ASSERT("LR to R=1/W=0 executes (needs only read)", !lr_fired);
 
     /* AMO: needs write -> store page-fault (15). */

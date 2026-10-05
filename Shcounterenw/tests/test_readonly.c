@@ -23,7 +23,7 @@ bool test_shcounterenw_ro_01_report(void) {
     uintptr_t saved_hcen = hcounteren_read();
     unsigned ro_count = 0;
 
-    printf("  Scanning hpmcounter3-31 for read-only-zero counters...\n");
+    LOG_I("Scanning hpmcounter3-31 for read-only-zero counters...\n");
 
     for (unsigned i = SHCNTW_FIRST_HPM; i <= SHCNTW_LAST_HPM; i++) {
         /* Check if this counter is implemented (non-read-only-zero) */
@@ -51,16 +51,16 @@ bool test_shcounterenw_ro_01_report(void) {
         else
             behavior = "unknown";
 
-        printf("  hpmcounter%u: read-only zero, hcounteren[%u] %s\n",
-               i, i, behavior);
+        LOG_D("hpmcounter%u: read-only zero, hcounteren[%u] %s\n",
+              i, i, behavior);
     }
 
     hcounteren_write(saved_hcen);
 
     if (ro_count == 0)
-        printf("  No read-only-zero hpmcounters found (all implemented).\n");
+        LOG_I("No read-only-zero hpmcounters found (all implemented).\n");
     else
-        printf("  Total read-only-zero counters: %u\n", ro_count);
+        LOG_I("Total read-only-zero counters: %u\n", ro_count);
 
     /* Informational test — always passes */
     TEST_ASSERT("read-only zero counter report completed", true);

@@ -43,16 +43,6 @@ extern uint8_t test_exec_target[];
 extern uint8_t __vm_test_region_start[];
 extern uint8_t __vm_test_region_end[];
 
-#define TEST_REGION_BASE   ((uintptr_t)__vm_test_region_start)
-
-/* ===================================================================
- * Guest-page-fault cause codes (from RISC-V Privileged Spec)
- * =================================================================== */
-#define CAUSE_INST_GUEST_PAGE_FAULT    20
-#define CAUSE_LOAD_GUEST_PAGE_FAULT    21
-#define CAUSE_STORE_GUEST_PAGE_FAULT   23
-
-
 /* ===================================================================
  * PMA configuration capability detection
  *

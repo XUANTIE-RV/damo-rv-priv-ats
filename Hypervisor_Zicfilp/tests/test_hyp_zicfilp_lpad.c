@@ -53,7 +53,7 @@ bool test_hcfi_lp_25(void) {
                 result == 0);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -90,7 +90,7 @@ bool test_hcfi_lp_26(void) {
                    trap_get_tval(), (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -125,7 +125,7 @@ bool test_hcfi_lp_27(void) {
                 result == 0);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -162,7 +162,7 @@ bool test_hcfi_lp_28(void) {
                    trap_get_tval(), (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -199,14 +199,14 @@ bool test_hcfi_lp_29(void) {
 
     /* Should get instruction access-fault or page fault, not software-check.
      * The exact cause depends on whether the address is mapped at G-stage. */
-    printf("    trap cause = %lu\n", (unsigned long)result);
+    LOG_D("trap cause = %lu\n", (unsigned long)result);
     TEST_ASSERT("trap was triggered",
                 result != 0);
     TEST_ASSERT("instruction access/page fault (not software-check)",
                 result != CAUSE_SOFTWARE_CHECK);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -252,7 +252,7 @@ bool test_hcfi_lp_30(void) {
                    result, (uintptr_t)CAUSE_SOFTWARE_CHECK);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -281,7 +281,7 @@ bool test_hcfi_lp_31(void) {
      * non-deterministic and not attempted here. The ELP-save mechanism
      * is instead verified via a synchronous software-check exception
      * (which preserves ELP identically per norm:Zicfilp_pelp_trap). */
-    printf("    Note: async interrupt injection not implemented (known gap)\n");
+    LOG_W("async interrupt injection not implemented (known gap)\n");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -313,8 +313,8 @@ bool test_hcfi_lp_31(void) {
      * so verify against the status snapshot taken at trap entry. */
     uintptr_t snap = trap_get_status_snap();
     uintptr_t spelp = (snap & MSTATUS_SPELP_BIT) ? 1 : 0;
-    printf("    mstatus.SPELP = %lu (ELP was saved at trap)\n",
-           (unsigned long)spelp);
+    LOG_D("mstatus.SPELP = %lu (ELP was saved at trap)\n",
+          (unsigned long)spelp);
 
     TEST_ASSERT_EQ("LP fault triggered", result,
                    (uintptr_t)CAUSE_SOFTWARE_CHECK);
@@ -323,7 +323,7 @@ bool test_hcfi_lp_31(void) {
 
     asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_SPELP_BIT) : "memory");
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -365,7 +365,7 @@ bool test_hcfi_lp_32(void) {
                    trap_get_tval(), (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -406,7 +406,7 @@ bool test_hcfi_lp_33(void) {
                    trap_get_tval(), (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }

@@ -39,6 +39,7 @@
 #include "hyp/two_stage.h"
 #include "hyp/two_stage_helpers.h"
 #include "hyp/hyp_test_helpers.h"
+#include "hyp/hyp_vs_capture.h"
 
 /* ===================================================================
  * Feature availability
@@ -158,73 +159,9 @@ static uintptr_t hz_vs_amocas_w_aqrl(uintptr_t addr)
     return rd;
 }
 
-/* ===================================================================
- * VS-mode trap handler (for hedeleg -> VS-mode delivery cases). Records
- * vscause/vsepc/vstval, advances sepc by 4, forces SPP=1, returns.
- * =================================================================== */
-
-static volatile uintptr_t g_hz_vs_cause;
-static volatile uintptr_t g_hz_vs_epc;
-static volatile uintptr_t g_hz_vs_tval;
-static volatile bool      g_hz_vs_triggered;
-
-static void hz_vs_handler(void) __attribute__((naked, aligned(4)));
-static void hz_vs_handler(void)
-{
-    asm volatile (
-        "addi   sp, sp, -40\n\t"
-        "sd     ra, 0(sp)\n\t"
-        "sd     t0, 8(sp)\n\t"
-        "sd     t1, 16(sp)\n\t"
-        "sd     t2, 24(sp)\n\t"
-        "csrr   t0, scause\n\t"
-        "la     t2, g_hz_vs_cause\n\t"
-        "sd     t0, 0(t2)\n\t"
-        "csrr   t0, sepc\n\t"
-        "la     t2, g_hz_vs_epc\n\t"
-        "sd     t0, 0(t2)\n\t"
-        "csrr   t0, stval\n\t"
-        "la     t2, g_hz_vs_tval\n\t"
-        "sd     t0, 0(t2)\n\t"
-        "li     t0, 1\n\t"
-        "la     t2, g_hz_vs_triggered\n\t"
-        "sb     t0, 0(t2)\n\t"
-        "csrr   t0, sepc\n\t"
-        "addi   t0, t0, 4\n\t"
-        "csrw   sepc, t0\n\t"
-        "li     t0, 0x22\n\t"
-        "csrc   sstatus, t0\n\t"
-        "li     t0, 0x100\n\t"
-        "csrs   sstatus, t0\n\t"
-        "ld     ra, 0(sp)\n\t"
-        "ld     t0, 8(sp)\n\t"
-        "ld     t1, 16(sp)\n\t"
-        "ld     t2, 24(sp)\n\t"
-        "addi   sp, sp, 40\n\t"
-        "sret\n\t"
-    );
-}
-
-static inline void hz_vs_handler_install(void)
-{
-    g_hz_vs_cause = 0;
-    g_hz_vs_epc = 0;
-    g_hz_vs_tval = 0;
-    g_hz_vs_triggered = false;
-    vs_trap_setup_direct((uintptr_t)hz_vs_handler);
-}
-
-/* ===================================================================
- * HS-mode routing for GVA/SPV verification (hstatus.GVA/SPV are written
- * only for traps taken into HS-mode; see norm:hstatus_gva_op/spv_op).
- * =================================================================== */
-static inline void hz_route_to_hs(uintptr_t mask)   { CSRS(medeleg, mask); }
-static inline void hz_unroute_from_hs(uintptr_t mask){ CSRC(medeleg, mask); }
-static inline void hz_clear_gva_spv(void)
-{
-    hstatus_write(hstatus_read() & ~(HSTATUS_GVA | HSTATUS_SPV));
-}
-
+/* VS-mode trap capture (g_hz_vs_* state, hz_vs_handler,
+ * hz_vs_handler_install, hz_clear_gva_spv) is provided by
+ * common/hyp/hyp_vs_capture.h. */
 /* ===================================================================
  * VS-stage / G-stage leaf PTE flag presets.
  * =================================================================== */

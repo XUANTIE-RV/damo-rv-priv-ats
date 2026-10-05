@@ -42,9 +42,9 @@ bool test_hcfi_lp_34(void) {
 
     bool writable = (val & BIT(CAUSE_SOFTWARE_CHECK)) != 0;
     if (writable) {
-        printf("    hedeleg[18] is writable\n");
+        LOG_I("hedeleg[18] is writable\n");
     } else {
-        printf("    hedeleg[18] is read-only zero\n");
+        LOG_I("hedeleg[18] is read-only zero\n");
     }
 
     /* Restore */
@@ -92,9 +92,9 @@ bool test_hcfi_lp_35(void) {
 
     /* The trap was delegated to VS-mode and recorded by the VS-mode
      * trap handler. */
-    printf("    VS handler: triggered=%d vscause=%lu vstval=%lu\n",
-           (int)g_vs_exc_triggered, (unsigned long)g_vs_exc_cause,
-           (unsigned long)g_vs_exc_tval);
+    LOG_D("VS handler: triggered=%d vscause=%lu vstval=%lu\n",
+          (int)g_vs_exc_triggered, (unsigned long)g_vs_exc_cause,
+          (unsigned long)g_vs_exc_tval);
 
     TEST_ASSERT("LP fault delegated to VS-mode (vscause=18)",
                 g_vs_exc_triggered &&
@@ -103,7 +103,7 @@ bool test_hcfi_lp_35(void) {
                    g_vs_exc_tval, (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -157,7 +157,7 @@ bool test_hcfi_lp_36(void) {
                 trap_get_spv());
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -201,7 +201,7 @@ bool test_hcfi_lp_37(void) {
                    trap_get_tval(), (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -239,8 +239,8 @@ bool test_hcfi_lp_38(void) {
 
     /* For a landing pad fault, vsepc is the address of the target
      * instruction (the non-LPAD instruction the JALR jumped to). */
-    printf("    vsepc = 0x%lx, target addr = 0x%lx\n",
-           (unsigned long)g_vs_exc_epc, (unsigned long)(uintptr_t)code);
+    LOG_D("vsepc = 0x%lx, target addr = 0x%lx\n",
+          (unsigned long)g_vs_exc_epc, (unsigned long)(uintptr_t)code);
 
     TEST_ASSERT("LP fault delegated to VS-mode",
                 g_vs_exc_triggered &&
@@ -249,7 +249,7 @@ bool test_hcfi_lp_38(void) {
                 g_vs_exc_epc == (uintptr_t)code);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -292,7 +292,7 @@ bool test_hcfi_lp_39(void) {
     /* GVA should be 0 (software-check is not a guest-page-fault) */
     uintptr_t hs = hstatus_read();
     bool gva = (hs & HSTATUS_GVA) != 0;
-    printf("    hstatus.GVA = %lu (expect 0)\n", (unsigned long)gva);
+    LOG_D("hstatus.GVA = %lu (expect 0)\n", (unsigned long)gva);
 
     TEST_ASSERT_EQ("LP fault trapped to HS", result,
                    (uintptr_t)CAUSE_SOFTWARE_CHECK);
@@ -300,7 +300,7 @@ bool test_hcfi_lp_39(void) {
                 !gva);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -345,9 +345,9 @@ bool test_hcfi_lp_40(void) {
      * return sret clears hstatus.SPV (norm:sret_v0), so check the
      * snapshot taken at trap entry. */
     uintptr_t sepc_val = trap_get_epc();
-    printf("    sepc = 0x%lx, target addr = 0x%lx, hstatus.SPV at trap = %lu\n",
-           (unsigned long)sepc_val, (unsigned long)(uintptr_t)code,
-           (unsigned long)(trap_get_spv() ? 1 : 0));
+    LOG_D("sepc = 0x%lx, target addr = 0x%lx, hstatus.SPV at trap = %lu\n",
+          (unsigned long)sepc_val, (unsigned long)(uintptr_t)code,
+          (unsigned long)(trap_get_spv() ? 1 : 0));
 
     TEST_ASSERT_EQ("LP fault trapped to HS", result,
                    (uintptr_t)CAUSE_SOFTWARE_CHECK);
@@ -357,7 +357,7 @@ bool test_hcfi_lp_40(void) {
                 trap_get_spv());
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -397,8 +397,8 @@ bool test_hcfi_lp_41(void) {
      * MPP to U, so verify the snapshots taken at trap entry. */
     bool mpv = trap_get_mpv();
     uintptr_t mpp = trap_get_mpp();
-    printf("    mstatus.MPV at trap = %lu, MPP = %lu\n",
-           (unsigned long)mpv, (unsigned long)mpp);
+    LOG_D("mstatus.MPV at trap = %lu, MPP = %lu\n",
+          (unsigned long)mpv, (unsigned long)mpp);
 
     TEST_ASSERT_EQ("LP fault trapped to M", result,
                    (uintptr_t)CAUSE_SOFTWARE_CHECK);
@@ -409,7 +409,7 @@ bool test_hcfi_lp_41(void) {
     CSRC(mstatus, MSTATUS_MPV);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }

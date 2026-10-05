@@ -27,9 +27,9 @@ bool test_shvstvecd_mode_01_direct_writable(void) {
     VSTVEC_SAVE();
 
     /* Write BASE=0, MODE=0 */
-    vstvec_write_raw((uintptr_t)0);
+    vstvec_write((uintptr_t)0);
 
-    uintptr_t rb = vstvec_read_raw();
+    uintptr_t rb = vstvec_read();
     TEST_ASSERT("vstvec.MODE reads back as 0 (Direct)",
                 (rb & VSTVEC_MODE_MASK) == VSTVEC_MODE_DIRECT);
 
@@ -44,27 +44,27 @@ bool test_shvstvecd_mode_02_round_trip(void) {
     VSTVEC_SAVE();
 
     /* Step 1: write MODE=0, expect readback == 0 */
-    vstvec_write_raw((uintptr_t)VSTVEC_MODE_DIRECT);
-    uintptr_t rb1 = vstvec_read_raw() & VSTVEC_MODE_MASK;
+    vstvec_write((uintptr_t)VSTVEC_MODE_DIRECT);
+    uintptr_t rb1 = vstvec_read() & VSTVEC_MODE_MASK;
     TEST_ASSERT("after write MODE=0, readback == 0",
                 rb1 == VSTVEC_MODE_DIRECT);
 
     /* Step 2: write MODE=1 (Vectored). Shvstvecd does NOT require
      * Vectored to be implemented. Either readback (0 or 1) is legal. */
-    vstvec_write_raw((uintptr_t)VSTVEC_MODE_VECTORED);
-    uintptr_t rb2 = vstvec_read_raw() & VSTVEC_MODE_MASK;
+    vstvec_write((uintptr_t)VSTVEC_MODE_VECTORED);
+    uintptr_t rb2 = vstvec_read() & VSTVEC_MODE_MASK;
     TEST_ASSERT("after write MODE=1, readback in {0, 1}",
                 rb2 == VSTVEC_MODE_DIRECT || rb2 == VSTVEC_MODE_VECTORED);
     if (rb2 == VSTVEC_MODE_VECTORED) {
-        printf("    [INFO] platform implements vstvec Vectored mode\n");
+        LOG_I("platform implements vstvec Vectored mode\n");
     } else {
-        printf("    [INFO] platform does NOT implement vstvec Vectored "
-               "(MODE=1 -> 0)\n");
+        LOG_I("platform does NOT implement vstvec Vectored "
+              "(MODE=1 -> 0)\n");
     }
 
     /* Step 3: write MODE=0 again, expect readback == 0 */
-    vstvec_write_raw((uintptr_t)VSTVEC_MODE_DIRECT);
-    uintptr_t rb3 = vstvec_read_raw() & VSTVEC_MODE_MASK;
+    vstvec_write((uintptr_t)VSTVEC_MODE_DIRECT);
+    uintptr_t rb3 = vstvec_read() & VSTVEC_MODE_MASK;
     TEST_ASSERT("after write MODE=0 again, readback == 0",
                 rb3 == VSTVEC_MODE_DIRECT);
 

@@ -73,8 +73,8 @@ bool test_sha_hier_mstateen_zero_hstateen_roz(void) {
     mstateen_set_bit63(0, false);
 
     rb = hstateen_read(0);
-    printf("  hstateen0 readback from M-mode with mstateen0.63=0: 0x%lx\n",
-           (unsigned long)rb);
+    LOG_D("hstateen0 readback from M-mode with mstateen0.63=0: 0x%lx\n",
+          (unsigned long)rb);
     /* M-mode is not gated by mstateen, so this is a control assertion */
     TEST_ASSERT("M-mode can still read hstateen0 (not gated)", 1);
 

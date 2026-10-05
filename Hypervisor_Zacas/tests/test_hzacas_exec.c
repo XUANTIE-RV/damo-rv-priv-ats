@@ -150,7 +150,7 @@ bool test_hzacas_02_vs_exec_no_cause22(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("VS-mode amocas took no trap", !fired);
     TEST_ASSERT_NEQ("VS-mode amocas did not report cause=22",
                     cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
@@ -187,7 +187,7 @@ bool test_hzacas_03_vu_exec_no_cause22(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("VU-mode amocas took no trap", !fired);
     TEST_ASSERT_NEQ("VU-mode amocas did not report cause=22",
                     cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);

@@ -44,24 +44,24 @@ bool test_hvec_13(void)
     CSRW(misa, misa_orig & ~v_bit);
 
     M_TRAP_EXPECT_BEGIN();
-    uintptr_t val = hvec_vsstatus_read();
+    uintptr_t val = vsstatus_read();
     bool read_trapped = trap_was_triggered();
     trap_expect_end();
 
     if (read_trapped) {
-        printf("[I] misa.v=0: vsstatus.vs read trapped (cause=%lu) - "
-               "field absent, legal per norm:vsstatus_vs_exists\n",
-               (unsigned long)trap_get_cause());
+        LOG_I("misa.v=0: vsstatus.vs read trapped (cause=%lu) - "
+              "field absent, legal per norm:vsstatus_vs_exists\n",
+              (unsigned long)trap_get_cause());
     } else {
-        printf("[I] misa.v=0: vsstatus.vs readable (vs=0x%lx) - "
-               "field present, legal per norm:vsstatus_vs_exists\n",
-               (unsigned long)((val >> HVEC_VS_SHIFT) & HVEC_CTX_MASK));
+        LOG_I("misa.v=0: vsstatus.vs readable (vs=0x%lx) - "
+              "field present, legal per norm:vsstatus_vs_exists\n",
+              (unsigned long)((val >> SSTATUS_VS_SHIFT) & HVEC_CTX_MASK));
 
         /* If present, a write must also be accepted (read the field
          * back; the value itself is unconstrained here). */
         M_TRAP_EXPECT_BEGIN();
-        hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
-        (void)hvec_vsstatus_field(HVEC_VS_SHIFT);
+        vsstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
+        (void)vsstatus_get_field(SSTATUS_VS_SHIFT);
         bool write_trapped = trap_was_triggered();
         trap_expect_end();
         TEST_ASSERT("present vsstatus.vs accepts writes", !write_trapped);

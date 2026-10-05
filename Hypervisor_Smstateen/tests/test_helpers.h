@@ -18,59 +18,12 @@
 
 #ifdef ENABLE_HYP
 #include "hyp/hyp_priv.h"
+#include "hyp/hyp_csr.h"
 #endif
 
 /* ===================================================================
  * mstateen0-3 CSR access helpers (M-mode, CSR 0x30C-0x30F)
  * =================================================================== */
-
-static inline uintptr_t mstateen0_read(void) {
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MSTATEEN0) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void mstateen0_write(uintptr_t v) {
-    asm volatile("csrw " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(v) : "memory");
-}
-
-static inline void mstateen0_set(uintptr_t bits) {
-    asm volatile("csrs " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(bits) : "memory");
-}
-
-static inline void mstateen0_clear(uintptr_t bits) {
-    asm volatile("csrc " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(bits) : "memory");
-}
-
-static inline uintptr_t mstateen1_read(void) {
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MSTATEEN1) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void mstateen1_write(uintptr_t v) {
-    asm volatile("csrw " CSR_STR(CSR_MSTATEEN1) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t mstateen2_read(void) {
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MSTATEEN2) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void mstateen2_write(uintptr_t v) {
-    asm volatile("csrw " CSR_STR(CSR_MSTATEEN2) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t mstateen3_read(void) {
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MSTATEEN3) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void mstateen3_write(uintptr_t v) {
-    asm volatile("csrw " CSR_STR(CSR_MSTATEEN3) ", %0" :: "r"(v) : "memory");
-}
 
 /* ===================================================================
  * sstateen0-3 CSR access helpers (S-mode visible, CSR 0x10C-0x10F)
@@ -125,70 +78,7 @@ static inline void sstateen3_write(uintptr_t v) {
  * the H extension ISA string in -march.
  * =================================================================== */
 
-static inline uintptr_t hstateen0_read(void) {
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_HSTATEEN0) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void hstateen0_write(uintptr_t v) {
-    asm volatile("csrw " CSR_STR(CSR_HSTATEEN0) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t hstateen1_read(void) {
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_HSTATEEN1) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void hstateen1_write(uintptr_t v) {
-    asm volatile("csrw " CSR_STR(CSR_HSTATEEN1) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t hstateen2_read(void) {
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_HSTATEEN2) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void hstateen2_write(uintptr_t v) {
-    asm volatile("csrw " CSR_STR(CSR_HSTATEEN2) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t hstateen3_read(void) {
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_HSTATEEN3) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void hstateen3_write(uintptr_t v) {
-    asm volatile("csrw " CSR_STR(CSR_HSTATEEN3) ", %0" :: "r"(v) : "memory");
-}
-
-/* ===================================================================
- * senvcfg CSR access helpers (CSR 0x10A)
- * =================================================================== */
-
-static inline uintptr_t senvcfg_read(void) {
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_SENVCFG) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void senvcfg_write(uintptr_t v) {
-    asm volatile("csrw " CSR_STR(CSR_SENVCFG) ", %0" :: "r"(v) : "memory");
-}
-
-/* ===================================================================
- * Feature detection helpers
- * =================================================================== */
-
-/* Check if misa.F (standard floating-point) is set */
-#define HAS_MISA_F() ({ \
-    uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
-    (_misa & (1UL << ('F' - 'A'))) != 0; \
-})
+/* senvcfg_read()/senvcfg_write() are provided by common/hyp/hyp_csr.h. */
 
 /* ===================================================================
  * Helper: check if a specific mstateen0 bit is writable
@@ -197,10 +87,10 @@ static inline void senvcfg_write(uintptr_t v) {
  * Returns true if the bit is writable.
  * =================================================================== */
 static inline bool mstateen0_bit_writable(uintptr_t bit) {
-    uintptr_t orig = mstateen0_read();
-    mstateen0_write(orig | bit);
-    uintptr_t val = mstateen0_read();
-    mstateen0_write(orig);
+    uintptr_t orig = mstateen_read(0);
+    mstateen_write(0, orig | bit);
+    uintptr_t val = mstateen_read(0);
+    mstateen_write(0, orig);
     return (val & bit) != 0;
 }
 

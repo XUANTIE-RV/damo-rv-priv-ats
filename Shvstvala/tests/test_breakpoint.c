@@ -16,11 +16,6 @@
  *   constrained by Shvstvala (informational test, always passes).
  */
 
-/* Trigger CSR addresses */
-#define CSR_TSELECT    0x7A0
-#define CSR_TDATA1     0x7A1
-#define CSR_TDATA2     0x7A2
-
 /* mcontrol6 (type=6) field definitions */
 #define MCONTROL6_TYPE6     (6UL << 60)
 #define MCONTROL6_EXECUTE   (1UL << 2)
@@ -107,22 +102,7 @@ bool test_shvstvala_brk_01(void) {
 
     /* Two-stage identity map for VS-mode */
     two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
-
-    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
-    uintptr_t lo_end  = r_start & ~(PAGE_SIZE_2M - 1);
-    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    two_stage_vs_identity(&ctx, lo_base, lo_end - lo_base,
-                          vs_flags, PT_LEVEL_2M);
-    uintptr_t r_size = (uintptr_t)__vm_test_region_end - r_start;
-    two_stage_vs_identity(&ctx, r_start, r_size, vs_flags, PT_LEVEL_4K);
-
-    two_stage_setup_identity(&ctx, lo_base, lo_end - lo_base,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
-    two_stage_setup_identity(&ctx, r_start, r_size,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Use test_exec_page as the breakpoint target address.
      * Write a 'ret' (jalr x0, ra, 0 = 0x00008067) there so
@@ -178,22 +158,7 @@ bool test_shvstvala_brk_02(void) {
 
     /* Two-stage identity map */
     two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
-
-    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
-    uintptr_t lo_end  = r_start & ~(PAGE_SIZE_2M - 1);
-    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    two_stage_vs_identity(&ctx, lo_base, lo_end - lo_base,
-                          vs_flags, PT_LEVEL_2M);
-    uintptr_t r_size = (uintptr_t)__vm_test_region_end - r_start;
-    two_stage_vs_identity(&ctx, r_start, r_size, vs_flags, PT_LEVEL_4K);
-
-    two_stage_setup_identity(&ctx, lo_base, lo_end - lo_base,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
-    two_stage_setup_identity(&ctx, r_start, r_size,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Execute EBREAK in VS-mode */
     two_stage_run_in_vs(&ctx, vsmode_ebreak, 0);

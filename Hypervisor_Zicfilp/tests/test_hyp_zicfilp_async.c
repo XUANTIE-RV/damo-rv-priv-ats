@@ -38,7 +38,7 @@ bool test_hcfi_lp_42(void) {
      * non-deterministic and not attempted here. The ELP-save mechanism
      * is instead verified via a synchronous software-check exception
      * (which preserves ELP identically per norm:Zicfilp_pelp_trap). */
-    printf("    Note: async interrupt injection not implemented (known gap)\n");
+    LOG_W("async interrupt injection not implemented (known gap)\n");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -73,8 +73,8 @@ bool test_hcfi_lp_42(void) {
      * so verify against the status snapshot taken at trap entry. */
     uintptr_t snap = trap_get_status_snap();
     uintptr_t spelp = (snap & MSTATUS_SPELP_BIT) ? 1 : 0;
-    printf("    mstatus.SPELP = %lu (ELP saved at trap)\n",
-           (unsigned long)spelp);
+    LOG_D("mstatus.SPELP = %lu (ELP saved at trap)\n",
+          (unsigned long)spelp);
 
     TEST_ASSERT_EQ("LP fault triggered", result,
                    (uintptr_t)CAUSE_SOFTWARE_CHECK);
@@ -83,7 +83,7 @@ bool test_hcfi_lp_42(void) {
 
     asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_SPELP_BIT) : "memory");
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -110,7 +110,7 @@ bool test_hcfi_lp_43(void) {
      * return (SRET), which restores ELP from xPELP identically
      * (norm:Zicfilp_pelp_trap_return). A real asynchronous interrupt
      * in the JALR->LPAD window is not injected (non-deterministic). */
-    printf("    Note: async interrupt return not implemented (known gap)\n");
+    LOG_W("async interrupt return not implemented (known gap)\n");
 
     two_stage_ctx_t ctx;
     pt_pool_reset();
@@ -144,10 +144,10 @@ bool test_hcfi_lp_43(void) {
     /* After trap return, ELP should be restored. Since target is
      * still non-LPAD, another fault would occur. The framework
      * handles this by returning to the trampoline's recovery path. */
-    printf("    ELP restoration mechanism verified\n");
+    LOG_I("ELP restoration mechanism verified\n");
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -191,8 +191,8 @@ bool test_hcfi_lp_44(void) {
     uintptr_t result = two_stage_run_in_vs(&ctx, vs_jalr_to_unmapped,
                                            (uintptr_t)test_exec_target);
 
-    printf("    trap cause = %lu (expect instruction page-fault, not sw-check)\n",
-           (unsigned long)result);
+    LOG_D("trap cause = %lu (expect instruction page-fault, not sw-check)\n",
+          (unsigned long)result);
 
     /* The exception should NOT be software-check (cause=18).
      * It should be instruction page-fault (cause=12) or
@@ -208,8 +208,8 @@ bool test_hcfi_lp_44(void) {
      * the status snapshot taken at trap entry. */
     uintptr_t snap = trap_get_status_snap();
     uintptr_t mpelp = (snap & MSTATUS_MPELP_BIT) ? 1 : 0;
-    printf("    mstatus.MPELP = %lu (ELP saved at trap)\n",
-           (unsigned long)mpelp);
+    LOG_D("mstatus.MPELP = %lu (ELP saved at trap)\n",
+          (unsigned long)mpelp);
 
     /* ELP should be saved (LP_EXPECTED from the indirect jump) */
     TEST_ASSERT("MPELP saved ELP=LP_EXPECTED at trap entry",
@@ -217,7 +217,7 @@ bool test_hcfi_lp_44(void) {
 
     asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_MPELP_BIT) : "memory");
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
     HYP_TEST_END();

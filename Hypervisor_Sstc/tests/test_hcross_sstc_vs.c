@@ -23,8 +23,8 @@ bool test_hcross_sstc_06(void)
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    menvcfg_set(MENVCFG_STCE);
-    henvcfg_set(HENVCFG_STCE);
+    menvcfg_set_bits(MENVCFG_STCE);
+    henvcfg_set_bits(HENVCFG_STCE);
 
     uintptr_t test_val = (uintptr_t)0x123456789ABCDEF0ULL;
     vstimecmp_write(test_val);
@@ -45,8 +45,8 @@ bool test_hcross_sstc_07(void)
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    menvcfg_set(MENVCFG_STCE);
-    henvcfg_set(HENVCFG_STCE);
+    menvcfg_set_bits(MENVCFG_STCE);
+    henvcfg_set_bits(HENVCFG_STCE);
 
     vstimecmp_write((uintptr_t)-1);
     uintptr_t val = vstimecmp_read();
@@ -70,9 +70,9 @@ bool test_hcross_sstc_08(void)
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    menvcfg_set(MENVCFG_STCE);
+    menvcfg_set_bits(MENVCFG_STCE);
     mcounteren_set(MCOUNTEREN_TM);
-    henvcfg_set(HENVCFG_STCE);
+    henvcfg_set_bits(HENVCFG_STCE);
 
     uintptr_t test_val = (uintptr_t)0xFEDCBA9876543210ULL;
 
@@ -98,11 +98,11 @@ bool test_hcross_sstc_09(void)
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    menvcfg_set(MENVCFG_STCE);
-    henvcfg_set(HENVCFG_STCE);
+    menvcfg_set_bits(MENVCFG_STCE);
+    henvcfg_set_bits(HENVCFG_STCE);
 
     /* Clear hvip.VSTIP to isolate vstimecmp signal */
-    hvip_clear(HVIP_VSTIP);
+    hvip_clear_bits(HVIP_VSTIP);
 
     /* Clear: vstimecmp = MAX */
     vstimecmp_write((uintptr_t)-1);
@@ -134,9 +134,9 @@ bool test_hcross_sstc_10(void)
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    menvcfg_set(MENVCFG_STCE);
-    henvcfg_set(HENVCFG_STCE);
-    hvip_clear(HVIP_VSTIP);
+    menvcfg_set_bits(MENVCFG_STCE);
+    henvcfg_set_bits(HENVCFG_STCE);
+    hvip_clear_bits(HVIP_VSTIP);
 
     /* Set vstimecmp to MAX */
     vstimecmp_write((uintptr_t)-1);
@@ -167,9 +167,9 @@ bool test_hcross_sstc_11(void)
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    menvcfg_set(MENVCFG_STCE);
-    henvcfg_set(HENVCFG_STCE);  /* STCE=1: vstimecmp signal active */
-    hvip_clear(HVIP_VSTIP);
+    menvcfg_set_bits(MENVCFG_STCE);
+    henvcfg_set_bits(HENVCFG_STCE);  /* STCE=1: vstimecmp signal active */
+    hvip_clear_bits(HVIP_VSTIP);
 
     /* ---- Sub-case A: vstimecmp=MAX -> signal=0 -> VSTIP=0 ---- */
     vstimecmp_write((uintptr_t)-1);
@@ -200,7 +200,7 @@ bool test_hcross_sstc_11(void)
                 (hip_val & HIP_VSTIP) == 0);
 
     /* Clean up */
-    hvip_clear(HVIP_VSTIP);
+    hvip_clear_bits(HVIP_VSTIP);
     TEST_END();
 }
 
@@ -219,9 +219,9 @@ bool test_hcross_sstc_12(void)
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    menvcfg_set(MENVCFG_STCE);
-    henvcfg_clear(HENVCFG_STCE);   /* STCE=0: vstimecmp signal disabled */
-    hvip_clear(HVIP_VSTIP);
+    menvcfg_set_bits(MENVCFG_STCE);
+    henvcfg_clear_bits(HENVCFG_STCE);   /* STCE=0: vstimecmp signal disabled */
+    hvip_clear_bits(HVIP_VSTIP);
 
     /* Set vstimecmp to a past value; with STCE=0, this must NOT
      * generate a VSTIP signal. */
@@ -235,7 +235,7 @@ bool test_hcross_sstc_12(void)
 
     /* ---- Sub-case B: hvip.VSTIP=1 (manually set) -> VSTIP=1 ---- */
     /* Proves that VSTIP is now driven only by hvip.VSTIP. */
-    hvip_set(HVIP_VSTIP);
+    hvip_set_bits(HVIP_VSTIP);
     DELAY_LOOP(HCROSS_SSTC_DELAY);
 
     hip_val = hip_read();
@@ -243,7 +243,7 @@ bool test_hcross_sstc_12(void)
                 (hip_val & HIP_VSTIP) != 0);
 
     /* ---- Sub-case C: clear hvip.VSTIP -> VSTIP=0 again ---- */
-    hvip_clear(HVIP_VSTIP);
+    hvip_clear_bits(HVIP_VSTIP);
     DELAY_LOOP(HCROSS_SSTC_DELAY);
 
     hip_val = hip_read();
@@ -265,9 +265,9 @@ bool test_hcross_sstc_13(void)
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    menvcfg_set(MENVCFG_STCE);
+    menvcfg_set_bits(MENVCFG_STCE);
     mcounteren_set(MCOUNTEREN_TM);
-    henvcfg_set(HENVCFG_STCE);
+    henvcfg_set_bits(HENVCFG_STCE);
     hcounteren_set(HCOUNTEREN_TM);
 
     uintptr_t test_val = (uintptr_t)0xABCD1234ABCD0000ULL;
@@ -294,9 +294,9 @@ bool test_hcross_sstc_14(void)
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    menvcfg_set(MENVCFG_STCE);
-    henvcfg_set(HENVCFG_STCE);
-    hvip_clear(HVIP_VSTIP);
+    menvcfg_set_bits(MENVCFG_STCE);
+    henvcfg_set_bits(HENVCFG_STCE);
+    hvip_clear_bits(HVIP_VSTIP);
 
     /* Save and set a large positive htimedelta */
     uintptr_t orig_htd = htimedelta_read();
@@ -334,11 +334,11 @@ bool test_hcross_sstc_15(void)
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    menvcfg_set(MENVCFG_STCE);
+    menvcfg_set_bits(MENVCFG_STCE);
     mcounteren_set(MCOUNTEREN_TM);
-    henvcfg_set(HENVCFG_STCE);
+    henvcfg_set_bits(HENVCFG_STCE);
     hcounteren_set(HCOUNTEREN_TM);
-    hvip_clear(HVIP_VSTIP);
+    hvip_clear_bits(HVIP_VSTIP);
     vstimecmp_write((uintptr_t)-1);
 
     /* Delegate VSTIP to VS-mode:

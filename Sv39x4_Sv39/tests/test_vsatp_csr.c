@@ -29,20 +29,14 @@
 
 #include "two_stage_helpers.h"
 
-/* Convenience: build a vsatp value with mode/asid/ppn. Same encoding
- * as MAKE_SATP from vm_defs.h. */
-#define MAKE_VSATP(mode, asid, ppn)  MAKE_SATP((mode), (asid), (ppn))
-
 /* ===================================================================
  * VS-mode helpers for satp alias tests.
  * When V=1, satp is an alias for vsatp.
+ *
+ * vs_read_satp() from common/hyp/hyp_test_helpers.h.
+ * vs_satp_write_fn is local because it adds sfence.vma after the
+ * write (TLB flush required for subsequent instruction fetches).
  * =================================================================== */
-static uintptr_t vs_satp_read_fn(uintptr_t arg) {
-    (void)arg;
-    uintptr_t val;
-    asm volatile ("csrr %0, satp" : "=r"(val));
-    return val;
-}
 
 static uintptr_t vs_satp_write_fn(uintptr_t new_val) {
     asm volatile ("csrw satp, %0" :: "r"(new_val));
@@ -76,7 +70,7 @@ bool test_ts_vsatp_01_v1_satp_reads_vsatp(void)
     uintptr_t expected = vsatp_read();
 
     /* Enter VS-mode (V=1) and read satp; should return vsatp. */
-    uintptr_t got = run_in_vs_mode(vs_satp_read_fn, 0);
+    uintptr_t got = run_in_vs_mode(vs_read_satp, 0);
 
     /* Manual cleanup (avoid double-cleanup from ts2_finish which
      * would zero vsatp before we can verify). */
@@ -305,7 +299,7 @@ bool test_ts_vsatp_07_vtvm_traps_satp(void)
 
     /* VS-mode reads satp -> should trap as virtual-instruction. */
     trap_expect_begin();
-    (void)two_stage_run_in_vs(&ctx, vs_satp_read_fn, 0);
+    (void)two_stage_run_in_vs(&ctx, vs_read_satp, 0);
     bool fired = trap_was_triggered();
     uintptr_t cause = fired ? trap_get_cause() : 0;
     trap_expect_end();

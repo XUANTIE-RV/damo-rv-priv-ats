@@ -40,23 +40,7 @@ bool test_shvstvala_laf_01(void) {
 
     /* Two-stage identity map so VA == GPA == PA */
     two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
-
-    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
-    uintptr_t lo_end  = r_start & ~(PAGE_SIZE_2M - 1);
-    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    two_stage_vs_identity(&ctx, lo_base, lo_end - lo_base,
-                          vs_flags, PT_LEVEL_2M);
-    uintptr_t r_size = (uintptr_t)__vm_test_region_end - r_start;
-    two_stage_vs_identity(&ctx, r_start, r_size, vs_flags, PT_LEVEL_4K);
-
-    /* G-stage: full identity map */
-    two_stage_setup_identity(&ctx, lo_base, lo_end - lo_base,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
-    two_stage_setup_identity(&ctx, r_start, r_size,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t target_va = PMP_RESTRICTED_PA;
     two_stage_run_in_vs(&ctx, vsmode_load_addr, target_va);
@@ -95,22 +79,7 @@ bool test_shvstvala_saf_01(void) {
     g_shvstvala_cause  = 0;
 
     two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
-
-    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
-    uintptr_t lo_end  = r_start & ~(PAGE_SIZE_2M - 1);
-    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    two_stage_vs_identity(&ctx, lo_base, lo_end - lo_base,
-                          vs_flags, PT_LEVEL_2M);
-    uintptr_t r_size = (uintptr_t)__vm_test_region_end - r_start;
-    two_stage_vs_identity(&ctx, r_start, r_size, vs_flags, PT_LEVEL_4K);
-
-    two_stage_setup_identity(&ctx, lo_base, lo_end - lo_base,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
-    two_stage_setup_identity(&ctx, r_start, r_size,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t target_va = PMP_RESTRICTED_PA;
     two_stage_run_in_vs(&ctx, vsmode_store_addr, target_va);
@@ -149,22 +118,7 @@ bool test_shvstvala_iaf_01(void) {
     g_shvstvala_cause  = 0;
 
     two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
-
-    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
-    uintptr_t lo_end  = r_start & ~(PAGE_SIZE_2M - 1);
-    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    two_stage_vs_identity(&ctx, lo_base, lo_end - lo_base,
-                          vs_flags, PT_LEVEL_2M);
-    uintptr_t r_size = (uintptr_t)__vm_test_region_end - r_start;
-    two_stage_vs_identity(&ctx, r_start, r_size, vs_flags, PT_LEVEL_4K);
-
-    two_stage_setup_identity(&ctx, lo_base, lo_end - lo_base,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
-    two_stage_setup_identity(&ctx, r_start, r_size,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t target_pc = PMP_RESTRICTED_PA;
     two_stage_run_in_vs(&ctx, vsmode_fetch_addr, target_pc);

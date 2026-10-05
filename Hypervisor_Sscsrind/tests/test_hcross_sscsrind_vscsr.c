@@ -29,7 +29,7 @@ bool test_hcross_sscsrind_01(void)
      */
     if (SMSTATEEN_AVAILABLE)
     {
-        mstateen0_set(MSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
     }
 
     /* Switch to HS-mode (S-mode with V=0) to access HS-mode CSRs */
@@ -66,7 +66,7 @@ bool test_hcross_sscsrind_02(void)
      */
     if (SMSTATEEN_AVAILABLE)
     {
-        mstateen0_set(MSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
     }
 
     goto_priv(PRIV_S);
@@ -111,7 +111,7 @@ bool test_hcross_sscsrind_03(void)
      */
     if (SMSTATEEN_AVAILABLE)
     {
-        mstateen0_set(MSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
     }
 
     goto_priv(PRIV_S);
@@ -161,7 +161,7 @@ bool test_hcross_sscsrind_04(void)
      */
     if (SMSTATEEN_AVAILABLE)
     {
-        mstateen0_set(MSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
     }
 
     goto_priv(PRIV_S);
@@ -208,7 +208,7 @@ bool test_hcross_sscsrind_05(void)
      */
     if (SMSTATEEN_AVAILABLE)
     {
-        mstateen0_set(MSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
     }
 
     goto_priv(PRIV_S);
@@ -255,7 +255,7 @@ bool test_hcross_sscsrind_06(void)
      */
     if (SMSTATEEN_AVAILABLE)
     {
-        mstateen0_set(MSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
     }
 
     goto_priv(PRIV_S);
@@ -317,7 +317,7 @@ bool test_hcross_sscsrind_07(void)
      */
     if (SMSTATEEN_AVAILABLE)
     {
-        mstateen0_set(MSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
     }
 
     goto_priv(PRIV_S);
@@ -400,7 +400,7 @@ bool test_hcross_sscsrind_08(void)
      */
     if (SMSTATEEN_AVAILABLE)
     {
-        mstateen0_set(MSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
     }
 
     goto_priv(PRIV_S);
@@ -469,7 +469,7 @@ bool test_hcross_sscsrind_09(void)
      */
     if (SMSTATEEN_AVAILABLE)
     {
-        mstateen0_set(MSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
     }
 
     goto_priv(PRIV_S);
@@ -514,7 +514,7 @@ bool test_hcross_sscsrind_10(void)
      */
     if (SMSTATEEN_AVAILABLE)
     {
-        mstateen0_set(MSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
     }
 
     goto_priv(PRIV_S);

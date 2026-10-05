@@ -60,8 +60,8 @@ bool test_hzhpM_01(void)
          * offered to the guest; the mcounteren layer takes precedence
          * and the access must report illegal-instruction, NOT
          * virtual-instruction. */
-        printf("  hpmcounter%u: mcounteren[%u] read-only zero, "
-               "mcounteren-layer path\n", n, n);
+        LOG_I("hpmcounter%u: mcounteren[%u] read-only zero, "
+              "mcounteren-layer path\n", n, n);
         TEST_ASSERT("access trapped (mcounteren[N]=0)", trapped);
         if (trapped)
             TEST_ASSERT_EQ("cause=2 (illegal-instruction)",
@@ -71,20 +71,20 @@ bool test_hzhpM_01(void)
          * illegal-instruction from the unimplemented counter itself.
          * virtual-instruction is NOT permitted here. */
         if (trapped) {
-            printf("  hpmcounter%u: trapped, cause=%lu\n",
-                   n, (unsigned long)cause);
+            LOG_D("hpmcounter%u: trapped, cause=%lu\n",
+                  n, (unsigned long)cause);
             TEST_ASSERT_EQ("cause=2 (illegal-instruction)",
                            cause, (uintptr_t)CAUSE_ILLEGAL_INST);
         } else {
-            printf("  hpmcounter%u: constant value 0x%lx\n",
-                   n, (unsigned long)v);
+            LOG_D("hpmcounter%u: constant value 0x%lx\n",
+                  n, (unsigned long)v);
             TEST_ASSERT("constant value with gate open is legal", 1);
         }
     } else {
         /* Gate cannot be opened (hcounteren[N] read-only zero):
          * norm:hcounteren_warl says V=1 reads then trap. */
-        printf("  hpmcounter%u: hcounteren[%u] read-only zero, "
-               "gating path\n", n, n);
+        LOG_I("hpmcounter%u: hcounteren[%u] read-only zero, "
+              "gating path\n", n, n);
         TEST_ASSERT("access trapped with gate closed", trapped);
         if (trapped)
             TEST_ASSERT_EQ("cause=22 (virtual-instruction)",
@@ -129,8 +129,8 @@ bool test_hzhpM_02(void)
         /* mcounteren[N] read-only zero: the mcounteren layer takes
          * precedence for VU too; the access must report
          * illegal-instruction, NOT virtual-instruction. */
-        printf("  hpmcounter%u: mcounteren[%u] read-only zero, "
-               "mcounteren-layer path\n", n, n);
+        LOG_I("hpmcounter%u: mcounteren[%u] read-only zero, "
+              "mcounteren-layer path\n", n, n);
         TEST_ASSERT("access trapped (mcounteren[N]=0)", trapped);
         if (trapped)
             TEST_ASSERT_EQ("cause=2 (illegal-instruction)",
@@ -139,20 +139,20 @@ bool test_hzhpM_02(void)
         /* All three layers open: constant value or illegal-instruction
          * from the unimplemented counter itself are both legal. */
         if (trapped) {
-            printf("  hpmcounter%u: trapped, cause=%lu\n",
-                   n, (unsigned long)cause);
+            LOG_D("hpmcounter%u: trapped, cause=%lu\n",
+                  n, (unsigned long)cause);
             TEST_ASSERT_EQ("cause=2 (illegal-instruction)",
                            cause, (uintptr_t)CAUSE_ILLEGAL_INST);
         } else {
-            printf("  hpmcounter%u: constant value 0x%lx\n",
-                   n, (unsigned long)v);
+            LOG_D("hpmcounter%u: constant value 0x%lx\n",
+                  n, (unsigned long)v);
             TEST_ASSERT("constant value with gates open is legal", 1);
         }
     } else {
         /* hcounteren[N] or scounteren[N] read-only zero: VU-mode
          * access must trap with virtual-instruction. */
-        printf("  hpmcounter%u: gate not fully openable "
-               "(h_ok=%d, sc_ok=%d), gating path\n", n, h_ok, sc_ok);
+        LOG_W("hpmcounter%u: gate not fully openable "
+              "(h_ok=%d, sc_ok=%d), gating path\n", n, h_ok, sc_ok);
         TEST_ASSERT("access trapped with gate closed", trapped);
         if (trapped)
             TEST_ASSERT_EQ("cause=22 (virtual-instruction)",
@@ -259,9 +259,9 @@ bool test_hzhpM_04(void)
         trapped[i] = trap_was_triggered();
         cause[i] = trapped[i] ? trap_get_cause() : 0;
         trap_expect_end();
-        printf("  run %d: trapped=%d cause=%lu value=0x%lx\n",
-               i + 1, trapped[i], (unsigned long)cause[i],
-               (unsigned long)value[i]);
+        LOG_D("run %d: trapped=%d cause=%lu value=0x%lx\n",
+              i + 1, trapped[i], (unsigned long)cause[i],
+              (unsigned long)value[i]);
     }
 
     /* If the implementation returns a constant value, repeated reads

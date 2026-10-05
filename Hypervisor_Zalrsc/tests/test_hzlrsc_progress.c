@@ -144,8 +144,8 @@ bool test_hzlrsc_36_constrained_with_hyp_intervention(void)
     TEST_ASSERT("guest constrained loop made forward progress despite "
                 "hypervisor intervention between attempts",
                 succeeded_round >= 0);
-    printf("  [INFO] constrained loop succeeded at round %d\n",
-           succeeded_round);
+    LOG_I("constrained loop succeeded at round %d\n",
+          succeeded_round);
 
     HYP_TEST_END();
 }
@@ -201,9 +201,9 @@ bool test_hzlrsc_37_unconstrained_record(void)
     ts2_finish(&ctx);
 
     TEST_ASSERT("unconstrained sequence took no trap / did not hang", !fired);
-    printf("  [RECORD] unconstrained LR/SC succeeded %lu/%lu attempts "
-           "(norm:unconstrained_lrsc_no_progress: 0 is compliant)\n",
-           (unsigned long)succ, (unsigned long)HZLRSC_UNC_ITERS);
+    LOG_I("unconstrained LR/SC succeeded %lu/%lu attempts "
+          "(norm:unconstrained_lrsc_no_progress: 0 is compliant)\n",
+          (unsigned long)succ, (unsigned long)HZLRSC_UNC_ITERS);
     /* Record-type: no mandatory success assertion. */
     TEST_ASSERT("record-type case executed", true);
 
@@ -258,10 +258,10 @@ bool test_hzlrsc_38_reservation_survival_record(void)
     TEST_ASSERT("phase 3 (sc.w) raised no wrong exception / did not hang",
                 !fired2);
     if (fired2)
-        printf("  unexpected sc.w trap cause=%lu\n", (unsigned long)cause2);
-    printf("  [RECORD] sc.w after trap round-trip + hypervisor access: %s "
-           "(both outcomes compliant)\n",
-           (sc == 0) ? "SUCCESS" : "FAIL(reservation lost)");
+        LOG_E("unexpected sc.w trap cause=%lu\n", (unsigned long)cause2);
+    LOG_I("sc.w after trap round-trip + hypervisor access: %s "
+          "(both outcomes compliant)\n",
+          (sc == 0) ? "SUCCESS" : "FAIL(reservation lost)");
     TEST_ASSERT("record-type case executed", true);
 
     HYP_TEST_END();

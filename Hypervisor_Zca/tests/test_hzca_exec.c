@@ -178,7 +178,7 @@ bool test_hzca_01_exec_all_modes(void)
     uintptr_t vs_cause = vs_fired ? trap_get_cause() : 0;
     trap_expect_end();
     if (vs_fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)vs_cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)vs_cause);
     TEST_ASSERT("VS-mode: no exception", !vs_fired);
     TEST_ASSERT_NEQ("VS-mode: never virtual-instruction (22)",
                     vs_cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
@@ -194,7 +194,7 @@ bool test_hzca_01_exec_all_modes(void)
     uintptr_t vu_cause = vu_fired ? trap_get_cause() : 0;
     trap_expect_end();
     if (vu_fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)vu_cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)vu_cause);
     TEST_ASSERT("VU-mode: no exception", !vu_fired);
     TEST_ASSERT_NEQ("VU-mode: never virtual-instruction (22)",
                     vu_cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
@@ -277,7 +277,7 @@ bool test_hzca_03_vu_lwsw_exec(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("VU-mode c.sw/c.lw took no trap", !fired);
     TEST_ASSERT_NEQ("VU-mode never reports virtual-instruction (22)",
                     cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
@@ -313,7 +313,7 @@ bool test_hzca_04_vs_sp_based(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("VS-mode sp-based sequence took no trap", !fired);
     TEST_ASSERT_NEQ("VS-mode sp-based never reports cause=22",
                     cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
@@ -351,7 +351,7 @@ bool test_hzca_05_rv64_doubleword(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("VS-mode doubleword sequence took no trap", !fired);
     TEST_ASSERT_EQ("c.ld returned the c.sd marker",
                    r, HZCA_DW_MARKER);
@@ -392,7 +392,7 @@ bool test_hzca_06_vs_mixed_seq(void)
     ts2_finish(&ctx);
 
     if (vs_fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)vs_cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)vs_cause);
     TEST_ASSERT("VS-mode mixed sequence took no trap", !vs_fired);
     TEST_ASSERT_EQ("HS-mode mixed result == 16", hs_r, HZCA_MIX_RESULT);
     TEST_ASSERT_EQ("VS-mode mixed result == HS-mode (IALIGN=16 mixing)",

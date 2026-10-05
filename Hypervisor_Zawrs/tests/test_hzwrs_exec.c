@@ -47,8 +47,8 @@ bool test_hzwrs_01(void)
     TEST_ASSERT("DUT really implements Zawrs (aligned with ZAWRS_SUPPORTED)",
                 !(probe_trapped && probe_cause == CAUSE_ILLEGAL_INST));
 
-    hz_clear_vtw();
-    hz_clear_tw();
+    hstatus_set_vtw(false);
+    CSRC(mstatus, MSTATUS_TW_BIT);
     (void)hz_reserve();
 
     /* A pending locally enabled SSIP, delegated to S-level with
@@ -87,8 +87,8 @@ bool test_hzwrs_02(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
-    hz_clear_vtw();
-    hz_clear_tw();
+    hstatus_set_vtw(false);
+    CSRC(mstatus, MSTATUS_TW_BIT);
     (void)hz_reserve();
 
     /* A pending locally enabled VS-software interrupt (hvip.VSSIP
@@ -120,8 +120,8 @@ bool test_hzwrs_03(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
-    hz_clear_vtw();
-    hz_clear_tw();
+    hstatus_set_vtw(false);
+    CSRC(mstatus, MSTATUS_TW_BIT);
     (void)hz_reserve();
 
     /* A pending locally enabled interrupt always targets VS or

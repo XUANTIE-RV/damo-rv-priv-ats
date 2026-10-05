@@ -25,6 +25,32 @@
 #define CSR_SIP         0x144
 #define CSR_SATP        0x180
 
+/* ----- sstatus field bits ----- */
+#define SSTATUS_SIE_BIT  BIT(1)   /* Supervisor Interrupt Enable (== mstatus.SIE) */
+#define SSTATUS_SUM_BIT  BIT(18)  /* Permit Supervisory User Accesses (== mstatus.SUM) */
+#define SSTATUS_MXR_BIT  BIT(19)  /* Make eXecutable Readable (== mstatus.MXR) */
+#define SSTATUS_SD_BIT   BIT(63)  /* State Dirty summary (FS!=0 or VS!=0 or XS!=0) */
+
+/* sstatus.VS field [10:9] - vector context state (Off/Initial/Clean/Dirty) */
+#define SSTATUS_VS_SHIFT    9
+#define SSTATUS_VS_MASK     (3UL << SSTATUS_VS_SHIFT)
+#define SSTATUS_VS_OFF      (0UL << SSTATUS_VS_SHIFT)
+#define SSTATUS_VS_INITIAL  (1UL << SSTATUS_VS_SHIFT)
+#define SSTATUS_VS_CLEAN    (2UL << SSTATUS_VS_SHIFT)
+#define SSTATUS_VS_DIRTY    (3UL << SSTATUS_VS_SHIFT)
+
+/* sstatus.FS field [14:13] - float context state (Off/Initial/Clean/Dirty) */
+#define SSTATUS_FS_SHIFT    13
+#define SSTATUS_FS_MASK     (3UL << SSTATUS_FS_SHIFT)
+#define SSTATUS_FS_OFF      (0UL << SSTATUS_FS_SHIFT)
+#define SSTATUS_FS_INITIAL  (1UL << SSTATUS_FS_SHIFT)
+#define SSTATUS_FS_CLEAN    (2UL << SSTATUS_FS_SHIFT)
+#define SSTATUS_FS_DIRTY    (3UL << SSTATUS_FS_SHIFT)
+
+/* sstatus.UXL field [33:32] - U-mode effective XLEN (RV64) */
+#define SSTATUS_UXL_SHIFT   32
+#define SSTATUS_UXL_MASK    (3UL << SSTATUS_UXL_SHIFT)
+
 /* Supervisor Counter Inhibit (Ssccfg) */
 #ifndef CSR_SCOUNTINHIBIT
 #define CSR_SCOUNTINHIBIT 0x120
@@ -74,9 +100,14 @@
 #define SATP32_ASID_MASK   ((1UL << 9) - 1)
 
 /* XLEN-aware generic names.
- * vm_defs.h provides fallback RV64 values with #ifndef guards;
- * since encoding.h (-> ss_defs.h) is included before vm.h (-> vm_defs.h),
- * these definitions take precedence and vm_defs.h skips its own. */
+ * ss_defs.h is the authoritative source for these macros.
+ * Use #undef to suppress redefinition warnings when vm_defs.h
+ * (which has #ifndef fallbacks) happens to be included first. */
+#undef SATP_MODE_SHIFT
+#undef SATP_ASID_SHIFT
+#undef SATP_PPN_MASK
+#undef SATP_ASID_MASK
+#undef SATP_MODE_BITS
 #if __riscv_xlen == 32
 #define SATP_MODE_SHIFT    SATP32_MODE_SHIFT
 #define SATP_ASID_SHIFT    SATP32_ASID_SHIFT
@@ -106,6 +137,11 @@
     (((uintptr_t)(mode) << SATP_MODE_SHIFT) | \
      (((uintptr_t)(asid) & SATP_ASID_MASK) << SATP_ASID_SHIFT) | \
      ((uintptr_t)(ppn) & SATP_PPN_MASK))))
+#endif
+
+/* vsatp has the same layout as satp; alias for two-stage (Hypervisor) tests. */
+#ifndef MAKE_VSATP
+#define MAKE_VSATP(mode, asid, ppn)  MAKE_SATP((mode), (asid), (ppn))
 #endif
 
 #define SATP_GET_MODE(v)   (((uintptr_t)(v) >> SATP_MODE_SHIFT) & ((1UL << SATP_MODE_BITS) - 1))

@@ -64,9 +64,9 @@ bool test_hzabha_38_no_guest_bh_atomic_equivalent(void)
 
     ts2_finish(&ctx);
 
-    printf("  [RECORD] HLV.B/HLV.H/HSV.B/HSV.H provide non-atomic guest "
-           "byte/half access; no byte/half ATOMIC guest equivalent exists "
-           "(norm:hlsv_op)\n");
+    LOG_I("HLV.B/HLV.H/HSV.B/HSV.H provide non-atomic guest "
+          "byte/half access; no byte/half ATOMIC guest equivalent exists "
+          "(norm:hlsv_op)\n");
     TEST_ASSERT("record-type boundary case executed", true);
 
     HYP_TEST_END();

@@ -23,9 +23,9 @@ bool test_hcross_sstc_03(void)
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    menvcfg_set(MENVCFG_STCE);
+    menvcfg_set_bits(MENVCFG_STCE);
     mcounteren_set(MCOUNTEREN_TM);
-    henvcfg_clear(HENVCFG_STCE);
+    henvcfg_clear_bits(HENVCFG_STCE);
     hcounteren_set(HCOUNTEREN_TM);
     stimecmp_write((uintptr_t)-1);
 
@@ -53,9 +53,9 @@ bool test_hcross_sstc_04(void)
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    menvcfg_set(MENVCFG_STCE);
+    menvcfg_set_bits(MENVCFG_STCE);
     mcounteren_set(MCOUNTEREN_TM);
-    henvcfg_set(HENVCFG_STCE);
+    henvcfg_set_bits(HENVCFG_STCE);
     hcounteren_set(HCOUNTEREN_TM);
     stimecmp_write((uintptr_t)-1);
 
@@ -78,9 +78,9 @@ bool test_hcross_sstc_05(void)
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    menvcfg_set(MENVCFG_STCE);
+    menvcfg_set_bits(MENVCFG_STCE);
     mcounteren_set(MCOUNTEREN_TM);
-    henvcfg_set(HENVCFG_STCE);
+    henvcfg_set_bits(HENVCFG_STCE);
     hcounteren_clear(HCOUNTEREN_TM);
     stimecmp_write((uintptr_t)-1);
 

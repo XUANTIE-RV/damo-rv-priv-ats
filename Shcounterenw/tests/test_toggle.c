@@ -34,7 +34,7 @@ bool test_shcounterenw_toggle_01_cycle(void) {
             hcounteren_clear(1UL << 0);
 
         trap_expect_begin();
-        run_in_vs_mode(vsmode_read_cycle, 0);
+        run_in_vs_mode(vs_read_cycle, 0);
 
         if (enable) {
             TEST_ASSERT("cycle accessible after enable",
@@ -79,7 +79,7 @@ bool test_shcounterenw_toggle_02_instret(void) {
             hcounteren_clear(1UL << 2);
 
         trap_expect_begin();
-        run_in_vs_mode(vsmode_read_instret, 0);
+        run_in_vs_mode(vs_read_instret, 0);
 
         if (enable) {
             TEST_ASSERT("instret accessible after enable",

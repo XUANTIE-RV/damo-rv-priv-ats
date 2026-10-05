@@ -32,9 +32,6 @@
  * NAPOT PTE Constants
  * =================================================================== */
 
-/* PTE N bit (bit 63) - enables NAPOT translation contiguity */
-#define PTE_N               (1UL << 63)
-
 /* NAPOT 64 KiB region parameters */
 #define NAPOT_64K_PAGES     16                          /* 16 x 4 KiB pages */
 #define NAPOT_64K_SIZE      (64 * 1024)                 /* 64 KiB = 0x10000 */

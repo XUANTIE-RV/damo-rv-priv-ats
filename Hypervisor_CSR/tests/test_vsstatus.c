@@ -15,54 +15,17 @@
  * Local constants
  * =================================================================== */
 
-/* sstatus / vsstatus field positions and values */
-#define SSTATUS_SIE_BIT    (1UL << 1)
-#ifndef SSTATUS_FS_SHIFT
-#define SSTATUS_FS_SHIFT   13
-#define SSTATUS_FS_MASK    (3UL << SSTATUS_FS_SHIFT)
-#define SSTATUS_FS_OFF     (0UL << SSTATUS_FS_SHIFT)
-#define SSTATUS_FS_INITIAL (1UL << SSTATUS_FS_SHIFT)
-#define SSTATUS_FS_CLEAN   (2UL << SSTATUS_FS_SHIFT)
-#define SSTATUS_FS_DIRTY   (3UL << SSTATUS_FS_SHIFT)
-#define SSTATUS_VS_SHIFT   9
-#define SSTATUS_VS_MASK    (3UL << SSTATUS_VS_SHIFT)
-#define SSTATUS_VS_OFF     (0UL << SSTATUS_VS_SHIFT)
-#define SSTATUS_VS_INITIAL (1UL << SSTATUS_VS_SHIFT)
-#define SSTATUS_VS_DIRTY   (3UL << SSTATUS_VS_SHIFT)
-#endif
-#define SSTATUS_SD_BIT     (1UL << 63)
-#define SSTATUS_UXL_SHIFT  32
-#define SSTATUS_UXL_MASK   (3UL << SSTATUS_UXL_SHIFT)
-
 /* F/V extension availability is a compile-time platform capability, taken
  * from F_AVAILABLE / V_AVAILABLE (common/capabilities.h, force-included and
  * derived from config/<platform>/rvtest_config.h). No runtime misa probing. */
 
 /* ===================================================================
- * VS-mode trampoline: floating-point instruction
+ * VS-mode trampolines: FP and vector instructions
  *
- * fadd.s f0, f0, f0 — modifies f0 to trigger FS dirty.
- * Encoded as raw .4byte to avoid -march dependency.
+ * vs_exec_fp_inst() and vs_exec_vector_inst() are provided by
+ * common/hyp/hyp_test_helpers.h (raw .4byte encodings, no -march
+ * dependency).
  * =================================================================== */
-static uintptr_t vs_exec_fp_inst(uintptr_t arg)
-{
-    (void)arg;
-    asm volatile (".4byte 0x00000053" ::: "memory");
-    return 0;
-}
-
-/* ===================================================================
- * VS-mode trampoline: vector instruction
- *
- * vsetvli t0, zero, e8, m1, ta, ma — touches vector config state.
- * Encoded as raw .4byte to avoid -march dependency.
- * =================================================================== */
-static uintptr_t vs_exec_vector_inst(uintptr_t arg)
-{
-    (void)arg;
-    asm volatile (".4byte 0x0C0072D7" ::: "memory");
-    return 0;
-}
 
 /* ===================================================================
  * VSST-01: vsstatus basic read/write

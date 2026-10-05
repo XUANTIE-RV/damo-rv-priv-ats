@@ -24,16 +24,16 @@ bool test_hcross_ssdbltrp_17(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
-    uintptr_t orig_m = menvcfg_read_csr();
-    uintptr_t orig_h = henvcfg_read_csr();
+    uintptr_t orig_m = menvcfg_read();
+    uintptr_t orig_h = henvcfg_read();
     uintptr_t orig_vs = vsstatus_read();
 
     /* Disable menvcfg.DTE (global disable) */
-    menvcfg_clear(MENVCFG_DTE);
+    menvcfg_clear_bits(MENVCFG_DTE);
 
     /* Try to set henvcfg.DTE - should be read-only zero */
-    henvcfg_set(HENVCFG_DTE);
-    uintptr_t val = henvcfg_read_csr();
+    henvcfg_set_bits(HENVCFG_DTE);
+    uintptr_t val = henvcfg_read();
     TEST_ASSERT("henvcfg.DTE read-only zero when menvcfg.DTE=0",
                 (val & HENVCFG_DTE) == 0);
 
@@ -47,8 +47,8 @@ bool test_hcross_ssdbltrp_17(void)
 
     /* Restore */
     vsstatus_write(orig_vs);
-    henvcfg_write_csr(orig_h);
-    menvcfg_write_csr(orig_m);
+    henvcfg_write(orig_h);
+    menvcfg_write(orig_m);
     SSDBLTRP_HYP_TEST_END();
 }
 
@@ -63,26 +63,26 @@ bool test_hcross_ssdbltrp_18(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
-    uintptr_t orig_m = menvcfg_read_csr();
-    uintptr_t orig_h = henvcfg_read_csr();
+    uintptr_t orig_m = menvcfg_read();
+    uintptr_t orig_h = henvcfg_read();
 
     /* Disable menvcfg.DTE (global disable) */
-    menvcfg_clear(MENVCFG_DTE);
+    menvcfg_clear_bits(MENVCFG_DTE);
 
     /* Try to set henvcfg.DTE - should be read-only zero */
-    henvcfg_set(HENVCFG_DTE);
-    uintptr_t val = henvcfg_read_csr();
+    henvcfg_set_bits(HENVCFG_DTE);
+    uintptr_t val = henvcfg_read();
     TEST_ASSERT("henvcfg.DTE read-only zero when menvcfg.DTE=0",
                 (val & HENVCFG_DTE) == 0);
 
     /* Try to write henvcfg.DTE directly - should still be read-only zero */
-    henvcfg_write_csr(HENVCFG_DTE);
-    val = henvcfg_read_csr();
+    henvcfg_write(HENVCFG_DTE);
+    val = henvcfg_read();
     TEST_ASSERT("henvcfg.DTE write ignored when menvcfg.DTE=0",
                 (val & HENVCFG_DTE) == 0);
 
     /* Restore */
-    henvcfg_write_csr(orig_h);
-    menvcfg_write_csr(orig_m);
+    henvcfg_write(orig_h);
+    menvcfg_write(orig_m);
     SSDBLTRP_HYP_TEST_END();
 }

@@ -48,14 +48,8 @@ extern uint8_t __vm_test_region_end[];
 extern char  __shadow_stack_start[];
 extern char  __shadow_stack_end[];
 
-#define TEST_REGION_BASE   ((uintptr_t)__vm_test_region_start)
 #define SS_PAGE_ADDR       ((uintptr_t)ss_page)
 #define RW_PAGE_ADDR       ((uintptr_t)rw_page)
-
-/* ===================================================================
- * Exception cause codes
- * =================================================================== */
-#define CAUSE_VIRTUAL_INSTRUCTION      22
 
 /* ===================================================================
  * CSR Access Helpers
@@ -65,43 +59,11 @@ extern char  __shadow_stack_end[];
  * not already in the framework.
  * =================================================================== */
 
-static inline void menvcfg_set(uintptr_t mask) {
-    asm volatile("csrs " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(mask) : "memory");
-}
+/* senvcfg_read/write/set_bits/clear_bits are provided by common/hyp/hyp_csr.h. */
 
-static inline void menvcfg_clear(uintptr_t mask) {
-    asm volatile("csrc " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(mask) : "memory");
-}
+/* mstatus_read()/mstatus_write() from common/hyp/hyp_csr.h. */
 
-static inline uintptr_t senvcfg_read(void) {
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_SENVCFG) : "=r"(v));
-    return v;
-}
-
-static inline void senvcfg_write(uintptr_t val) {
-    asm volatile("csrw " CSR_STR(CSR_SENVCFG) ", %0" :: "r"(val) : "memory");
-}
-
-static inline void senvcfg_set(uintptr_t mask) {
-    asm volatile("csrs " CSR_STR(CSR_SENVCFG) ", %0" :: "r"(mask) : "memory");
-}
-
-static inline void senvcfg_clear(uintptr_t mask) {
-    asm volatile("csrc " CSR_STR(CSR_SENVCFG) ", %0" :: "r"(mask) : "memory");
-}
-
-static inline uintptr_t mstatus_read(void) {
-    return CSRR(mstatus);
-}
-
-static inline uintptr_t vsstatus_read(void) {
-    return CSRR(CSR_VSSTATUS);
-}
-
-static inline void vsstatus_write(uintptr_t val) {
-    CSRW(CSR_VSSTATUS, val);
-}
+/* vsstatus_read()/vsstatus_write() from common/hyp/hyp_csr.h. */
 
 /* ===================================================================
  * ssp CSR access (CSR 0x011)
@@ -183,9 +145,9 @@ static uintptr_t cfi_setup_vs_sse(bool henvcfg_sse, bool menvcfg_sse) {
     uintptr_t orig_henvcfg = henvcfg_read();
 
     if (menvcfg_sse) {
-        menvcfg_set(MENVCFG_SSE);
+        menvcfg_set_bits(MENVCFG_SSE);
     } else {
-        menvcfg_clear(MENVCFG_SSE);
+        menvcfg_clear_bits(MENVCFG_SSE);
     }
 
     if (henvcfg_sse) {
@@ -197,9 +159,7 @@ static uintptr_t cfi_setup_vs_sse(bool henvcfg_sse, bool menvcfg_sse) {
     return orig_henvcfg;
 }
 
-static void cfi_restore_henvcfg(uintptr_t orig) {
-    henvcfg_write(orig);
-}
+/* Restore henvcfg: call henvcfg_write(orig) from common/hyp/hyp_csr.h. */
 
 /* ===================================================================
  * VS-mode trampolines for ssp CSR access
@@ -400,12 +360,6 @@ static uintptr_t vs_load(uintptr_t arg) {
     return 0;
 }
 
-/* VS-mode: simple NOP function */
-static uintptr_t vs_nop_fn(uintptr_t arg) {
-    (void)arg;
-    return 0;
-}
-
 /* ===================================================================
  * VU-mode trampolines
  * =================================================================== */
@@ -437,27 +391,6 @@ static uintptr_t vu_exec_sspush(uintptr_t arg) {
     (void)arg;
     trap_expect_begin();
     asm volatile(".word 0xCE104073" ::: "memory");
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
-
-/* VU-mode: execute SSPOPCHK */
-static uintptr_t vu_exec_sspopchk(uintptr_t arg) {
-    (void)arg;
-    trap_expect_begin();
-    asm volatile(".word 0xCDC0C073" ::: "memory");
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
-
-/* VU-mode: store to address */
-static uintptr_t vu_store(uintptr_t arg) {
-    trap_expect_begin();
-    *(volatile uintptr_t *)arg = 0xDEADBEEF;
     trap_expect_end();
     if (trap_was_triggered())
         return trap_get_cause();
@@ -568,34 +501,7 @@ static void clear_all_deleg(void) {
     CSRW(CSR_HEDELEG, 0);
 }
 
-/* ===================================================================
- * PTE inspection / modification helpers
- * =================================================================== */
-
-static uintptr_t vs_pte_read(two_stage_ctx_t *ctx, uintptr_t va, int level) {
-    uintptr_t *pte = pt_get_pte(&ctx->vs_ctx, va, level);
-    return pte ? *pte : 0;
-}
-
-static uintptr_t g_pte_read(two_stage_ctx_t *ctx, uintptr_t gpa, int level) {
-    uintptr_t *pte = gpt_get_pte(&ctx->g_ctx, gpa, level);
-    return pte ? *pte : 0;
-}
-
-static void vs_pte_modify(two_stage_ctx_t *ctx, uintptr_t va, int level,
-                          uintptr_t new_flags) {
-    uintptr_t *pte = pt_get_pte(&ctx->vs_ctx, va, level);
-    if (pte) {
-        *pte = (*pte & ~(PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D)) | new_flags;
-    }
-}
-
-static void g_pte_modify(two_stage_ctx_t *ctx, uintptr_t gpa, int level,
-                         uintptr_t new_flags) {
-    uintptr_t *pte = gpt_get_pte(&ctx->g_ctx, gpa, level);
-    if (pte) {
-        *pte = (*pte & ~(PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D)) | new_flags;
-    }
-}
+/* vs_pte_modify() / g_pte_modify() are provided by
+ * common/hyp/two_stage_helpers.h. */
 
 #endif /* HYPERVISOR_ZICFISS_TEST_HELPERS_H */

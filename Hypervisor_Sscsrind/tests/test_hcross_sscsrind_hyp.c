@@ -24,19 +24,19 @@ bool test_hcross_sscsrind_28(void)
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    uintptr_t orig_m = mstateen0_read();
-    uintptr_t orig_h = hstateen0_read();
+    uintptr_t orig_m = mstateen_read(0);
+    uintptr_t orig_h = hstateen_read(0);
     uintptr_t orig_sel;
     if (!vsiselect_read_safe(&orig_sel))
     {
-        mstateen0_write(orig_m);
-        hstateen0_write(orig_h);
+        mstateen_write(0, orig_m);
+        hstateen_write(0, orig_h);
         TEST_SKIP("vsiselect not accessible from M-mode");
     }
 
     /* Enable access */
-    mstateen0_set(MSTATEEN0_CSRIND);
-    hstateen0_set(HSTATEEN0_CSRIND);
+    mstateen_set_bits(0, MSTATEEN0_CSRIND);
+    hstateen_set_bits(0, HSTATEEN0_CSRIND);
 
     /*
      * Test transparent remapping:
@@ -49,8 +49,8 @@ bool test_hcross_sscsrind_28(void)
     if (!vsiselect_write_safe(0x30))
     {
         vsiselect_write_safe(orig_sel);
-        mstateen0_write(orig_m);
-        hstateen0_write(orig_h);
+        mstateen_write(0, orig_m);
+        hstateen_write(0, orig_h);
         TEST_SKIP("vsiselect write 0x30 trapped");
     }
 
@@ -58,8 +58,8 @@ bool test_hcross_sscsrind_28(void)
     if (!vsiselect_read_safe(&readback) || readback != 0x30)
     {
         vsiselect_write_safe(orig_sel);
-        mstateen0_write(orig_m);
-        hstateen0_write(orig_h);
+        mstateen_write(0, orig_m);
+        hstateen_write(0, orig_h);
         TEST_SKIP("Platform doesn't support vsiselect=0x30");
     }
 
@@ -68,8 +68,8 @@ bool test_hcross_sscsrind_28(void)
     if (!vsireg_write_safe(test_val))
     {
         vsiselect_write_safe(orig_sel);
-        mstateen0_write(orig_m);
-        hstateen0_write(orig_h);
+        mstateen_write(0, orig_m);
+        hstateen_write(0, orig_h);
         TEST_SKIP("vsireg write trapped (not implemented)");
     }
 
@@ -92,8 +92,8 @@ bool test_hcross_sscsrind_28(void)
     }
 
     vsiselect_write_safe(orig_sel);
-    mstateen0_write(orig_m);
-    hstateen0_write(orig_h);
+    mstateen_write(0, orig_m);
+    hstateen_write(0, orig_h);
     HYP_TEST_END();
 }
 
@@ -109,19 +109,19 @@ bool test_hcross_sscsrind_29(void)
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    uintptr_t orig_m = mstateen0_read();
-    uintptr_t orig_h = hstateen0_read();
+    uintptr_t orig_m = mstateen_read(0);
+    uintptr_t orig_h = hstateen_read(0);
     uintptr_t orig_sel;
     if (!vsiselect_read_safe(&orig_sel))
     {
-        mstateen0_write(orig_m);
-        hstateen0_write(orig_h);
+        mstateen_write(0, orig_m);
+        hstateen_write(0, orig_h);
         TEST_SKIP("vsiselect not accessible from M-mode");
     }
 
     /* Enable access */
-    mstateen0_set(MSTATEEN0_CSRIND);
-    hstateen0_set(HSTATEEN0_CSRIND);
+    mstateen_set_bits(0, MSTATEEN0_CSRIND);
+    hstateen_set_bits(0, HSTATEEN0_CSRIND);
 
     /*
      * Test transparent remapping:
@@ -133,8 +133,8 @@ bool test_hcross_sscsrind_29(void)
     if (!vsiselect_write_safe(0x100))
     {
         vsiselect_write_safe(orig_sel);
-        mstateen0_write(orig_m);
-        hstateen0_write(orig_h);
+        mstateen_write(0, orig_m);
+        hstateen_write(0, orig_h);
         TEST_SKIP("vsiselect write 0x100 trapped");
     }
 
@@ -155,8 +155,8 @@ bool test_hcross_sscsrind_29(void)
     }
 
     vsiselect_write_safe(orig_sel);
-    mstateen0_write(orig_m);
-    hstateen0_write(orig_h);
+    mstateen_write(0, orig_m);
+    hstateen_write(0, orig_h);
     HYP_TEST_END();
 }
 
@@ -280,19 +280,19 @@ bool test_hcross_sscsrind_32(void)
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    uintptr_t orig_m = mstateen0_read();
-    uintptr_t orig_h = hstateen0_read();
+    uintptr_t orig_m = mstateen_read(0);
+    uintptr_t orig_h = hstateen_read(0);
     uintptr_t orig_sel;
     if (!vsiselect_read_safe(&orig_sel))
     {
-        mstateen0_write(orig_m);
-        hstateen0_write(orig_h);
+        mstateen_write(0, orig_m);
+        hstateen_write(0, orig_h);
         TEST_SKIP("vsiselect not accessible from M-mode");
     }
 
     /* Enable access */
-    mstateen0_set(MSTATEEN0_CSRIND);
-    hstateen0_set(HSTATEEN0_CSRIND);
+    mstateen_set_bits(0, MSTATEEN0_CSRIND);
+    hstateen_set_bits(0, HSTATEEN0_CSRIND);
 
     /*
      * Test select space independence:
@@ -309,8 +309,8 @@ bool test_hcross_sscsrind_32(void)
     if (!vsiselect_write_safe(0x100))
     {
         vsiselect_write_safe(orig_sel);
-        mstateen0_write(orig_m);
-        hstateen0_write(orig_h);
+        mstateen_write(0, orig_m);
+        hstateen_write(0, orig_h);
         TEST_SKIP("vsiselect write 0x100 trapped");
     }
 
@@ -323,8 +323,8 @@ bool test_hcross_sscsrind_32(void)
     if (trapped1)
     {
         vsiselect_write_safe(orig_sel);
-        mstateen0_write(orig_m);
-        hstateen0_write(orig_h);
+        mstateen_write(0, orig_m);
+        hstateen_write(0, orig_h);
         TEST_SKIP("VS-mode siselect read trapped");
     }
 
@@ -358,8 +358,8 @@ bool test_hcross_sscsrind_32(void)
     }
 
     vsiselect_write_safe(orig_sel);
-    mstateen0_write(orig_m);
-    hstateen0_write(orig_h);
+    mstateen_write(0, orig_m);
+    hstateen_write(0, orig_h);
     HYP_TEST_END();
 }
 
@@ -394,12 +394,12 @@ bool test_hcross_sscsrind_33(void)
      */
     if (!SMCSRIND_AVAILABLE) TEST_SKIP("Smcsrind not available");
 
-    uintptr_t orig_mstateen = mstateen0_read();
+    uintptr_t orig_mstateen = mstateen_read(0);
     uintptr_t orig_misel = miselect_read();
     uintptr_t orig_sisel = siselect_read();
 
     /* Enable S-mode access */
-    mstateen0_set(MSTATEEN0_CSRIND);
+    mstateen_set_bits(0, MSTATEEN0_CSRIND);
 
     /* Try Ssaia alias range: select=0x30 */
     miselect_write(0x30);
@@ -409,7 +409,7 @@ bool test_hcross_sscsrind_33(void)
     {
         miselect_write(orig_misel);
         siselect_write(orig_sisel);
-        mstateen0_write(orig_mstateen);
+        mstateen_write(0, orig_mstateen);
         TEST_SKIP("Platform doesn't support miselect=0x30");
     }
 
@@ -420,7 +420,7 @@ bool test_hcross_sscsrind_33(void)
     {
         miselect_write(orig_misel);
         siselect_write(orig_sisel);
-        mstateen0_write(orig_mstateen);
+        mstateen_write(0, orig_mstateen);
         TEST_SKIP("Platform doesn't support siselect=0x30");
     }
 
@@ -442,7 +442,7 @@ bool test_hcross_sscsrind_33(void)
     {
         miselect_write(orig_misel);
         siselect_write(orig_sisel);
-        mstateen0_write(orig_mstateen);
+        mstateen_write(0, orig_mstateen);
         TEST_SKIP("mireg write trapped");
     }
 
@@ -478,6 +478,6 @@ bool test_hcross_sscsrind_33(void)
 
     miselect_write(orig_misel);
     siselect_write(orig_sisel);
-    mstateen0_write(orig_mstateen);
+    mstateen_write(0, orig_mstateen);
     HYP_TEST_END();
 }

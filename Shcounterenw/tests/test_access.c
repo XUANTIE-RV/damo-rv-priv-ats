@@ -29,7 +29,7 @@ bool test_shcounterenw_access_01(void) {
 
     /* VS-mode read cycle — should succeed */
     trap_expect_begin();
-    run_in_vs_mode(vsmode_read_cycle, 0);
+    run_in_vs_mode(vs_read_cycle, 0);
     TEST_ASSERT("no trap in VS-mode", !trap_was_triggered());
     trap_expect_end();
 
@@ -56,7 +56,7 @@ bool test_shcounterenw_access_02(void) {
 
     /* VS-mode read cycle — should trigger virtual-instruction exception */
     trap_expect_begin();
-    run_in_vs_mode(vsmode_read_cycle, 0);
+    run_in_vs_mode(vs_read_cycle, 0);
     TEST_ASSERT("virtual-inst trap triggered", trap_was_triggered());
     if (trap_was_triggered()) {
         TEST_ASSERT_EQ("cause=22 (virtual-instruction)",
@@ -87,7 +87,7 @@ bool test_shcounterenw_access_03(void) {
 
     /* VS-mode read time — should succeed */
     trap_expect_begin();
-    run_in_vs_mode(vsmode_read_time, 0);
+    run_in_vs_mode(vs_read_time, 0);
     TEST_ASSERT("no trap in VS-mode", !trap_was_triggered());
     trap_expect_end();
 
@@ -114,7 +114,7 @@ bool test_shcounterenw_access_04(void) {
 
     /* VS-mode read time — should trigger virtual-instruction exception */
     trap_expect_begin();
-    run_in_vs_mode(vsmode_read_time, 0);
+    run_in_vs_mode(vs_read_time, 0);
     TEST_ASSERT("virtual-inst trap triggered", trap_was_triggered());
     if (trap_was_triggered()) {
         TEST_ASSERT_EQ("cause=22 (virtual-instruction)",
@@ -145,7 +145,7 @@ bool test_shcounterenw_access_05(void) {
 
     /* VS-mode read instret — should succeed */
     trap_expect_begin();
-    run_in_vs_mode(vsmode_read_instret, 0);
+    run_in_vs_mode(vs_read_instret, 0);
     TEST_ASSERT("no trap in VS-mode", !trap_was_triggered());
     trap_expect_end();
 
@@ -172,7 +172,7 @@ bool test_shcounterenw_access_06(void) {
 
     /* VS-mode read instret — should trigger virtual-instruction exception */
     trap_expect_begin();
-    run_in_vs_mode(vsmode_read_instret, 0);
+    run_in_vs_mode(vs_read_instret, 0);
     TEST_ASSERT("virtual-inst trap triggered", trap_was_triggered());
     if (trap_was_triggered()) {
         TEST_ASSERT_EQ("cause=22 (virtual-instruction)",

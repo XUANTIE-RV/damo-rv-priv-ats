@@ -85,7 +85,7 @@ Svpbmt,49,46,0,3
 Svvptc,15,13,0,2
 Sdext,104,21,0,83
 Sdtrig,118,84,0,34
-Sm_CSR,224,186,2,36
+Sm_CSR,224,187,2,35
 Sm_Exceptions,99,84,1,14
 Sm_Interrupts,91,73,0,18
 Smcdeleg,26,22,0,4

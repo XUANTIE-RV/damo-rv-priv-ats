@@ -62,7 +62,7 @@ bool test_hzlrsc_27_misaligned_lr(void)
     TEST_ASSERT("(A) cause in load class {4,5}",
                 hz_cause_in2(cause_a, CAUSE_LOAD_ADDR_MISALIGN,
                              CAUSE_LOAD_ACCESS_FAULT));
-    printf("  [INFO] (A) misaligned LR cause=%lu\n", (unsigned long)cause_a);
+    LOG_D("(A) misaligned LR cause=%lu\n", (unsigned long)cause_a);
 
     /* Part B: hedeleg[4]/[5] = 1 -> delivered to VS-mode. */
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
@@ -111,7 +111,7 @@ bool test_hzlrsc_28_misaligned_sc(void)
     TEST_ASSERT("(A) cause in store/AMO class {6,7}",
                 hz_cause_in2(cause_a, CAUSE_STORE_ADDR_MISALIGN,
                              CAUSE_STORE_ACCESS_FAULT));
-    printf("  [INFO] (A) misaligned SC cause=%lu\n", (unsigned long)cause_a);
+    LOG_D("(A) misaligned SC cause=%lu\n", (unsigned long)cause_a);
 
     /* Part B: hedeleg[6]/[7] = 1 -> delivered to VS-mode. */
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
@@ -152,7 +152,7 @@ bool test_hzlrsc_29_misaligned_trap_context(void)
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     hedeleg_write(hedeleg_read() & ~((1UL << 4) | (1UL << 5)));
     hz_clear_gva_spv();
-    hz_route_to_hs((1UL << 4) | (1UL << 5));
+    hyp_route_exc_to_hs((1UL << 4) | (1UL << 5));
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lr_w, mis);
     bool fired = trap_was_triggered();
@@ -163,11 +163,11 @@ bool test_hzlrsc_29_misaligned_trap_context(void)
     bool gva = trap_get_gva();
     bool spv = trap_get_spv();
     trap_expect_end();
-    hz_unroute_from_hs((1UL << 4) | (1UL << 5));
+    hyp_unroute_exc_from_hs((1UL << 4) | (1UL << 5));
     ts2_finish(&ctx);
 
-    printf("  [INFO] misaligned LR: cause=%lu tval=0x%lx gva=%d spv=%d\n",
-           (unsigned long)cause, (unsigned long)tval, (int)gva, (int)spv);
+    LOG_D("misaligned LR: cause=%lu tval=0x%lx gva=%d spv=%d\n",
+          (unsigned long)cause, (unsigned long)tval, (int)gva, (int)spv);
     TEST_ASSERT("misaligned LR faulted", fired);
     TEST_ASSERT("LR cause in load class {4,5}",
                 hz_cause_in2(cause, CAUSE_LOAD_ADDR_MISALIGN,

@@ -185,13 +185,13 @@ bool test_sha_cross_vsatp_hgatp_coherent(void) {
         bool hgatp_ok = hgatp_supports_mode(modes[i].hgatp_mode);
 
         if (!vsatp_ok) {
-            printf("  FAIL: satp supports %s but vsatp does not\n",
-                   modes[i].name);
+            LOG_E("satp supports %s but vsatp does not\n",
+                  modes[i].name);
             all_ok = false;
         }
         if (!hgatp_ok) {
-            printf("  FAIL: satp supports %s but hgatp does not\n",
-                   modes[i].name);
+            LOG_E("satp supports %s but hgatp does not\n",
+                  modes[i].name);
             all_ok = false;
         }
     }

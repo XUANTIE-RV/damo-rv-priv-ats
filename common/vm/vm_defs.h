@@ -61,6 +61,7 @@
 #define PTE_G   BIT(5)   /* Global */
 #define PTE_A   BIT(6)   /* Accessed */
 #define PTE_D   BIT(7)   /* Dirty */
+#define PTE_N   BIT(63)  /* NAPOT translation contiguity (Svnapot, RV64) */
 
 /* PBMT field in PTE bits 62-61 (Svpbmt extension) */
 #define PTE_PBMT_SHIFT  61

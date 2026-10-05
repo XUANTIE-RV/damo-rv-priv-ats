@@ -66,6 +66,17 @@ uintptr_t henvcfg_read(void);
 uintptr_t menvcfg_read(void);
 void      menvcfg_write(uintptr_t value);
 
+/* ----- mstatus (M-mode status; CSR 0x300) -----
+ * Direct M-mode access for field inspection/manipulation. Provided as
+ * the single authoritative accessor pair so suites do not hand-roll a
+ * local `static inline mstatus_read()`. */
+uintptr_t mstatus_read(void);
+void      mstatus_write(uintptr_t value);
+
+/* ----- senvcfg (S-mode; CSR 0x10A) ----- */
+uintptr_t senvcfg_read(void);
+void      senvcfg_write(uintptr_t value);
+
 /* ----- hcounteren / htimedelta (write-only, used by reset) ----- */
 void      hcounteren_write(uintptr_t value);
 void      htimedelta_write(uintptr_t value);
@@ -216,6 +227,43 @@ uintptr_t vsip_read(void);
 void      vsip_write(uintptr_t value);
 
 /* ===================================================================
+ * vsstatus (CSR 0x200) -- VS-mode status register
+ *
+ * Direct HS/M-mode access to vsstatus for field manipulation and
+ * context-status verification (FS/VS/SD/UXL etc.).
+ * =================================================================== */
+
+uintptr_t vsstatus_read(void);
+void      vsstatus_write(uintptr_t value);
+
+/* Context-status field accessors (2-bit fields: FS, VS in vsstatus/mstatus).
+ * @shift is the field's bit offset (e.g. SSTATUS_FS_SHIFT, SSTATUS_VS_SHIFT).
+ * Returns/accepts the raw 2-bit value (0=Off, 1=Initial, 2=Clean, 3=Dirty). */
+#define XSTATUS_FIELD_MASK  0x3UL
+
+static inline unsigned vsstatus_get_field(unsigned shift) {
+    return (unsigned)((vsstatus_read() >> shift) & XSTATUS_FIELD_MASK);
+}
+
+static inline void vsstatus_set_field(unsigned shift, unsigned val) {
+    uintptr_t v = vsstatus_read();
+    v = (v & ~(XSTATUS_FIELD_MASK << shift)) |
+        ((uintptr_t)(val & XSTATUS_FIELD_MASK) << shift);
+    vsstatus_write(v);
+}
+
+static inline unsigned mstatus_get_field(unsigned shift) {
+    return (unsigned)((CSRR(mstatus) >> shift) & XSTATUS_FIELD_MASK);
+}
+
+static inline void mstatus_set_field(unsigned shift, unsigned val) {
+    uintptr_t ms = CSRR(mstatus);
+    ms = (ms & ~(XSTATUS_FIELD_MASK << shift)) |
+         ((uintptr_t)(val & XSTATUS_FIELD_MASK) << shift);
+    CSRW(mstatus, ms);
+}
+
+/* ===================================================================
  * vsatp (CSR 0x280) -- VS-stage address translation
  *
  * Direct HS/M-mode access to vsatp for mode probing and configuration.
@@ -338,5 +386,81 @@ static inline void hstateen_set_bit63(int idx, bool enable) {
  * and SMCSRIND_AVAILABLE used to be defined here; they now come from there.
  * A suite that touches the stateen CSRs must still launch the simulator with
  * the declared extension (e.g. Spike _smstateen). */
+
+/* ===================================================================
+ * Indirect CSR accessors (Smcsrind / Sscsrind / Ssccfg)
+ *
+ * Centralized CSRR/CSRW wrappers for the miselect/mireg,
+ * siselect/sireg* and vsiselect/vsireg* indirect-CSR windows.
+ * Suites must NOT re-define these locally; trap-armed probing
+ * variants (e.g. *_read_safe) stay suite-local.
+ * =================================================================== */
+
+uintptr_t miselect_read(void);
+void      miselect_write(uintptr_t v);
+uintptr_t mireg_read(void);
+void      mireg_write(uintptr_t v);
+
+uintptr_t siselect_read(void);
+void      siselect_write(uintptr_t v);
+uintptr_t sireg_read(void);
+void      sireg_write(uintptr_t v);
+uintptr_t sireg2_read(void);
+void      sireg2_write(uintptr_t v);
+uintptr_t sireg3_read(void);
+void      sireg3_write(uintptr_t v);
+uintptr_t sireg4_read(void);
+void      sireg4_write(uintptr_t v);
+uintptr_t sireg5_read(void);
+void      sireg5_write(uintptr_t v);
+uintptr_t sireg6_read(void);
+void      sireg6_write(uintptr_t v);
+
+uintptr_t vsiselect_read(void);
+void      vsiselect_write(uintptr_t v);
+uintptr_t vsireg_read(void);
+void      vsireg_write(uintptr_t v);
+uintptr_t vsireg2_read(void);
+void      vsireg2_write(uintptr_t v);
+uintptr_t vsireg3_read(void);
+void      vsireg3_write(uintptr_t v);
+uintptr_t vsireg4_read(void);
+void      vsireg4_write(uintptr_t v);
+uintptr_t vsireg5_read(void);
+void      vsireg5_write(uintptr_t v);
+uintptr_t vsireg6_read(void);
+void      vsireg6_write(uintptr_t v);
+
+/* ===================================================================
+ * Generic atomic set/clear bit helpers (single CSRS/CSRC instruction)
+ *
+ * Replace per-suite menvcfg_set/clear, senvcfg_set/clear, henvcfg_set/clear,
+ * hvip_set/clear, hstatus_set/clear, vsstatus_set/clear csrs/csrc wrappers.
+ * =================================================================== */
+
+void menvcfg_set_bits(uintptr_t mask);
+void menvcfg_clear_bits(uintptr_t mask);
+void senvcfg_set_bits(uintptr_t mask);
+void senvcfg_clear_bits(uintptr_t mask);
+void henvcfg_set_bits(uintptr_t mask);
+void henvcfg_clear_bits(uintptr_t mask);
+void hvip_set_bits(uintptr_t mask);
+void hvip_clear_bits(uintptr_t mask);
+void hstatus_set_bits(uintptr_t mask);
+void hstatus_clear_bits(uintptr_t mask);
+void vsstatus_set_bits(uintptr_t mask);
+void vsstatus_clear_bits(uintptr_t mask);
+
+/* ===================================================================
+ * Sstc timer CSRs and hip / htimedelta read accessors
+ * =================================================================== */
+
+uintptr_t stimecmp_read(void);
+void      stimecmp_write(uintptr_t v);
+uintptr_t vstimecmp_read(void);
+void      vstimecmp_write(uintptr_t v);
+uintptr_t time_read(void);
+uintptr_t hip_read(void);
+uintptr_t htimedelta_read(void);
 
 #endif /* HYP_CSR_H */

@@ -34,14 +34,14 @@ bool test_hzwrs_04(void)
     if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     uintptr_t saved_mie = hz_quiet_interrupts();
-    hz_clear_tw();
-    hz_set_vtw();
+    CSRC(mstatus, MSTATUS_TW_BIT);
+    hstatus_set_vtw(true);
     (void)hz_reserve();
 
     hz_vs_expect(_vs_wrs_nto, true, CAUSE_VIRTUAL_INSTRUCTION);
 
-    hz_clear_vtw();
-    hz_restore_interrupts(saved_mie);
+    hstatus_set_vtw(false);
+    CSRW(mie, saved_mie);
 
     HYP_TEST_END();
 }
@@ -56,14 +56,14 @@ bool test_hzwrs_05(void)
     if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     uintptr_t saved_mie = hz_quiet_interrupts();
-    hz_clear_tw();
-    hz_set_vtw();
+    CSRC(mstatus, MSTATUS_TW_BIT);
+    hstatus_set_vtw(true);
     (void)hz_reserve();
 
     hz_vu_expect(_vu_wrs_nto, true, CAUSE_VIRTUAL_INSTRUCTION);
 
-    hz_clear_vtw();
-    hz_restore_interrupts(saved_mie);
+    hstatus_set_vtw(false);
+    CSRW(mie, saved_mie);
 
     HYP_TEST_END();
 }
@@ -85,8 +85,8 @@ bool test_hzwrs_06(void)
      * software interrupt: hvip.VSSIP injected, routed to VS-level by
      * hideleg[2] and locally enabled by vsie.SSIE. */
     uintptr_t saved_mie = hz_quiet_interrupts();
-    hz_clear_tw();
-    hz_set_vtw();
+    CSRC(mstatus, MSTATUS_TW_BIT);
+    hstatus_set_vtw(true);
     (void)hz_reserve();
     hz_suppress_globals();
     hz_set_vs_soft_pending();
@@ -98,18 +98,18 @@ bool test_hzwrs_06(void)
     trap_expect_end();
 
     hz_clear_vs_soft_pending();
-    hz_clear_vtw();
-    hz_restore_interrupts(saved_mie);
+    hstatus_set_vtw(false);
+    CSRW(mie, saved_mie);
 
     if (trapped) {
-        printf("[I] implementation takes the VTW interception: wrs.nto "
-               "raised an exception despite the pending locally enabled "
-               "VS-level IRQ\n");
+        LOG_I("implementation takes the VTW interception: wrs.nto "
+              "raised an exception despite the pending locally enabled "
+              "VS-level IRQ\n");
         TEST_ASSERT_EQ("VTW interception trap type", cause,
                        (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
     } else {
-        printf("[I] implementation completes wrs.nto immediately with "
-               "the pending locally enabled IRQ (no VTW interception)\n");
+        LOG_I("implementation completes wrs.nto immediately with "
+              "the pending locally enabled IRQ (no VTW interception)\n");
         TEST_ASSERT("wrs.nto completed without exception", true);
     }
 
@@ -132,8 +132,8 @@ bool test_hzwrs_07(void)
     CSRS(medeleg, (1UL << CAUSE_VIRTUAL_INSTRUCTION));
 
     uintptr_t saved_mie = hz_quiet_interrupts();
-    hz_clear_tw();
-    hz_set_vtw();
+    CSRC(mstatus, MSTATUS_TW_BIT);
+    hstatus_set_vtw(true);
     (void)hz_reserve();
 
     hz_vs_expect(_vs_wrs_nto, true, CAUSE_VIRTUAL_INSTRUCTION);
@@ -149,8 +149,8 @@ bool test_hzwrs_07(void)
                     trap_get_spv());
     }
 
-    hz_clear_vtw();
-    hz_restore_interrupts(saved_mie);
+    hstatus_set_vtw(false);
+    CSRW(mie, saved_mie);
     CSRC(medeleg, (1UL << CAUSE_VIRTUAL_INSTRUCTION));
 
     HYP_TEST_END();

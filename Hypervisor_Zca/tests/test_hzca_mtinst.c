@@ -110,15 +110,15 @@ bool test_hzca_23_mtinst_htinst_consistent(void)
     TEST_ASSERT("(a) htinst run fired", hs.fired);
     TEST_ASSERT("(b) mtinst run fired", m.fired);
 
-    printf("  [INFO] htinst(HS)=0x%lx  mtinst(M)=0x%lx\n",
-           (unsigned long)hs.xtinst, (unsigned long)m.xtinst);
+    LOG_D("htinst(HS)=0x%lx  mtinst(M)=0x%lx\n",
+          (unsigned long)hs.xtinst, (unsigned long)m.xtinst);
 
     if (hs.xtinst != 0 && m.xtinst != 0) {
         TEST_ASSERT_EQ("nonzero htinst == nonzero mtinst (shared rules)",
                        hs.xtinst, m.xtinst);
     } else {
-        printf("  [INFO] at least one side wrote zero (legal); "
-               "bit-for-bit consistency not observable this run\n");
+        LOG_I("at least one side wrote zero (legal); "
+              "bit-for-bit consistency not observable this run\n");
     }
     /* Both must individually satisfy the 0-or-golden rule regardless. */
     uintptr_t golden = hzca_golden_from(HZCA_EXP_LW_A0_A0, hs.tval, va);

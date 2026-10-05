@@ -85,16 +85,16 @@ bool test_hcross_ssdbltrp_22(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
-    uintptr_t orig_m = menvcfg_read_csr();
-    uintptr_t orig_h = henvcfg_read_csr();
+    uintptr_t orig_m = menvcfg_read();
+    uintptr_t orig_h = henvcfg_read();
     uintptr_t orig_vs = vsstatus_read();
 
     /* Enable DTE */
-    menvcfg_set(MENVCFG_DTE);
-    henvcfg_set(HENVCFG_DTE);
+    menvcfg_set_bits(MENVCFG_DTE);
+    henvcfg_set_bits(HENVCFG_DTE);
 
     /* Set vsstatus.SDT=1 */
-    vsstatus_set(VSSTATUS_SDT);
+    vsstatus_set_bits(VSSTATUS_SDT);
     uintptr_t val = vsstatus_read();
     TEST_ASSERT("vsstatus.SDT initially set", (val & VSSTATUS_SDT) != 0);
 
@@ -111,8 +111,8 @@ bool test_hcross_ssdbltrp_22(void)
 
     /* Restore */
     vsstatus_write(orig_vs);
-    henvcfg_write_csr(orig_h);
-    menvcfg_write_csr(orig_m);
+    henvcfg_write(orig_h);
+    menvcfg_write(orig_m);
     SSDBLTRP_HYP_TEST_END();
 }
 

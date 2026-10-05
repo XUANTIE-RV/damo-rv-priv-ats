@@ -33,13 +33,9 @@
 
 
 /* norm:hgatp_mode_bare_trans: guest-page-fault (20/21/23) can never
- * be raised while hgatp.MODE=Bare. */
-static bool g25_cause_not_guest_fault(uintptr_t cause)
-{
-    return cause != CAUSE_INST_GUEST_PAGE_FAULT &&
-           cause != CAUSE_LOAD_GUEST_PAGE_FAULT &&
-           cause != CAUSE_STORE_GUEST_PAGE_FAULT;
-}
+ * be raised while hgatp.MODE=Bare.
+ * cause_is_guest_page_fault() from common/cause_defs.h. */
+#define g25_cause_not_guest_fault(c)  (!cause_is_guest_page_fault(c))
 
 /* ===================================================================
  * TS-BARE-01: VS-stage fault codes under a Bare G-stage.

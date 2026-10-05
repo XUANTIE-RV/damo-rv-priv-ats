@@ -15,20 +15,7 @@
  * instruction encoding includes rs1=10 in bits [19:15].
  */
 
-/*
- * stval validation for CBO virtual-instruction:
- * Per SPEC, stval = instruction encoding or 0.
- * We verify: if non-zero, bits [6:0]=0x0F, [14:12]=2, [31:20]=operation.
- */
-static bool stval_is_cbo_insn(uintptr_t stval, uint32_t operation)
-{
-    if (stval == 0)
-        return true;
-    /* Check opcode=0x0F, funct3=2, operation matches */
-    uint32_t expected = (operation << 20) | (2 << 12) | 0x0F;
-    uint32_t mask = (0xFFF << 20) | (7 << 12) | 0x7F; /* op+funct3+opcode */
-    return (stval & mask) == expected;
-}
+/* stval_is_cbo_insn() is provided by common/cmo/cmo.h. */
 
 /* ===================================================================
  * HVINST-01: cbo.inval virtual-instruction stval

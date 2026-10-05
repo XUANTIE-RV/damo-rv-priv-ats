@@ -28,8 +28,8 @@ bool test_hcross_sscsrind_11(void)
 
     /* Enable state-enable bits to isolate virtual-inst behavior */
     if (SMSTATEEN_AVAILABLE) {
-        mstateen0_set(MSTATEEN0_CSRIND);
-        hstateen0_set(HSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
+        hstateen_set_bits(0, HSTATEEN0_CSRIND);
     }
 
     TEST_VS_MODE_TRAP("VS-mode read vsiselect",
@@ -51,8 +51,8 @@ bool test_hcross_sscsrind_12(void)
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
     if (SMSTATEEN_AVAILABLE) {
-        mstateen0_set(MSTATEEN0_CSRIND);
-        hstateen0_set(HSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
+        hstateen_set_bits(0, HSTATEEN0_CSRIND);
     }
 
     TEST_VS_MODE_TRAP("VS-mode write vsiselect",
@@ -74,8 +74,8 @@ bool test_hcross_sscsrind_13(void)
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
     if (SMSTATEEN_AVAILABLE) {
-        mstateen0_set(MSTATEEN0_CSRIND);
-        hstateen0_set(HSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
+        hstateen_set_bits(0, HSTATEEN0_CSRIND);
     }
 
     TEST_VS_MODE_TRAP("VS-mode read vsireg",
@@ -98,8 +98,8 @@ bool test_hcross_sscsrind_14(void)
 
     if (SMSTATEEN_AVAILABLE)
     {
-        mstateen0_set(MSTATEEN0_CSRIND);
-        hstateen0_set(HSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
+        hstateen_set_bits(0, HSTATEEN0_CSRIND);
     }
 
     /*
@@ -143,8 +143,8 @@ bool test_hcross_sscsrind_15(void)
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
     if (SMSTATEEN_AVAILABLE) {
-        mstateen0_set(MSTATEEN0_CSRIND);
-        hstateen0_set(HSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
+        hstateen_set_bits(0, HSTATEEN0_CSRIND);
     }
 
     TEST_VS_MODE_TRAP("VS-mode write vsireg",
@@ -166,8 +166,8 @@ bool test_hcross_sscsrind_16(void)
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
     if (SMSTATEEN_AVAILABLE) {
-        mstateen0_set(MSTATEEN0_CSRIND);
-        hstateen0_set(HSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
+        hstateen_set_bits(0, HSTATEEN0_CSRIND);
     }
 
     TEST_VU_MODE_TRAP("VU-mode read vsiselect",
@@ -189,8 +189,8 @@ bool test_hcross_sscsrind_17(void)
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
     if (SMSTATEEN_AVAILABLE) {
-        mstateen0_set(MSTATEEN0_CSRIND);
-        hstateen0_set(HSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
+        hstateen_set_bits(0, HSTATEEN0_CSRIND);
     }
 
     TEST_VU_MODE_TRAP("VU-mode read vsireg",
@@ -212,8 +212,8 @@ bool test_hcross_sscsrind_18(void)
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
     if (SMSTATEEN_AVAILABLE) {
-        mstateen0_set(MSTATEEN0_CSRIND);
-        hstateen0_set(HSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
+        hstateen_set_bits(0, HSTATEEN0_CSRIND);
     }
 
     TEST_VU_MODE_TRAP("VU-mode read siselect",
@@ -235,8 +235,8 @@ bool test_hcross_sscsrind_19(void)
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
     if (SMSTATEEN_AVAILABLE) {
-        mstateen0_set(MSTATEEN0_CSRIND);
-        hstateen0_set(HSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
+        hstateen_set_bits(0, HSTATEEN0_CSRIND);
     }
 
     TEST_VU_MODE_TRAP("VU-mode read sireg",
@@ -258,8 +258,8 @@ bool test_hcross_sscsrind_20(void)
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
     if (SMSTATEEN_AVAILABLE) {
-        mstateen0_set(MSTATEEN0_CSRIND);
-        hstateen0_set(HSTATEEN0_CSRIND);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
+        hstateen_set_bits(0, HSTATEEN0_CSRIND);
     }
 
     TEST_VU_MODE_TRAP("VU-mode write siselect",
@@ -302,10 +302,10 @@ bool test_hcross_sscsrind_21(void)
     /* Enable access */
     if (SMSTATEEN_AVAILABLE)
     {
-        orig_m = mstateen0_read();
-        orig_h = hstateen0_read();
-        mstateen0_set(MSTATEEN0_CSRIND);
-        hstateen0_set(HSTATEEN0_CSRIND);
+        orig_m = mstateen_read(0);
+        orig_h = hstateen_read(0);
+        mstateen_set_bits(0, MSTATEEN0_CSRIND);
+        hstateen_set_bits(0, HSTATEEN0_CSRIND);
     }
 
     /*
@@ -317,8 +317,8 @@ bool test_hcross_sscsrind_21(void)
         vsiselect_write_safe(orig_sel);
         if (SMSTATEEN_AVAILABLE)
         {
-            mstateen0_write(orig_m);
-            hstateen0_write(orig_h);
+            mstateen_write(0, orig_m);
+            hstateen_write(0, orig_h);
         }
         TEST_SKIP("vsiselect write 0x80 trapped");
     }
@@ -330,8 +330,8 @@ bool test_hcross_sscsrind_21(void)
         vsiselect_write_safe(orig_sel);
         if (SMSTATEEN_AVAILABLE)
         {
-            mstateen0_write(orig_m);
-            hstateen0_write(orig_h);
+            mstateen_write(0, orig_m);
+            hstateen_write(0, orig_h);
         }
         TEST_SKIP("Platform doesn't implement HS-only vsiselect range");
     }
@@ -357,8 +357,8 @@ bool test_hcross_sscsrind_21(void)
     vsiselect_write_safe(orig_sel);
     if (SMSTATEEN_AVAILABLE)
     {
-        mstateen0_write(orig_m);
-        hstateen0_write(orig_h);
+        mstateen_write(0, orig_m);
+        hstateen_write(0, orig_h);
     }
     HYP_TEST_END();
 }

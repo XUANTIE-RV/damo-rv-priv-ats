@@ -36,9 +36,6 @@ extern uintptr_t csr_read(uint16_t csr);
 #define HZHPM_FIRST     3
 #define HZHPM_LAST      31
 
-/* User-visible hpmcounter CSR address for index n (3..31). */
-#define CSR_HPMCOUNTER(n)   ((uint16_t)(CSR_HPMCOUNTER3 + ((n) - 3)))
-
 /* ===================================================================
  * Counter implementation detection
  *

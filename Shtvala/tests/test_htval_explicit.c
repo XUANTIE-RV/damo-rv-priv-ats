@@ -35,7 +35,7 @@ bool test_htval_lgp_01_load_perm(void) {
     uintptr_t target = (uintptr_t)test_fault_page;
     uintptr_t flags  = (G_FLAGS_RWXU_AD & ~PTE_R);
 
-    bool fired = _fire_load_fault(target, flags);
+    bool fired = fire_vs_load_fault(target, flags);
     TEST_ASSERT("load gpf fired", fired);
     if (fired) {
         TEST_ASSERT_EQ("cause = 21",  trap_get_cause(), CAUSE_LOAD_GUEST_PAGE_FAULT);
@@ -54,7 +54,7 @@ bool test_htval_lgp_02_load_invalid(void) {
     uintptr_t target = (uintptr_t)test_fault_page;
     uintptr_t flags  = 0;  /* V=0 */
 
-    bool fired = _fire_load_fault(target, flags);
+    bool fired = fire_vs_load_fault(target, flags);
     TEST_ASSERT("load gpf fired", fired);
     if (fired) {
         TEST_ASSERT_EQ("cause = 21",  trap_get_cause(), CAUSE_LOAD_GUEST_PAGE_FAULT);
@@ -75,7 +75,7 @@ bool test_htval_sgp_01_store_perm(void) {
     uintptr_t target = (uintptr_t)test_fault_page;
     uintptr_t flags  = (G_FLAGS_RWXU_AD & ~PTE_W);
 
-    bool fired = _fire_store_fault(target, flags);
+    bool fired = fire_vs_store_fault(target, flags);
     TEST_ASSERT("store gpf fired", fired);
     if (fired) {
         TEST_ASSERT_EQ("cause = 23",  trap_get_cause(), CAUSE_STORE_GUEST_PAGE_FAULT);
@@ -94,7 +94,7 @@ bool test_htval_sgp_02_store_invalid(void) {
     uintptr_t target = (uintptr_t)test_fault_page;
     uintptr_t flags  = 0;
 
-    bool fired = _fire_store_fault(target, flags);
+    bool fired = fire_vs_store_fault(target, flags);
     TEST_ASSERT("store gpf fired", fired);
     if (fired) {
         TEST_ASSERT_EQ("cause = 23",  trap_get_cause(), CAUSE_STORE_GUEST_PAGE_FAULT);
@@ -154,10 +154,10 @@ bool test_htval_sgp_02_store_ad(void) {
      * Without Svadu, a store must fault because D=0. */
     uintptr_t flags  = (G_FLAGS_RWXU_AD & ~PTE_D);
 
-    bool fired = _fire_store_fault(target, flags);
+    bool fired = fire_vs_store_fault(target, flags);
     if (!fired) {
         /* Platform has Svadu (auto-updates D bit) — no fault fires. */
-        printf("  [SKIP] platform auto-updates D bit (Svadu), no GPF\n");
+        LOG_W("platform auto-updates D bit (Svadu), no GPF\n");
         TEST_SKIP("Svadu prevents D=0 store GPF");
     }
     TEST_ASSERT_EQ("cause = 23",

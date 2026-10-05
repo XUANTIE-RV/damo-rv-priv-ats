@@ -23,6 +23,7 @@
 #include "hyp/hyp_csr.h"
 #include "hyp/hyp_priv.h"
 #include "hyp/hyp_test.h"
+#include "hyp/hyp_test_helpers.h"  /* vs_read_cycle, vs_read_time, vs_read_instret */
 
 /* Dynamic CSR read/write (defined in common/csr_accessors.c) */
 extern uintptr_t csr_read(uint16_t csr);
@@ -33,16 +34,6 @@ extern void csr_write(uint16_t csr, uintptr_t val);
  * =================================================================== */
 #define SHCNTW_FIRST_HPM  3
 #define SHCNTW_LAST_HPM   31
-
-/* ===================================================================
- * CSR address arithmetic helpers
- * =================================================================== */
-#ifndef CSR_MHPMCOUNTER
-#define CSR_MHPMCOUNTER(n)  (CSR_MHPMCOUNTER3 + ((n) - 3))
-#endif
-#ifndef CSR_HPMCOUNTER
-#define CSR_HPMCOUNTER(n)   (CSR_HPMCOUNTER3  + ((n) - 3))
-#endif
 
 /* ===================================================================
  * Counter CSR address by index (0=cycle, 1=time, 2=instret, 3-31=hpm)
@@ -118,29 +109,9 @@ static inline unsigned find_first_hpm_counter_gatable(void) {
 /* ===================================================================
  * VS-mode payload functions for counter reads
  *
- * These are passed to run_in_vs_mode() / run_in_vu_mode().
- * Each reads a specific counter CSR via inline assembly.
+ * vs_read_cycle, vs_read_time, vs_read_instret are provided by
+ * common/hyp/hyp_test_helpers.c (identical semantics).
  * =================================================================== */
-static uintptr_t vsmode_read_cycle(uintptr_t arg) {
-    (void)arg;
-    uintptr_t val;
-    asm volatile ("csrr %0, cycle" : "=r"(val));
-    return val;
-}
-
-static uintptr_t vsmode_read_time(uintptr_t arg) {
-    (void)arg;
-    uintptr_t val;
-    asm volatile ("csrr %0, time" : "=r"(val));
-    return val;
-}
-
-static uintptr_t vsmode_read_instret(uintptr_t arg) {
-    (void)arg;
-    uintptr_t val;
-    asm volatile ("csrr %0, instret" : "=r"(val));
-    return val;
-}
 
 /* Generic VS-mode counter read using dynamic CSR accessor.
  * arg = CSR address (e.g., CSR_HPMCOUNTER3). */

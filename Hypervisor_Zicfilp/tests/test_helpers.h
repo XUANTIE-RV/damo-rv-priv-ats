@@ -46,13 +46,6 @@ extern uint8_t __vm_test_region_end[];
 extern char  __cfi_test_code_start[];
 extern char  __cfi_test_code_end[];
 
-#define TEST_REGION_BASE   ((uintptr_t)__vm_test_region_start)
-
-/* ===================================================================
- * Exception cause codes
- * =================================================================== */
-#define CAUSE_VIRTUAL_INSTRUCTION      22
-
 /* ===================================================================
  * CSR Access Helpers
  *
@@ -60,14 +53,6 @@ extern char  __cfi_test_code_end[];
  * hstatus_read/write are provided by hyp_csr.h. Only define helpers
  * not already in the framework.
  * =================================================================== */
-
-static inline void menvcfg_set(uintptr_t mask) {
-    asm volatile("csrs " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(mask) : "memory");
-}
-
-static inline void menvcfg_clear(uintptr_t mask) {
-    asm volatile("csrc " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(mask) : "memory");
-}
 
 static inline uintptr_t mseccfg_read(void) {
     uintptr_t v;
@@ -87,35 +72,11 @@ static inline void mseccfg_clear(uintptr_t mask) {
     asm volatile("csrc " CSR_STR(CSR_MSECCFG) ", %0" :: "r"(mask) : "memory");
 }
 
-static inline uintptr_t senvcfg_read(void) {
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_SENVCFG) : "=r"(v));
-    return v;
-}
+/* senvcfg_read/write/set_bits/clear_bits are provided by common/hyp/hyp_csr.h. */
 
-static inline void senvcfg_write(uintptr_t val) {
-    asm volatile("csrw " CSR_STR(CSR_SENVCFG) ", %0" :: "r"(val) : "memory");
-}
+/* mstatus_read()/mstatus_write() from common/hyp/hyp_csr.h. */
 
-static inline void senvcfg_set(uintptr_t mask) {
-    asm volatile("csrs " CSR_STR(CSR_SENVCFG) ", %0" :: "r"(mask) : "memory");
-}
-
-static inline void senvcfg_clear(uintptr_t mask) {
-    asm volatile("csrc " CSR_STR(CSR_SENVCFG) ", %0" :: "r"(mask) : "memory");
-}
-
-static inline uintptr_t mstatus_read(void) {
-    return CSRR(mstatus);
-}
-
-static inline uintptr_t vsstatus_read(void) {
-    return CSRR(CSR_VSSTATUS);
-}
-
-static inline void vsstatus_write(uintptr_t val) {
-    CSRW(CSR_VSSTATUS, val);
-}
+/* vsstatus_read()/vsstatus_write() from common/hyp/hyp_csr.h. */
 
 /* ===================================================================
  * LPAD instruction encoding
@@ -158,14 +119,6 @@ static inline void emit_sd_zero_t0(void *addr) {
 }
 
 /* ===================================================================
- * VS-mode trampoline: simple NOP function (returns immediately).
- * =================================================================== */
-static uintptr_t vs_nop_fn(uintptr_t arg) {
-    (void)arg;
-    return 0;
-}
-
-/* ===================================================================
  * VS-mode trampoline: indirect jump (JALR) to a target address.
  *
  * This function runs inside VS-mode. It performs an indirect jump
@@ -190,29 +143,6 @@ static uintptr_t vs_jalr_to_target(uintptr_t addr) {
         :
         : "r"(addr)
         : "t0", "t1", "ra", "memory"
-    );
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
-
-/* ===================================================================
- * VS-mode trampoline: JALR to target, followed by a single NOP.
- *
- * Used by HCFI-LP-13: after the first LP fault is handled without
- * clearing SPELP, the SRET-restored ELP=LP_EXPECTED must re-fault on
- * the NOP; skipping a NOP in the handler is always safe (unlike
- * skipping a random compiler-generated instruction).
- * =================================================================== */
-static uintptr_t vs_jalr_then_nop(uintptr_t addr) {
-    trap_expect_begin();
-    asm volatile(
-        "jalr ra, %0, 0\n\t"
-        "nop\n\t"
-        :
-        : "r"(addr)
-        : "ra", "memory"
     );
     trap_expect_end();
     if (trap_was_triggered())
@@ -331,32 +261,6 @@ static uintptr_t vs_exec_lpad(uintptr_t arg) {
 }
 
 /* ===================================================================
- * VS-mode trampoline: read senvcfg.
- * =================================================================== */
-static uintptr_t vs_read_senvcfg_fn(uintptr_t arg) {
-    (void)arg;
-    trap_expect_begin();
-    uintptr_t v = senvcfg_read();
-    (void)v;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
-
-/* ===================================================================
- * VS-mode trampoline: write senvcfg.
- * =================================================================== */
-static uintptr_t vs_write_senvcfg_fn(uintptr_t val) {
-    trap_expect_begin();
-    senvcfg_write(val);
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
-
-/* ===================================================================
  * VU-mode trampoline: indirect jump to target.
  * =================================================================== */
 static uintptr_t vu_jalr_to_target(uintptr_t addr) {
@@ -441,12 +345,11 @@ static void flush_cfi_code(void) {
  * =================================================================== */
 static uintptr_t cfi_setup_vs_lpe(bool henvcfg_lpe, bool menvcfg_lpe) {
     uintptr_t orig_henvcfg = henvcfg_read();
-    uintptr_t orig_menvcfg = menvcfg_read();
 
     if (menvcfg_lpe) {
-        menvcfg_set(MENVCFG_LPE);
+        menvcfg_set_bits(MENVCFG_LPE);
     } else {
-        menvcfg_clear(MENVCFG_LPE);
+        menvcfg_clear_bits(MENVCFG_LPE);
     }
 
     if (henvcfg_lpe) {
@@ -458,9 +361,7 @@ static uintptr_t cfi_setup_vs_lpe(bool henvcfg_lpe, bool menvcfg_lpe) {
     return orig_henvcfg;
 }
 
-static void cfi_restore_henvcfg(uintptr_t orig) {
-    henvcfg_write(orig);
-}
+/* Restore henvcfg: call henvcfg_write(orig) from common/hyp/hyp_csr.h. */
 
 /* ===================================================================
  * VS-mode exception handler for delegation tests.
@@ -736,16 +637,6 @@ static void clear_all_deleg(void) {
     CSRW(CSR_HEDELEG, 0);
 }
 
-/* ===================================================================
- * PTE modification helper
- * =================================================================== */
-
-static void vs_pte_modify(two_stage_ctx_t *ctx, uintptr_t va, int level,
-                          uintptr_t new_flags) {
-    uintptr_t *pte = pt_get_pte(&ctx->vs_ctx, va, level);
-    if (pte) {
-        *pte = (*pte & ~(PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D)) | new_flags;
-    }
-}
+/* vs_pte_modify() is provided by common/hyp/two_stage_helpers.h. */
 
 #endif /* HYPERVISOR_ZICFILP_TEST_HELPERS_H */

@@ -286,30 +286,9 @@ bool test_ts_perm_10_vs_no_u_vu(void) {
  * SUM bit is bit 18 in sstatus / vsstatus (RV64).
  * =================================================================== */
 
-/* SUM bit position in sstatus / vsstatus. */
-#ifndef SSTATUS_SUM
-#define SSTATUS_SUM   (1UL << 18)
-#endif
 
-/* VS-mode helper: write SUM in vsstatus then perform load. arg is the
- * VA. The SUM-bit value is encoded in arg's low bit ORed with the
- * VA-aligned high bits. We use a separate file-scope global for SUM
- * choice to keep the helper signature uniform. */
-static volatile int g7_sum_value;
-
-static uintptr_t g7_vs_load_with_sum(uintptr_t va) {
-    /* Set vsstatus.SUM to g7_sum_value. From VS-mode the sstatus CSR
-     * (0x100) maps to vsstatus, so a plain csrrs/csrrc on sstatus
-     * works without trapping. */
-    uintptr_t sm = SSTATUS_SUM;
-    if (g7_sum_value)
-        asm volatile ("csrs sstatus, %0" :: "r"(sm) : "memory");
-    else
-        asm volatile ("csrc sstatus, %0" :: "r"(sm) : "memory");
-    volatile uint64_t *p = (volatile uint64_t *)va;
-    (void)*p;
-    return trap_get_cause();
-}
+/* SUM choice: uses shared g_vs_sum_value / vs_load_with_sum
+ * from test_helpers.h. */
 
 TEST_REGISTER(test_ts_perm_11_vs_u1_sum0);
 bool test_ts_perm_11_vs_u1_sum0(void) {
@@ -322,8 +301,8 @@ bool test_ts_perm_11_vs_u1_sum0(void) {
     /* VS U=1 victim; G default RWXU. */
     ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G7_VS_RWX_U);
 
-    g7_sum_value = 0;
-    bool ok = ts2_run_check_fault(&ctx, g7_vs_load_with_sum, va,
+    g_vs_sum_value = 0;
+    bool ok = ts2_run_check_fault(&ctx, vs_load_with_sum, va,
                                   CAUSE_LOAD_PAGE_FAULT);
     TEST_ASSERT("cause = load-page-fault (13) [SUM=0 blocks]", ok);
     HYP_TEST_END();
@@ -339,9 +318,9 @@ bool test_ts_perm_12_vs_u1_sum1(void) {
     uintptr_t va = (uintptr_t)test_fault_page;
     ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G7_VS_RWX_U);
 
-    g7_sum_value = 1;
+    g_vs_sum_value = 1;
     trap_expect_begin();
-    (void)two_stage_run_in_vs(&ctx, g7_vs_load_with_sum, va);
+    (void)two_stage_run_in_vs(&ctx, vs_load_with_sum, va);
     bool fired = trap_was_triggered();
     trap_expect_end();
     ts2_finish(&ctx);

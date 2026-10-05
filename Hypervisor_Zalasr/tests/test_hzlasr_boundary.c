@@ -62,10 +62,10 @@ bool test_hzlasr_35_no_atomic_ordered_guest_equiv(void)
 
     ts2_finish(&ctx);
 
-    printf("  [RECORD] HLV.W/HSV.W replicate the load-acquire/store-release "
-           "DATA transfer, but NO atomic-ordered (aq/rl) guest equivalent "
-           "exists: HLV/HSV have no aq/rl variants and are not single-copy "
-           "atomic (norm:hlsv_op maps only base opcode 0x03/0x23)\n");
+    LOG_I("HLV.W/HSV.W replicate the load-acquire/store-release "
+          "DATA transfer, but NO atomic-ordered (aq/rl) guest equivalent "
+          "exists: HLV/HSV have no aq/rl variants and are not single-copy "
+          "atomic (norm:hlsv_op maps only base opcode 0x03/0x23)\n");
     TEST_ASSERT("record-type boundary case executed", true);
 
     HYP_TEST_END();

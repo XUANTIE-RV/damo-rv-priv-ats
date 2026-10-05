@@ -59,7 +59,7 @@ bool test_hzabha_01_hs_exec(void)
     uintptr_t cause = fired ? trap_get_cause() : 0;
     trap_expect_end();
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("all 18 byte/half AMOs executed in HS-mode", !fired);
 
     /* rd sign-extension check: amoadd.b on a byte with bit7 set. */
@@ -103,7 +103,7 @@ bool test_hzabha_02_vs_exec_no_cause22(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("VS-mode byte/half AMO set took no trap", !fired);
     TEST_ASSERT_NEQ("VS-mode byte/half AMO did not report cause=22",
                     cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
@@ -136,7 +136,7 @@ bool test_hzabha_03_vu_exec_no_cause22(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("VU-mode byte/half AMO set took no trap", !fired);
     TEST_ASSERT_NEQ("VU-mode byte/half AMO did not report cause=22",
                     cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);

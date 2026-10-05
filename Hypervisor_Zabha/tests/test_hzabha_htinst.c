@@ -98,7 +98,7 @@ bool test_hzabha_16_htinst_funct3_width(void)
         TEST_ASSERT_EQ("byte AMO htinst funct3 == 000 (.b)",
                        (htinst_b >> 12) & 0x7UL, (uintptr_t)0x0UL);
     else
-        printf("  [INFO] byte AMO htinst=0; funct3 not observable\n");
+        LOG_I("byte AMO htinst=0; funct3 not observable\n");
 
     /* .h (funct3=001). */
     ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_RU);
@@ -115,7 +115,7 @@ bool test_hzabha_16_htinst_funct3_width(void)
         TEST_ASSERT_EQ("half AMO htinst funct3 == 001 (.h)",
                        (htinst_h >> 12) & 0x7UL, (uintptr_t)0x1UL);
     else
-        printf("  [INFO] half AMO htinst=0; funct3 not observable\n");
+        LOG_I("half AMO htinst=0; funct3 not observable\n");
 
     /* If both nonzero, they must differ only in funct3. */
     if (htinst_b != 0 && htinst_h != 0) {
@@ -152,7 +152,7 @@ static void hzabha_aqrl_case(uintptr_t (*probe)(uintptr_t), uintptr_t va,
         TEST_ASSERT_EQ("htinst rl bit (25)",
                        (htinst >> 25) & 0x1UL, (uintptr_t)exp_rl);
     } else {
-        printf("  [INFO] htinst=0 (allowed); aq/rl retention not observable\n");
+        LOG_I("htinst=0 (allowed); aq/rl retention not observable\n");
     }
 }
 
@@ -202,7 +202,7 @@ bool test_hzabha_18_addr_offset_zero(void)
         TEST_ASSERT_EQ("htinst Addr. Offset (bits 19:15) == 0",
                        (htinst >> 15) & 0x1FUL, (uintptr_t)0);
     else
-        printf("  [INFO] htinst=0; Addr. Offset not observable this run\n");
+        LOG_I("htinst=0; Addr. Offset not observable this run\n");
 
     HYP_TEST_END();
 }
@@ -293,9 +293,9 @@ bool test_hzabha_20_adue_write_pseudo(void)
     ts2_finish(&ctx);
     ts2_disable_adue();
 
-    printf("  [INFO] ADUE byte AMO D-update: fired=%d cause=%lu htval=0x%lx "
-           "htinst=0x%lx\n", (int)fired, (unsigned long)cause,
-           (unsigned long)htval, (unsigned long)htinst);
+    LOG_D("ADUE byte AMO D-update: fired=%d cause=%lu htval=0x%lx "
+          "htinst=0x%lx\n", (int)fired, (unsigned long)cause,
+          (unsigned long)htval, (unsigned long)htinst);
     TEST_ASSERT("A/D-update byte AMO fault fired", fired);
     TEST_ASSERT_EQ("cause == store/AMO guest-page-fault (23)",
                    cause, (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);
@@ -365,9 +365,9 @@ bool test_hzabha_21_explicit_vs_implicit(void)
         TEST_ASSERT_EQ("(b) htinst == read pseudoinst (zero NOT allowed)",
                        htinst_b, (uintptr_t)HTINST_PSEUDO_READ_RV64);
     }
-    printf("  [INFO] (a) htinst=0x%lx htval=0x%lx | (b) htinst=0x%lx htval=0x%lx\n",
-           (unsigned long)htinst_a, (unsigned long)htval_a,
-           (unsigned long)htinst_b, (unsigned long)htval_b);
+    LOG_D("(a) htinst=0x%lx htval=0x%lx | (b) htinst=0x%lx htval=0x%lx\n",
+          (unsigned long)htinst_a, (unsigned long)htval_a,
+          (unsigned long)htinst_b, (unsigned long)htval_b);
 
     HYP_TEST_END();
 }

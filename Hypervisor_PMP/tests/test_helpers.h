@@ -71,22 +71,13 @@ extern uint8_t __vm_test_region_end[];
 /* ===================================================================
  * PMP deny-window helpers
  *
- * Strategy (mirrors Sv39x4_Sv39 Group 19 / TS-PMP-01):
- *   - PMP entries are statically prioritized, lowest index wins.
- *   - hyp_reset_state() installs entry 0 = NAPOT(all-space, RWX).
- *   - We override entry 0 with a rule matching the victim 4KB page
- *     only, and add entry 1 as fall-through NAPOT(all-space, RWX).
- *   - All entries stay unlocked (L=0), so M-mode is never affected
- *     and hyp_reset_state() can always restore the baseline.
- *
- * Every PMP change is followed by SFENCE.VMA (x0,x0) + HFENCE.GVMA
- * (x0,x0): translation caches may cache PMP attributes for the final
+ * Core save/deny/restore logic from common/pmp/pmp_cfg.h
+ * (pmp_deny_page_4k / pmp_xonly_page_4k / pmp_restore).
+ * This suite adds SFENCE.VMA + HFENCE.GVMA after every PMP change
+ * because translation caches may cache PMP attributes for the final
  * translated SPA (norm:pmp_sfence_required, hypervisor.adoc).
  * =================================================================== */
-typedef struct {
-    pmp_entry_t e0;
-    pmp_entry_t e1;
-} hpmp_save_t;
+typedef pmp_save_t hpmp_save_t;
 
 static inline void hpmp_sync_fences(void) {
     vm_sfence_vma(0, 0);
@@ -95,31 +86,18 @@ static inline void hpmp_sync_fences(void) {
 
 /* Deny @pa's 4KB page completely (no R/W/X). */
 static void hpmp_deny_page(uintptr_t pa, hpmp_save_t *save) {
-    pmp_get_entry(0, &save->e0);
-    pmp_get_entry(1, &save->e1);
-
-    pmp_entry_t deny = PMP_ENTRY_NAPOT(pa & ~0xfffUL, 0x1000UL, 0);
-    pmp_set_entry(0, &deny);
-    pmp_entry_t allow = PMP_ENTRY_NAPOT(0, (uintptr_t)1UL << 54, PMP_RWX);
-    pmp_set_entry(1, &allow);
+    pmp_deny_page_4k(pa, save);
     hpmp_sync_fences();
 }
 
 /* Grant execute-only on @pa's 4KB page (X=1, R=0, W=0). */
 static void hpmp_xonly_page(uintptr_t pa, hpmp_save_t *save) {
-    pmp_get_entry(0, &save->e0);
-    pmp_get_entry(1, &save->e1);
-
-    pmp_entry_t xonly = PMP_ENTRY_NAPOT(pa & ~0xfffUL, 0x1000UL, PMP_X);
-    pmp_set_entry(0, &xonly);
-    pmp_entry_t allow = PMP_ENTRY_NAPOT(0, (uintptr_t)1UL << 54, PMP_RWX);
-    pmp_set_entry(1, &allow);
+    pmp_xonly_page_4k(pa, save);
     hpmp_sync_fences();
 }
 
 static void hpmp_restore(const hpmp_save_t *save) {
-    pmp_set_entry(0, &save->e0);
-    pmp_set_entry(1, &save->e1);
+    pmp_restore(save);
     hpmp_sync_fences();
 }
 

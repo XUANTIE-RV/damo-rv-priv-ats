@@ -41,6 +41,8 @@
 #include "hyp/gstage_pt.h"
 #include "hyp/two_stage.h"
 #include "hyp/test_vs_helpers.h"
+#include "hyp/hyp_test_helpers.h"    /* setup_gstage_with_victim, fire_vs_*_fault */
+#include "hyp/two_stage_helpers.h"   /* ts2_setup_with_g_victim, ts2_run_check_fault */
 
 /* Linker-provided test-region symbols (see shtvala/kernel.ld). */
 extern uint8_t test_data_area[];
@@ -50,24 +52,19 @@ extern uint8_t test_exec_target[];
 extern uint8_t __vm_test_region_start[];
 extern uint8_t __vm_test_region_end[];
 
-#define TEST_REGION_BASE   ((uintptr_t)__vm_test_region_start)
-
 /* ===================================================================
  * Shared helpers (defined in test_helpers.c).
  * =================================================================== */
 
-/* Build a G-stage that:
+/* Build a G-stage with a chosen hgatp mode that:
  *   1. identity-maps low-mem (kernel + UART) at 2MB,
  *   2. identity-maps the .vm_test_region pages at 4KB,
  *   3. installs the caller-supplied flags as the leaf for the 4KB
  *      page that contains victim_gpa.
  * Does NOT activate hgatp (does not call gpt_enable).
+ * (For the fixed SUITE_HGATP_MODE case, call setup_gstage_with_victim()
+ * from common/hyp/hyp_test_helpers.h directly.)
  */
-void _setup_with_victim(two_stage_ctx_t *ctx,
-                        uintptr_t victim_gpa,
-                        uintptr_t victim_flags);
-
-/* Same as _setup_with_victim but with a chosen hgatp mode. */
 void _setup_with_victim_mode(two_stage_ctx_t *ctx,
                              uintptr_t victim_gpa,
                              uintptr_t victim_flags,
@@ -81,12 +78,12 @@ bool _vsfault_check(uintptr_t (*helper)(uintptr_t),
                     uintptr_t victim_flags,
                     uintptr_t expected_cause);
 
-/* VS-mode fault firers: set up G-stage, run helper in VS-mode,
- * do NOT call hyp_reset_state(); trap_record remains valid for
+/* VS-mode fetch fault firer: sets up G-stage, runs helper in VS-mode,
+ * does NOT call hyp_reset_state(); trap_record remains valid for
  * post-trap inspection. Caller must call hyp_reset_state() when done.
- * Each returns true iff the trap actually fired. */
-bool _fire_load_fault (uintptr_t victim_gpa, uintptr_t flags);
-bool _fire_store_fault(uintptr_t victim_gpa, uintptr_t flags);
+ * Returns true iff the trap actually fired.
+ * (For load/store faults, call fire_vs_load_fault()/fire_vs_store_fault()
+ * from common/hyp/hyp_test_helpers.h directly.) */
 bool _fire_fetch_fault(uintptr_t victim_gpa, uintptr_t flags);
 
 /* Mode-aware VS-mode load fault firer. */
@@ -130,7 +127,11 @@ bool _fire_two_stage_load_fault(uintptr_t test_gva, uintptr_t test_gpa,
 /* ===================================================================
  * Group 3 implicit PTE fault helper (VS-stage + G-stage).
  *
- * _setup_imp_victim builds a two-stage context:
+ * For the fixed SUITE_HGATP_MODE case, call
+ * setup_implicit_walk_victim_level() from common/hyp/hyp_test_helpers.h
+ * directly. _setup_imp_victim_mode is the mode-parameterized variant
+ * for testing under different G-stage modes (e.g. Sv48x4 for
+ * HTVAL-IMP-07); it builds a two-stage context:
  *   VS-stage (Sv39):  identity maps kernel at 2MB + test_va at 4KB
  *   G-stage (Sv39x4): identity maps kernel + page tables at 4KB and
  *     test region at 4KB, EXCEPT the VS-stage page table page at
@@ -139,13 +140,6 @@ bool _fire_two_stage_load_fault(uintptr_t test_gva, uintptr_t test_gpa,
  * Returns: GPA of the victim page table page (for htval computation).
  *          Caller must call two_stage_cleanup + hyp_reset_state.
  * =================================================================== */
-uintptr_t _setup_imp_victim(two_stage_ctx_t *ctx,
-                            uintptr_t test_va,
-                            int victim_pt_level,
-                            uintptr_t victim_g_flags);
-
-/* Mode-parameterized variant for testing under different G-stage modes
- * (e.g. Sv48x4 for HTVAL-IMP-07). */
 uintptr_t _setup_imp_victim_mode(two_stage_ctx_t *ctx,
                                  uintptr_t test_va,
                                  int victim_pt_level,

@@ -28,8 +28,6 @@
  *   [63:28] WPRI
  * =================================================================== */
 
-#define CSR_SRMCFG          0x181
-
 #define SRMCFG_RCID_MASK    0xFFFUL
 #define SRMCFG_RCID_SHIFT   0
 #define SRMCFG_MCID_MASK    0xFFFUL
@@ -49,26 +47,10 @@ static inline void srmcfg_write(uintptr_t v) {
  * mstateen0 CSR access helpers (CSR 0x30C)
  * =================================================================== */
 
-#define CSR_MSTATEEN0       0x30C
 #define MSTATEEN0_BIT55     (1UL << 55)
 
-static inline uintptr_t mstateen0_read(void) {
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MSTATEEN0) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void mstateen0_write(uintptr_t v) {
-    asm volatile("csrw " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(v) : "memory");
-}
-
-static inline void mstateen0_set(uintptr_t bits) {
-    asm volatile("csrs " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(bits) : "memory");
-}
-
-static inline void mstateen0_clear(uintptr_t bits) {
-    asm volatile("csrc " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(bits) : "memory");
-}
+/* mstateen0 accessors are provided by common/hyp/hyp_csr.h as
+ * mstateen_read/write/set_bits/clear_bits(idx=0, ...). */
 
 /* ===================================================================
  * Smstateen / Ssqosid availability

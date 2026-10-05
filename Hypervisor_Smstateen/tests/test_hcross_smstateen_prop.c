@@ -19,18 +19,18 @@ bool test_hcross_smsta_02(void) {
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t orig = mstateen0_read();
+    uintptr_t orig = mstateen_read(0);
 
     /* Enable hstateen0 access (SE0=1) but clear C bit */
-    mstateen0_write(MSTATEEN0_SE0);
+    mstateen_write(0, MSTATEEN0_SE0);
 
     /* From M-mode, try writing C bit to hstateen0 */
-    hstateen0_write(MSTATEEN0_C);
-    uintptr_t val = hstateen0_read();
+    hstateen_write(0, MSTATEEN0_C);
+    uintptr_t val = hstateen_read(0);
 
     TEST_ASSERT_BITS("hstateen0.C is RO0 when mstateen0.C=0",
                      val, MSTATEEN0_C, 0);
 
-    mstateen0_write(orig);
+    mstateen_write(0, orig);
     TEST_END();
 }

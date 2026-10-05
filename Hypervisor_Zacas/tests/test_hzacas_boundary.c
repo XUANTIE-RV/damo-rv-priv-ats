@@ -54,8 +54,8 @@ bool test_hzacas_34_no_guest_cas_equivalent(void)
 
     ts2_finish(&ctx);
 
-    printf("  [RECORD] HLV/HSV cover base loads/stores only; no guest-amocas "
-           "(opcode 0x2F, funct5=00101) equivalent exists (norm:hlsv_op)\n");
+    LOG_I("HLV/HSV cover base loads/stores only; no guest-amocas "
+          "(opcode 0x2F, funct5=00101) equivalent exists (norm:hlsv_op)\n");
     TEST_ASSERT("record-type boundary case executed", true);
 
     HYP_TEST_END();

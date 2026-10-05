@@ -165,6 +165,14 @@ uintptr_t vs_exec_illegal(uintptr_t arg);
 /* Simple NOP function safe for VS-mode (returns immediately). */
 uintptr_t vs_nop_fn(uintptr_t arg);
 
+/* Execute a floating-point instruction (fadd.s f0,f0,f0) in VS-mode.
+ * Triggers illegal-instruction when vsstatus.FS == Off. */
+uintptr_t vs_exec_fp_inst(uintptr_t arg);
+
+/* Execute a vector instruction (vsetvli t0,zero,e8,m1,ta,ma) in VS-mode.
+ * Triggers illegal-instruction when vsstatus.VS == Off. */
+uintptr_t vs_exec_vector_inst(uintptr_t arg);
+
 /* ===================================================================
  * VS/VU-mode H-CSR access trampolines (should cause virtual-inst).
  * =================================================================== */
@@ -256,6 +264,15 @@ void setup_deleg_to_hs(uintptr_t exc_mask);
 /* Clear all delegation. */
 void clear_all_deleg(void);
 
+/* Route exceptions to HS-mode: set medeleg bits so that the specified
+ * exception causes trap into HS-mode (where hardware writes htinst)
+ * instead of M-mode (where hardware writes mtinst). */
+static inline void hyp_route_exc_to_hs(uintptr_t mask) { CSRS(medeleg, mask); }
+
+/* Undo hyp_route_exc_to_hs: clear medeleg bits so the specified
+ * exception causes trap into M-mode again. */
+static inline void hyp_unroute_exc_from_hs(uintptr_t mask) { CSRC(medeleg, mask); }
+
 /* ===================================================================
  * G-stage fault helpers (shared with Shtvala-style tests).
  * =================================================================== */
@@ -319,6 +336,14 @@ bool probe_load_gpf_c(uintptr_t victim_gpa, uintptr_t victim_flags);
 uintptr_t setup_implicit_walk_victim(two_stage_ctx_t *ctx,
                                      uintptr_t test_va,
                                      uintptr_t victim_g_flags);
+
+/* Parameterized variant: allows specifying which VS-stage page-table
+ * level to invalidate at G-stage (e.g. PT_LEVEL_2M for a mid-level
+ * PT page instead of the leaf). */
+uintptr_t setup_implicit_walk_victim_level(two_stage_ctx_t *ctx,
+                                           uintptr_t test_va,
+                                           int victim_pt_level,
+                                           uintptr_t victim_g_flags);
 
 /* Test VA for implicit-walk tests: VPN2 distinct from the kernel's
  * so the VS-stage mapping uses a separate top-level subtree. */

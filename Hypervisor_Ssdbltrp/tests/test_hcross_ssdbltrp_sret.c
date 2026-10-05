@@ -43,16 +43,16 @@ bool test_hcross_ssdbltrp_14(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
-    uintptr_t orig_m = menvcfg_read_csr();
-    uintptr_t orig_h = henvcfg_read_csr();
+    uintptr_t orig_m = menvcfg_read();
+    uintptr_t orig_h = henvcfg_read();
     uintptr_t orig_vs = vsstatus_read();
 
     /* Enable DTE */
-    menvcfg_set(MENVCFG_DTE);
-    henvcfg_set(HENVCFG_DTE);
+    menvcfg_set_bits(MENVCFG_DTE);
+    henvcfg_set_bits(HENVCFG_DTE);
 
     /* Set vsstatus.SDT=1 before entering VS-mode */
-    vsstatus_set(VSSTATUS_SDT);
+    vsstatus_set_bits(VSSTATUS_SDT);
 
     /*
      * VS-mode SRET will transition to VU-mode (SPP=0 in VS-mode context),
@@ -69,8 +69,8 @@ bool test_hcross_ssdbltrp_14(void)
 
     /* Restore */
     vsstatus_write(orig_vs);
-    henvcfg_write_csr(orig_h);
-    menvcfg_write_csr(orig_m);
+    henvcfg_write(orig_h);
+    menvcfg_write(orig_m);
     SSDBLTRP_HYP_TEST_END();
 }
 
@@ -85,28 +85,28 @@ bool test_hcross_ssdbltrp_15(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
-    uintptr_t orig_m = menvcfg_read_csr();
-    uintptr_t orig_h = henvcfg_read_csr();
+    uintptr_t orig_m = menvcfg_read();
+    uintptr_t orig_h = henvcfg_read();
     uintptr_t orig_vs = vsstatus_read();
-    uintptr_t orig_hstatus = hstatus_read_csr();
+    uintptr_t orig_hstatus = hstatus_read();
 
     /* Enable DTE */
-    menvcfg_set(MENVCFG_DTE);
-    henvcfg_set(HENVCFG_DTE);
+    menvcfg_set_bits(MENVCFG_DTE);
+    henvcfg_set_bits(HENVCFG_DTE);
 
     /* Set vsstatus.SDT=1 */
-    vsstatus_set(VSSTATUS_SDT);
+    vsstatus_set_bits(VSSTATUS_SDT);
     uintptr_t val = vsstatus_read();
     TEST_ASSERT("vsstatus.SDT initially set", (val & VSSTATUS_SDT) != 0);
 
     /* Configure SRET to return to VS-mode: SPV=1, SPP=1 (S-mode) */
-    hstatus_set(HSTATUS_SPV);           /* Set SPV=1 */
+    hstatus_set_bits(HSTATUS_SPV);           /* Set SPV=1 */
     sstatus_set(SSTATUS_SPP);           /* Set SPP=1 (S-mode) */
 
     /* Clear vsstatus.SDT before entering VS-mode to prevent double-trap during entry */
-    vsstatus_clear(VSSTATUS_SDT);
+    vsstatus_clear_bits(VSSTATUS_SDT);
     /* Re-set it to test SRET behavior */
-    vsstatus_set(VSSTATUS_SDT);
+    vsstatus_set_bits(VSSTATUS_SDT);
 
     /* Execute SRET from HS-mode to VS-mode */
     run_in_vs_mode(_vs_ecall, 0);
@@ -117,10 +117,10 @@ bool test_hcross_ssdbltrp_15(void)
                 (val & VSSTATUS_SDT) != 0);
 
     /* Restore */
-    hstatus_write_csr(orig_hstatus);
+    hstatus_write(orig_hstatus);
     vsstatus_write(orig_vs);
-    henvcfg_write_csr(orig_h);
-    menvcfg_write_csr(orig_m);
+    henvcfg_write(orig_h);
+    menvcfg_write(orig_m);
     SSDBLTRP_HYP_TEST_END();
 }
 
@@ -135,22 +135,22 @@ bool test_hcross_ssdbltrp_16(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
-    uintptr_t orig_m = menvcfg_read_csr();
-    uintptr_t orig_h = henvcfg_read_csr();
+    uintptr_t orig_m = menvcfg_read();
+    uintptr_t orig_h = henvcfg_read();
     uintptr_t orig_vs = vsstatus_read();
-    uintptr_t orig_hstatus = hstatus_read_csr();
+    uintptr_t orig_hstatus = hstatus_read();
 
     /* Enable DTE */
-    menvcfg_set(MENVCFG_DTE);
-    henvcfg_set(HENVCFG_DTE);
+    menvcfg_set_bits(MENVCFG_DTE);
+    henvcfg_set_bits(HENVCFG_DTE);
 
     /* Set vsstatus.SDT=1 */
-    vsstatus_set(VSSTATUS_SDT);
+    vsstatus_set_bits(VSSTATUS_SDT);
     uintptr_t val = vsstatus_read();
     TEST_ASSERT("vsstatus.SDT initially set", (val & VSSTATUS_SDT) != 0);
 
     /* Configure SRET to return to HS-mode: SPV=0 */
-    hstatus_clear(HSTATUS_SPV);         /* Clear SPV=0 (HS-mode) */
+    hstatus_clear_bits(HSTATUS_SPV);         /* Clear SPV=0 (HS-mode) */
 
     /*
      * When SPV=0, SRET returns to HS-mode (not virtualized).
@@ -167,9 +167,9 @@ bool test_hcross_ssdbltrp_16(void)
                 (val & VSSTATUS_SDT) != 0);
 
     /* Restore */
-    hstatus_write_csr(orig_hstatus);
+    hstatus_write(orig_hstatus);
     vsstatus_write(orig_vs);
-    henvcfg_write_csr(orig_h);
-    menvcfg_write_csr(orig_m);
+    henvcfg_write(orig_h);
+    menvcfg_write(orig_m);
     SSDBLTRP_HYP_TEST_END();
 }

@@ -369,6 +369,30 @@ static inline uint64_t ts2_mprv_load_d(uintptr_t addr) {
 }
 
 /* ===================================================================
+ * Leaf-PTE flag editors (VS-stage and G-stage).
+ *
+ * Rewrite the permission/attribute bits of the leaf PTE covering @va
+ * (VS-stage) or @gpa (G-stage) at @level, preserving the PPN. Used by
+ * tests that flip a single page's V/R/W/X/U/A/D after the mapping is
+ * already built. No-op when the PTE at that level is not present.
+ * =================================================================== */
+static inline void vs_pte_modify(two_stage_ctx_t *ctx, uintptr_t va, int level,
+                                 uintptr_t new_flags) {
+    uintptr_t *pte = pt_get_pte(&ctx->vs_ctx, va, level);
+    if (pte) {
+        *pte = (*pte & ~(PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D)) | new_flags;
+    }
+}
+
+static inline void g_pte_modify(two_stage_ctx_t *ctx, uintptr_t gpa, int level,
+                                uintptr_t new_flags) {
+    uintptr_t *pte = gpt_get_pte(&ctx->g_ctx, gpa, level);
+    if (pte) {
+        *pte = (*pte & ~(PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D)) | new_flags;
+    }
+}
+
+/* ===================================================================
  * Suite default paging modes (G-stage and VS-stage)
  *
  * A mode-intrinsic suite (e.g. Sv39x4) pins SUITE_HGATP_MODE /

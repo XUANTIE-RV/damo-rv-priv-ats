@@ -178,10 +178,10 @@ bool test_hcross_sssta_19(void)
     {
         /* Each cleared hstateen0 bit should be ROZ in VS sstateen0 */
         uintptr_t leaked = vs_rb & func_bits;
-        printf("  VS sstateen0 readback: 0x%lx, func_bits: 0x%lx, "
-               "leaked: 0x%lx\n",
-               (unsigned long)vs_rb, (unsigned long)func_bits,
-               (unsigned long)leaked);
+        LOG_D("VS sstateen0 readback: 0x%lx, func_bits: 0x%lx, "
+              "leaked: 0x%lx\n",
+              (unsigned long)vs_rb, (unsigned long)func_bits,
+              (unsigned long)leaked);
         TEST_ASSERT("cleared hstateen0 bits are ROZ in VS sstateen0",
                     leaked == 0);
     }

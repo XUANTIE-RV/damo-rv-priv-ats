@@ -35,17 +35,17 @@ static bool hstateen_preconditions(const char **skip_reason)
     }
 
     /* mstateen0[60] must be settable (grant HS-mode access) */
-    mstateen0_set(STATEEN0_CSRIND);
-    if ((mstateen0_read() & STATEEN0_CSRIND) == 0) {
+    mstateen_set_bits(0, STATEEN0_CSRIND);
+    if ((mstateen_read(0) & STATEEN0_CSRIND) == 0) {
         *skip_reason = "mstateen0 bit 60 not writable";
         return false;
     }
 
     /* hstateen0[60] must be writable for the gating tests */
-    uintptr_t orig = hstateen0_read();
-    hstateen0_write(orig & ~STATEEN0_CSRIND);
-    bool clear_ok = ((hstateen0_read() & STATEEN0_CSRIND) == 0);
-    hstateen0_write(orig);
+    uintptr_t orig = hstateen_read(0);
+    hstateen_write(0, orig & ~STATEEN0_CSRIND);
+    bool clear_ok = ((hstateen_read(0) & STATEEN0_CSRIND) == 0);
+    hstateen_write(0, orig);
     if (!clear_ok) {
         *skip_reason = "hstateen0 bit 60 not writable";
         return false;
@@ -66,14 +66,14 @@ bool test_hcross_ssccfg_22_hsta0_block_siselect(void) {
     const char *skip;
     if (!hstateen_preconditions(&skip)) TEST_SKIP(skip);
 
-    uintptr_t orig_hsta = hstateen0_read();
-    hstateen0_clear(STATEEN0_CSRIND);
+    uintptr_t orig_hsta = hstateen_read(0);
+    hstateen_clear_bits(0, STATEEN0_CSRIND);
 
     TEST_VS_MODE_TRAP("VS siselect write virtual-inst",
                       _vs_write_siselect, HSTA_TEST_SELECT,
                       CAUSE_VIRTUAL_INSTRUCTION);
 
-    hstateen0_write(orig_hsta);
+    hstateen_write(0, orig_hsta);
     HYP_TEST_END();
 }
 
@@ -86,13 +86,13 @@ bool test_hcross_ssccfg_23_hsta0_block_sireg(void) {
     const char *skip;
     if (!hstateen_preconditions(&skip)) TEST_SKIP(skip);
 
-    uintptr_t orig_hsta = hstateen0_read();
-    hstateen0_clear(STATEEN0_CSRIND);
+    uintptr_t orig_hsta = hstateen_read(0);
+    hstateen_clear_bits(0, STATEEN0_CSRIND);
 
     TEST_VS_MODE_TRAP("VS sireg read virtual-inst",
                       _vs_read_sireg, 0, CAUSE_VIRTUAL_INSTRUCTION);
 
-    hstateen0_write(orig_hsta);
+    hstateen_write(0, orig_hsta);
     HYP_TEST_END();
 }
 
@@ -109,8 +109,8 @@ bool test_hcross_ssccfg_24_hsta1_allow(void) {
      * access is gated by hstateen0 alone (no CDE interference). */
     uintptr_t orig_cde = menvcfg_read();
     menvcfg_write(orig_cde & ~MENVCFG_CDE);
-    uintptr_t orig_hsta = hstateen0_read();
-    hstateen0_set(STATEEN0_CSRIND);
+    uintptr_t orig_hsta = hstateen_read(0);
+    hstateen_set_bits(0, STATEEN0_CSRIND);
 
     trap_expect_begin();
     uintptr_t rb = run_in_vs_mode(_vs_write_read_siselect, HSTA_TEST_SELECT);
@@ -124,7 +124,7 @@ bool test_hcross_ssccfg_24_hsta1_allow(void) {
                    vsisel, (uintptr_t)HSTA_TEST_SELECT);
     (void)rb;
 
-    hstateen0_write(orig_hsta);
+    hstateen_write(0, orig_hsta);
     menvcfg_write(orig_cde);
     HYP_TEST_END();
 }

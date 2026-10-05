@@ -41,7 +41,7 @@ bool test_hcfi_ss_49(void) {
     TEST_ASSERT_EQ("tval = shadow stack fault (3)",
                    trap_get_tval(), (uintptr_t)SWCHECK_SHADOW_STACK_FAULT);
 
-    cfi_restore_henvcfg(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-50: SS Fault delegated to VS-mode */
@@ -73,7 +73,7 @@ bool test_hcfi_ss_50(void) {
     TEST_ASSERT_EQ("vstval = shadow stack fault (3)",
                    g_vs_exc_tval, (uintptr_t)SWCHECK_SHADOW_STACK_FAULT);
 
-    cfi_restore_henvcfg(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-51: SS Fault delegated to HS-mode */
@@ -102,7 +102,7 @@ bool test_hcfi_ss_51(void) {
     TEST_ASSERT_EQ("stval = shadow stack fault (3)",
                    trap_get_tval(), (uintptr_t)SWCHECK_SHADOW_STACK_FAULT);
 
-    cfi_restore_henvcfg(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-52: SS Fault delegated to M-mode */
@@ -131,7 +131,7 @@ bool test_hcfi_ss_52(void) {
     TEST_ASSERT_EQ("mtval = shadow stack fault (3)",
                    trap_get_tval(), (uintptr_t)SWCHECK_SHADOW_STACK_FAULT);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-53: VS-mode SS access-fault delegated to VS */
@@ -156,7 +156,7 @@ bool test_hcfi_ss_53(void) {
                 g_vs_exc_triggered &&
                 g_vs_exc_cause == CAUSE_STORE_ACCESS_FAULT);
 
-    cfi_restore_henvcfg(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-54: VS-mode SS access-fault delegated to HS */
@@ -177,7 +177,7 @@ bool test_hcfi_ss_54(void) {
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_store, SS_PAGE_ADDR);
     TEST_ASSERT_EQ("store access-fault to HS", r, (uintptr_t)CAUSE_STORE_ACCESS_FAULT);
 
-    cfi_restore_henvcfg(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-55: VS-mode SS page-fault delegated to VS */
@@ -203,7 +203,7 @@ bool test_hcfi_ss_55(void) {
                 g_vs_exc_triggered &&
                 g_vs_exc_cause == CAUSE_STORE_PAGE_FAULT);
 
-    cfi_restore_henvcfg(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-56: VS-mode SS guest-page-fault not delegatable to VS */
@@ -233,7 +233,7 @@ bool test_hcfi_ss_56(void) {
     uintptr_t hs = hstatus_read();
     TEST_ASSERT("hstatus.GVA=1", (hs & HSTATUS_GVA) != 0);
 
-    cfi_restore_henvcfg(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-57: SS Fault to VS, vsepc correct */
@@ -261,15 +261,15 @@ bool test_hcfi_ss_57(void) {
     (void)r;
     /* vsepc should point to the SSPOPCHK instruction (recorded by the
      * trampoline in g_sspopchk_addr) */
-    printf("    vsepc = 0x%lx, sspopchk addr = 0x%lx\n",
-           (unsigned long)g_vs_exc_epc, (unsigned long)g_sspopchk_addr);
+    LOG_D("vsepc = 0x%lx, sspopchk addr = 0x%lx\n",
+          (unsigned long)g_vs_exc_epc, (unsigned long)g_sspopchk_addr);
     TEST_ASSERT("SS Fault delegated to VS-mode",
                 g_vs_exc_triggered &&
                 g_vs_exc_cause == CAUSE_SOFTWARE_CHECK);
     TEST_ASSERT("vsepc = SSPOPCHK instruction address",
                 g_vs_exc_epc == g_sspopchk_addr);
 
-    cfi_restore_henvcfg(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-58: SS access-fault to HS, sepc/scause correct */
@@ -291,8 +291,8 @@ bool test_hcfi_ss_58(void) {
     TEST_ASSERT_EQ("store access-fault", r, (uintptr_t)CAUSE_STORE_ACCESS_FAULT);
 
     uintptr_t sepc_val = CSRR(sepc);
-    printf("    sepc = 0x%lx, SPV(at trap entry) = %d\n",
-           (unsigned long)sepc_val, (int)trap_get_spv());
+    LOG_D("sepc = 0x%lx, SPV(at trap entry) = %d\n",
+          (unsigned long)sepc_val, (int)trap_get_spv());
 
     /* Per norm:hstatus_spv_op, SPV is written at trap entry into
      * HS-mode; the HS trap handler's sret back to VS-mode consumes it
@@ -300,5 +300,5 @@ bool test_hcfi_ss_58(void) {
      * trap time, not read after the VS run has completed. */
     TEST_ASSERT("hstatus.SPV=1 (captured at trap entry)", trap_get_spv());
 
-    cfi_restore_henvcfg(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
 }

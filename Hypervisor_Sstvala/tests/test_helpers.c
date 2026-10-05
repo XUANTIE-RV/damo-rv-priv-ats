@@ -37,8 +37,8 @@ uintptr_t g_vs_recovery_pc = 0;
 
 uintptr_t test_vs_jump_to(uintptr_t arg) {
     /* Jump to arg expecting a guest-page-fault on fetch.
-     * Mirrors test_vs_exec_expect_fault pattern with recovery anchor. */
-    extern uintptr_t _exec_return_addr;
+     * Mirrors test_vs_exec_expect_fault pattern with recovery anchor.
+     * The _exec_return_addr symbol is resolved by the assembler. */
     asm volatile (
         ".option push\n\t"
         ".option norvc\n\t"

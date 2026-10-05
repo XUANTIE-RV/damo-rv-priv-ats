@@ -16,12 +16,6 @@
  *   fault (15), MANDATORY (HZABHA-30, analogue of HZAMO-28).
  * =================================================================== */
 
-#ifndef MENVCFG_ADUE
-#define MENVCFG_ADUE   (1ULL << 61)
-#endif
-#ifndef HENVCFG_ADUE
-#define HENVCFG_ADUE   (1ULL << 61)
-#endif
 #define HZ_HENVCFG_FIOM   (1UL << 0)
 
 static void hzabha_fiom_case(int fiom, uintptr_t (*probe)(uintptr_t))
@@ -44,7 +38,7 @@ static void hzabha_fiom_case(int fiom, uintptr_t (*probe)(uintptr_t))
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("FIOM setting: annotated byte/half AMO executable", !fired);
     TEST_ASSERT_NEQ("FIOM setting: no virtual-instruction (cause=22)",
                     cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
@@ -62,8 +56,8 @@ bool test_hzabha_27_fiom1(void)
     REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzabha_fiom_case(1, hz_vs_amo_add_b_aq);
-    printf("  [INFO] FIOM ordering effect requires multi-hart: %s\n",
-           HZABHA_SMP_SKIP_REASON);
+    LOG_I("FIOM ordering effect requires multi-hart: %s\n",
+          HZABHA_SMP_SKIP_REASON);
     HYP_TEST_END();
 }
 
@@ -208,7 +202,7 @@ bool test_hzabha_31_adue1_hw_update(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("ADUE=1 byte AMO completed with no page fault", !fired);
     TEST_ASSERT("hardware set PTE.A", (pte_after & PTE_A) != 0);
     TEST_ASSERT("hardware set PTE.D (AMO writes)", (pte_after & PTE_D) != 0);

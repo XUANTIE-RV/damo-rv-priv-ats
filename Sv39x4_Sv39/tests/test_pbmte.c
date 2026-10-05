@@ -33,9 +33,6 @@
 /* Standard low-bit flags for a VS-stage S-leaf with full perms. */
 #define G18_VS_FULL  (PTE_V|PTE_R|PTE_W|PTE_X|PTE_A|PTE_D)
 
-/* PBMT field encoding NC = 01 (cacheable, non-coherent in spec terms). */
-#define G18_PBMT_NC  (1UL << 61)
-
 /* Helper: set PBMT bits on the VS-stage 4K leaf for @va. Caller must
  * have already mapped @va via ts2_setup_full / ts2_setup_with_vs_victim. */
 static void g18_vs_set_pbmt(two_stage_ctx_t *ctx, uintptr_t va,
@@ -64,7 +61,7 @@ bool test_ts_pbmt_01_pbmte0_fault(void) {
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_data_area;
     ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G18_VS_FULL);
-    g18_vs_set_pbmt(&ctx, va, G18_PBMT_NC);
+    g18_vs_set_pbmt(&ctx, va, PBMT_NC);
 
     /* Ensure PBMTE=0 (suite default; explicit for clarity). */
     g18_disable_pbmte();
@@ -90,7 +87,7 @@ bool test_ts_pbmt_02_pbmte1_ok(void) {
     two_stage_ctx_t ctx;
     uintptr_t va = (uintptr_t)test_data_area;
     ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, G18_VS_FULL);
-    g18_vs_set_pbmt(&ctx, va, G18_PBMT_NC);
+    g18_vs_set_pbmt(&ctx, va, PBMT_NC);
 
     g18_enable_pbmte();
     /* Verify PBMTE actually took effect (read-only 0 if unsupported). */

@@ -33,7 +33,7 @@
 static bool _check_recon_strict(uintptr_t target)
 {
     if (!trap_was_triggered()) {
-        printf("  no trap fired\n");
+        LOG_E("no trap fired\n");
         return false;
     }
     uintptr_t htval = trap_get_htval();
@@ -41,10 +41,10 @@ static bool _check_recon_strict(uintptr_t target)
     uintptr_t reconstructed = (htval << 2) | (tval & 0x3UL);
 
     if (reconstructed != target) {
-        printf("  reconstruct mismatch: htval=0x%lx tval=0x%lx -> 0x%lx, "
-               "expected 0x%lx\n",
-               (unsigned long)htval, (unsigned long)tval,
-               (unsigned long)reconstructed, (unsigned long)target);
+        LOG_E("reconstruct mismatch: htval=0x%lx tval=0x%lx -> 0x%lx, "
+              "expected 0x%lx\n",
+              (unsigned long)htval, (unsigned long)tval,
+              (unsigned long)reconstructed, (unsigned long)target);
         return false;
     }
     return true;
@@ -68,7 +68,7 @@ bool test_htval_con_01_load_low_bits(void) {
     uintptr_t target = page | 0x3UL;  /* low 2 bits = 0b11 */
     uintptr_t flags  = (G_FLAGS_RWXU_AD & ~PTE_R);
 
-    bool fired = _fire_load_fault(target, flags);
+    bool fired = fire_vs_load_fault(target, flags);
     TEST_ASSERT("load gpf fired", fired);
     if (fired) {
         TEST_ASSERT("reconstruction matches faulting GPA",
@@ -96,7 +96,7 @@ bool test_htval_con_02_store_low_bits(void) {
     uintptr_t target = page | 0x1UL;  /* low 2 bits = 0b01 */
     uintptr_t flags  = (G_FLAGS_RWXU_AD & ~PTE_W);
 
-    bool fired = _fire_store_fault(target, flags);
+    bool fired = fire_vs_store_fault(target, flags);
     TEST_ASSERT("store gpf fired", fired);
     if (fired) {
         TEST_ASSERT("reconstruction matches faulting GPA",
@@ -135,7 +135,7 @@ bool test_htval_con_03_implicit_low_bits(void) {
     uintptr_t test_va     = (imp_vpn2 << 30) | 0x200000UL;
 
     two_stage_ctx_t ctx;
-    uintptr_t victim_gpa = _setup_imp_victim(&ctx, test_va,
+    uintptr_t victim_gpa = setup_implicit_walk_victim_level(&ctx, test_va,
                                               /*victim_pt_level=*/0,
                                               /*victim_g_flags=*/0);
 
@@ -161,9 +161,9 @@ bool test_htval_con_03_implicit_low_bits(void) {
         /* Verify stval (original GVA) is different from the PTE GPA.
          * The stval low 2 bits are for the original GVA, NOT the PTE. */
         uintptr_t stval = trap_get_tval();
-        printf("  [INFO] stval=0x%lx, htval<<2=0x%lx (PTE GPA) — "
-               "stval low2 may differ from htval<<2 low2\n",
-               (unsigned long)stval, (unsigned long)htval_shifted_back);
+        LOG_I("stval=0x%lx, htval<<2=0x%lx (PTE GPA) — "
+              "stval low2 may differ from htval<<2 low2\n",
+              (unsigned long)stval, (unsigned long)htval_shifted_back);
     }
     trap_expect_end();
 

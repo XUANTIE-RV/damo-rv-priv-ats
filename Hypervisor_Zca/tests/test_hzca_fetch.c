@@ -49,7 +49,7 @@ bool test_hzca_28_fetch_gpf_no_transformed(void)
      * fault (cause=20). VS-stage keeps X=1 so the fault is a G-stage
      * (guest-page) fault, not a VS-stage instruction page fault. */
     ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, target, HZ_G_WNXU);
-    hz_route_to_hs(1UL << CAUSE_INST_GUEST_PAGE_FAULT);
+    hyp_route_exc_to_hs(1UL << CAUSE_INST_GUEST_PAGE_FAULT);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, test_vs_exec_expect_fault, target);
@@ -57,14 +57,14 @@ bool test_hzca_28_fetch_gpf_no_transformed(void)
     uintptr_t cause  = fired ? trap_get_cause()  : 0;
     uintptr_t htinst = fired ? trap_get_htinst() : 0;
     trap_expect_end();
-    hz_unroute_from_hs(1UL << CAUSE_INST_GUEST_PAGE_FAULT);
+    hyp_unroute_exc_from_hs(1UL << CAUSE_INST_GUEST_PAGE_FAULT);
     ts2_finish(&ctx);
 
     TEST_ASSERT("instruction guest-page-fault fired", fired);
     TEST_ASSERT_EQ("cause == instruction guest-page-fault (20)",
                    cause, (uintptr_t)CAUSE_INST_GUEST_PAGE_FAULT);
 
-    printf("  [INFO] fetch-class htinst=0x%lx\n", (unsigned long)htinst);
+    LOG_D("fetch-class htinst=0x%lx\n", (unsigned long)htinst);
     TEST_ASSERT("fetch-class htinst never transformed (bit0 == 0)",
                 (htinst & 1UL) == 0UL);
     TEST_ASSERT("fetch-class htinst == 0 or a pseudoinstruction",
@@ -94,14 +94,14 @@ bool test_hzca_29_fetch_vs_mem_contrast(void)
     asm volatile ("fence.i" ::: "memory");
     two_stage_ctx_t ctx;
     ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, exec_target, HZ_G_WNXU);
-    hz_route_to_hs(1UL << CAUSE_INST_GUEST_PAGE_FAULT);
+    hyp_route_exc_to_hs(1UL << CAUSE_INST_GUEST_PAGE_FAULT);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, test_vs_exec_expect_fault, exec_target);
     bool fired_a = trap_was_triggered();
     uintptr_t cause_a  = fired_a ? trap_get_cause()  : 0;
     uintptr_t htinst_a = fired_a ? trap_get_htinst() : 0;
     trap_expect_end();
-    hz_unroute_from_hs(1UL << CAUSE_INST_GUEST_PAGE_FAULT);
+    hyp_unroute_exc_from_hs(1UL << CAUSE_INST_GUEST_PAGE_FAULT);
     ts2_finish(&ctx);
 
     /* (b) compressed LOAD fault (cause=21) on an invalid G-stage page. */
@@ -124,8 +124,8 @@ bool test_hzca_29_fetch_vs_mem_contrast(void)
     if (lb.xtinst != 0)
         TEST_ASSERT_EQ("(b) load htinst bits[1:0] == 01 (transformed)",
                        lb.xtinst & 3UL, 1UL);
-    printf("  [INFO] (a) fetch htinst=0x%lx | (b) load htinst=0x%lx\n",
-           (unsigned long)htinst_a, (unsigned long)lb.xtinst);
+    LOG_D("(a) fetch htinst=0x%lx | (b) load htinst=0x%lx\n",
+          (unsigned long)htinst_a, (unsigned long)lb.xtinst);
 
     HYP_TEST_END();
 }

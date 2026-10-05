@@ -111,11 +111,4 @@ static uintptr_t hzpm_write_henvcfg(uintptr_t val) {
     return 0;
 }
 
-/* Plain ecall (environment call from VS/VU). */
-static uintptr_t hzpm_ecall(uintptr_t unused) {
-    (void)unused;
-    asm volatile("ecall" ::: "memory");
-    return 0;
-}
-
 #endif /* HZPM_SSNPM_TEST_HELPERS_H */

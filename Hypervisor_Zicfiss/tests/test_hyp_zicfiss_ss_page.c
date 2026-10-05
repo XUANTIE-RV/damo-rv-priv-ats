@@ -33,7 +33,7 @@ bool test_hcfi_ss_24(void) {
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_exec_sspush, 0);
     TEST_ASSERT("SSPUSH on SS page succeeds (SSE=1)", r == 0);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-25: henvcfg.SSE=0, pte.xwr=010 reserved */
@@ -54,7 +54,7 @@ bool test_hcfi_ss_25(void) {
     TEST_ASSERT("page-fault for pte.xwr=010 when SSE=0",
                 r == CAUSE_STORE_PAGE_FAULT || r == CAUSE_STORE_ACCESS_FAULT);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-26: normal store to SS page triggers access-fault */
@@ -74,7 +74,7 @@ bool test_hcfi_ss_26(void) {
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_store, SS_PAGE_ADDR);
     TEST_ASSERT_EQ("store/AMO access-fault on SS page", r, (uintptr_t)CAUSE_STORE_ACCESS_FAULT);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-27: normal load from SS page succeeds */
@@ -94,7 +94,7 @@ bool test_hcfi_ss_27(void) {
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_load, SS_PAGE_ADDR);
     TEST_ASSERT("load from SS page succeeds", r == 0);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-28: SS instruction on non-SS RW page -> access-fault */
@@ -115,7 +115,7 @@ bool test_hcfi_ss_28(void) {
     TEST_ASSERT_EQ("access-fault for SS instruction on non-SS page",
                    r, (uintptr_t)CAUSE_STORE_ACCESS_FAULT);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-29: SS instruction on read-only page -> page-fault */
@@ -138,7 +138,7 @@ bool test_hcfi_ss_29(void) {
     TEST_ASSERT_EQ("page-fault for SS instruction on read-only page",
                    r, (uintptr_t)CAUSE_STORE_PAGE_FAULT);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-30: CBO instruction on SS page -> access-fault */
@@ -164,7 +164,7 @@ bool test_hcfi_ss_30(void) {
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_store, SS_PAGE_ADDR);
     TEST_ASSERT_EQ("access-fault for store on SS page", r, (uintptr_t)CAUSE_STORE_ACCESS_FAULT);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-31: instruction fetch from SS page -> access-fault */
@@ -190,7 +190,7 @@ bool test_hcfi_ss_31(void) {
     TEST_ASSERT("instruction access-fault from SS page fetch",
                 r == CAUSE_INST_ACCESS_FAULT || r == CAUSE_INST_PAGE_FAULT);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-32: SSPOPCHK reads SS page normally */
@@ -214,7 +214,7 @@ bool test_hcfi_ss_32(void) {
     r = two_stage_run_in_vs(&ctx, vs_exec_sspopchk, 0);
     TEST_ASSERT("SSPOPCHK reads SS page and matches", r == 0);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-33: SSPOPCHK on unmapped page -> store page-fault */
@@ -237,7 +237,7 @@ bool test_hcfi_ss_33(void) {
     TEST_ASSERT("store/AMO page-fault (not load) from SSPOPCHK",
                 r == CAUSE_STORE_PAGE_FAULT || r == CAUSE_STORE_ACCESS_FAULT);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-34: SS page COW scenario */
@@ -260,7 +260,7 @@ bool test_hcfi_ss_34(void) {
     TEST_ASSERT_EQ("store page-fault for COW SS page",
                    r, (uintptr_t)CAUSE_STORE_PAGE_FAULT);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-35: U/SUM bit effect on SS page access */
@@ -274,7 +274,7 @@ bool test_hcfi_ss_35(void) {
     pt_pool_reset(); gpt_pool_reset();
     ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
-    senvcfg_set(SENVCFG_SSE);
+    senvcfg_set_bits(SENVCFG_SSE);
 
     vs_pte_modify(&ctx, SS_PAGE_ADDR, PT_LEVEL_4K, PTE_SS_PAGE_FLAGS | PTE_U);
     ssp_write(SS_PAGE_ADDR + 0x100);
@@ -282,8 +282,8 @@ bool test_hcfi_ss_35(void) {
     uintptr_t r = two_stage_run_in_vu(&ctx, vu_exec_sspush, 0);
     TEST_ASSERT("VU-mode SSPUSH on U SS page succeeds", r == 0);
 
-    senvcfg_clear(SENVCFG_SSE);
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    senvcfg_clear_bits(SENVCFG_SSE);
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-36: MXR bit does not affect SS page load */
@@ -309,5 +309,5 @@ bool test_hcfi_ss_36(void) {
     TEST_ASSERT("load from SS page with MXR=1 succeeds", r == 0);
 
     vsstatus_write(vss);
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }

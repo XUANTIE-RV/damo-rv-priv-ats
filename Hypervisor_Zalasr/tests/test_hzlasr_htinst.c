@@ -66,7 +66,7 @@ bool test_hzlasr_18_load_acq_htinst_transformed(void)
         TEST_ASSERT_EQ("htinst aq bit (26) == 1 (load-acquire always aq)",
                        (htinst >> 26) & 0x1UL, (uintptr_t)1);
     } else {
-        printf("  [INFO] load-acquire htinst=0 (allowed); funct5 not observable\n");
+        LOG_I("load-acquire htinst=0 (allowed); funct5 not observable\n");
     }
 
     ts2_finish(&ctx);
@@ -114,7 +114,7 @@ bool test_hzlasr_19_store_rel_htinst_transformed(void)
         TEST_ASSERT_EQ("htinst rl bit (25) == 1 (store-release always rl)",
                        (htinst >> 25) & 0x1UL, (uintptr_t)1);
     } else {
-        printf("  [INFO] store-release htinst=0 (allowed); funct5 not observable\n");
+        LOG_I("store-release htinst=0 (allowed); funct5 not observable\n");
     }
 
     ts2_finish(&ctx);
@@ -149,8 +149,8 @@ static void hzlasr_aqrl_case(uintptr_t (*probe)(uintptr_t), uintptr_t va,
         TEST_ASSERT_EQ("htinst rl bit (25)",
                        (htinst >> 25) & 0x1UL, (uintptr_t)exp_rl);
     } else {
-        printf("  [INFO] htinst=0 (allowed); funct5/aq/rl retention not "
-               "observable this run\n");
+        LOG_I("htinst=0 (allowed); funct5/aq/rl retention not "
+              "observable this run\n");
     }
 }
 
@@ -203,7 +203,7 @@ bool test_hzlasr_21_addr_offset_zero(void)
         TEST_ASSERT_EQ("store-release htinst Addr. Offset (bits19:15) == 0",
                        (htinst_s >> 15) & 0x1FUL, (uintptr_t)0);
     else
-        printf("  [INFO] store-release htinst=0; Addr. Offset not observable\n");
+        LOG_I("store-release htinst=0; Addr. Offset not observable\n");
 
     /* load-acquire explicit G-stage fault. */
     ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, va, HZ_G_INV);
@@ -219,7 +219,7 @@ bool test_hzlasr_21_addr_offset_zero(void)
         TEST_ASSERT_EQ("load-acquire htinst Addr. Offset (bits19:15) == 0",
                        (htinst_l >> 15) & 0x1FUL, (uintptr_t)0);
     else
-        printf("  [INFO] load-acquire htinst=0; Addr. Offset not observable\n");
+        LOG_I("load-acquire htinst=0; Addr. Offset not observable\n");
 
     HYP_TEST_END();
 }
@@ -320,10 +320,10 @@ static void hzlasr_adue_write_pseudo(int is_store, uintptr_t va)
     ts2_finish(&ctx);
     ts2_disable_adue();
 
-    printf("  [INFO] ADUE %s A/D-update: fired=%d cause=%lu htval=0x%lx "
-           "htinst=0x%lx\n", is_store ? "store-release" : "load-acquire",
-           (int)fired, (unsigned long)cause, (unsigned long)htval,
-           (unsigned long)htinst);
+    LOG_D("ADUE %s A/D-update: fired=%d cause=%lu htval=0x%lx "
+          "htinst=0x%lx\n", is_store ? "store-release" : "load-acquire",
+          (int)fired, (unsigned long)cause, (unsigned long)htval,
+          (unsigned long)htinst);
     TEST_ASSERT("A/D-update Zalasr fault fired", fired);
     if (is_store)
         TEST_ASSERT_EQ("store-release cause == store/AMO guest-pf (23)",
@@ -423,9 +423,9 @@ bool test_hzlasr_24_explicit_vs_implicit(void)
         TEST_ASSERT_EQ("(b) htinst == read pseudoinst (zero NOT allowed)",
                        htinst_b, (uintptr_t)HTINST_PSEUDO_READ_RV64);
     }
-    printf("  [INFO] (a) htinst=0x%lx htval=0x%lx | (b) htinst=0x%lx htval=0x%lx\n",
-           (unsigned long)htinst_a, (unsigned long)htval_a,
-           (unsigned long)htinst_b, (unsigned long)htval_b);
+    LOG_D("(a) htinst=0x%lx htval=0x%lx | (b) htinst=0x%lx htval=0x%lx\n",
+          (unsigned long)htinst_a, (unsigned long)htval_a,
+          (unsigned long)htinst_b, (unsigned long)htval_b);
 
     HYP_TEST_END();
 }

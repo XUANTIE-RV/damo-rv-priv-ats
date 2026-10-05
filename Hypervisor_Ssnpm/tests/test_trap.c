@@ -94,7 +94,6 @@ static uintptr_t hzpm_vs_ebreak(uintptr_t unused) {
  * the anchor, escaping the faulting fetch in one shot. */
 static uintptr_t hzpm_vs_ebreak_recovery(uintptr_t unused) {
     (void)unused;
-    extern uintptr_t _exec_return_addr;
     asm volatile (
         ".option push\n\t"
         ".option norvc\n\t"

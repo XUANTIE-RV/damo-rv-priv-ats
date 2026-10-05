@@ -134,8 +134,8 @@ static void hzlrsc_aqrl_case(uintptr_t (*probe)(uintptr_t), uintptr_t va,
         TEST_ASSERT_EQ("htinst rl bit (25)",
                        (htinst >> 25) & 0x1UL, (uintptr_t)exp_rl);
     } else {
-        printf("  [INFO] htinst=0 (allowed for explicit access); "
-               "aq/rl retention not observable this run\n");
+        LOG_I("htinst=0 (allowed for explicit access); "
+              "aq/rl retention not observable this run\n");
     }
 }
 
@@ -193,7 +193,7 @@ bool test_hzlrsc_18_addr_offset_zero(void)
         TEST_ASSERT_EQ("htinst Addr. Offset (bits 19:15) == 0",
                        (htinst >> 15) & 0x1FUL, (uintptr_t)0);
     else
-        printf("  [INFO] htinst=0; Addr. Offset not observable this run\n");
+        LOG_I("htinst=0; Addr. Offset not observable this run\n");
 
     HYP_TEST_END();
 }
@@ -356,9 +356,9 @@ bool test_hzlrsc_21_explicit_vs_implicit(void)
         TEST_ASSERT_EQ("(b) htinst == read pseudoinst (zero NOT allowed)",
                        htinst_b, (uintptr_t)HTINST_PSEUDO_READ_RV64);
     }
-    printf("  [INFO] (a) htinst=0x%lx htval=0x%lx | (b) htinst=0x%lx htval=0x%lx\n",
-           (unsigned long)htinst_a, (unsigned long)htval_a,
-           (unsigned long)htinst_b, (unsigned long)htval_b);
+    LOG_D("(a) htinst=0x%lx htval=0x%lx | (b) htinst=0x%lx htval=0x%lx\n",
+          (unsigned long)htinst_a, (unsigned long)htval_a,
+          (unsigned long)htinst_b, (unsigned long)htval_b);
 
     HYP_TEST_END();
 }

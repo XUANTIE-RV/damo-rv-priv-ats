@@ -456,8 +456,8 @@ bool tent_16_htval_delegated_gpf(void) {
         /* htval captured at HS trap entry (hyp_capture_s). */
         uintptr_t htval = trap_get_htval();
         if (htval == 0) {
-            printf("  [INFO] implementation writes 0 to htval on GPF "
-                   "(allowed by norm:htval_trapval)\n");
+            LOG_I("implementation writes 0 to htval on GPF "
+                  "(allowed by norm:htval_trapval)\n");
         }
         TEST_ASSERT("htval == 0 or GPA>>2 (strict)",
                     htval == 0 || htval == (victim_gpa >> 2));

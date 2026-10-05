@@ -8,9 +8,11 @@
  *
  * Mirrors sv39x4/tests/test_helpers.c with additions:
  *   - mode-parameterized setup/firer for Group 6 (HTVAL-MOD).
- *   - dedicated _fire_store_fault / _fire_fetch_fault, used by
+ *   - dedicated _fire_fetch_fault, used by
  *     Groups 2/8/9 to inspect post-trap CSRs (trap_record kept
  *     alive — caller must call hyp_reset_state() afterwards).
+ *     (Load/store GPF firers use common fire_vs_load_fault /
+ *     fire_vs_store_fault directly.)
  *   - _fire_hlvx_fault / _fire_hlv_fault / _fire_hsv_fault for
  *     Group 5: execute HLV/HLVX/HSV from M-mode while two-stage
  *     translation is active, triggering a G-stage fault.
@@ -27,33 +29,8 @@ void _setup_with_victim_mode(two_stage_ctx_t *ctx,
                              uintptr_t victim_flags,
                              int g_mode)
 {
-    gpt_pool_reset();
-    two_stage_init(ctx, SATP_MODE_BARE, g_mode);
-
-    /* Kernel/UART at 2MB (UART auto-mapped by framework). */
-    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-    uintptr_t lo_end  = (uintptr_t)__vm_test_region_start
-                        & ~(PAGE_SIZE_2M - 1);
-    two_stage_setup_identity(ctx, lo_base, lo_end - lo_base,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
-
-    /* Test region at 4KB. */
-    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
-    uintptr_t r_size  = (uintptr_t)__vm_test_region_end - r_start;
-    two_stage_setup_identity(ctx, r_start, r_size,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
-
-    /* Override victim page flags. */
-    uintptr_t victim_page = victim_gpa & ~(PAGE_SIZE_4K - 1);
-    two_stage_g_map_page(ctx, victim_page, victim_page,
-                         victim_flags, PT_LEVEL_4K);
-}
-
-void _setup_with_victim(two_stage_ctx_t *ctx,
-                        uintptr_t victim_gpa,
-                        uintptr_t victim_flags)
-{
-    _setup_with_victim_mode(ctx, victim_gpa, victim_flags, SUITE_HGATP_MODE);
+    ts2_setup_with_g_victim(ctx, SATP_MODE_BARE, g_mode,
+                            victim_gpa, victim_flags);
 }
 
 bool _vsfault_check(uintptr_t (*helper)(uintptr_t),
@@ -62,34 +39,15 @@ bool _vsfault_check(uintptr_t (*helper)(uintptr_t),
                     uintptr_t expected_cause)
 {
     two_stage_ctx_t ctx;
-    _setup_with_victim(&ctx, target, victim_flags);
-
-    trap_expect_begin();
-    (void)two_stage_run_in_vs(&ctx, helper, target);
-    bool fired = trap_was_triggered();
-    uintptr_t cause = fired ? trap_get_cause() : 0;
-    trap_expect_end();
-
-    two_stage_cleanup(&ctx);
-    hyp_reset_state();
-
-    if (!fired) {
-        printf("  expected guest-page-fault but none fired\n");
-        return false;
-    }
-    if (cause != expected_cause) {
-        printf("  cause mismatch: got %lu, expected %lu\n",
-               (unsigned long)cause, (unsigned long)expected_cause);
-        return false;
-    }
-    return true;
+    setup_gstage_with_victim(&ctx, target, victim_flags);
+    return ts2_run_check_fault(&ctx, helper, target, expected_cause);
 }
 
 /* ---- VS-mode inline fault firers (do NOT reset hyp state) --------- */
 
 bool _fire_load_fault_mode(uintptr_t victim_gpa, uintptr_t flags, int g_mode) {
     two_stage_ctx_t ctx;
-    _setup_with_victim_mode(&ctx, victim_gpa, flags, g_mode);
+    ts2_setup_with_g_victim(&ctx, SATP_MODE_BARE, g_mode, victim_gpa, flags);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, test_vs_load_expect_fault, victim_gpa);
@@ -100,26 +58,9 @@ bool _fire_load_fault_mode(uintptr_t victim_gpa, uintptr_t flags, int g_mode) {
     return fired;
 }
 
-bool _fire_load_fault(uintptr_t victim_gpa, uintptr_t flags) {
-    return _fire_load_fault_mode(victim_gpa, flags, SUITE_HGATP_MODE);
-}
-
-bool _fire_store_fault(uintptr_t victim_gpa, uintptr_t flags) {
-    two_stage_ctx_t ctx;
-    _setup_with_victim(&ctx, victim_gpa, flags);
-
-    trap_expect_begin();
-    (void)two_stage_run_in_vs(&ctx, test_vs_store_expect_fault, victim_gpa);
-    bool fired = trap_was_triggered();
-    trap_expect_end();
-
-    two_stage_cleanup(&ctx);
-    return fired;
-}
-
 bool _fire_fetch_fault(uintptr_t victim_gpa, uintptr_t flags) {
     two_stage_ctx_t ctx;
-    _setup_with_victim(&ctx, victim_gpa, flags);
+    setup_gstage_with_victim(&ctx, victim_gpa, flags);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, test_vs_exec_expect_fault, victim_gpa);
@@ -141,7 +82,7 @@ static uintptr_t vs_amo_expect_fault(uintptr_t addr) {
 
 bool _fire_amo_fault(uintptr_t victim_gpa, uintptr_t flags) {
     two_stage_ctx_t ctx;
-    _setup_with_victim(&ctx, victim_gpa, flags);
+    setup_gstage_with_victim(&ctx, victim_gpa, flags);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, vs_amo_expect_fault, victim_gpa);
@@ -197,16 +138,6 @@ bool _fire_two_stage_load_fault(uintptr_t test_gva, uintptr_t test_gpa,
 }
 
 /* ---- Group 3 implicit PTE fault helper (VS-stage + G-stage) ------- */
-
-uintptr_t _setup_imp_victim(two_stage_ctx_t *ctx,
-                            uintptr_t test_va,
-                            int victim_pt_level,
-                            uintptr_t victim_g_flags)
-{
-    return _setup_imp_victim_mode(ctx, test_va, victim_pt_level,
-                                 victim_g_flags,
-                                 SUITE_VSATP_MODE, SUITE_HGATP_MODE);
-}
 
 uintptr_t _setup_imp_victim_mode(two_stage_ctx_t *ctx,
                                  uintptr_t test_va,

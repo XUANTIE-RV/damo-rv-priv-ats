@@ -19,14 +19,11 @@
 #include "hyp/hyp_test.h"
 
 /* ===================================================================
- * Ssdbltrp CSR address constants and field masks
+ * Ssdbltrp field masks
+ *
+ * vsstatus / hstatus / henvcfg / menvcfg accessors (read/write and
+ * set_bits/clear_bits) come from common/hyp/hyp_csr.h.
  * =================================================================== */
-
-#define CSR_VSSTATUS_ADDR    0x200
-#define CSR_HSTATUS_ADDR     0x600
-#define CSR_HENVCFG_ADDR     0x60A
-#define CSR_MENVCFG_ADDR     0x30A
-#define CSR_MTVAL2_ADDR      0x34B
 
 /* Bit definitions */
 #define MENVCFG_DTE          (1ULL << 59)
@@ -42,160 +39,24 @@
 #define SSTATUS_SPIE         (1ULL << 5)
 #define SSTATUS_SPP          (1ULL << 8)
 
-#define MSTATUS_SDT          (1ULL << 24)
-
-#define HSTATUS_SPV          (1ULL << 7)
-#define HSTATUS_SPVP         (1ULL << 8)
-
-#define CAUSE_DOUBLE_TRAP    16
-#define CAUSE_ECALL_FROM_VU  8
-#define CAUSE_ECALL_FROM_VS  10
-
 /* ===================================================================
  * vsstatus CSR access helpers
+ *
+ * vsstatus_read()/vsstatus_write() from common/hyp/hyp_csr.h
+ * (reachable via hyp/hyp_test.h -> hyp/hyp_csr.h).
  * =================================================================== */
-
-static inline uintptr_t vsstatus_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_VSSTATUS_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void vsstatus_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_VSSTATUS_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline void vsstatus_set(uintptr_t bits)
-{
-    asm volatile("csrs " CSR_STR(CSR_VSSTATUS_ADDR) ", %0" :: "r"(bits) : "memory");
-}
-
-static inline void vsstatus_clear(uintptr_t bits)
-{
-    asm volatile("csrc " CSR_STR(CSR_VSSTATUS_ADDR) ", %0" :: "r"(bits) : "memory");
-}
 
 /* ===================================================================
  * hstatus CSR access helpers
  * =================================================================== */
 
-static inline uintptr_t hstatus_read_csr(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_HSTATUS_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void hstatus_write_csr(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_HSTATUS_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline void hstatus_set(uintptr_t bits)
-{
-    asm volatile("csrs " CSR_STR(CSR_HSTATUS_ADDR) ", %0" :: "r"(bits) : "memory");
-}
-
-static inline void hstatus_clear(uintptr_t bits)
-{
-    asm volatile("csrc " CSR_STR(CSR_HSTATUS_ADDR) ", %0" :: "r"(bits) : "memory");
-}
-
 /* ===================================================================
  * henvcfg CSR access helpers
  * =================================================================== */
 
-static inline uintptr_t henvcfg_read_csr(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_HENVCFG_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void henvcfg_write_csr(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_HENVCFG_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline void henvcfg_set(uintptr_t bits)
-{
-    asm volatile("csrs " CSR_STR(CSR_HENVCFG_ADDR) ", %0" :: "r"(bits) : "memory");
-}
-
-static inline void henvcfg_clear(uintptr_t bits)
-{
-    asm volatile("csrc " CSR_STR(CSR_HENVCFG_ADDR) ", %0" :: "r"(bits) : "memory");
-}
-
 /* ===================================================================
  * menvcfg CSR access helpers
  * =================================================================== */
-
-static inline uintptr_t menvcfg_read_csr(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MENVCFG_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void menvcfg_write_csr(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_MENVCFG_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline void menvcfg_set(uintptr_t bits)
-{
-    asm volatile("csrs " CSR_STR(CSR_MENVCFG_ADDR) ", %0" :: "r"(bits) : "memory");
-}
-
-static inline void menvcfg_clear(uintptr_t bits)
-{
-    asm volatile("csrc " CSR_STR(CSR_MENVCFG_ADDR) ", %0" :: "r"(bits) : "memory");
-}
-
-/* ===================================================================
- * mtval2 CSR access helpers
- * =================================================================== */
-
-static inline uintptr_t mtval2_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MTVAL2_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void mtval2_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_MTVAL2_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-/* ===================================================================
- * mstatus CSR access helpers (for SDT)
- * =================================================================== */
-
-static inline uintptr_t mstatus_read_csr(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, mstatus" : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void mstatus_write_csr(uintptr_t v)
-{
-    asm volatile("csrw mstatus, %0" :: "r"(v) : "memory");
-}
-
-static inline void mstatus_set(uintptr_t bits)
-{
-    asm volatile("csrs mstatus, %0" :: "r"(bits) : "memory");
-}
-
-static inline void mstatus_clear(uintptr_t bits)
-{
-    asm volatile("csrc mstatus, %0" :: "r"(bits) : "memory");
-}
 
 /* ===================================================================
  * sstatus CSR access helpers (for SDT)
@@ -208,19 +69,9 @@ static inline uintptr_t sstatus_read_csr(void)
     return v;
 }
 
-static inline void sstatus_write_csr(uintptr_t v)
-{
-    asm volatile("csrw sstatus, %0" :: "r"(v) : "memory");
-}
-
 static inline void sstatus_set(uintptr_t bits)
 {
     asm volatile("csrs sstatus, %0" :: "r"(bits) : "memory");
-}
-
-static inline void sstatus_clear(uintptr_t bits)
-{
-    asm volatile("csrc sstatus, %0" :: "r"(bits) : "memory");
 }
 
 /* ===================================================================
@@ -246,40 +97,40 @@ static inline bool check_ssdbltrp_extension(void)
     clear_mdt();
 
     /* Save original state */
-    uintptr_t menvcfg_orig = menvcfg_read_csr();
-    uintptr_t henvcfg_orig = henvcfg_read_csr();
+    uintptr_t menvcfg_orig = menvcfg_read();
+    uintptr_t henvcfg_orig = henvcfg_read();
     uintptr_t vsstatus_orig = vsstatus_read();
 
     /* Enable DTE at M-level */
-    menvcfg_set(MENVCFG_DTE);
-    uintptr_t menvcfg_val = menvcfg_read_csr();
+    menvcfg_set_bits(MENVCFG_DTE);
+    uintptr_t menvcfg_val = menvcfg_read();
     if ((menvcfg_val & MENVCFG_DTE) == 0) {
         /* menvcfg.DTE is read-only zero - Ssdbltrp not implemented at M-level
          * This is expected on QEMU which doesn't support Ssdbltrp */
-        menvcfg_write_csr(menvcfg_orig);
+        menvcfg_write(menvcfg_orig);
         return false;
     }
 
     /* Try to set henvcfg.DTE */
-    henvcfg_set(HENVCFG_DTE);
-    uintptr_t henvcfg_val = henvcfg_read_csr();
+    henvcfg_set_bits(HENVCFG_DTE);
+    uintptr_t henvcfg_val = henvcfg_read();
     if ((henvcfg_val & HENVCFG_DTE) == 0) {
         /* henvcfg.DTE is read-only zero - Ssdbltrp not implemented at H-level */
-        henvcfg_write_csr(henvcfg_orig);
-        menvcfg_write_csr(menvcfg_orig);
+        henvcfg_write(henvcfg_orig);
+        menvcfg_write(menvcfg_orig);
         return false;
     }
 
     /* Try to set vsstatus.SDT - this must be done from M-mode or HS-mode */
-    vsstatus_set(VSSTATUS_SDT);
+    vsstatus_set_bits(VSSTATUS_SDT);
     bool sdt_writable = (vsstatus_read() & VSSTATUS_SDT) != 0;
 
     /* Restore - IMPORTANT: clear vsstatus.SDT to prevent double-traps
      * when entering VS-mode in subsequent tests */
-    vsstatus_clear(VSSTATUS_SDT);
+    vsstatus_clear_bits(VSSTATUS_SDT);
     vsstatus_write(vsstatus_orig & ~VSSTATUS_SDT);
-    henvcfg_write_csr(henvcfg_orig);
-    menvcfg_write_csr(menvcfg_orig);
+    henvcfg_write(henvcfg_orig);
+    menvcfg_write(menvcfg_orig);
 
     return sdt_writable;
 }
@@ -298,21 +149,6 @@ static inline bool check_ssdbltrp_extension(void)
     return _test_end_record(); \
 } while (0)
 
-#define SSDBLTRP_HYP_TEST_SKIP(reason) do { \
-    clear_mdt(); \
-    test_results.skipped++; \
-    if (test_results.skipped_count < MAX_SKIPPED_TESTS) { \
-        test_results.skipped_names[test_results.skipped_count] = \
-            test_results.current_test_name; \
-        test_results.skipped_reasons[test_results.skipped_count] = (reason); \
-        test_results.skipped_count++; \
-    } \
-    printf("[SKIP] %s: %s\n\n", test_results.current_test_name, (reason)); \
-    goto_priv(PRIV_M); \
-    hyp_reset_state(); \
-    return true; \
-} while (0)
-
 /* ===================================================================
  * VS/VU-mode trampoline functions for run_in_vs_mode/run_in_vu_mode
  *
@@ -321,26 +157,11 @@ static inline bool check_ssdbltrp_extension(void)
  * virtualization is enabled (V=1). So trampolines use sstatus accessors.
  * =================================================================== */
 
-/* VS-mode: read sstatus.SDT (mapped to vsstatus.SDT by hardware) */
-static uintptr_t _vs_read_vsstatus_sdt(uintptr_t arg)
-{
-    (void)arg;
-    return (sstatus_read_csr() & SSTATUS_SDT) != 0;
-}
-
 /* VS-mode: set sstatus.SDT (mapped to vsstatus.SDT by hardware) */
 static uintptr_t _vs_set_vsstatus_sdt(uintptr_t arg)
 {
     (void)arg;
     sstatus_set(SSTATUS_SDT);
-    return (sstatus_read_csr() & SSTATUS_SDT) != 0;
-}
-
-/* VS-mode: clear sstatus.SDT (mapped to vsstatus.SDT by hardware) */
-static uintptr_t _vs_clear_vsstatus_sdt(uintptr_t arg)
-{
-    (void)arg;
-    sstatus_clear(SSTATUS_SDT);
     return (sstatus_read_csr() & SSTATUS_SDT) != 0;
 }
 
@@ -356,24 +177,6 @@ static uintptr_t _vs_ecall(uintptr_t arg)
 static uintptr_t _vu_ecall(uintptr_t arg)
 {
     (void)arg;
-    asm volatile("ecall");
-    return 0;
-}
-
-/* VS-mode: set sstatus.SDT and trigger ecall (for double-trap test) */
-static uintptr_t _vs_set_sdt_and_ecall(uintptr_t arg)
-{
-    (void)arg;
-    sstatus_set(SSTATUS_SDT);
-    asm volatile("ecall");
-    return 0;
-}
-
-/* VU-mode: set sstatus.SDT and trigger ecall (for double-trap test) */
-static uintptr_t _vu_set_sdt_and_ecall(uintptr_t arg)
-{
-    (void)arg;
-    sstatus_set(SSTATUS_SDT);
     asm volatile("ecall");
     return 0;
 }

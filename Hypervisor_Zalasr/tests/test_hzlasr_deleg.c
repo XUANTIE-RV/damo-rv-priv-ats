@@ -54,9 +54,9 @@ static int hzlasr_store_vs_fault(uintptr_t victim_va, uintptr_t vs_flags,
     }
     ts2_finish(&ctx);
 
-    printf("  [INFO] %s: fired=%d cause=%lu (expected %lu)%s\n",
-           tag, fired, (unsigned long)cause, (unsigned long)exp_cause,
-           delegate_to_vs ? " [deleg->VS]" : "");
+    LOG_D("%s: fired=%d cause=%lu (expected %lu)%s\n",
+          tag, fired, (unsigned long)cause, (unsigned long)exp_cause,
+          delegate_to_vs ? " [deleg->VS]" : "");
     return fired && cause == exp_cause;
 }
 
@@ -144,9 +144,9 @@ bool test_hzlasr_06_load_acq_ro_page_executes(void)
     int fired = hzlasr_load_vs_fault(va, HZ_VS_R, hz_vs_lw_aq, &obs, &rd);
 
     if (fired)
-        printf("  [DEVIATION] lw.aq to R=1/W=0 trapped cause=%lu - a pure "
-               "atomic load MUST read a read-only page; record to bugs/ "
-               "(violates norm:ldaq_atomic_load_op)\n", (unsigned long)obs);
+        LOG_W("lw.aq to R=1/W=0 trapped cause=%lu - a pure "
+              "atomic load MUST read a read-only page; record to bugs/ "
+              "(violates norm:ldaq_atomic_load_op)\n", (unsigned long)obs);
     TEST_ASSERT("lw.aq to R=1/W=0 executed with no fault (read-only ok)",
                 !fired);
     if (!fired)
@@ -250,8 +250,8 @@ bool test_hzlasr_10_load_vs_store_permission(void)
     uintptr_t obs = 0, rd = 0;
     int ld_fired = hzlasr_load_vs_fault(va, HZ_VS_R, hz_vs_lw_aq, &obs, &rd);
     if (ld_fired)
-        printf("  [DEVIATION] lw.aq to R=1/W=0 trapped cause=%lu (must read a "
-               "read-only page); record to bugs/\n", (unsigned long)obs);
+        LOG_W("lw.aq to R=1/W=0 trapped cause=%lu (must read a "
+              "read-only page); record to bugs/\n", (unsigned long)obs);
     TEST_ASSERT("lw.aq to R=1/W=0 executed with no fault (read ok)", !ld_fired);
     if (!ld_fired)
         TEST_ASSERT_EQ("lw.aq loaded the value", rd, ZALASR_W_SIGNEXT(0x00005678u));

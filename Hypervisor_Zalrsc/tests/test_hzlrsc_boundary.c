@@ -61,8 +61,8 @@ bool test_hzlrsc_39_no_guest_atomic_equivalent(void)
      * SB..SD have HLV/HSV equivalents; LR/SC (AMO opcode) have none, so a
      * hypervisor cannot do a guest-privileged atomic RMW directly - it
      * must use non-atomic HLV+HSV or map the GPA into its own space. */
-    printf("  [RECORD] HLV/HSV cover base loads/stores only; no HLR/HSC "
-           "guest-atomic equivalent exists (norm:hlsv_op)\n");
+    LOG_I("HLV/HSV cover base loads/stores only; no HLR/HSC "
+          "guest-atomic equivalent exists (norm:hlsv_op)\n");
     TEST_ASSERT("record-type boundary case executed", true);
 
     HYP_TEST_END();

@@ -106,7 +106,7 @@ bool test_shvstvecd_dir_01_ecall_vu(void) {
     hyp_delegate_to_vs(1UL << 8, 0);
 
     /* Set vstvec to Direct mode entry (from M-mode, CSR 0x205) */
-    vstvec_write_raw(entry);
+    vstvec_write(entry);
 
     shvstvecd_reset_trap_record();
 
@@ -205,32 +205,14 @@ bool test_shvstvecd_dir_03_load_page_fault(void) {
     hyp_delegate_to_vs(1UL << 13, 0);
 
     /* Set vstvec to Direct mode entry from M-mode */
-    vstvec_write_raw(entry);
+    vstvec_write(entry);
 
     shvstvecd_reset_trap_record();
 
     /* Setup two-stage: VS-stage Sv39 with identity map for code only;
      * UNMAPPED_VA_1 deliberately NOT mapped. G-stage identity. */
     two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
-
-    /* VS-stage: identity map kernel region at 2MB granule */
-    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
-    uintptr_t lo_end  = r_start & ~(PAGE_SIZE_2M - 1);
-    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    two_stage_vs_identity(&ctx, lo_base, lo_end - lo_base,
-                          vs_flags, PT_LEVEL_2M);
-    /* Identity map test region at 4KB */
-    uintptr_t r_size = (uintptr_t)__vm_test_region_end - r_start;
-    two_stage_vs_identity(&ctx, r_start, r_size, vs_flags, PT_LEVEL_4K);
-
-    /* G-stage: full identity map */
-    two_stage_setup_identity(&ctx, lo_base, lo_end - lo_base,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
-    two_stage_setup_identity(&ctx, r_start, r_size,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Execute in VS-mode: load from UNMAPPED_VA_1 -> page-fault */
     two_stage_run_in_vs(&ctx, vsmode_load_unmapped, UNMAPPED_VA_1);

@@ -44,11 +44,11 @@ bool test_hcross_smsta_13(void) {
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
 #ifdef ENABLE_HYP
-    uintptr_t orig = mstateen0_read();
+    uintptr_t orig = mstateen_read(0);
 
     /* Set up: mstateen0.SE0=1 temporarily so we can write hstateen0 */
-    mstateen0_set(MSTATEEN0_SE0);
-    hstateen0_write(1ULL << 63);
+    mstateen_set_bits(0, MSTATEEN0_SE0);
+    hstateen_write(0, 1ULL << 63);
 
     /* Now clear mstateen0 SE0 to block at M-level.
      * hstateen0 bit 63 is still 1 (H perspective allows),
@@ -56,7 +56,7 @@ bool test_hcross_smsta_13(void) {
      * From VS-mode, accessing sstateen0 should trigger
      * virtual-instruction (cause=22) because hstateen would allow
      * but mstateen blocks. */
-    mstateen0_clear(MSTATEEN0_SE0);
+    mstateen_clear_bits(0, MSTATEEN0_SE0);
 
     /* Use run_in_vs_mode to correctly enter VS-mode (V=1, nominal S).
      * The trampoline reads sstateen0 and returns trap_get_cause(). */
@@ -69,7 +69,7 @@ bool test_hcross_smsta_13(void) {
                 cause == CAUSE_VIRTUAL_INSTRUCTION ||
                 cause == CAUSE_ILLEGAL_INST);
 
-    mstateen0_write(orig);
+    mstateen_write(0, orig);
 #else
     TEST_SKIP("ENABLE_HYP not compiled");
 #endif
@@ -87,14 +87,14 @@ bool test_hcross_smsta_14(void) {
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
 #ifdef ENABLE_HYP
-    uintptr_t orig = mstateen0_read();
+    uintptr_t orig = mstateen_read(0);
 
     /* Set hstateen0 bit 63 = 1 via mstateen0.SE0=1 */
-    mstateen0_set(MSTATEEN0_SE0);
-    hstateen0_write(1ULL << 63);
+    mstateen_set_bits(0, MSTATEEN0_SE0);
+    hstateen_write(0, 1ULL << 63);
 
     /* Block at M-level */
-    mstateen0_clear(MSTATEEN0_SE0);
+    mstateen_clear_bits(0, MSTATEEN0_SE0);
 
     /* Use run_in_vu_mode to correctly enter VU-mode (V=1, nominal U).
      * The trampoline reads sstateen0 and returns trap_get_cause(). */
@@ -105,7 +105,7 @@ bool test_hcross_smsta_14(void) {
                 cause == CAUSE_VIRTUAL_INSTRUCTION ||
                 cause == CAUSE_ILLEGAL_INST);
 
-    mstateen0_write(orig);
+    mstateen_write(0, orig);
 #else
     TEST_SKIP("ENABLE_HYP not compiled");
 #endif

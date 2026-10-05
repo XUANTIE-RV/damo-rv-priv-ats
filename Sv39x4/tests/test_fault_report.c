@@ -103,8 +103,8 @@ bool test_gfault_04_htval(void) {
     if (fired) {
         uintptr_t htval = trap_get_htval();
         if (htval == 0) {
-            printf("  [INFO] implementation writes 0 to mtval2 on GPF "
-                   "(allowed by norm:mtval2_trapval)\n");
+            LOG_I("implementation writes 0 to mtval2 on GPF "
+                  "(allowed by norm:mtval2_trapval)\n");
         }
         TEST_ASSERT("mtval2 == 0 or GPA>>2 (strict)",
                     htval == 0 || htval == (target >> 2));

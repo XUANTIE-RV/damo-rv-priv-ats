@@ -31,15 +31,15 @@ bool test_hzwrs_08(void)
     if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     uintptr_t saved_mie = hz_quiet_interrupts();
-    hz_set_vtw();
-    hz_set_tw();
+    hstatus_set_vtw(true);
+    CSRS(mstatus, MSTATUS_TW_BIT);
     (void)hz_reserve();
 
     hz_vs_expect(_vs_wrs_nto, true, CAUSE_ILLEGAL_INST);
 
-    hz_clear_tw();
-    hz_clear_vtw();
-    hz_restore_interrupts(saved_mie);
+    CSRC(mstatus, MSTATUS_TW_BIT);
+    hstatus_set_vtw(false);
+    CSRW(mie, saved_mie);
 
     HYP_TEST_END();
 }
@@ -54,15 +54,15 @@ bool test_hzwrs_09(void)
     if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     uintptr_t saved_mie = hz_quiet_interrupts();
-    hz_set_vtw();
-    hz_set_tw();
+    hstatus_set_vtw(true);
+    CSRS(mstatus, MSTATUS_TW_BIT);
     (void)hz_reserve();
 
     hz_vu_expect(_vu_wrs_nto, true, CAUSE_ILLEGAL_INST);
 
-    hz_clear_tw();
-    hz_clear_vtw();
-    hz_restore_interrupts(saved_mie);
+    CSRC(mstatus, MSTATUS_TW_BIT);
+    hstatus_set_vtw(false);
+    CSRW(mie, saved_mie);
 
     HYP_TEST_END();
 }
@@ -81,14 +81,14 @@ bool test_hzwrs_10(void)
      * source: the reference simulators complete wrs.sto without
      * stalling, and a pending interrupt risks being taken mid-test. */
     uintptr_t saved_mie = hz_quiet_interrupts();
-    hz_clear_tw();
-    hz_set_vtw();
+    CSRC(mstatus, MSTATUS_TW_BIT);
+    hstatus_set_vtw(true);
     (void)hz_reserve();
 
     hz_vs_expect(_vs_wrs_sto, false, 0);
 
-    hz_clear_vtw();
-    hz_restore_interrupts(saved_mie);
+    hstatus_set_vtw(false);
+    CSRW(mie, saved_mie);
 
     HYP_TEST_END();
 }
@@ -103,8 +103,8 @@ bool test_hzwrs_11(void)
     if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     /* VTW gates only V=1 execution; HS-mode (V=0) is unaffected. */
-    hz_clear_tw();
-    hz_set_vtw();
+    CSRC(mstatus, MSTATUS_TW_BIT);
+    hstatus_set_vtw(true);
     (void)hz_reserve();
     hz_suppress_globals();
     uintptr_t saved_mideleg = hz_set_m_soft_pending();
@@ -117,7 +117,7 @@ bool test_hzwrs_11(void)
     hz_clear_m_soft_pending(saved_mideleg);
     CHECK_NO_TRAP("HS-mode wrs.nto with VTW=1");
 
-    hz_clear_vtw();
+    hstatus_set_vtw(false);
 
     HYP_TEST_END();
 }
@@ -134,14 +134,14 @@ bool test_hzwrs_12(void)
     /* Control case against HSTAT-06 (WFI semantics): mstatus.TW
      * alone intercepts wrs.nto in VS-mode with illegal-instruction. */
     uintptr_t saved_mie = hz_quiet_interrupts();
-    hz_clear_vtw();
-    hz_set_tw();
+    hstatus_set_vtw(false);
+    CSRS(mstatus, MSTATUS_TW_BIT);
     (void)hz_reserve();
 
     hz_vs_expect(_vs_wrs_nto, true, CAUSE_ILLEGAL_INST);
 
-    hz_clear_tw();
-    hz_restore_interrupts(saved_mie);
+    CSRC(mstatus, MSTATUS_TW_BIT);
+    CSRW(mie, saved_mie);
 
     HYP_TEST_END();
 }

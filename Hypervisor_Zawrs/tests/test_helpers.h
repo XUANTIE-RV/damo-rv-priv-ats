@@ -123,10 +123,8 @@ static inline uintptr_t hz_quiet_interrupts(void)
     return saved_mie;
 }
 
-static inline void hz_restore_interrupts(uintptr_t saved_mie)
-{
-    CSRW(mie, saved_mie);
-}
+/* Restore mie after hz_quiet_interrupts(): call sites use CSRW(mie, saved_mie)
+ * directly (no wrapper needed). */
 
 /* Force every global interrupt enable off (mstatus.MIE, HS-level
  * sstatus.SIE, vsstatus.SIE). Wake sources used by these tests must
@@ -279,29 +277,19 @@ static inline bool hz_trap_is_watchdog_only(void)
     bool watchdog = (c & CAUSE_INTERRUPT_BIT) != 0 &&
                     (c & ~CAUSE_INTERRUPT_BIT) == IRQ_M_TIMER;
     if (!watchdog)
-        printf("  NON-WATCHDOG TRAP: cause=0x%lx epc=0x%lx tval=0x%lx\n",
-               (unsigned long)c,
-               (unsigned long)trap_get_epc(),
-               (unsigned long)trap_get_tval());
+        LOG_E("NON-WATCHDOG TRAP: cause=0x%lx epc=0x%lx tval=0x%lx\n",
+              (unsigned long)c,
+              (unsigned long)trap_get_epc(),
+              (unsigned long)trap_get_tval());
     return watchdog;
 }
 
 /* ===================================================================
- * hstatus.VTW / mstatus.TW helpers
+ * hstatus.VTW / mstatus.TW control
+ *
+ * VTW: use hstatus_set_vtw(bool) from common/hyp/hyp_csr.h.
+ * TW:  call sites use CSRS/CSRC(mstatus, MSTATUS_TW_BIT) directly.
  * =================================================================== */
-
-static inline void hz_set_vtw(void)
-{
-    hstatus_write(hstatus_read() | HSTATUS_VTW);
-}
-
-static inline void hz_clear_vtw(void)
-{
-    hstatus_write(hstatus_read() & ~HSTATUS_VTW);
-}
-
-static inline void hz_set_tw(void)  { CSRS(mstatus, MSTATUS_TW_BIT); }
-static inline void hz_clear_tw(void) { CSRC(mstatus, MSTATUS_TW_BIT); }
 
 /* ===================================================================
  * VS/VU-mode wrs callbacks (invoked via run_in_vs/vu_mode)
@@ -353,10 +341,10 @@ static void hz_vs_expect(uintptr_t (*fn)(uintptr_t),
             TEST_ASSERT_EQ("VS-mode cause", trap_get_cause(), cause);
     } else {
         if (trap_was_triggered())
-            printf("  UNEXPECTED TRAP: cause=%lu epc=0x%lx tval=0x%lx\n",
-                   (unsigned long)trap_get_cause(),
-                   (unsigned long)trap_get_epc(),
-                   (unsigned long)trap_get_tval());
+            LOG_E("UNEXPECTED TRAP: cause=%lu epc=0x%lx tval=0x%lx\n",
+                  (unsigned long)trap_get_cause(),
+                  (unsigned long)trap_get_epc(),
+                  (unsigned long)trap_get_tval());
         TEST_ASSERT("VS-mode no trap", !trap_was_triggered());
     }
     trap_expect_end();
@@ -373,10 +361,10 @@ static void hz_vu_expect(uintptr_t (*fn)(uintptr_t),
             TEST_ASSERT_EQ("VU-mode cause", trap_get_cause(), cause);
     } else {
         if (trap_was_triggered())
-            printf("  UNEXPECTED TRAP: cause=%lu epc=0x%lx tval=0x%lx\n",
-                   (unsigned long)trap_get_cause(),
-                   (unsigned long)trap_get_epc(),
-                   (unsigned long)trap_get_tval());
+            LOG_E("UNEXPECTED TRAP: cause=%lu epc=0x%lx tval=0x%lx\n",
+                  (unsigned long)trap_get_cause(),
+                  (unsigned long)trap_get_epc(),
+                  (unsigned long)trap_get_tval());
         TEST_ASSERT("VU-mode no trap", !trap_was_triggered());
     }
     trap_expect_end();

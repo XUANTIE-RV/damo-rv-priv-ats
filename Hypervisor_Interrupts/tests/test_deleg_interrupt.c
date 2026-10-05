@@ -23,92 +23,13 @@
 #define VS_IRQ_STI   (CAUSE_INTERRUPT_BIT | 5)
 #define VS_IRQ_SEI   (CAUSE_INTERRUPT_BIT | 9)
 
-#define VS_VSSIP     (1UL << 2)
-#define VS_VSTIP     (1UL << 6)
-#define VS_VSEIP     (1UL << 10)
+/* VS_VSSIP / VS_VSTIP / VS_VSEIP are defined once in test_interrupts.c
+ * (Group 1-2, included before this file in the unity build). */
 
-/* ===================================================================
- * VS-mode interrupt handler for delegation interrupt tests.
- * Named deleg_vs_int_handler to avoid collision with test_interrupts.c.
- * =================================================================== */
-
-static volatile uintptr_t g_vs_int_cause;
-static volatile bool g_vs_int_triggered;
-
-static void deleg_vs_int_handler(void) __attribute__((naked, aligned(4)));
-static void deleg_vs_int_handler(void)
-{
-    asm volatile (
-        "addi   sp, sp, -32\n\t"
-        "sd     ra, 0(sp)\n\t"
-        "sd     t0, 8(sp)\n\t"
-        "sd     t1, 16(sp)\n\t"
-        "sd     t2, 24(sp)\n\t"
-
-        "la     t2, g_vs_int_triggered\n\t"
-        "lb     t0, 0(t2)\n\t"
-        "bnez   t0, 1f\n\t"
-
-        "csrr   t0, scause\n\t"
-        "la     t2, g_vs_int_cause\n\t"
-        "sd     t0, 0(t2)\n\t"
-        "li     t0, 1\n\t"
-        "la     t2, g_vs_int_triggered\n\t"
-        "sb     t0, 0(t2)\n\t"
-
-        "1:\n\t"
-        "li     t0, 0x22\n\t"
-        "csrc   sstatus, t0\n\t"
-        "csrc   sip, 0x2\n\t"
-
-        /* Force SPP=1 (S-mode) so sret returns to VS-mode, not VU.
-         * When the trap came from VU-mode, hardware set SPP=0. */
-        "li     t0, 0x100\n\t"
-        "csrs   sstatus, t0\n\t"
-
-        "ld     ra, 0(sp)\n\t"
-        "ld     t0, 8(sp)\n\t"
-        "ld     t1, 16(sp)\n\t"
-        "ld     t2, 24(sp)\n\t"
-        "addi   sp, sp, 32\n\t"
-
-        "sret\n\t"
-    );
-}
-
-/* Helper: set up VS interrupt delegation test. */
-static void setup_vs_int_deleg_test(uintptr_t hideleg_mask)
-{
-    g_vs_int_cause = 0;
-    g_vs_int_triggered = false;
-
-    /* Clear interrupt sources */
-    asm volatile ("csrw " CSR_STR(CSR_HIE) ", zero" ::: "memory");   /* hie = 0 */
-    asm volatile ("csrw " CSR_STR(CSR_HVIP) ", zero" ::: "memory");   /* hvip = 0 */
-    asm volatile ("csrw " CSR_STR(CSR_STIMECMP) ", %0" :: "r"((uintptr_t)-1) : "memory");
-
-    /* Dual-layer delegation: M->HS->VS */
-    uintptr_t mideleg;
-    asm volatile ("csrr %0, " CSR_STR(CSR_MIDELEG) : "=r"(mideleg));
-    mideleg |= hideleg_mask;
-    asm volatile ("csrw " CSR_STR(CSR_MIDELEG) ", %0" :: "r"(mideleg) : "memory");
-    hideleg_write(hideleg_mask);
-
-    /* Install VS interrupt handler */
-    vs_trap_setup_direct((uintptr_t)deleg_vs_int_handler);
-
-    /* Enable VS-mode interrupts: vsstatus.SIE (bit 1) */
-    uintptr_t vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
-    vsstatus |= 0x2;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus) : "memory");
-
-    /* Set mstatus.MPIE=1 */
-    uintptr_t mstatus_val;
-    asm volatile ("csrr %0, mstatus" : "=r"(mstatus_val));
-    mstatus_val |= (1UL << 7);
-    asm volatile ("csrw mstatus, %0" :: "r"(mstatus_val) : "memory");
-}
+/* vs_int_handler, g_vs_int_cause, g_vs_int_triggered, and
+ * setup_vs_int_test() are reused from test_interrupts.c (Group 1-2,
+ * same unity-build TU). The delegation tests use the same handler
+ * and setup logic. */
 
 /* ------------------------------------------------------------------
  * DELEG-08: hideleg delegates VSSI to VS-mode
@@ -118,7 +39,7 @@ bool hideleg_vssi_deleg(void)
 {
     TEST_BEGIN("DELEG-08: Delegate VSSI to VS (vscause=1, translated)");
 
-    setup_vs_int_deleg_test(VS_VSSIP);
+    setup_vs_int_test(VS_VSSIP);
     asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSSIP) : "memory");
     hvip_set_vssi(1);
 
@@ -139,7 +60,7 @@ bool hideleg_vsti_deleg(void)
 {
     TEST_BEGIN("DELEG-09: Delegate VSTI to VS (vscause=5, translated)");
 
-    setup_vs_int_deleg_test(VS_VSTIP);
+    setup_vs_int_test(VS_VSTIP);
     asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSTIP) : "memory");
     hvip_set_vsti(1);
 
@@ -160,7 +81,7 @@ bool hideleg_vsei_deleg(void)
 {
     TEST_BEGIN("DELEG-10: Delegate VSEI to VS (vscause=9, translated)");
 
-    setup_vs_int_deleg_test(VS_VSEIP);
+    setup_vs_int_test(VS_VSEIP);
     asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSEIP) : "memory");
     hvip_set_vsei(1);
 
@@ -211,7 +132,7 @@ bool interrupt_translation_vssi(void)
 {
     TEST_BEGIN("DELEG-12: VSSI->SSI translation (vscause=1, not 2)");
 
-    setup_vs_int_deleg_test(VS_VSSIP);
+    setup_vs_int_test(VS_VSSIP);
     asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSSIP) : "memory");
     hvip_set_vssi(1);
 
@@ -233,7 +154,7 @@ bool interrupt_translation_vsti(void)
 {
     TEST_BEGIN("DELEG-13: VSTI->STI translation (vscause=5, not 6)");
 
-    setup_vs_int_deleg_test(VS_VSTIP);
+    setup_vs_int_test(VS_VSTIP);
     asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSTIP) : "memory");
     hvip_set_vsti(1);
 
@@ -254,7 +175,7 @@ bool interrupt_translation_vsei(void)
 {
     TEST_BEGIN("DELEG-14: VSEI->SEI translation (vscause=9, not 10)");
 
-    setup_vs_int_deleg_test(VS_VSEIP);
+    setup_vs_int_test(VS_VSEIP);
     asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSEIP) : "memory");
     hvip_set_vsei(1);
 

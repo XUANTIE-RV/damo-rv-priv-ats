@@ -40,63 +40,9 @@ extern uint8_t __vm_test_region_start[];
 extern uint8_t __vm_test_region_end[];
 extern char __cmo_test_data_start[];
 
-#ifndef TEST_REGION_BASE
-#define TEST_REGION_BASE  ((uintptr_t)__vm_test_region_start)
-#endif
-
-/* ===================================================================
- * henvcfg CMO field accessors (CSR 0x60A)
- *
- * henvcfg shares the same bit positions as menvcfg/senvcfg:
- *   CBIE  [5:4]
- *   CBCFE [6]
- *   CBZE  [7]
- * =================================================================== */
-
-static inline uintptr_t henvcfg_get_cbie(void)
-{
-    uintptr_t val = henvcfg_read();
-    return (val & ENVCFG_CBIE_MASK) >> ENVCFG_CBIE_SHIFT;
-}
-
-static inline void henvcfg_set_cbie(unsigned cbie)
-{
-    uintptr_t val = henvcfg_read();
-    val = (val & ~ENVCFG_CBIE_MASK) | ((uintptr_t)cbie << ENVCFG_CBIE_SHIFT);
-    henvcfg_write(val);
-}
-
-static inline uintptr_t henvcfg_get_cbcfe(void)
-{
-    uintptr_t val = henvcfg_read();
-    return (val & ENVCFG_CBCFE) ? 1 : 0;
-}
-
-static inline void henvcfg_set_cbcfe(unsigned en)
-{
-    uintptr_t val = henvcfg_read();
-    if (en)
-        val |= ENVCFG_CBCFE;
-    else
-        val &= ~ENVCFG_CBCFE;
-    henvcfg_write(val);
-}
-
-static inline uintptr_t henvcfg_get_cbze(void)
-{
-    uintptr_t val = henvcfg_read();
-    return (val & ENVCFG_CBZE) ? 1 : 0;
-}
-
-static inline void henvcfg_set_cbze(unsigned en)
-{
-    uintptr_t val = henvcfg_read();
-    if (en)
-        val |= ENVCFG_CBZE;
-    else
-        val &= ~ENVCFG_CBZE;
-    henvcfg_write(val);
-}
+/* henvcfg CMO field accessors (henvcfg_get/set_cbie/cbcfe/cbze) are
+ * provided by common/cmo/cmo.h (CSR 0x60A; same CBIE[5:4]/CBCFE[6]/CBZE[7]
+ * layout as menvcfg/senvcfg). */
 
 /* ===================================================================
  * Zicbom availability
