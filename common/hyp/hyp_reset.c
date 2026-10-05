@@ -81,10 +81,26 @@ void hyp_reset_state(void) {
      * SFENCE.VMA synchronizes address-translation caches w.r.t. the
      * new A/D interpretation (norm:menvcfg_adue_fence); the trailing
      * hfence_gvma_all() at the end of this function further covers
-     * G-stage caches (hyp-mm-fences). */
+     * G-stage caches (hyp-mm-fences).
+     *
+     * Also clear the Zicfilp/Zicfiss enables (LPE/SSE) here: an henvcfg
+     * test sets menvcfg.LPE to make henvcfg.LPE writable and only clears
+     * henvcfg afterwards, so without this the suite would leak S-mode
+     * landing-pad enforcement to whatever runs next (no hart reset),
+     * causing software-check exceptions (mcause=18) in unrelated suites.
+     * Gated on the platform's Zicfilp/Zicfiss declaration, matching
+     * reset_state() in common/test_framework.c.
+     * Preserve PBMTE and other unrelated bits. */
     {
+        uintptr_t clr = MENVCFG_ADUE;
+#if ZICFILP_AVAILABLE
+        clr |= MENVCFG_LPE;
+#endif
+#if ZICFISS_AVAILABLE
+        clr |= MENVCFG_SSE;
+#endif
         uintptr_t mv = menvcfg_read();
-        menvcfg_write(mv & ~MENVCFG_ADUE);
+        menvcfg_write(mv & ~clr);
         asm volatile ("sfence.vma" ::: "memory");
     }
 

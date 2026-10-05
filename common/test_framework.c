@@ -35,7 +35,14 @@ test_result_t test_results = {
  * (e.g., pmp_reset, smepmp_reset) should be called separately.
  * =================================================================== */
 
-#ifdef ENABLE_PM
+/* Gate for the CFI / Pointer-Masking cleanup in reset_state() and for the
+ * trap-armed helper it uses. Expressed purely with capabilities.h
+ * <EXT>_AVAILABLE macros (no local aggregate macro, no ENABLE_* build flag):
+ * the cleanup exists solely for bits owned by Zicfilp/Zicfiss/Smnpm/Ssnpm/
+ * Smmpm, so a platform declaring none of them compiles both out -- which also
+ * keeps the unused static helper from triggering -Wunused-function. */
+#if ZICFILP_AVAILABLE || ZICFISS_AVAILABLE || \
+    SMNPM_AVAILABLE   || SSNPM_AVAILABLE   || SMMPM_AVAILABLE
 /* ===================================================================
  * _safe_csr_clear_field - trap-protected CSR field clearing
  *
@@ -43,7 +50,7 @@ test_result_t test_results = {
  * @mask, and writes back.  The read is trap-protected so that
  * accessing a non-existent CSR is safe (the write is skipped).
  * Reusable for any extension that needs conditional CSR cleanup
- * in reset paths.
+ * in reset paths (Pointer Masking, Zicfilp/Zicfiss, ...).
  * =================================================================== */
 static void _safe_csr_clear_field(uint16_t csr, uintptr_t mask) {
     trap_expect_begin();
@@ -53,7 +60,7 @@ static void _safe_csr_clear_field(uint16_t csr, uintptr_t mask) {
     }
     trap_expect_end();
 }
-#endif /* ENABLE_PM */
+#endif /* ZICFILP/ZICFISS/SMNPM/SSNPM/SMMPM available */
 
 void reset_state(void) {
     /* Ensure we're in M-mode */
@@ -113,6 +120,77 @@ void reset_state(void) {
      * the next EXPECT_TRAP in M-mode triggers a fatal double trap. */
     clear_mdt();
 
+    /* Clear Zicfilp/Zicfiss enforcement AND Pointer-Masking (PMM) so every
+     * suite starts from a clean baseline regardless of which extensions it
+     * is built with. A previous suite can leave these enable bits set, and
+     * a suite not built with ENABLE_HYP / ENABLE_PM / CFI cannot clear them
+     * itself, so without a hart reset they leak into the next suite:
+     *   - menvcfg.LPE/SSE: a Hypervisor henvcfg test sets menvcfg.LPE to
+     *     make henvcfg.LPE writable and only clears henvcfg afterwards;
+     *     the leak makes an S-mode indirect jump landing on a non-`lpad`
+     *     target raise a software-check exception (mcause=18, mtval=2/3).
+     *   - menvcfg/senvcfg/mseccfg.PMM (Smnpm/Ssnpm/Smmpm): a pointer-
+     *     masking (Zpm) test leaves PMM!=0; the leak masks and sign-extends
+     *     S/U/M-mode effective addresses in the next suite (e.g. an amocas
+     *     target 0x0000_8000_xxxx becomes 0xffff_8000_xxxx -> wrong access
+     *     -> page fault / double trap, mcause=16).
+     *
+     * Each field is gated on the PLATFORM capability declaration
+     * (<EXT>_AVAILABLE, capabilities.h), NOT on this suite's own ENABLE_PM /
+     * ENABLE_HYP build flags: whether a leaked PMM/LPE can exist at all is a
+     * property of the DUT, not of how one suite was compiled. Capability
+     * gating therefore still cleans the leak for a suite built without
+     * ENABLE_PM (the flag comes from config/<platform>/rvtest_config.h, which
+     * every suite of that platform shares), while dropping the trap-armed CSR
+     * probe on platforms that declare none of these extensions -- see
+     * capabilities.h design note 5 (support is declaration-driven, never
+     * runtime-probed). Nothing is left uncleaned by the narrower gate: a bit
+     * can only be set on a DUT that declares the extension owning it.
+     *
+     * The read-modify-write stays trap-armed because the *cfg CSR itself may
+     * be absent where the field's extension is declared (e.g. Zicfilp without
+     * Smenvcfg). mseccfg.PMM may be sticky on some implementations; a
+     * silently failed write there is acceptable. */
+#if ZICFILP_AVAILABLE || ZICFISS_AVAILABLE || \
+    SMNPM_AVAILABLE   || SSNPM_AVAILABLE   || SMMPM_AVAILABLE
+    {
+        uintptr_t menvcfg_clr = 0;
+        uintptr_t senvcfg_clr = 0;
+        uintptr_t mseccfg_clr = 0;
+
+#if ZICFILP_AVAILABLE
+        menvcfg_clr |= MENVCFG_LPE;
+        senvcfg_clr |= SENVCFG_LPE;
+        mseccfg_clr |= MSECCFG_MLPE;
+#endif
+#if ZICFISS_AVAILABLE
+        menvcfg_clr |= MENVCFG_SSE;
+        senvcfg_clr |= SENVCFG_SSE;
+#endif
+#if SMNPM_AVAILABLE
+        menvcfg_clr |= MENVCFG_PMM_MASK;
+#endif
+#if SSNPM_AVAILABLE
+        senvcfg_clr |= SENVCFG_PMM_MASK;
+#endif
+#if SMMPM_AVAILABLE
+        mseccfg_clr |= MSECCFG_PMM_MASK;
+#endif
+
+        if (menvcfg_clr)
+            _safe_csr_clear_field(CSR_MENVCFG, menvcfg_clr);
+        if (senvcfg_clr)
+            _safe_csr_clear_field(CSR_SENVCFG, senvcfg_clr);
+        if (mseccfg_clr)
+            _safe_csr_clear_field(CSR_MSECCFG, mseccfg_clr);
+    }
+#endif /* ZICFILP/ZICFISS/SMNPM/SSNPM/SMMPM available */
+
+#if ZICFILP_AVAILABLE
+    /* MPELP is a WARL mstatus bit, so a plain clear is safe. */
+    CSRC(mstatus, MSTATUS_MPELP_BIT);
+#endif
+
 #ifdef ENABLE_HYP
     /* Clear mstatus.MPV to prevent stale virtualization state.
      * If a previous test entered VS/VU mode and left MPV=1,
@@ -124,18 +202,6 @@ void reset_state(void) {
      * Prevents a previous test's page table from remaining active
      * when a subsequent test enters S-mode. */
     CSRW(satp, 0);
-
-#ifdef ENABLE_PM
-    /* Clear Pointer Masking (PM) state via the generic helper.
-     * senvcfg.PMM [33:32] (Ssnpm), menvcfg.PMM [33:32] (Smnpm),
-     * mseccfg.PMM [33:32] (Smmpm).
-     * Only needed when PM extension is enabled. */
-    _safe_csr_clear_field(CSR_SENVCFG, SENVCFG_PMM_MASK);
-    _safe_csr_clear_field(CSR_MENVCFG, MENVCFG_PMM_MASK);
-    /* mseccfg.PMM may be sticky on some implementations;
-     * the write may silently fail, which is acceptable. */
-    _safe_csr_clear_field(CSR_MSECCFG, MSECCFG_PMM_MASK);
-#endif /* ENABLE_PM */
 }
 
 /* ===================================================================

@@ -564,7 +564,15 @@ void reset_state(void);
 4. 清零 `medeleg` / `mideleg`（M-mode handler 接管所有异常）
 5. 禁用中断（清除 MIE/SIE）
 6. 清除 MPRV、MXR 位
-7. 清理 Pointer Masking 状态（trap-protected）
+7. 清理 Zicfilp/Zicfiss（`menvcfg`/`senvcfg`/`mseccfg` 的 LPE/SSE/MLPE、`mstatus.MPELP`）
+   与 Pointer Masking（`menvcfg`/`senvcfg`/`mseccfg` 的 PMM）使能位（trap-protected）
+
+> 第 7 项按**平台能力声明**逐位门控（`capabilities.h` 的 `ZICFILP_AVAILABLE` /
+> `ZICFISS_AVAILABLE` / `SMNPM_AVAILABLE` / `SSNPM_AVAILABLE` / `SMMPM_AVAILABLE`），
+> 而**不是**按本套件的 `ENABLE_PM` / `ENABLE_HYP` 编译开关：残留使能位是否存在取决于 DUT，
+> 不取决于某个套件如何编译。这样未带 `ENABLE_PM` 的套件同样能清掉上一个套件泄漏的
+> `menvcfg.PMM`（HW 上多 ELF 连续运行、无 hart reset 时尤其必要），而在未声明这些扩展的
+> 平台上完全不发起 trap 探测（`capabilities.h` 设计要点 5：能力由声明驱动，不做运行期探测）。
 
 > 扩展特定的 reset（如 `pmp_clear_all()`）由各扩展自行在 `TEST_END` 前或 setup/teardown 中调用。
 

@@ -613,11 +613,11 @@ int test_print_summary(void);
 #define LOG_TRACE   5
 #define LOG_VERBOSE 6
 
-#define LOG_E(fmt, ...) do { if (LOG_LEVEL >= LOG_ERROR)   printf("[E] " fmt, ##__VA_ARGS__); } while(0)
-#define LOG_W(fmt, ...) do { if (LOG_LEVEL >= LOG_WARN)    printf("[W] " fmt, ##__VA_ARGS__); } while(0)
-#define LOG_I(fmt, ...) do { if (LOG_LEVEL >= LOG_INFO)    printf("[I] " fmt, ##__VA_ARGS__); } while(0)
-#define LOG_D(fmt, ...) do { if (LOG_LEVEL >= LOG_DEBUG)   printf("[D] " fmt, ##__VA_ARGS__); } while(0)
-#define LOG_T(fmt, ...) do { if (LOG_LEVEL >= LOG_TRACE)   printf("[T] " fmt, ##__VA_ARGS__); } while(0)
-#define LOG_V(fmt, ...) do { if (LOG_LEVEL >= LOG_VERBOSE) printf("[V] " fmt, ##__VA_ARGS__); } while(0)
+#define LOG_E(fmt, ...) do { if (LOG_LEVEL >= LOG_ERROR)   printf("  [ERROR] " fmt, ##__VA_ARGS__); } while(0)
+#define LOG_W(fmt, ...) do { if (LOG_LEVEL >= LOG_WARN)    printf("  [WARN] " fmt, ##__VA_ARGS__); } while(0)
+#define LOG_I(fmt, ...) do { if (LOG_LEVEL >= LOG_INFO)    printf("  [INFO] " fmt, ##__VA_ARGS__); } while(0)
+#define LOG_D(fmt, ...) do { if (LOG_LEVEL >= LOG_DEBUG)   printf("  [DEBUG] " fmt, ##__VA_ARGS__); } while(0)
+#define LOG_T(fmt, ...) do { if (LOG_LEVEL >= LOG_TRACE)   printf("  [TRACE] " fmt, ##__VA_ARGS__); } while(0)
+#define LOG_V(fmt, ...) do { if (LOG_LEVEL >= LOG_VERBOSE) printf("  [VERBOSE] " fmt, ##__VA_ARGS__); } while(0)
 
 #endif /* COMMON_TEST_FRAMEWORK_H */
