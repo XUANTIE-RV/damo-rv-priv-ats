@@ -55,7 +55,7 @@ bool test_hzcnt_07(void)
         TEST_SKIP("scounteren.CY is read-only zero");
     }
     trap_expect_begin();
-    (void)run_in_vu_mode(_vs_read_cycle, 0);
+    (void)run_in_vu_mode(vs_read_cycle, 0);
     TEST_ASSERT("VU cycle read no trap (scounteren.CY=1)",
                 !trap_was_triggered());
     trap_expect_end();
@@ -68,7 +68,7 @@ bool test_hzcnt_07(void)
         TEST_SKIP("scounteren.CY is not clearable");
     }
     trap_expect_begin();
-    (void)run_in_vu_mode(_vs_read_cycle, 0);
+    (void)run_in_vu_mode(vs_read_cycle, 0);
     TEST_ASSERT("VU cycle read trapped (scounteren.CY=0)",
                 trap_was_triggered());
     if (trap_was_triggered()) {
@@ -116,7 +116,7 @@ bool test_hzcnt_08(void)
     }
 
     trap_expect_begin();
-    (void)run_in_vu_mode(_vs_read_cycle, 0);
+    (void)run_in_vu_mode(vs_read_cycle, 0);
     TEST_ASSERT("VU cycle read trapped (hcounteren.CY=0)",
                 trap_was_triggered());
     if (trap_was_triggered()) {
@@ -165,7 +165,7 @@ bool test_hzcnt_09(void)
 
     /* scounteren constrains VU only; VS-mode reads must succeed. */
     trap_expect_begin();
-    (void)run_in_vs_mode(_vs_read_cycle, 0);
+    (void)run_in_vs_mode(vs_read_cycle, 0);
     TEST_ASSERT("VS cycle read no trap (scounteren.CY=0)",
                 !trap_was_triggered());
     trap_expect_end();

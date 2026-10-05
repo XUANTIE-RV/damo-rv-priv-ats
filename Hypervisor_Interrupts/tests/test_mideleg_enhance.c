@@ -20,11 +20,6 @@
 
 #include "hyp_test_helpers.h"
 
-/* CSR addresses for hypervisor registers not exposed via named accessors. */
-#define CSR_HIP       0x644
-#define CSR_HIE       0x604
-#define CSR_HGEIE     0x607
-
 /* VS / SGE interrupt bit positions (shared by mip/mie/hip/hie). */
 #define VS_BIT_VSSI   (1UL << 2)
 #define VS_BIT_VSTI   (1UL << 6)

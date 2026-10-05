@@ -160,6 +160,26 @@ void menvcfg_write(uintptr_t value) {
 }
 
 /* ===================================================================
+ * mstatus (CSR 0x300)
+ * =================================================================== */
+
+uintptr_t mstatus_read(void) {
+    return CSRR(mstatus);
+}
+
+void mstatus_write(uintptr_t value) {
+    CSRW(mstatus, value);
+}
+
+uintptr_t senvcfg_read(void) {
+    return CSRR(CSR_SENVCFG);
+}
+
+void senvcfg_write(uintptr_t value) {
+    CSRW(CSR_SENVCFG, value);
+}
+
+/* ===================================================================
  * hstatus field control
  * =================================================================== */
 
@@ -414,6 +434,18 @@ uintptr_t vsip_read(void) {
 
 void vsip_write(uintptr_t value) {
     CSRW(CSR_VSIP, value);
+}
+
+/* ===================================================================
+ * vsstatus (CSR 0x200)
+ * =================================================================== */
+
+uintptr_t vsstatus_read(void) {
+    return CSRR(CSR_VSSTATUS);
+}
+
+void vsstatus_write(uintptr_t value) {
+    CSRW(CSR_VSSTATUS, value);
 }
 
 /* ===================================================================
@@ -707,3 +739,88 @@ void sstateen_set_bits(int idx, uintptr_t mask) {
 void sstateen_clear_bits(int idx, uintptr_t mask) {
     sstateen_write(idx, sstateen_read(idx) & ~mask);
 }
+
+/* ===================================================================
+ * Indirect CSR accessors (Smcsrind / Sscsrind / Ssccfg)
+ *
+ * Plain CSRR/CSRW wrappers for the miselect/mireg, siselect/sireg*
+ * and vsiselect/vsireg* indirect-CSR windows. These centralize the
+ * accessors that used to be duplicated per-suite. Trap-armed probing
+ * variants (e.g. *_read_safe) remain suite-local because their
+ * arming/recovery semantics are test-specific.
+ * =================================================================== */
+
+uintptr_t miselect_read(void) { return CSRR(CSR_MISELECT); }
+void      miselect_write(uintptr_t v) { CSRW(CSR_MISELECT, v); }
+uintptr_t mireg_read(void) { return CSRR(CSR_MIREG); }
+void      mireg_write(uintptr_t v) { CSRW(CSR_MIREG, v); }
+
+uintptr_t siselect_read(void) { return CSRR(CSR_SISELECT); }
+void      siselect_write(uintptr_t v) { CSRW(CSR_SISELECT, v); }
+uintptr_t sireg_read(void) { return CSRR(CSR_SIREG); }
+void      sireg_write(uintptr_t v) { CSRW(CSR_SIREG, v); }
+uintptr_t sireg2_read(void) { return CSRR(CSR_SIREG2); }
+void      sireg2_write(uintptr_t v) { CSRW(CSR_SIREG2, v); }
+uintptr_t sireg3_read(void) { return CSRR(CSR_SIREG3); }
+void      sireg3_write(uintptr_t v) { CSRW(CSR_SIREG3, v); }
+uintptr_t sireg4_read(void) { return CSRR(CSR_SIREG4); }
+void      sireg4_write(uintptr_t v) { CSRW(CSR_SIREG4, v); }
+uintptr_t sireg5_read(void) { return CSRR(CSR_SIREG5); }
+void      sireg5_write(uintptr_t v) { CSRW(CSR_SIREG5, v); }
+uintptr_t sireg6_read(void) { return CSRR(CSR_SIREG6); }
+void      sireg6_write(uintptr_t v) { CSRW(CSR_SIREG6, v); }
+
+uintptr_t vsiselect_read(void) { return CSRR(CSR_VSISELECT); }
+void      vsiselect_write(uintptr_t v) { CSRW(CSR_VSISELECT, v); }
+uintptr_t vsireg_read(void) { return CSRR(CSR_VSIREG); }
+void      vsireg_write(uintptr_t v) { CSRW(CSR_VSIREG, v); }
+uintptr_t vsireg2_read(void) { return CSRR(CSR_VSIREG2); }
+void      vsireg2_write(uintptr_t v) { CSRW(CSR_VSIREG2, v); }
+uintptr_t vsireg3_read(void) { return CSRR(CSR_VSIREG3); }
+void      vsireg3_write(uintptr_t v) { CSRW(CSR_VSIREG3, v); }
+uintptr_t vsireg4_read(void) { return CSRR(CSR_VSIREG4); }
+void      vsireg4_write(uintptr_t v) { CSRW(CSR_VSIREG4, v); }
+uintptr_t vsireg5_read(void) { return CSRR(CSR_VSIREG5); }
+void      vsireg5_write(uintptr_t v) { CSRW(CSR_VSIREG5, v); }
+uintptr_t vsireg6_read(void) { return CSRR(CSR_VSIREG6); }
+void      vsireg6_write(uintptr_t v) { CSRW(CSR_VSIREG6, v); }
+
+/* ===================================================================
+ * Generic atomic set/clear bit helpers (single CSRS/CSRC instruction)
+ *
+ * menvcfg / henvcfg / hvip / hstatus / vsstatus. These complement the
+ * read/write accessors above and replace the per-suite csrs/csrc
+ * wrappers (menvcfg_set/clear, henvcfg_set/clear, hvip_set/clear,
+ * hstatus_set/clear, vsstatus_set/clear).
+ * =================================================================== */
+
+void menvcfg_set_bits(uintptr_t mask)   { CSRS(CSR_MENVCFG, mask); }
+void menvcfg_clear_bits(uintptr_t mask) { CSRC(CSR_MENVCFG, mask); }
+void senvcfg_set_bits(uintptr_t mask)   { CSRS(CSR_SENVCFG, mask); }
+void senvcfg_clear_bits(uintptr_t mask) { CSRC(CSR_SENVCFG, mask); }
+void henvcfg_set_bits(uintptr_t mask)   { CSRS(CSR_HENVCFG, mask); }
+void henvcfg_clear_bits(uintptr_t mask) { CSRC(CSR_HENVCFG, mask); }
+void hvip_set_bits(uintptr_t mask)      { CSRS(CSR_HVIP, mask); }
+void hvip_clear_bits(uintptr_t mask)    { CSRC(CSR_HVIP, mask); }
+void hstatus_set_bits(uintptr_t mask)   { CSRS(CSR_HSTATUS, mask); }
+void hstatus_clear_bits(uintptr_t mask) { CSRC(CSR_HSTATUS, mask); }
+void vsstatus_set_bits(uintptr_t mask)   { CSRS(CSR_VSSTATUS, mask); }
+void vsstatus_clear_bits(uintptr_t mask) { CSRC(CSR_VSSTATUS, mask); }
+
+/* ===================================================================
+ * Sstc timer CSRs and hip / htimedelta read accessors
+ *
+ * stimecmp (0x14D) / vstimecmp (0x24D) / time (0xC01); hip (0x644) and
+ * htimedelta (0x605) read side (htimedelta_write already exists above).
+ * These may be called from VS-mode trampolines: the underlying csrr is
+ * a single instruction inside this identity-mapped code, so trap-arm /
+ * resume behaviour is identical to a suite-local inline copy.
+ * =================================================================== */
+
+uintptr_t stimecmp_read(void)         { return CSRR(CSR_STIMECMP); }
+void      stimecmp_write(uintptr_t v) { CSRW(CSR_STIMECMP, v); }
+uintptr_t vstimecmp_read(void)        { return CSRR(CSR_VSTIMECMP); }
+void      vstimecmp_write(uintptr_t v){ CSRW(CSR_VSTIMECMP, v); }
+uintptr_t time_read(void)             { return CSRR(CSR_TIME); }
+uintptr_t hip_read(void)              { return CSRR(CSR_HIP); }
+uintptr_t htimedelta_read(void)       { return CSRR(CSR_HTIMEDELTA); }

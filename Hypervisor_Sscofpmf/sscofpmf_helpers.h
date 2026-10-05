@@ -49,8 +49,6 @@ extern void csr_write(uint16_t csr, uintptr_t val);
  * CSR address arithmetic helpers
  * =================================================================== */
 #define CSR_MHPMEVENT(n)    (CSR_MHPMEVENT3   + ((n) - 3))
-#define CSR_MHPMCOUNTER(n)  (CSR_MHPMCOUNTER3  + ((n) - 3))
-#define CSR_HPMCOUNTER(n)   (CSR_HPMCOUNTER3   + ((n) - 3))
 
 #if __riscv_xlen == 32
 /* RV32 high-half CSR address macros (base addresses defined in encoding.h)

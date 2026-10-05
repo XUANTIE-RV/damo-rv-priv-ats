@@ -37,9 +37,9 @@ bool test_hvec_01(void)
     /* Bits [10:9] must be writable/readable when H is present. */
     unsigned vals[3] = { CTX_DIRTY, CTX_INITIAL, CTX_OFF };
     for (unsigned i = 0; i < 3; i++) {
-        hvec_vsstatus_set_field(HVEC_VS_SHIFT, vals[i]);
+        vsstatus_set_field(SSTATUS_VS_SHIFT, vals[i]);
         TEST_ASSERT_EQ("vsstatus.vs readback",
-                       hvec_vsstatus_field(HVEC_VS_SHIFT), vals[i]);
+                       vsstatus_get_field(SSTATUS_VS_SHIFT), vals[i]);
     }
 
     HYP_TEST_END();
@@ -54,8 +54,8 @@ bool test_hvec_02(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
 
-    hvec_mstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
-    hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_OFF);
+    mstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
+    vsstatus_set_field(SSTATUS_VS_SHIFT, CTX_OFF);
 
     /* Single vector instruction (vsetivli): with vsstatus.vs=Off it
      * must raise illegal-instruction. A one-instruction callback is
@@ -84,8 +84,8 @@ bool test_hvec_03(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
 
-    hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
-    hvec_mstatus_set_field(HVEC_VS_SHIFT, CTX_OFF);
+    vsstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
+    mstatus_set_field(SSTATUS_VS_SHIFT, CTX_OFF);
 
     /* Single vector instruction (vsetivli), see HVEC-02. */
     trap_expect_begin();
@@ -112,8 +112,8 @@ bool test_hvec_04(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
 
-    hvec_mstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
-    hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_OFF);
+    mstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
+    vsstatus_set_field(SSTATUS_VS_SHIFT, CTX_OFF);
 
     /* csrr x0, vstart from VS-mode must be gated like instructions. */
     trap_expect_begin();
@@ -140,8 +140,8 @@ bool test_hvec_05(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
 
-    hvec_mstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
-    hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
+    mstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
+    vsstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
 
     trap_expect_begin();
     (void)run_in_vs_mode(hvec_vs_vseq, 0);
@@ -168,8 +168,8 @@ bool test_hvec_06(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
 
-    hvec_mstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
-    hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
+    mstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
+    vsstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
 
     trap_expect_begin();
     (void)run_in_vs_mode(hvec_vs_vseq, 0);
@@ -179,9 +179,9 @@ bool test_hvec_06(void)
     TEST_ASSERT("VS-mode vector sequence: no trap", !trapped);
     if (!trapped) {
         TEST_ASSERT_EQ("mstatus.vs == Dirty",
-                       hvec_mstatus_field(HVEC_VS_SHIFT), CTX_DIRTY);
+                       mstatus_get_field(SSTATUS_VS_SHIFT), CTX_DIRTY);
         TEST_ASSERT_EQ("vsstatus.vs == Dirty",
-                       hvec_vsstatus_field(HVEC_VS_SHIFT), CTX_DIRTY);
+                       vsstatus_get_field(SSTATUS_VS_SHIFT), CTX_DIRTY);
     }
 
     HYP_TEST_END();
@@ -197,15 +197,15 @@ bool test_hvec_07(void)
     if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
 
     /* Zero the other VS-visible context fields so SD reflects VS. */
-    hvec_vsstatus_set_field(HVEC_FS_SHIFT, CTX_OFF);
+    vsstatus_set_field(SSTATUS_FS_SHIFT, CTX_OFF);
 
-    hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_DIRTY);
+    vsstatus_set_field(SSTATUS_VS_SHIFT, CTX_DIRTY);
     TEST_ASSERT("vs=Dirty -> vsstatus.sd=1",
-                (hvec_vsstatus_read() & HVEC_SD_BIT) != 0);
+                (vsstatus_read() & SSTATUS_SD_BIT) != 0);
 
-    hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
+    vsstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
     TEST_ASSERT("vs=Initial (others non-Dirty) -> vsstatus.sd=0",
-                (hvec_vsstatus_read() & HVEC_SD_BIT) == 0);
+                (vsstatus_read() & SSTATUS_SD_BIT) == 0);
 
     HYP_TEST_END();
 }
@@ -225,7 +225,7 @@ bool test_hvec_08(void)
      * so only mstatus.vs is governed) starting from Clean and record
      * the outcome; both Clean retention and Dirty promotion are legal
      * - only Off or Initial would be wrong. */
-    hvec_mstatus_set_field(HVEC_VS_SHIFT, CTX_CLEAN);
+    mstatus_set_field(SSTATUS_VS_SHIFT, CTX_CLEAN);
 
     trap_expect_begin();
     HVEC_EXEC_VSEQ();
@@ -233,9 +233,9 @@ bool test_hvec_08(void)
     trap_expect_end();
     TEST_ASSERT("M-mode vector sequence: no trap", !trapped);
 
-    unsigned after = hvec_mstatus_field(HVEC_VS_SHIFT);
-    printf("[I] mstatus.vs after Clean + vector seq: %u "
-           "(Clean=2 retention or Dirty=3 promotion both legal)\n", after);
+    unsigned after = mstatus_get_field(SSTATUS_VS_SHIFT);
+    LOG_I("mstatus.vs after Clean + vector seq: %u "
+          "(Clean=2 retention or Dirty=3 promotion both legal)\n", after);
     TEST_ASSERT("mstatus.vs is Clean or Dirty after vector sequence",
                 after == CTX_CLEAN || after == CTX_DIRTY);
 

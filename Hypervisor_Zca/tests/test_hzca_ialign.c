@@ -78,7 +78,7 @@ bool test_hzca_25_vs_jump_2byte_aligned(void)
         /* A guest fetch reporting cause=0 violates norm:Zca_no_misaligned
          * and must be reported, not relaxed. cause defaults to 0 when no
          * trap fired, so these verdicts apply only when one occurred. */
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
         TEST_ASSERT_NEQ("never instruction-address-misaligned (cause=0)",
                         cause, (uintptr_t)CAUSE_INST_ADDR_MISALIGN);
         TEST_ASSERT_NEQ("never virtual-instruction (cause=22)",
@@ -117,7 +117,7 @@ bool test_hzca_26_vu_jump_2byte_aligned(void)
     TEST_ASSERT("VU-mode executed at a 2-byte-aligned address (no trap)",
                 !fired);
     if (fired) {
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
         TEST_ASSERT_NEQ("never instruction-address-misaligned (cause=0)",
                         cause, (uintptr_t)CAUSE_INST_ADDR_MISALIGN);
         TEST_ASSERT_NEQ("never virtual-instruction (cause=22)",
@@ -157,7 +157,7 @@ bool test_hzca_27_32bit_on_16bit_boundary(void)
     TEST_ASSERT("VS-mode fetched a 32-bit inst on a 16-bit boundary",
                 !fired);
     if (fired) {
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
         TEST_ASSERT_NEQ("never instruction-address-misaligned (cause=0)",
                         cause, (uintptr_t)CAUSE_INST_ADDR_MISALIGN);
     }

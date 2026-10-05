@@ -14,6 +14,7 @@ TARGET     = shvstvala_test.elf
 ENABLE_VM  = 1
 ENABLE_HYP = 1
 ENABLE_PMP = 1
+ENABLE_TWO_STAGE = 1
 
 # QEMU virt: explicitly request RV64 + H extension support.
 QEMU_CPU   = max

@@ -55,15 +55,15 @@ bool test_hzcnt_01(void)
     }
 
     trap_expect_begin();
-    uintptr_t v = run_in_vs_mode(_vs_read_time, 0);
+    uintptr_t v = run_in_vs_mode(vs_read_time, 0);
     TEST_ASSERT("VS-mode rdtime no trap", !trap_was_triggered());
     trap_expect_end();
 
     uintptr_t t_now = csr_read(CSR_TIME);
     int64_t diff = (int64_t)(v - t_now);
-    printf("  rdtime=0x%lx, time=0x%lx, diff=%ld (delta=0x%lx)\n",
-           (unsigned long)v, (unsigned long)t_now, (long)diff,
-           (unsigned long)HZCNT_DELTA);
+    LOG_D("rdtime=0x%lx, time=0x%lx, diff=%ld (delta=0x%lx)\n",
+          (unsigned long)v, (unsigned long)t_now, (long)diff,
+          (unsigned long)HZCNT_DELTA);
     TEST_ASSERT("rdtime - time <= delta",
                 diff <= (int64_t)HZCNT_DELTA);
     TEST_ASSERT("rdtime - time >= delta - bound",
@@ -110,15 +110,15 @@ bool test_hzcnt_02(void)
     }
 
     trap_expect_begin();
-    uintptr_t v = run_in_vu_mode(_vs_read_time, 0);
+    uintptr_t v = run_in_vu_mode(vs_read_time, 0);
     TEST_ASSERT("VU-mode rdtime no trap", !trap_was_triggered());
     trap_expect_end();
 
     uintptr_t t_now = csr_read(CSR_TIME);
     int64_t diff = (int64_t)(v - t_now);
-    printf("  rdtime=0x%lx, time=0x%lx, diff=%ld (delta=0x%lx)\n",
-           (unsigned long)v, (unsigned long)t_now, (long)diff,
-           (unsigned long)HZCNT_DELTA);
+    LOG_D("rdtime=0x%lx, time=0x%lx, diff=%ld (delta=0x%lx)\n",
+          (unsigned long)v, (unsigned long)t_now, (long)diff,
+          (unsigned long)HZCNT_DELTA);
     TEST_ASSERT("rdtime - time <= delta",
                 diff <= (int64_t)HZCNT_DELTA);
     TEST_ASSERT("rdtime - time >= delta - bound",
@@ -158,9 +158,9 @@ bool test_hzcnt_03(void)
 
     uintptr_t t_now = csr_read(CSR_TIME);
     int64_t diff = (int64_t)(g_hs_time_val - t_now);
-    printf("  hs_rdtime=0x%lx, time=0x%lx, diff=%ld\n",
-           (unsigned long)g_hs_time_val, (unsigned long)t_now,
-           (long)diff);
+    LOG_D("hs_rdtime=0x%lx, time=0x%lx, diff=%ld\n",
+          (unsigned long)g_hs_time_val, (unsigned long)t_now,
+          (long)diff);
     /* HS read returns the raw time: no delta applied, and the read
      * happened no later than the reference read. */
     TEST_ASSERT("HS rdtime <= time (no delta added)", diff <= 0);
@@ -199,7 +199,7 @@ bool test_hzcnt_04(void)
     }
 
     trap_expect_begin();
-    uintptr_t v = run_in_vs_mode(_vs_read_time, 0);
+    uintptr_t v = run_in_vs_mode(vs_read_time, 0);
     TEST_ASSERT("VS-mode rdtime no trap", !trap_was_triggered());
     trap_expect_end();
 
@@ -214,8 +214,8 @@ bool test_hzcnt_04(void)
      * semantics of norm:htimedelta_sz_acc_op are exactly what makes
      * the signed difference constant). */
     int64_t d = (int64_t)(t_now - v);
-    printf("  rdtime=0x%lx, time=0x%lx, time-rdtime=%ld\n",
-           (unsigned long)v, (unsigned long)t_now, (long)d);
+    LOG_D("rdtime=0x%lx, time=0x%lx, time-rdtime=%ld\n",
+          (unsigned long)v, (unsigned long)t_now, (long)d);
     TEST_ASSERT("time - rdtime >= 0x100000 (signed, truncation applied)",
                 d >= (int64_t)0x100000);
     TEST_ASSERT("time - rdtime within bound",
@@ -249,7 +249,7 @@ bool test_hzcnt_05(void)
     }
 
     trap_expect_begin();
-    (void)run_in_vs_mode(_vs_read_time, 0);
+    (void)run_in_vs_mode(vs_read_time, 0);
     TEST_ASSERT("VS-mode rdtime trap triggered", trap_was_triggered());
     if (trap_was_triggered()) {
         TEST_ASSERT_EQ("cause=22 (virtual-instruction)",
@@ -283,7 +283,7 @@ bool test_hzcnt_06(void)
     (void)saved_hcen;
 
     trap_expect_begin();
-    (void)run_in_vs_mode(_vs_read_time, 0);
+    (void)run_in_vs_mode(vs_read_time, 0);
     TEST_ASSERT("VS-mode rdtime trap triggered", trap_was_triggered());
     if (trap_was_triggered()) {
         /* mcounteren layer takes precedence: illegal-instruction,

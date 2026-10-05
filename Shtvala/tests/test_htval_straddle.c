@@ -51,7 +51,7 @@ static bool _fire_straddle(uintptr_t (*helper)(uintptr_t),
                            uintptr_t victim_flags)
 {
     two_stage_ctx_t ctx;
-    _setup_with_victim(&ctx, victim_page, victim_flags);
+    setup_gstage_with_victim(&ctx, victim_page, victim_flags);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, helper, straddle_addr);
@@ -73,10 +73,10 @@ static bool _check_htval_for_straddle(uintptr_t straddle_addr,
         uintptr_t op_lo = straddle_addr >> 2;
         uintptr_t vp_lo = victim_page  >> 2;
         if (htval != op_lo && htval != vp_lo) {
-            printf("  htval 0x%lx is neither op>>2=0x%lx nor victim>>2=0x%lx\n",
-                   (unsigned long)htval,
-                   (unsigned long)op_lo,
-                   (unsigned long)vp_lo);
+            LOG_E("htval 0x%lx is neither op>>2=0x%lx nor victim>>2=0x%lx\n",
+                  (unsigned long)htval,
+                  (unsigned long)op_lo,
+                  (unsigned long)vp_lo);
             return false;
         }
         return true;
@@ -177,7 +177,7 @@ bool test_htval_str_03_fetch_straddle(void) {
     pad[0] = 0x0001;  /* c.nop */
 
     two_stage_ctx_t ctx;
-    _setup_with_victim(&ctx, victim, /*flags=*/0);
+    setup_gstage_with_victim(&ctx, victim, /*flags=*/0);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, vs_straddle_fetch, straddle);
@@ -189,7 +189,7 @@ bool test_htval_str_03_fetch_straddle(void) {
     if (!fired) {
         /* Platform transparently fetched across the page boundary
          * (hardware page-crossing support). No GPF -> SKIP. */
-        printf("  [SKIP] platform supports transparent cross-page fetch\n");
+        LOG_W("platform supports transparent cross-page fetch\n");
         hyp_reset_state();
         TEST_SKIP("no cross-page fetch GPF");
     }
@@ -204,7 +204,7 @@ bool test_htval_str_03_fetch_straddle(void) {
     } else if (cause == CAUSE_LOAD_ADDR_MISALIGN) {
         /* Platform does not support 2-byte-aligned fetch; misalign
          * fires before GPF. Shtvala does not constrain htval here. */
-        printf("  [INFO] misaligned-fetch before GPF (impl-defined)\n");
+        LOG_I("misaligned-fetch before GPF (impl-defined)\n");
     } else {
         TEST_ASSERT("unexpected cause", 0);
     }

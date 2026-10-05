@@ -43,7 +43,7 @@ static bool _gmap_run_one(const char *what, int leaf_level, uintptr_t pgsz) {
     int rc = two_stage_setup_identity(&ctx, map_base, map_size,
                                       G_FLAGS_RWXU_AD, leaf_level);
     if (rc != 0) {
-        printf("  [%s] identity mapping failed\n", what);
+        LOG_E("[%s] identity mapping failed\n", what);
         two_stage_cleanup(&ctx);
         return false;
     }
@@ -54,8 +54,8 @@ static bool _gmap_run_one(const char *what, int leaf_level, uintptr_t pgsz) {
     uintptr_t r = two_stage_run_in_vs(&ctx, test_vs_read_write, target);
     bool ok = (r == 0);
     if (!ok)
-        printf("  [%s] vs read/write returned 0x%lx\n", what,
-               (unsigned long)r);
+        LOG_E("[%s] vs read/write returned 0x%lx\n", what,
+              (unsigned long)r);
 
     two_stage_cleanup(&ctx);
     hyp_reset_state();
@@ -112,7 +112,7 @@ bool test_g48_map_01_512g(void) {
     int rc = gpt_map_page(&ctx.g_ctx, 0UL, 0UL,
                           G_FLAGS_RWXU_AD, PT_LEVEL_512G);
     if (rc != 0) {
-        printf("  512GB leaf install failed (rc=%d)\n", rc);
+        LOG_E("512GB leaf install failed (rc=%d)\n", rc);
         two_stage_cleanup(&ctx);
         hyp_reset_state();
         TEST_ASSERT("install 512GB leaf", false);

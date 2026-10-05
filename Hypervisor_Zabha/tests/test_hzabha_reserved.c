@@ -40,8 +40,8 @@ static void hzabha_reserved_case(uintptr_t (*probe)(uintptr_t), int vu,
     uintptr_t cause = fired ? trap_get_cause() : 0;
     trap_expect_end();
 
-    printf("  [INFO] %s (%s): fired=%d cause=%lu\n",
-           tag, vu ? "VU" : "VS", (int)fired, (unsigned long)cause);
+    LOG_D("%s (%s): fired=%d cause=%lu\n",
+          tag, vu ? "VU" : "VS", (int)fired, (unsigned long)cause);
     TEST_ASSERT("reserved encoding trapped", fired);
     TEST_ASSERT_EQ("reserved byte/half lr/sc -> illegal-instruction (cause=2)",
                    cause, (uintptr_t)CAUSE_ILLEGAL_INST);

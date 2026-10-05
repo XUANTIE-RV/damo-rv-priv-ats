@@ -45,28 +45,9 @@
  * access is not rejected by the U-bit check before MXR can apply. */
 #define G1_VS_X_AD     (PTE_V|PTE_X|PTE_A|PTE_D)
 
-/* SUM and MXR bit positions in sstatus / vsstatus. */
-#ifndef G1_SSTATUS_SUM
-#define G1_SSTATUS_SUM   (1UL << 18)
-#endif
-#ifndef G1_SSTATUS_MXR
-#define G1_SSTATUS_MXR   (1UL << 19)
-#endif
 
-/* File-scope SUM choice for VS-mode helper. */
-static volatile int g1_sum_value;
-
-/* VS-mode helper: set vsstatus.SUM then load. */
-static uintptr_t g1_vs_load_with_sum(uintptr_t va) {
-    uintptr_t sm = G1_SSTATUS_SUM;
-    if (g1_sum_value)
-        asm volatile ("csrs sstatus, %0" :: "r"(sm) : "memory");
-    else
-        asm volatile ("csrc sstatus, %0" :: "r"(sm) : "memory");
-    volatile uint64_t *p = (volatile uint64_t *)va;
-    (void)*p;
-    return 0;
-}
+/* File-scope SUM choice: uses shared g_vs_sum_value / vs_load_with_sum
+ * from test_helpers.h. */
 
 /* ===================================================================
  * TS-VS-01: vsatp=Sv39, 4K identity, simple R/W cycle
@@ -238,8 +219,8 @@ bool test_ts_vs_07_u1_sum0_fault(void)
     ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE,
                              va, G1_VS_RWXU_AD);
 
-    g1_sum_value = 0;
-    bool ok = ts2_run_check_fault(&ctx, g1_vs_load_with_sum, va,
+    g_vs_sum_value = 0;
+    bool ok = ts2_run_check_fault(&ctx, vs_load_with_sum, va,
                                   CAUSE_LOAD_PAGE_FAULT);
     TEST_ASSERT("load-page-fault on U=1 + SUM=0", ok);
     HYP_TEST_END();
@@ -261,9 +242,9 @@ bool test_ts_vs_08_u1_sum1_ok(void)
     ts2_setup_with_vs_victim(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE,
                              va, G1_VS_RWXU_AD);
 
-    g1_sum_value = 1;
+    g_vs_sum_value = 1;
     trap_expect_begin();
-    (void)two_stage_run_in_vs(&ctx, g1_vs_load_with_sum, va);
+    (void)two_stage_run_in_vs(&ctx, vs_load_with_sum, va);
     bool fired = trap_was_triggered();
     trap_expect_end();
     ts2_finish(&ctx);
@@ -296,16 +277,16 @@ bool test_ts_vs_09_mxr_xonly_ok(void)
      * Per norm:vsstatus_mxr_vm, vsstatus.MXR overrides VS-stage
      * execute-only. This exactly mirrors the TS-MXR-02 pattern
      * which is known to pass. */
-    asm volatile ("csrc sstatus, %0" :: "r"((uintptr_t)G1_SSTATUS_MXR));
-    asm volatile ("csrs " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"((uintptr_t)G1_SSTATUS_MXR));
+    asm volatile ("csrc sstatus, %0" :: "r"((uintptr_t)SSTATUS_MXR_BIT));
+    asm volatile ("csrs " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"((uintptr_t)SSTATUS_MXR_BIT));
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, g1_vs_simple_load, va);
     bool fired = trap_was_triggered();
     trap_expect_end();
 
-    asm volatile ("csrc sstatus, %0" :: "r"((uintptr_t)G1_SSTATUS_MXR));
-    asm volatile ("csrc " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"((uintptr_t)G1_SSTATUS_MXR));
+    asm volatile ("csrc sstatus, %0" :: "r"((uintptr_t)SSTATUS_MXR_BIT));
+    asm volatile ("csrc " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"((uintptr_t)SSTATUS_MXR_BIT));
     ts2_finish(&ctx);
     TEST_ASSERT("vsstatus.MXR=1 makes VS X-only readable", !fired);
     HYP_TEST_END();

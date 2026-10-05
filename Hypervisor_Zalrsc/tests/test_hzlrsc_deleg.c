@@ -84,8 +84,8 @@ bool test_hzlrsc_06_lr_vs_load_fault(void)
 #ifdef SHVSTVALA_SUPPORTED
     TEST_ASSERT_EQ("vstval == faulting GVA (Shvstvala)", g_hz_vs_tval, va);
 #else
-    printf("  [INFO] vstval=0x%lx (Shvstvala not declared; base H allows 0)\n",
-           (unsigned long)g_hz_vs_tval);
+    LOG_I("vstval=0x%lx (Shvstvala not declared; base H allows 0)\n",
+          (unsigned long)g_hz_vs_tval);
 #endif
 
     ts2_finish(&ctx);

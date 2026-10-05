@@ -44,8 +44,6 @@ extern uint8_t test_exec_target[];
 extern uint8_t __vm_test_region_start[];
 extern uint8_t __vm_test_region_end[];
 
-#define TEST_REGION_BASE   ((uintptr_t)__vm_test_region_start)
-
 /* ===================================================================
  * VS-mode payload functions for Sstvala tests.
  *

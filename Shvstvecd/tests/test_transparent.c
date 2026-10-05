@@ -61,7 +61,7 @@ bool test_shvstvecd_trans_01_vs_write_m_read(void) {
     run_in_vs_mode(vsmode_write_stvec, test_val);
 
     /* M-mode reads vstvec (CSR 0x205) */
-    uintptr_t readback = vstvec_read_raw();
+    uintptr_t readback = vstvec_read();
     TEST_ASSERT("vstvec == value written by VS-mode via stvec",
                 readback == test_val);
 
@@ -78,7 +78,7 @@ bool test_shvstvecd_trans_02_m_write_vs_read(void) {
     uintptr_t test_val = 0xBEEF0004UL;  /* 4-byte aligned, MODE=0 */
 
     /* M-mode writes vstvec (CSR 0x205) */
-    vstvec_write_raw(test_val);
+    vstvec_write(test_val);
 
     /* VS-mode reads stvec (V=1: actually vstvec) */
     uintptr_t readback = run_in_vs_mode(vsmode_read_stvec, 0);
@@ -110,7 +110,7 @@ bool test_shvstvecd_trans_03_vs_write_no_affect_hs(void) {
                 hs_stvec_after == hs_stvec_before);
 
     /* Also confirm vstvec holds the VS-mode written value. */
-    uintptr_t vstvec_val = vstvec_read_raw();
+    uintptr_t vstvec_val = vstvec_read();
     TEST_ASSERT("vstvec holds the VS-mode written value",
                 vstvec_val == vs_write_val);
 

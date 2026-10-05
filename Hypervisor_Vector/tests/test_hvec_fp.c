@@ -32,12 +32,12 @@ bool test_hvec_09(void)
     if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
     if (!F_AVAILABLE) TEST_SKIP("Float extension not available");
 
-    hvec_mstatus_set_field(HVEC_FS_SHIFT, CTX_INITIAL);
-    hvec_vsstatus_set_field(HVEC_FS_SHIFT, CTX_OFF);
+    mstatus_set_field(SSTATUS_FS_SHIFT, CTX_INITIAL);
+    vsstatus_set_field(SSTATUS_FS_SHIFT, CTX_OFF);
     /* Vector context must stay enabled so the trap cause is the FP
      * gating, not the VS gating. */
-    hvec_mstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
-    hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
+    mstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
+    vsstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
 
     trap_expect_begin();
     (void)run_in_vs_mode(hvec_vs_vfseq, 0);
@@ -64,10 +64,10 @@ bool test_hvec_10(void)
     if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
     if (!F_AVAILABLE) TEST_SKIP("Float extension not available");
 
-    hvec_vsstatus_set_field(HVEC_FS_SHIFT, CTX_DIRTY);
-    hvec_mstatus_set_field(HVEC_FS_SHIFT, CTX_OFF);
-    hvec_mstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
-    hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
+    vsstatus_set_field(SSTATUS_FS_SHIFT, CTX_DIRTY);
+    mstatus_set_field(SSTATUS_FS_SHIFT, CTX_OFF);
+    mstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
+    vsstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
 
     trap_expect_begin();
     (void)run_in_vs_mode(hvec_vs_vfseq, 0);
@@ -94,10 +94,10 @@ bool test_hvec_11(void)
     if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
     if (!F_AVAILABLE) TEST_SKIP("Float extension not available");
 
-    hvec_mstatus_set_field(HVEC_FS_SHIFT, CTX_INITIAL);
-    hvec_vsstatus_set_field(HVEC_FS_SHIFT, CTX_OFF);
-    hvec_mstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
-    hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
+    mstatus_set_field(SSTATUS_FS_SHIFT, CTX_INITIAL);
+    vsstatus_set_field(SSTATUS_FS_SHIFT, CTX_OFF);
+    mstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
+    vsstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
 
     trap_expect_begin();
     (void)run_in_vu_mode(hvec_vu_vfseq, 0);
@@ -124,10 +124,10 @@ bool test_hvec_12(void)
     if (!V_AVAILABLE) TEST_SKIP("Vector extension not available");
     if (!F_AVAILABLE) TEST_SKIP("Float extension not available");
 
-    hvec_mstatus_set_field(HVEC_FS_SHIFT, CTX_INITIAL);
-    hvec_vsstatus_set_field(HVEC_FS_SHIFT, CTX_INITIAL);
-    hvec_mstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
-    hvec_vsstatus_set_field(HVEC_VS_SHIFT, CTX_INITIAL);
+    mstatus_set_field(SSTATUS_FS_SHIFT, CTX_INITIAL);
+    vsstatus_set_field(SSTATUS_FS_SHIFT, CTX_INITIAL);
+    mstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
+    vsstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
 
     trap_expect_begin();
     (void)run_in_vs_mode(hvec_vs_vfseq, 0);
@@ -140,9 +140,9 @@ bool test_hvec_12(void)
          * NV flag: fcsr changes, i.e. FP state is modified, so both
          * fs fields must be Dirty afterwards. */
         TEST_ASSERT_EQ("mstatus.fs == Dirty",
-                       hvec_mstatus_field(HVEC_FS_SHIFT), CTX_DIRTY);
+                       mstatus_get_field(SSTATUS_FS_SHIFT), CTX_DIRTY);
         TEST_ASSERT_EQ("vsstatus.fs == Dirty",
-                       hvec_vsstatus_field(HVEC_FS_SHIFT), CTX_DIRTY);
+                       vsstatus_get_field(SSTATUS_FS_SHIFT), CTX_DIRTY);
     }
 
     HYP_TEST_END();

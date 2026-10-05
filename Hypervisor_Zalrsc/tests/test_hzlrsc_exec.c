@@ -142,7 +142,7 @@ bool test_hzlrsc_02_vs_exec_no_cause22(void)
     trap_expect_end();
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("no trap in VS-mode (esp. no virtual-instruction 22)",
                 !fired);
     TEST_ASSERT_NEQ("VS-mode LR/SC did not report cause=22",
@@ -188,7 +188,7 @@ bool test_hzlrsc_03_vu_exec_no_cause22(void)
     trap_expect_end();
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("no trap in VU-mode (esp. no virtual-instruction 22)",
                 !fired);
     TEST_ASSERT_NEQ("VU-mode LR/SC did not report cause=22",

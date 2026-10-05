@@ -234,6 +234,22 @@ uintptr_t vs_nop_fn(uintptr_t arg) {
     return 0;
 }
 
+/* fadd.s f0, f0, f0 — modifies f0 to trigger FS dirty.
+ * Raw .4byte encoding avoids -march dependency on F extension. */
+uintptr_t vs_exec_fp_inst(uintptr_t arg) {
+    (void)arg;
+    asm volatile (".4byte 0x00000053" ::: "memory");
+    return 0;
+}
+
+/* vsetvli t0, zero, e8, m1, ta, ma — touches vector config state.
+ * Raw .4byte encoding avoids -march dependency on V extension. */
+uintptr_t vs_exec_vector_inst(uintptr_t arg) {
+    (void)arg;
+    asm volatile (".4byte 0x0C0072D7" ::: "memory");
+    return 0;
+}
+
 /* ===================================================================
  * VS/VU-mode H-CSR access trampolines (should cause virtual-inst).
  * =================================================================== */

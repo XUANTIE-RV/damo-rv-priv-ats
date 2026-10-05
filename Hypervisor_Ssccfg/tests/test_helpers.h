@@ -45,44 +45,6 @@
  * CSR access helpers (inline asm, independent of csr_accessors.c)
  * =================================================================== */
 
-static inline uintptr_t siselect_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_SISELECT) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void siselect_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_SISELECT) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t sireg_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_SIREG) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline uintptr_t vsiselect_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_VSISELECT) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void vsiselect_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_VSISELECT) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t vsireg_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_VSIREG) : "=r"(v) :: "memory");
-    return v;
-}
-
 /* scountovf (0xDA0, Sscofpmf) - read-only */
 static inline uintptr_t scountovf_read(void)
 {
@@ -126,40 +88,6 @@ static inline void hvien_write(uintptr_t v)
  * (vsie_read / vsie_write / vsip_read). */
 
 /* mstateen0 (0x30C) / hstateen0 (0x60C) */
-static inline uintptr_t mstateen0_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MSTATEEN0) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void mstateen0_set(uintptr_t bits)
-{
-    asm volatile("csrs " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(bits) : "memory");
-}
-
-static inline uintptr_t hstateen0_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_HSTATEEN0) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void hstateen0_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_HSTATEEN0) ", %0" :: "r"(v) : "memory");
-}
-
-static inline void hstateen0_set(uintptr_t bits)
-{
-    asm volatile("csrs " CSR_STR(CSR_HSTATEEN0) ", %0" :: "r"(bits) : "memory");
-}
-
-static inline void hstateen0_clear(uintptr_t bits)
-{
-    asm volatile("csrc " CSR_STR(CSR_HSTATEEN0) ", %0" :: "r"(bits) : "memory");
-}
-
 /* ===================================================================
  * Platform detection
  * =================================================================== */
@@ -194,8 +122,8 @@ static inline bool cde_settable(void)
 static inline void stateen_allow_csrind(void)
 {
     if (SMSTATEEN_AVAILABLE) {
-        mstateen0_set(STATEEN0_CSRIND);
-        hstateen0_set(STATEEN0_CSRIND);
+        mstateen_set_bits(0, STATEEN0_CSRIND);
+        hstateen_set_bits(0, STATEEN0_CSRIND);
     }
 }
 

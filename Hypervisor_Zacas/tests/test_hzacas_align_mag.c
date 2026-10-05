@@ -68,8 +68,8 @@ bool test_hzacas_23_misaligned_cas(void)
     trap_expect_end();
     ts2_finish(&ctx);
 
-    printf("  [INFO] (A) misaligned amocas @+off=%lu cause=%lu fired=%d\n",
-           (unsigned long)off, (unsigned long)cause_a, (int)fired_a);
+    LOG_D("(A) misaligned amocas @+off=%lu cause=%lu fired=%d\n",
+          (unsigned long)off, (unsigned long)cause_a, (int)fired_a);
     TEST_ASSERT("(A) misaligned amocas faulted (not MAG-covered)", fired_a);
     TEST_ASSERT("(A) cause in store/AMO class {6,7} (never load 4/5)",
                 hzacas_cause_in2(cause_a, CAUSE_STORE_ADDR_MISALIGN,
@@ -122,8 +122,8 @@ bool test_hzacas_24_mag_intra_no_fault(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  [INFO] MAG intra-granule amocas trapped cause=%lu\n",
-               (unsigned long)cause);
+        LOG_D("MAG intra-granule amocas trapped cause=%lu\n",
+              (unsigned long)cause);
     TEST_ASSERT("MAG intra-granule misaligned amocas raised no alignment "
                 "exception (norm:misaligned_atomicity_granule_size)", !fired);
 
@@ -160,8 +160,8 @@ bool test_hzacas_25_mag_intra_gstage_fault(void)
     trap_expect_end();
     ts2_finish(&ctx);
 
-    printf("  [INFO] MAG intra G-stage amocas: fired=%d cause=%lu htval=0x%lx\n",
-           (int)fired, (unsigned long)cause, (unsigned long)htval);
+    LOG_D("MAG intra G-stage amocas: fired=%d cause=%lu htval=0x%lx\n",
+          (int)fired, (unsigned long)cause, (unsigned long)htval);
     TEST_ASSERT("MAG intra-granule amocas G-stage fault fired", fired);
     TEST_ASSERT_EQ("cause == store/AMO guest-page-fault (23)",
                    cause, (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);
@@ -194,7 +194,7 @@ bool test_hzacas_26_misaligned_trap_context(void)
     hzacas_setup_cas((uintptr_t)test_data_area);
     hedeleg_write(hedeleg_read() & ~((1UL << 6) | (1UL << 7)));
     hz_clear_gva_spv();
-    hz_route_to_hs((1UL << 6) | (1UL << 7));
+    hyp_route_exc_to_hs((1UL << 6) | (1UL << 7));
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amocas_w_probe, mis);
     bool fired = trap_was_triggered();
@@ -205,11 +205,11 @@ bool test_hzacas_26_misaligned_trap_context(void)
     bool gva = trap_get_gva();
     bool spv = trap_get_spv();
     trap_expect_end();
-    hz_unroute_from_hs((1UL << 6) | (1UL << 7));
+    hyp_unroute_exc_from_hs((1UL << 6) | (1UL << 7));
     ts2_finish(&ctx);
 
-    printf("  [INFO] misaligned amocas: cause=%lu tval=0x%lx gva=%d spv=%d\n",
-           (unsigned long)cause, (unsigned long)tval, (int)gva, (int)spv);
+    LOG_D("misaligned amocas: cause=%lu tval=0x%lx gva=%d spv=%d\n",
+          (unsigned long)cause, (unsigned long)tval, (int)gva, (int)spv);
     TEST_ASSERT("misaligned amocas faulted", fired);
     TEST_ASSERT("cause in store/AMO class {6,7}",
                 hzacas_cause_in2(cause, CAUSE_STORE_ADDR_MISALIGN,

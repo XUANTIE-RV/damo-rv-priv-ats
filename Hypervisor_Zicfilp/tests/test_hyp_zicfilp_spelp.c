@@ -102,9 +102,9 @@ bool test_hcfi_lp_12(void) {
     /* The trap should have been delegated to VS-mode. The VS-mode
      * handler recorded vscause and the SPELP value captured at trap
      * entry (per norm:Zicfilp_pelp_trap, xPELP is set to ELP on trap). */
-    printf("    VS handler: triggered=%d vscause=%lu SPELP at trap=%lu\n",
-           (int)g_vs_exc_triggered, (unsigned long)g_vs_exc_cause,
-           (unsigned long)g_vs_exc_spelp);
+    LOG_D("VS handler: triggered=%d vscause=%lu SPELP at trap=%lu\n",
+          (int)g_vs_exc_triggered, (unsigned long)g_vs_exc_cause,
+          (unsigned long)g_vs_exc_spelp);
 
     TEST_ASSERT("LP fault delegated to VS-mode handler",
                 g_vs_exc_triggered &&
@@ -115,7 +115,7 @@ bool test_hcfi_lp_12(void) {
                 result == 0);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -170,9 +170,9 @@ bool test_hcfi_lp_13(void) {
                                            (uintptr_t)code);
     (void)result;
 
-    printf("    VS handler: count=%u cause1=%lu spelp1=%lu cause2=%lu\n",
-           g_vs_exc_count, (unsigned long)g_vs_exc_cause,
-           (unsigned long)g_vs_exc_spelp, (unsigned long)g_vs_exc_cause2);
+    LOG_D("VS handler: count=%u cause1=%lu spelp1=%lu cause2=%lu\n",
+          g_vs_exc_count, (unsigned long)g_vs_exc_cause,
+          (unsigned long)g_vs_exc_spelp, (unsigned long)g_vs_exc_cause2);
 
     TEST_ASSERT("two LP faults (initial + post-SRET restore)",
                 g_vs_exc_count == 2);
@@ -184,7 +184,7 @@ bool test_hcfi_lp_13(void) {
                    g_vs_exc_cause2, (uintptr_t)CAUSE_SOFTWARE_CHECK);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     /* Clean up vsstatus.SPELP so later tests start from a known state */
     vsstatus_write(vsstatus_read() & ~VSSTATUS_SPELP_BIT);
@@ -229,10 +229,9 @@ bool test_hcfi_lp_14(void) {
      * NO_LP_EXPECTED (VSLPE=0) and sets SPELP to NO_LP_EXPECTED
      * unconditionally. */
     trap_expect_begin();
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_store,
-                                           (uintptr_t)test_fault_page);
+    (void)two_stage_run_in_vs(&ctx, test_vs_store,
+                              (uintptr_t)test_fault_page);
     trap_expect_end();
-    (void)result;
 
     TEST_ASSERT("store page fault delivered to VS handler",
                 g_vs_exc_triggered &&
@@ -241,12 +240,12 @@ bool test_hcfi_lp_14(void) {
     /* The handler set SPELP=1 before sret; hardware must have cleared
      * it on sret. */
     uintptr_t spelp = vsstatus_read() & VSSTATUS_SPELP_BIT;
-    printf("    vsstatus.SPELP after SRET (VSLPE=0) = %lu\n",
-           (unsigned long)(spelp ? 1 : 0));
+    LOG_D("vsstatus.SPELP after SRET (VSLPE=0) = %lu\n",
+          (unsigned long)(spelp ? 1 : 0));
     TEST_ASSERT("vsstatus.SPELP cleared by hardware on SRET",
                 spelp == 0);
 
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -306,8 +305,8 @@ bool test_hcfi_lp_15(void) {
      * the status snapshot taken at trap entry. */
     uintptr_t snap = trap_get_status_snap();
     uintptr_t spelp = (snap & MSTATUS_SPELP_BIT) ? 1 : 0;
-    printf("    mstatus.SPELP at HS trap = %lu (expect 1)\n",
-           (unsigned long)spelp);
+    LOG_D("mstatus.SPELP at HS trap = %lu (expect 1)\n",
+          (unsigned long)spelp);
 
     TEST_ASSERT_EQ("software-check exception trapped to HS-mode",
                    result, (uintptr_t)CAUSE_SOFTWARE_CHECK);
@@ -318,7 +317,7 @@ bool test_hcfi_lp_15(void) {
     asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_SPELP_BIT) : "memory");
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -373,10 +372,10 @@ bool test_hcfi_lp_16(void) {
     g_trap_preserve_pelp = 0;
 
     uintptr_t snap = trap_get_status_snap();
-    printf("    first trap cause=%lu SPELP at HS entry=%lu re-fault=%d cause=%lu\n",
-           (unsigned long)result,
-           (unsigned long)((snap & MSTATUS_SPELP_BIT) ? 1 : 0),
-           (int)g_vs_exc_triggered, (unsigned long)g_vs_exc_cause);
+    LOG_D("first trap cause=%lu SPELP at HS entry=%lu re-fault=%d cause=%lu\n",
+          (unsigned long)result,
+          (unsigned long)((snap & MSTATUS_SPELP_BIT) ? 1 : 0),
+          (int)g_vs_exc_triggered, (unsigned long)g_vs_exc_cause);
 
     TEST_ASSERT_EQ("instruction page fault trapped to HS",
                    result, (uintptr_t)CAUSE_INST_PAGE_FAULT);
@@ -389,7 +388,7 @@ bool test_hcfi_lp_16(void) {
                 (mstatus_read() & MSTATUS_SPELP_BIT) == 0);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -427,8 +426,8 @@ bool test_hcfi_lp_17(void) {
 
     /* Trigger store page fault in VS-mode, trapped to HS */
     trap_expect_begin();
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_store,
-                                           (uintptr_t)test_fault_page);
+    (void)two_stage_run_in_vs(&ctx, test_vs_store,
+                              (uintptr_t)test_fault_page);
     trap_expect_end();
 
     g_trap_preserve_pelp = 0;
@@ -442,13 +441,13 @@ bool test_hcfi_lp_17(void) {
      * cleared it on sret (VSLPE=0). */
     uintptr_t ms = mstatus_read();
     uintptr_t spelp = (ms & MSTATUS_SPELP_BIT) ? 1 : 0;
-    printf("    mstatus.SPELP after HS SRET (VSLPE=0) = %lu\n",
-           (unsigned long)spelp);
+    LOG_D("mstatus.SPELP after HS SRET (VSLPE=0) = %lu\n",
+          (unsigned long)spelp);
 
     TEST_ASSERT("mstatus.SPELP cleared by hardware on SRET (VSLPE=0)",
                 spelp == 0);
 
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -495,8 +494,8 @@ bool test_hcfi_lp_18(void) {
      * the status snapshot taken at trap entry. */
     uintptr_t snap = trap_get_status_snap();
     uintptr_t mpelp = (snap & MSTATUS_MPELP_BIT) ? 1 : 0;
-    printf("    mstatus.MPELP at M trap = %lu (expect 1)\n",
-           (unsigned long)mpelp);
+    LOG_D("mstatus.MPELP at M trap = %lu (expect 1)\n",
+          (unsigned long)mpelp);
 
     TEST_ASSERT_EQ("software-check exception trapped to M-mode",
                    result, (uintptr_t)CAUSE_SOFTWARE_CHECK);
@@ -507,7 +506,7 @@ bool test_hcfi_lp_18(void) {
     asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_MPELP_BIT) : "memory");
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -559,10 +558,10 @@ bool test_hcfi_lp_19(void) {
     g_trap_preserve_pelp = 0;
 
     uintptr_t snap = trap_get_status_snap();
-    printf("    first trap cause=%lu MPELP at M entry=%lu re-fault=%d cause=%lu\n",
-           (unsigned long)result,
-           (unsigned long)((snap & MSTATUS_MPELP_BIT) ? 1 : 0),
-           (int)g_vs_exc_triggered, (unsigned long)g_vs_exc_cause);
+    LOG_D("first trap cause=%lu MPELP at M entry=%lu re-fault=%d cause=%lu\n",
+          (unsigned long)result,
+          (unsigned long)((snap & MSTATUS_MPELP_BIT) ? 1 : 0),
+          (int)g_vs_exc_triggered, (unsigned long)g_vs_exc_cause);
 
     TEST_ASSERT_EQ("instruction page fault trapped to M",
                    result, (uintptr_t)CAUSE_INST_PAGE_FAULT);
@@ -575,7 +574,7 @@ bool test_hcfi_lp_19(void) {
                 (mstatus_read() & MSTATUS_MPELP_BIT) == 0);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -612,8 +611,8 @@ bool test_hcfi_lp_20(void) {
 
     /* Trigger a trap in VS-mode that goes to M-mode */
     trap_expect_begin();
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_store,
-                                           (uintptr_t)test_fault_page);
+    (void)two_stage_run_in_vs(&ctx, test_vs_store,
+                              (uintptr_t)test_fault_page);
     trap_expect_end();
 
     g_trap_preserve_pelp = 0;
@@ -627,13 +626,13 @@ bool test_hcfi_lp_20(void) {
      * cleared it on mret (VSLPE=0). */
     uintptr_t ms = mstatus_read();
     uintptr_t mpelp = (ms & MSTATUS_MPELP_BIT) ? 1 : 0;
-    printf("    mstatus.MPELP after MRET (VSLPE=0) = %lu\n",
-           (unsigned long)mpelp);
+    LOG_D("mstatus.MPELP after MRET (VSLPE=0) = %lu\n",
+          (unsigned long)mpelp);
 
     TEST_ASSERT("mstatus.MPELP cleared by hardware on MRET (VSLPE=0)",
                 mpelp == 0);
 
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
 }
@@ -669,8 +668,8 @@ bool test_hcfi_lp_21(void) {
     /* Trigger a store fault (not an indirect jump, so ELP stays
      * NO_LP_EXPECTED). The trap should save SPELP=0. */
     trap_expect_begin();
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_store,
-                                           (uintptr_t)test_fault_page);
+    (void)two_stage_run_in_vs(&ctx, test_vs_store,
+                              (uintptr_t)test_fault_page);
     trap_expect_end();
 
     /* Verify via the status snapshot taken at HS trap entry: the live
@@ -678,8 +677,8 @@ bool test_hcfi_lp_21(void) {
      * clears SPELP before sret for clean recovery. */
     uintptr_t snap = trap_get_status_snap();
     uintptr_t spelp = (snap & MSTATUS_SPELP_BIT) ? 1 : 0;
-    printf("    mstatus.SPELP at HS trap entry = %lu (expect 0)\n",
-           (unsigned long)spelp);
+    LOG_D("mstatus.SPELP at HS trap entry = %lu (expect 0)\n",
+          (unsigned long)spelp);
 
     TEST_ASSERT_EQ("store page fault trapped to HS",
                    (uintptr_t)trap_get_cause(),
@@ -688,7 +687,7 @@ bool test_hcfi_lp_21(void) {
                 spelp == 0);
 
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -713,7 +712,7 @@ bool test_hcfi_lp_22(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    senvcfg_set(SENVCFG_LPE);
+    senvcfg_set_bits(SENVCFG_LPE);
     mseccfg_set(MSECCFG_MLPE);
 
     /* VU target: NOP (non-LPAD) + SD zero,0(t0) (faulting store that
@@ -746,9 +745,9 @@ bool test_hcfi_lp_22(void) {
                                            (uintptr_t)code);
     (void)result;
 
-    printf("    VS handler: triggered=%d cause=%lu spelp=%lu tval=%lu\n",
-           (int)g_vs_exc_triggered, (unsigned long)g_vs_exc_cause,
-           (unsigned long)g_vs_exc_spelp, (unsigned long)g_vs_exc_tval);
+    LOG_D("VS handler: triggered=%d cause=%lu spelp=%lu tval=%lu\n",
+          (int)g_vs_exc_triggered, (unsigned long)g_vs_exc_cause,
+          (unsigned long)g_vs_exc_spelp, (unsigned long)g_vs_exc_tval);
 
     TEST_ASSERT("software-check in VU proves ELP restored on SRET",
                 g_vs_exc_triggered &&
@@ -759,9 +758,9 @@ bool test_hcfi_lp_22(void) {
                    g_vs_exc_tval, (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
     g_vs_exc_recovery = 0;
-    senvcfg_clear(SENVCFG_LPE);
+    senvcfg_clear_bits(SENVCFG_LPE);
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     /* Clean up vsstatus.SPELP so later tests start from a known state */
     vsstatus_write(vsstatus_read() & ~VSSTATUS_SPELP_BIT);
@@ -788,7 +787,7 @@ bool test_hcfi_lp_23(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    senvcfg_clear(SENVCFG_LPE);
+    senvcfg_clear_bits(SENVCFG_LPE);
     mseccfg_set(MSECCFG_MLPE);
 
     /* VU target: NOP (non-LPAD) + SD zero,0(t0) (faulting store that
@@ -818,8 +817,8 @@ bool test_hcfi_lp_23(void) {
                                            (uintptr_t)code);
     (void)result;
 
-    printf("    VS handler: triggered=%d cause=%lu\n",
-           (int)g_vs_exc_triggered, (unsigned long)g_vs_exc_cause);
+    LOG_D("VS handler: triggered=%d cause=%lu\n",
+          (int)g_vs_exc_triggered, (unsigned long)g_vs_exc_cause);
 
     TEST_ASSERT("no software-check in VU (VULPE=0)",
                 !(g_vs_exc_triggered &&
@@ -830,7 +829,7 @@ bool test_hcfi_lp_23(void) {
 
     g_vs_exc_recovery = 0;
     mseccfg_clear(MSECCFG_MLPE);
-    cfi_restore_henvcfg(orig_henvcfg);
+    henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     /* Clean up vsstatus.SPELP so later tests start from a known state */
     vsstatus_write(vsstatus_read() & ~VSSTATUS_SPELP_BIT);
@@ -852,7 +851,7 @@ bool test_hcfi_lp_24(void) {
 
     /* Enable HS-level xLPE (menvcfg.LPE); set vsstatus.SPELP=1 as
      * noise that must be ignored while V=0; keep mstatus.SPELP=0. */
-    menvcfg_set(MENVCFG_LPE);
+    menvcfg_set_bits(MENVCFG_LPE);
     mseccfg_set(MSECCFG_MLPE);
     vsstatus_write(vsstatus_read() | VSSTATUS_SPELP_BIT);
     asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_SPELP_BIT) : "memory");
@@ -905,7 +904,7 @@ bool test_hcfi_lp_24(void) {
 
     /* Clear vsstatus.SPELP */
     vsstatus_write(vsstatus_read() & ~VSSTATUS_SPELP_BIT);
-    menvcfg_clear(MENVCFG_LPE);
+    menvcfg_clear_bits(MENVCFG_LPE);
     mseccfg_clear(MSECCFG_MLPE);
     HYP_TEST_END();
 }

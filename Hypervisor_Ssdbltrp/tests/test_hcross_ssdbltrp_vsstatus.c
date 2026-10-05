@@ -24,28 +24,28 @@ bool test_hcross_ssdbltrp_07(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
-    uintptr_t orig_m = menvcfg_read_csr();
-    uintptr_t orig_h = henvcfg_read_csr();
+    uintptr_t orig_m = menvcfg_read();
+    uintptr_t orig_h = henvcfg_read();
     uintptr_t orig_vs = vsstatus_read();
 
     /* Enable DTE at both levels */
-    menvcfg_set(MENVCFG_DTE);
-    henvcfg_set(HENVCFG_DTE);
+    menvcfg_set_bits(MENVCFG_DTE);
+    henvcfg_set_bits(HENVCFG_DTE);
 
     /* Test 1: Write SDT=1, read back should be 1 */
-    vsstatus_set(VSSTATUS_SDT);
+    vsstatus_set_bits(VSSTATUS_SDT);
     uintptr_t val = vsstatus_read();
     TEST_ASSERT("vsstatus.SDT WARL write 1", (val & VSSTATUS_SDT) != 0);
 
     /* Test 2: Write SDT=0, read back should be 0 */
-    vsstatus_clear(VSSTATUS_SDT);
+    vsstatus_clear_bits(VSSTATUS_SDT);
     val = vsstatus_read();
     TEST_ASSERT("vsstatus.SDT WARL write 0", (val & VSSTATUS_SDT) == 0);
 
     /* Restore */
     vsstatus_write(orig_vs);
-    henvcfg_write_csr(orig_h);
-    menvcfg_write_csr(orig_m);
+    henvcfg_write(orig_h);
+    menvcfg_write(orig_m);
     SSDBLTRP_HYP_TEST_END();
 }
 

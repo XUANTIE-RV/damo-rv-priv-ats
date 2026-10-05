@@ -19,10 +19,6 @@
  * for GGBIT-02 to compare behavior bit-for-bit.
  * =================================================================== */
 
-#ifndef PTE_G
-#define PTE_G   (1UL << 5)
-#endif
-
 /* GGBIT-01: G=1 leaf permits VS-mode r/w */
 TEST_REGISTER(test_ggbit_01_g1_ok);
 bool test_ggbit_01_g1_ok(void) {

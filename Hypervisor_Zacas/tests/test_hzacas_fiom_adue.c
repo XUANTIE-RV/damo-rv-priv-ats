@@ -20,12 +20,6 @@
  *     record-type and note the normative difference.
  * =================================================================== */
 
-#ifndef MENVCFG_ADUE
-#define MENVCFG_ADUE   (1ULL << 61)
-#endif
-#ifndef HENVCFG_ADUE
-#define HENVCFG_ADUE   (1ULL << 61)
-#endif
 #define HZ_HENVCFG_FIOM   (1UL << 0)
 
 static void hzacas_fiom_case(int fiom, uintptr_t (*probe)(uintptr_t))
@@ -50,7 +44,7 @@ static void hzacas_fiom_case(int fiom, uintptr_t (*probe)(uintptr_t))
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("FIOM setting: annotated amocas executable (no trap)", !fired);
     TEST_ASSERT_NEQ("FIOM setting: no virtual-instruction (cause=22)",
                     cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
@@ -68,8 +62,8 @@ bool test_hzacas_27_fiom1(void)
     REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzacas_fiom_case(1, hz_vs_amocas_w_aq);
-    printf("  [INFO] FIOM ordering effect requires multi-hart: %s\n",
-           HZACAS_SMP_SKIP_REASON);
+    LOG_I("FIOM ordering effect requires multi-hart: %s\n",
+          HZACAS_SMP_SKIP_REASON);
     HYP_TEST_END();
 }
 
@@ -220,7 +214,7 @@ bool test_hzacas_31_adue1_hw_update(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("ADUE=1 amocas completed with no page fault", !fired);
     TEST_ASSERT("hardware set PTE.A", (pte_after & PTE_A) != 0);
     TEST_ASSERT("hardware set PTE.D (success CAS writes)",
@@ -275,10 +269,10 @@ bool test_hzacas_32_failed_cas_d_side_effect(void)
     ts2_disable_adue();
     ts2_finish(&ctx);
 
-    printf("  [RECORD] failed-CAS VS-stage D bit after: %s (trap=%d); "
-           "SPEC GAP - zacas.adoc does not state this is UNSPECIFIED "
-           "(unlike Zalrsc norm:sc_failed_side_effects); both recorded\n",
-           d_after ? "SET" : "clear", (int)fired);
+    LOG_I("failed-CAS VS-stage D bit after: %s (trap=%d); "
+          "SPEC GAP - zacas.adoc does not state this is UNSPECIFIED "
+          "(unlike Zalrsc norm:sc_failed_side_effects); both recorded\n",
+          d_after ? "SET" : "clear", (int)fired);
     TEST_ASSERT("record-type case executed", true);
 
     HYP_TEST_END();
@@ -332,9 +326,9 @@ bool test_hzacas_33_failed_cas_gstage_d_side_effect(void)
     ts2_disable_adue();
     ts2_finish(&ctx);
 
-    printf("  [RECORD] failed-CAS G-stage D bit after: %s (trap=%d); "
-           "SPEC GAP (no UNSPECIFIED statement in zacas.adoc); recorded\n",
-           gd_after ? "SET" : "clear", (int)fired);
+    LOG_I("failed-CAS G-stage D bit after: %s (trap=%d); "
+          "SPEC GAP (no UNSPECIFIED statement in zacas.adoc); recorded\n",
+          gd_after ? "SET" : "clear", (int)fired);
     TEST_ASSERT("record-type case executed", true);
 
     HYP_TEST_END();

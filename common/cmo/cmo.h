@@ -267,6 +267,74 @@ static inline void senvcfg_set_cbze(unsigned en)
         asm volatile("csrc 0x10A, %0" :: "r"(ENVCFG_CBZE));
 }
 
+/* henvcfg (CSR 0x60A) - Hypervisor envcfg; same CBIE/CBCFE/CBZE layout.
+ * Completes the menvcfg/senvcfg/henvcfg accessor triple so Hypervisor
+ * CMO suites (Zicbom/Zicbop/Zicboz) need not redefine them locally. */
+static inline uintptr_t henvcfg_get_cbie(void)
+{
+    uintptr_t val;
+    asm volatile("csrr %0, 0x60A" : "=r"(val));
+    return (val & ENVCFG_CBIE_MASK) >> ENVCFG_CBIE_SHIFT;
+}
+
+static inline void henvcfg_set_cbie(unsigned cbie)
+{
+    uintptr_t val;
+    asm volatile("csrr %0, 0x60A" : "=r"(val));
+    val = (val & ~ENVCFG_CBIE_MASK) | ((uintptr_t)cbie << ENVCFG_CBIE_SHIFT);
+    asm volatile("csrw 0x60A, %0" :: "r"(val));
+}
+
+static inline uintptr_t henvcfg_get_cbcfe(void)
+{
+    uintptr_t val;
+    asm volatile("csrr %0, 0x60A" : "=r"(val));
+    return (val & ENVCFG_CBCFE) ? 1 : 0;
+}
+
+static inline void henvcfg_set_cbcfe(unsigned en)
+{
+    if (en)
+        asm volatile("csrs 0x60A, %0" :: "r"(ENVCFG_CBCFE));
+    else
+        asm volatile("csrc 0x60A, %0" :: "r"(ENVCFG_CBCFE));
+}
+
+static inline uintptr_t henvcfg_get_cbze(void)
+{
+    uintptr_t val;
+    asm volatile("csrr %0, 0x60A" : "=r"(val));
+    return (val & ENVCFG_CBZE) ? 1 : 0;
+}
+
+static inline void henvcfg_set_cbze(unsigned en)
+{
+    if (en)
+        asm volatile("csrs 0x60A, %0" :: "r"(ENVCFG_CBZE));
+    else
+        asm volatile("csrc 0x60A, %0" :: "r"(ENVCFG_CBZE));
+}
+
+/* ===================================================================
+ * CBO instruction decode from stval / htinst
+ *
+ * Per SPEC, a CBO virtual-instruction trap writes stval as either 0 or
+ * the faulting instruction encoding. When non-zero, verify the encoding
+ * matches a cbo.* instruction of the given operation:
+ *   bits [6:0]  = 0x0F (MISC-MEM opcode)
+ *   bits [14:12] = 2    (funct3)
+ *   bits [31:20] = operation (CBO_OP_INVAL/CLEAN/FLUSH/ZERO)
+ * Returns true when stval==0 (implementation writes no encoding).
+ * =================================================================== */
+static inline bool stval_is_cbo_insn(uintptr_t stval, uint32_t operation)
+{
+    if (stval == 0)
+        return true;
+    uint32_t expected = (operation << 20) | (2 << 12) | 0x0F;
+    uint32_t mask = (0xFFF << 20) | (7 << 12) | 0x7F; /* op+funct3+opcode */
+    return (stval & mask) == expected;
+}
+
 /* ===================================================================
  * Cache block size
  *

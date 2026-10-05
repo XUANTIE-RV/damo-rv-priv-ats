@@ -91,8 +91,8 @@ bool test_hzacas_12_cas_failed_gstage(void)
     trap_expect_end();
     ts2_finish(&ctx);
 
-    printf("  [INFO] FAILED amocas G-stage: fired=%d cause=%lu\n",
-           (int)fired, (unsigned long)cause);
+    LOG_D("FAILED amocas G-stage: fired=%d cause=%lu\n",
+          (int)fired, (unsigned long)cause);
     TEST_ASSERT("FAILED amocas G-stage fault fired", fired);
     TEST_ASSERT_EQ("cause == store/AMO guest-page-fault (23) "
                    "[norm:Zacas_amocas_w_permission]",
@@ -122,7 +122,7 @@ bool test_hzacas_13_gva_spv(void)
     hz_cas_cmp = 0x00001000u;
     hz_cas_swap = 0x00002000u;
     hz_clear_gva_spv();
-    hz_route_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
+    hyp_route_exc_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_amocas_w_probe, va);
     bool fired = trap_was_triggered();
@@ -130,11 +130,11 @@ bool test_hzacas_13_gva_spv(void)
     bool spv = trap_get_spv();
     uintptr_t tval = trap_get_tval();
     trap_expect_end();
-    hz_unroute_from_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
+    hyp_unroute_exc_from_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
     ts2_finish(&ctx);
 
-    printf("  [INFO] VS-source amocas fault: gva=%d spv=%d tval=0x%lx\n",
-           (int)gva, (int)spv, (unsigned long)tval);
+    LOG_D("VS-source amocas fault: gva=%d spv=%d tval=0x%lx\n",
+          (int)gva, (int)spv, (unsigned long)tval);
     TEST_ASSERT("VS-source amocas guest fault fired", fired);
     TEST_ASSERT_EQ("VS source: GVA=1", (uintptr_t)gva, (uintptr_t)1);
     TEST_ASSERT("VS source: SPV=1 (trap from V=1)", spv);
@@ -171,8 +171,8 @@ bool test_hzacas_14_htval_gpa(void)
 
     TEST_ASSERT("amocas guest fault fired", fired);
     TEST_ASSERT("htval == 0 or GPA>>2", htval == 0 || htval == (va >> 2));
-    printf("  [INFO] amocas guest fault htval=0x%lx (GPA>>2=0x%lx)\n",
-           (unsigned long)htval, (unsigned long)(va >> 2));
+    LOG_D("amocas guest fault htval=0x%lx (GPA>>2=0x%lx)\n",
+          (unsigned long)htval, (unsigned long)(va >> 2));
 
     HYP_TEST_END();
 }
@@ -231,7 +231,7 @@ bool test_hzacas_16_hsv_spv0_gva1(void)
     two_stage_enable(&ctx, 0);
     hstatus_set_spvp(PRIV_S);
     hz_clear_gva_spv();
-    hz_route_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
+    hyp_route_exc_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
 
     trap_expect_begin();
     (void)run_in_priv(PRIV_S, hzacas_hs_hsv_d, va);
@@ -241,11 +241,11 @@ bool test_hzacas_16_hsv_spv0_gva1(void)
     bool spv = trap_get_spv();
     trap_expect_end();
 
-    hz_unroute_from_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
+    hyp_unroute_exc_from_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
     ts2_finish(&ctx);
 
-    printf("  [INFO] HSV.D fault: cause=%lu gva=%d spv=%d\n",
-           (unsigned long)cause, (int)gva, (int)spv);
+    LOG_D("HSV.D fault: cause=%lu gva=%d spv=%d\n",
+          (unsigned long)cause, (int)gva, (int)spv);
     TEST_ASSERT("HSV.D guest-page fault fired", fired);
     TEST_ASSERT_EQ("cause == store/AMO guest-page-fault (23)",
                    cause, (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);

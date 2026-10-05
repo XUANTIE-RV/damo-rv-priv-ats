@@ -34,7 +34,7 @@ bool test_shcounterenw_hier_01(void) {
 
     /* VS-mode read cycle — mcounteren=0 triggers illegal-instruction (cause=2) */
     trap_expect_begin();
-    run_in_vs_mode(vsmode_read_cycle, 0);
+    run_in_vs_mode(vs_read_cycle, 0);
     TEST_ASSERT("illegal-inst trap triggered", trap_was_triggered());
     if (trap_was_triggered()) {
         TEST_ASSERT_EQ("cause=2 (illegal-instruction)",
@@ -65,7 +65,7 @@ bool test_shcounterenw_hier_02(void) {
 
     /* VS-mode read cycle — should succeed */
     trap_expect_begin();
-    run_in_vs_mode(vsmode_read_cycle, 0);
+    run_in_vs_mode(vs_read_cycle, 0);
     TEST_ASSERT("no trap in VS-mode", !trap_was_triggered());
     trap_expect_end();
 
@@ -94,7 +94,7 @@ bool test_shcounterenw_hier_03(void) {
 
     /* VU-mode read cycle — should succeed */
     trap_expect_begin();
-    run_in_vu_mode(vsmode_read_cycle, 0);
+    run_in_vu_mode(vs_read_cycle, 0);
     TEST_ASSERT("no trap in VU-mode", !trap_was_triggered());
     trap_expect_end();
 
@@ -124,7 +124,7 @@ bool test_shcounterenw_hier_04(void) {
 
     /* VU-mode read cycle — hcounteren=0 blocks, triggers virtual-inst */
     trap_expect_begin();
-    run_in_vu_mode(vsmode_read_cycle, 0);
+    run_in_vu_mode(vs_read_cycle, 0);
     TEST_ASSERT("virtual-inst trap triggered", trap_was_triggered());
     if (trap_was_triggered()) {
         TEST_ASSERT_EQ("cause=22 (virtual-instruction)",
@@ -168,7 +168,7 @@ bool test_shcounterenw_hier_05(void) {
 
     /* VU-mode read cycle — scounteren=0 blocks, triggers virtual-inst */
     trap_expect_begin();
-    run_in_vu_mode(vsmode_read_cycle, 0);
+    run_in_vu_mode(vs_read_cycle, 0);
     TEST_ASSERT("virtual-inst trap triggered", trap_was_triggered());
     if (trap_was_triggered()) {
         TEST_ASSERT_EQ("cause=22 (virtual-instruction)",

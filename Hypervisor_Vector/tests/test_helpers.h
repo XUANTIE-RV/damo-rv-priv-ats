@@ -38,10 +38,7 @@
 #define CTX_CLEAN       0x2UL
 #define CTX_DIRTY       0x3UL
 
-#define HVEC_VS_SHIFT   9               /* mstatus/vsstatus VS field */
-#define HVEC_FS_SHIFT   13              /* mstatus/vsstatus FS field */
 #define HVEC_CTX_MASK   0x3UL
-#define HVEC_SD_BIT     (1UL << 63)
 
 /* ===================================================================
  * Raw vector instruction encodings
@@ -89,47 +86,10 @@
 
 /* ===================================================================
  * vsstatus / mstatus context-field accessors
+ *
+ * Use vsstatus_get_field/vsstatus_set_field/mstatus_get_field/
+ * mstatus_set_field directly from common/hyp/hyp_csr.h.
  * =================================================================== */
-
-#define CSR_VSSTATUS_ADDR  0x200
-
-static inline uintptr_t hvec_vsstatus_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, 0x200" : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void hvec_vsstatus_write(uintptr_t v)
-{
-    asm volatile("csrw 0x200, %0" :: "r"(v) : "memory");
-}
-
-static inline unsigned hvec_vsstatus_field(unsigned shift)
-{
-    return (unsigned)((hvec_vsstatus_read() >> shift) & HVEC_CTX_MASK);
-}
-
-static inline void hvec_vsstatus_set_field(unsigned shift, unsigned val)
-{
-    uintptr_t v = hvec_vsstatus_read();
-    v = (v & ~(HVEC_CTX_MASK << shift)) |
-        ((uintptr_t)(val & HVEC_CTX_MASK) << shift);
-    hvec_vsstatus_write(v);
-}
-
-static inline unsigned hvec_mstatus_field(unsigned shift)
-{
-    return (unsigned)((CSRR(mstatus) >> shift) & HVEC_CTX_MASK);
-}
-
-static inline void hvec_mstatus_set_field(unsigned shift, unsigned val)
-{
-    uintptr_t ms = CSRR(mstatus);
-    ms = (ms & ~(HVEC_CTX_MASK << shift)) |
-         ((uintptr_t)(val & HVEC_CTX_MASK) << shift);
-    CSRW(mstatus, ms);
-}
 
 /* ===================================================================
  * VS/VU-mode callbacks (run_in_vs_mode / run_in_vu_mode)
@@ -154,13 +114,6 @@ static uintptr_t hvec_vu_vseq(uintptr_t arg)
 }
 
 static uintptr_t hvec_vs_vset(uintptr_t arg)
-{
-    (void)arg;
-    HVEC_EXEC_VSET_ONLY();
-    return 0;
-}
-
-static uintptr_t hvec_vu_vset(uintptr_t arg)
 {
     (void)arg;
     HVEC_EXEC_VSET_ONLY();

@@ -91,9 +91,9 @@ bool test_hzpm_cap_03(void) {
     bool pmlen16 = (pm_get_vsmode() == PMM_PMLEN16);
     pm_set_vsmode(PMM_DISABLED);
 
-    printf("  henvcfg.PMM: PMLEN=7 %s, PMLEN=16 %s\n",
-           pmlen7 ? "supported" : "unsupported",
-           pmlen16 ? "supported" : "unsupported");
+    LOG_I("henvcfg.PMM: PMLEN=7 %s, PMLEN=16 %s\n",
+          pmlen7 ? "supported" : "unsupported",
+          pmlen16 ? "supported" : "unsupported");
 
     /* norm:pmlen_supported_values: at least one of PMLEN=7/16 must
      * be accepted for the field to be considered implemented. */
@@ -114,9 +114,9 @@ bool test_hzpm_cap_04(void) {
     bool pmlen16 = (pm_get_hupmm() == PMM_PMLEN16);
     pm_set_hupmm(PMM_DISABLED);
 
-    printf("  hstatus.HUPMM: PMLEN=7 %s, PMLEN=16 %s\n",
-           pmlen7 ? "supported" : "unsupported",
-           pmlen16 ? "supported" : "unsupported");
+    LOG_I("hstatus.HUPMM: PMLEN=7 %s, PMLEN=16 %s\n",
+          pmlen7 ? "supported" : "unsupported",
+          pmlen16 ? "supported" : "unsupported");
 
     TEST_ASSERT("at least one PMLEN supported", pmlen7 || pmlen16);
     HYP_TEST_END();

@@ -19,11 +19,6 @@
  * platform does not implement triggers, all tests are skipped.
  */
 
-/* Trigger CSR addresses */
-#define CSR_TSELECT  0x7A0
-#define CSR_TDATA1   0x7A1
-#define CSR_TDATA2   0x7A2
-
 /*
  * mcontrol6 (type=6) field layout for RV64:
  *   [63:60] type    = 6 (mcontrol6)

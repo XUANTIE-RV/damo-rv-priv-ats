@@ -43,23 +43,6 @@ extern uint8_t test_exec_target[];
 extern uint8_t __vm_test_region_start[];
 extern uint8_t __vm_test_region_end[];
 
-#define TEST_REGION_BASE   ((uintptr_t)__vm_test_region_start)
-
-/* ===================================================================
- * Exception cause codes for two-stage translation faults
- * (from RISC-V Privileged Spec, hypervisor extension)
- *
- * VS-stage translation faults produce regular page-faults (cause 13/15).
- * G-stage translation faults produce guest-page-faults (cause 21/23).
- * Per norm:H_vm_gpatrans: "guest-page-fault exceptions are raised
- * instead of regular page-fault exceptions" — but only for G-stage.
- * =================================================================== */
-#define CAUSE_LOAD_PAGE_FAULT           13   /* VS-stage translation fault */
-#define CAUSE_STORE_PAGE_FAULT          15   /* VS-stage store/AMO fault */
-#define CAUSE_INST_GUEST_PAGE_FAULT    20   /* G-stage instruction fault */
-#define CAUSE_LOAD_GUEST_PAGE_FAULT    21   /* G-stage load fault */
-#define CAUSE_STORE_GUEST_PAGE_FAULT   23   /* G-stage store/AMO fault */
-
 /* ===================================================================
  * Svadu availability
  *
@@ -71,14 +54,13 @@ extern uint8_t __vm_test_region_end[];
 
 /* ===================================================================
  * henvcfg.ADUE access helpers
+ *
+ * For setting ADUE, call henvcfg_set_adue() from common/hyp/hyp_csr.h
+ * directly.
  * =================================================================== */
 static inline int henvcfg_adue_read(void) {
     /* henvcfg.ADUE is bit 61, same as menvcfg.ADUE */
     return (henvcfg_read() & MENVCFG_ADUE) ? 1 : 0;
-}
-
-static inline void henvcfg_adue_set(int enable) {
-    henvcfg_set_adue(enable);
 }
 
 /* ===================================================================
@@ -107,12 +89,6 @@ static uintptr_t vs_pte_read(two_stage_ctx_t *ctx, uintptr_t va, int level) {
     return pte ? *pte : 0;
 }
 
-/* Read G-stage PTE at the given GPA and level */
-static uintptr_t g_pte_read(two_stage_ctx_t *ctx, uintptr_t gpa, int level) {
-    uintptr_t *pte = gpt_get_pte(&ctx->g_ctx, gpa, level);
-    return pte ? *pte : 0;
-}
-
 /* Clear A/D bits in VS-stage PTE */
 static void vs_pte_clear_ad(two_stage_ctx_t *ctx, uintptr_t va, int level) {
     uintptr_t *pte = pt_get_pte(&ctx->vs_ctx, va, level);
@@ -133,24 +109,6 @@ static void vs_pte_clear_ad_nofence(two_stage_ctx_t *ctx, uintptr_t va, int leve
     }
 }
 
-/* Clear A/D bits in G-stage PTE */
-static void g_pte_clear_ad(two_stage_ctx_t *ctx, uintptr_t gpa, int level) {
-    uintptr_t *pte = gpt_get_pte(&ctx->g_ctx, gpa, level);
-    if (pte) {
-        *pte &= ~(PTE_A | PTE_D);
-        hfence_gvma_all();
-    }
-}
-
-/* Set A bit in G-stage PTE, clear D bit */
-static void g_pte_set_a_clear_d(two_stage_ctx_t *ctx, uintptr_t gpa, int level) {
-    uintptr_t *pte = gpt_get_pte(&ctx->g_ctx, gpa, level);
-    if (pte) {
-        *pte = (*pte | PTE_A) & ~PTE_D;
-        hfence_gvma_all();
-    }
-}
-
 /* ===================================================================
  * VS-mode test trampolines
  * =================================================================== */
@@ -160,16 +118,6 @@ static uintptr_t vs_load(uintptr_t arg) {
     trap_expect_begin();
     volatile uintptr_t val = *(volatile uintptr_t *)arg;
     (void)val;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
-
-/* VS-mode store: returns 0 on success, cause on trap */
-static uintptr_t vs_store(uintptr_t arg) {
-    trap_expect_begin();
-    *(volatile uintptr_t *)arg = 0xDEADBEEF;
     trap_expect_end();
     if (trap_was_triggered())
         return trap_get_cause();

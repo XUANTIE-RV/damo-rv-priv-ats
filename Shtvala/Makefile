@@ -14,6 +14,7 @@
 TARGET     = shtvala_test.elf
 ENABLE_VM  = 1
 ENABLE_HYP = 1
+ENABLE_TWO_STAGE = 1
 
 # QEMU virt: explicitly request RV64 + H extension support.
 QEMU_CPU   = max
@@ -24,7 +25,8 @@ QEMU_CPU   = max
 EXT_OBJS = \
     main.o \
     tests/test_helpers.o \
-    tests/test_register.o
+    tests/test_register.o \
+    $(COMMON_DIR)/hyp/hyp_test_helpers_region.o
 
 include ../common/Makefile.common
 

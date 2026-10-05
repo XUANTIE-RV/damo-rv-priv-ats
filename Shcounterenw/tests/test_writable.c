@@ -119,7 +119,7 @@ bool test_shcounterenw_wr_04_hpm(void) {
         hcounteren_write(hcounteren_read() | (1UL << i));
         uintptr_t readback = hcounteren_read();
         if ((readback & (1UL << i)) == 0) {
-            printf("  hpmcounter%u: hcounteren[%u] failed to set\n", i, i);
+            LOG_E("hpmcounter%u: hcounteren[%u] failed to set\n", i, i);
             TEST_ASSERT("hcounteren bit set", false);
         }
 
@@ -127,7 +127,7 @@ bool test_shcounterenw_wr_04_hpm(void) {
         hcounteren_write(hcounteren_read() & ~(1UL << i));
         readback = hcounteren_read();
         if ((readback & (1UL << i)) != 0) {
-            printf("  hpmcounter%u: hcounteren[%u] failed to clear\n", i, i);
+            LOG_E("hpmcounter%u: hcounteren[%u] failed to clear\n", i, i);
             TEST_ASSERT("hcounteren bit clear", false);
         }
     }

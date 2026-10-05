@@ -34,7 +34,7 @@ bool test_hcfi_ss_37(void) {
     TEST_ASSERT_EQ("guest-page-fault for G-stage pte.xwr=010",
                    r, (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-38: G-stage RW permission, SS instruction normal */
@@ -56,7 +56,7 @@ bool test_hcfi_ss_38(void) {
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_exec_sspush, 0);
     TEST_ASSERT("SSPUSH with G-stage RW succeeds", r == 0);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-39: G-stage read-only, SS instruction -> guest-page-fault */
@@ -79,7 +79,7 @@ bool test_hcfi_ss_39(void) {
     TEST_ASSERT_EQ("store/AMO guest-page-fault for G-stage read-only",
                    r, (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-40: G-stage no permission, SS -> guest-page-fault */
@@ -103,7 +103,7 @@ bool test_hcfi_ss_40(void) {
     TEST_ASSERT_EQ("guest-page-fault for G-stage no permission",
                    r, (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-41: G-stage guest-page-fault delegation */
@@ -135,7 +135,7 @@ bool test_hcfi_ss_41(void) {
     TEST_ASSERT("hstatus.SPV=1 (trap from VS-mode)",
                 trap_get_spv());
 
-    cfi_restore_henvcfg(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-42: SSPOPCHK triggers G-stage guest-page-fault */
@@ -160,5 +160,5 @@ bool test_hcfi_ss_42(void) {
     TEST_ASSERT_EQ("store/AMO guest-page-fault from SSPOPCHK",
                    r, (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }

@@ -116,8 +116,8 @@ bool test_htval_clr_04_misalign(void) {
     trap_expect_end();
 
     if (fired) {
-        printf("  trap fired, cause=%lu\n",
-               (unsigned long)trap_get_cause());
+        LOG_D("trap fired, cause=%lu\n",
+              (unsigned long)trap_get_cause());
     }
     TEST_ASSERT_EQ("htval preserved", htval_peek(), HTVAL_SENTINEL);
 
@@ -131,7 +131,7 @@ bool test_htval_clr_04_misalign(void) {
  * Spec anchor:
  *   norm:htval_trapval — "For other traps, htval is set to zero"
  *
- * Strategy: trigger a real GPF via _fire_load_fault() so that
+ * Strategy: trigger a real GPF via fire_vs_load_fault() so that
  * trap_get_htval() returns GPA>>2 (non-zero), then immediately
  * trigger a non-GPF trap from VS-mode. The M-mode trap handler
  * records htval=0 for non-GPF causes (matching the mtval2 behaviour),
@@ -158,7 +158,7 @@ bool test_htval_clr_05_gpf_then_ecall(void) {
     uintptr_t flags  = (G_FLAGS_RWXU_AD & ~PTE_R);
 
     /* Phase 1: trigger GPF to populate htval with GPA>>2. */
-    bool gpf = _fire_load_fault(target, flags);
+    bool gpf = fire_vs_load_fault(target, flags);
     TEST_ASSERT("GPF fired", gpf);
     TEST_ASSERT("htval != 0 after GPF", trap_get_htval() != 0);
 
@@ -196,7 +196,7 @@ bool test_htval_clr_06_gpf_then_illegal(void) {
     uintptr_t target = (uintptr_t)test_fault_page;
     uintptr_t flags  = (G_FLAGS_RWXU_AD & ~PTE_R);
 
-    bool gpf = _fire_load_fault(target, flags);
+    bool gpf = fire_vs_load_fault(target, flags);
     TEST_ASSERT("GPF fired", gpf);
     TEST_ASSERT("htval != 0 after GPF", trap_get_htval() != 0);
 
@@ -224,7 +224,7 @@ bool test_htval_clr_07_gpf_then_pagefault(void) {
     uintptr_t flags  = (G_FLAGS_RWXU_AD & ~PTE_R);
 
     /* Phase 1: GPF */
-    bool gpf = _fire_load_fault(target, flags);
+    bool gpf = fire_vs_load_fault(target, flags);
     TEST_ASSERT("GPF fired", gpf);
     TEST_ASSERT("htval != 0 after GPF", trap_get_htval() != 0);
 
@@ -284,7 +284,7 @@ bool test_htval_clr_08_gpf_then_virtual_inst(void) {
     uintptr_t target = (uintptr_t)test_fault_page;
     uintptr_t flags  = (G_FLAGS_RWXU_AD & ~PTE_R);
 
-    bool gpf = _fire_load_fault(target, flags);
+    bool gpf = fire_vs_load_fault(target, flags);
     TEST_ASSERT("GPF fired", gpf);
     TEST_ASSERT("htval != 0 after GPF", trap_get_htval() != 0);
 

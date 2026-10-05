@@ -254,7 +254,7 @@ bool test_hcross_pmp_06(void)
 
     TEST_ASSERT("implicit G-PT walk trapped", fired);
     if (cause == CAUSE_LOAD_GUEST_PAGE_FAULT) {
-        printf("  DIAG: walk failure reported as guest-page fault (21)\n");
+        LOG_I("walk failure reported as guest-page fault (21)\n");
     }
     TEST_ASSERT("cause = 5 (access fault) or 21 (walk-internal report)",
                 cause == CAUSE_LOAD_ACCESS_FAULT ||

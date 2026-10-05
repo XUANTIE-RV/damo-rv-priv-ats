@@ -26,7 +26,7 @@ bool test_htval_gva_01_load(void) {
     uintptr_t target = (uintptr_t)test_fault_page;
     uintptr_t flags  = (G_FLAGS_RWXU_AD & ~PTE_R);
 
-    bool fired = _fire_load_fault(target, flags);
+    bool fired = fire_vs_load_fault(target, flags);
     TEST_ASSERT("load gpf fired", fired);
     if (fired) {
         TEST_ASSERT("GVA flag is 1",         trap_get_gva());

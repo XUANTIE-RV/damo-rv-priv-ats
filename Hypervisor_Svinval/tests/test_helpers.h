@@ -44,8 +44,6 @@ extern uint8_t test_exec_target[];
 extern uint8_t __vm_test_region_start[];
 extern uint8_t __vm_test_region_end[];
 
-#define TEST_REGION_BASE   ((uintptr_t)__vm_test_region_start)
-
 /* ===================================================================
  * Exception cause codes (from RISC-V Privileged Spec)
  *
@@ -55,47 +53,11 @@ extern uint8_t __vm_test_region_end[];
  *   - VS-mode load page fault = 13 (S-mode encoding)
  *   - VS-mode store/AMO page fault = 15 (S-mode encoding)
  * =================================================================== */
-#define CAUSE_VIRTUAL_INSTRUCTION      22
 #define CAUSE_VS_STORE_PAGE_FAULT      15  /* S-mode encoding when hedeleg=0 */
-#define CAUSE_VS_LOAD_PAGE_FAULT       13  /* S-mode encoding when hedeleg=0 */
-#define CAUSE_INST_GUEST_PAGE_FAULT    20
-#define CAUSE_LOAD_GUEST_PAGE_FAULT    21
-#define CAUSE_STORE_GUEST_PAGE_FAULT   23
 
 
-/* ===================================================================
- * PTE inspection / modification helpers
- * =================================================================== */
-
-/* Read VS-stage PTE at the given VA and level */
-static uintptr_t vs_pte_read(two_stage_ctx_t *ctx, uintptr_t va, int level) {
-    uintptr_t *pte = pt_get_pte(&ctx->vs_ctx, va, level);
-    return pte ? *pte : 0;
-}
-
-/* Read G-stage PTE at the given GPA and level */
-static uintptr_t g_pte_read(two_stage_ctx_t *ctx, uintptr_t gpa, int level) {
-    uintptr_t *pte = gpt_get_pte(&ctx->g_ctx, gpa, level);
-    return pte ? *pte : 0;
-}
-
-/* Modify VS-stage PTE at the given VA and level */
-static void vs_pte_modify(two_stage_ctx_t *ctx, uintptr_t va, int level, uintptr_t new_flags) {
-    uintptr_t *pte = pt_get_pte(&ctx->vs_ctx, va, level);
-    if (pte) {
-        /* Preserve PPN, update flags */
-        *pte = (*pte & ~(PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D)) | new_flags;
-    }
-}
-
-/* Modify G-stage PTE at the given GPA and level */
-static void g_pte_modify(two_stage_ctx_t *ctx, uintptr_t gpa, int level, uintptr_t new_flags) {
-    uintptr_t *pte = gpt_get_pte(&ctx->g_ctx, gpa, level);
-    if (pte) {
-        /* Preserve PPN, update flags */
-        *pte = (*pte & ~(PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D)) | new_flags;
-    }
-}
+/* vs_pte_modify() / g_pte_modify() are provided by
+ * common/hyp/two_stage_helpers.h. */
 
 /* ===================================================================
  * VS-mode test trampolines for HINVAL instructions
@@ -202,17 +164,6 @@ static uintptr_t vu_exec_sinval_vma(uintptr_t arg) {
 /* ===================================================================
  * VS-mode memory access trampolines
  * =================================================================== */
-
-/* VS-mode load: returns 0 on success, cause on trap */
-static uintptr_t vs_load(uintptr_t arg) {
-    trap_expect_begin();
-    volatile uintptr_t val = *(volatile uintptr_t *)arg;
-    (void)val;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
 
 /* VS-mode store: returns 0 on success, cause on trap */
 static uintptr_t vs_store(uintptr_t arg) {

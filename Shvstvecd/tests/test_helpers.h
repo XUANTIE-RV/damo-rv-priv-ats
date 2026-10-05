@@ -29,31 +29,8 @@
 #include "hyp/hyp_vs_trap.h"
 #include "hyp/two_stage_helpers.h"
 
-/* ===================================================================
- * vstvec field layout / mode encoding
- * (use encoding.h definitions if available, provide fallbacks)
- * =================================================================== */
-#ifndef VSTVEC_MODE_MASK
-#define VSTVEC_MODE_MASK       0x3UL
-#endif
-#ifndef VSTVEC_MODE_DIRECT
-#define VSTVEC_MODE_DIRECT     0x0UL
-#endif
-#ifndef VSTVEC_MODE_VECTORED
-#define VSTVEC_MODE_VECTORED   0x1UL
-#endif
-#ifndef VSTVEC_BASE_MASK
-#define VSTVEC_BASE_MASK       (~0x3UL)
-#endif
-
 /* SSIE / SSIP bit position (= bit 1) */
 #define BIT_SSI                (1UL << 1)
-
-/* SIE bit in sstatus */
-#define SSTATUS_SIE_BIT        (1UL << 1)
-
-/* scause interrupt bit (MSB) */
-#define SCAUSE_INTERRUPT_BIT   (1UL << ((sizeof(uintptr_t) * 8) - 1))
 
 /* ===================================================================
  * Globals provided by tests/shvstvecd_strap.S
@@ -67,27 +44,16 @@ extern void               shvstvecd_vectored_handler(void);
 extern volatile uintptr_t g_shvstvecd_vec_marker;
 
 /* ===================================================================
- * vstvec read/write helpers via CSR 0x205 (M/HS-mode)
+ * vstvec read/write helpers
  *
- * We use the framework's hyp_csr.h APIs:
- *   vstvec_read(), vstvec_write()
- * For local clarity, also provide direct inline CSR ops.
+ * Use the framework's hyp_csr.h APIs: vstvec_read(), vstvec_write().
  * =================================================================== */
-static inline uintptr_t vstvec_read_raw(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVEC) : "=r"(v));
-    return v;
-}
-
-static inline void vstvec_write_raw(uintptr_t v) {
-    asm volatile ("csrw " CSR_STR(CSR_VSTVEC) ", %0" :: "r"(v) : "memory");
-}
 
 /* ===================================================================
  * Per-test save / restore vstvec
  * =================================================================== */
-#define VSTVEC_SAVE()        uintptr_t __saved_vstvec = vstvec_read_raw()
-#define VSTVEC_RESTORE()     vstvec_write_raw(__saved_vstvec)
+#define VSTVEC_SAVE()        uintptr_t __saved_vstvec = vstvec_read()
+#define VSTVEC_RESTORE()     vstvec_write(__saved_vstvec)
 
 /* ===================================================================
  * Reset trap-record globals
@@ -102,15 +68,10 @@ static inline void shvstvecd_reset_trap_record(void) {
 }
 
 /* ===================================================================
- * scause helpers
+ * scause helpers (delegate to common/cause_defs.h inline functions)
  * =================================================================== */
-static inline int shvstvecd_is_interrupt(uintptr_t cause) {
-    return (cause & SCAUSE_INTERRUPT_BIT) != 0;
-}
-
-static inline uintptr_t shvstvecd_cause_code(uintptr_t cause) {
-    return cause & ~SCAUSE_INTERRUPT_BIT;
-}
+#define shvstvecd_is_interrupt  cause_is_interrupt
+#define shvstvecd_cause_code    cause_get_code
 
 /* ===================================================================
  * Unmapped VA for page-fault tests (DIR-03).

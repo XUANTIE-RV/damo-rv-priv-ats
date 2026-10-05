@@ -32,25 +32,7 @@ bool test_shvstvala_lpf_01(void) {
     /* Setup two-stage: VS-stage Sv39 with identity map for code/stack,
      * UNMAPPED_VA_1 deliberately NOT mapped. G-stage identity. */
     two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
-
-    /* VS-stage: identity map kernel region at 2MB granule */
-    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
-    uintptr_t lo_end  = r_start & ~(PAGE_SIZE_2M - 1);
-    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    two_stage_vs_identity(&ctx, lo_base, lo_end - lo_base,
-                          vs_flags, PT_LEVEL_2M);
-    /* Identity map test region at 4KB */
-    uintptr_t r_size = (uintptr_t)__vm_test_region_end - r_start;
-    two_stage_vs_identity(&ctx, r_start, r_size, vs_flags, PT_LEVEL_4K);
-
-    /* G-stage: full identity map */
-    two_stage_setup_identity(&ctx, lo_base, lo_end - lo_base,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
-    two_stage_setup_identity(&ctx, r_start, r_size,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Execute in VS-mode: load from UNMAPPED_VA_1 */
     two_stage_run_in_vs(&ctx, vsmode_load_addr, UNMAPPED_VA_1);
@@ -79,28 +61,12 @@ bool test_shvstvala_spf_01(void) {
     g_shvstvala_cause  = 0;
 
     two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
-
-    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
-    uintptr_t lo_end  = r_start & ~(PAGE_SIZE_2M - 1);
-    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    two_stage_vs_identity(&ctx, lo_base, lo_end - lo_base,
-                          vs_flags, PT_LEVEL_2M);
-    uintptr_t r_size = (uintptr_t)__vm_test_region_end - r_start;
-    two_stage_vs_identity(&ctx, r_start, r_size, vs_flags, PT_LEVEL_4K);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Override test_data_area page: V=1,R=1,W=0 (read-only) */
     uintptr_t target_va = (uintptr_t)test_data_area;
     uintptr_t ro_flags = PTE_V | PTE_R | PTE_A | PTE_D;  /* no W */
     two_stage_vs_map(&ctx, target_va, target_va, ro_flags, PT_LEVEL_4K);
-
-    /* G-stage: full identity map */
-    two_stage_setup_identity(&ctx, lo_base, lo_end - lo_base,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
-    two_stage_setup_identity(&ctx, r_start, r_size,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
 
     /* VS-mode: store to read-only page */
     two_stage_run_in_vs(&ctx, vsmode_store_addr, target_va);
@@ -129,28 +95,12 @@ bool test_shvstvala_ipf_01(void) {
     g_shvstvala_cause  = 0;
 
     two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
-
-    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
-    uintptr_t lo_end  = r_start & ~(PAGE_SIZE_2M - 1);
-    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    two_stage_vs_identity(&ctx, lo_base, lo_end - lo_base,
-                          vs_flags, PT_LEVEL_2M);
-    uintptr_t r_size = (uintptr_t)__vm_test_region_end - r_start;
-    two_stage_vs_identity(&ctx, r_start, r_size, vs_flags, PT_LEVEL_4K);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Override test_exec_target: V=1,R=1,W=0,X=0 (no execute) */
     uintptr_t target_pc = (uintptr_t)test_exec_target;
     uintptr_t nox_flags = PTE_V | PTE_R | PTE_A | PTE_D;  /* no X */
     two_stage_vs_map(&ctx, target_pc, target_pc, nox_flags, PT_LEVEL_4K);
-
-    /* G-stage: full identity map */
-    two_stage_setup_identity(&ctx, lo_base, lo_end - lo_base,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
-    two_stage_setup_identity(&ctx, r_start, r_size,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
 
     /* VS-mode: fetch from non-executable page */
     two_stage_run_in_vs(&ctx, vsmode_fetch_addr, target_pc);
@@ -178,23 +128,7 @@ bool test_shvstvala_lpf_02(void) {
     g_shvstvala_cause  = 0;
 
     two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
-
-    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
-    uintptr_t lo_end  = r_start & ~(PAGE_SIZE_2M - 1);
-    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    two_stage_vs_identity(&ctx, lo_base, lo_end - lo_base,
-                          vs_flags, PT_LEVEL_2M);
-    uintptr_t r_size = (uintptr_t)__vm_test_region_end - r_start;
-    two_stage_vs_identity(&ctx, r_start, r_size, vs_flags, PT_LEVEL_4K);
-
-    /* G-stage: full identity map */
-    two_stage_setup_identity(&ctx, lo_base, lo_end - lo_base,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
-    two_stage_setup_identity(&ctx, r_start, r_size,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Use UNMAPPED_VA_2 (different from LPF-01) */
     two_stage_run_in_vs(&ctx, vsmode_load_addr, UNMAPPED_VA_2);
@@ -222,22 +156,7 @@ bool test_shvstvala_spf_02(void) {
     g_shvstvala_cause  = 0;
 
     two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
-
-    uintptr_t lo_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-    uintptr_t r_start = (uintptr_t)__vm_test_region_start;
-    uintptr_t lo_end  = r_start & ~(PAGE_SIZE_2M - 1);
-    uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    two_stage_vs_identity(&ctx, lo_base, lo_end - lo_base,
-                          vs_flags, PT_LEVEL_2M);
-    uintptr_t r_size = (uintptr_t)__vm_test_region_end - r_start;
-    two_stage_vs_identity(&ctx, r_start, r_size, vs_flags, PT_LEVEL_4K);
-
-    two_stage_setup_identity(&ctx, lo_base, lo_end - lo_base,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_2M);
-    two_stage_setup_identity(&ctx, r_start, r_size,
-                             G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+    ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Store to unmapped VA */
     two_stage_run_in_vs(&ctx, vsmode_store_addr, UNMAPPED_VA_1);

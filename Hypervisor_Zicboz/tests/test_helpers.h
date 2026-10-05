@@ -40,29 +40,8 @@ extern uint8_t __vm_test_region_start[];
 extern uint8_t __vm_test_region_end[];
 extern char __cmo_test_data_start[];
 
-#ifndef TEST_REGION_BASE
-#define TEST_REGION_BASE  ((uintptr_t)__vm_test_region_start)
-#endif
-
-/* ===================================================================
- * henvcfg CMO field accessors (CSR 0x60A)
- * =================================================================== */
-
-static inline uintptr_t henvcfg_get_cbze(void)
-{
-    uintptr_t val = henvcfg_read();
-    return (val & ENVCFG_CBZE) ? 1 : 0;
-}
-
-static inline void henvcfg_set_cbze(unsigned en)
-{
-    uintptr_t val = henvcfg_read();
-    if (en)
-        val |= ENVCFG_CBZE;
-    else
-        val &= ~ENVCFG_CBZE;
-    henvcfg_write(val);
-}
+/* henvcfg CMO field accessors (henvcfg_get/set_cbze) are provided by
+ * common/cmo/cmo.h (CSR 0x60A). */
 
 /* ===================================================================
  * H extension detection
@@ -94,18 +73,6 @@ static uintptr_t vs_cbo_zero(uintptr_t arg)
  * =================================================================== */
 #define HTINST_CBO_ZERO    0x0040200FUL
 
-/* ===================================================================
- * stval validation for CBO virtual-instruction:
- * Per SPEC, stval = instruction encoding or 0.
- * We verify: if non-zero, bits [6:0]=0x0F, [14:12]=2, [31:20]=operation.
- * =================================================================== */
-static bool stval_is_cbo_insn(uintptr_t stval, uint32_t operation)
-{
-    if (stval == 0)
-        return true;
-    uint32_t expected = (operation << 20) | (2 << 12) | 0x0F;
-    uint32_t mask = (0xFFF << 20) | (7 << 12) | 0x7F;
-    return (stval & mask) == expected;
-}
+/* stval_is_cbo_insn() is provided by common/cmo/cmo.h. */
 
 #endif /* HYPERVISOR_ZICBOZ_TEST_HELPERS_H */

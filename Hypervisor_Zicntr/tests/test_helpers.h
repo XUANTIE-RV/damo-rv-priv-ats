@@ -25,6 +25,7 @@
 #include "hyp/hyp_defs.h"
 #include "hyp/hyp_priv.h"
 #include "hyp/hyp_trap.h"
+#include "hyp/hyp_test_helpers.h"
 
 /* Dynamic CSR read (defined in common/csr_accessors.c) */
 extern uintptr_t csr_read(uint16_t csr);
@@ -63,25 +64,9 @@ extern uintptr_t csr_read(uint16_t csr);
 /* ===================================================================
  * VS/VU-mode counter read payloads (invoked via run_in_vs/vu_mode)
  *
- * "csrr rd, time" assembles to csrrs rd, 0xC01, x0 -- the canonical
- * rdtime encoding; likewise cycle == rdcycle.
+ * Reuse common vs_read_time()/vs_read_cycle() from hyp/hyp_test_helpers.h
+ * ("csrr rd, time" == canonical rdtime; "csrr rd, cycle" == rdcycle).
  * =================================================================== */
-
-static uintptr_t _vs_read_time(uintptr_t arg)
-{
-    (void)arg;
-    uintptr_t v;
-    asm volatile("csrr %0, time" : "=r"(v) :: "memory");
-    return v;
-}
-
-static uintptr_t _vs_read_cycle(uintptr_t arg)
-{
-    (void)arg;
-    uintptr_t v;
-    asm volatile("csrr %0, cycle" : "=r"(v) :: "memory");
-    return v;
-}
 
 /* ===================================================================
  * HS-mode rdtime payload (PRIV_DO after goto_priv(PRIV_S))

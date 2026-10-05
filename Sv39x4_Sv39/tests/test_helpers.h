@@ -35,6 +35,7 @@
 #include "hyp/two_stage.h"
 #include "hyp/two_stage_helpers.h"
 #include "hyp/test_vs_helpers.h"
+#include "hyp/hyp_test_helpers.h"
 
 /* Linker-provided test-region symbols (see kernel.ld). */
 extern uint8_t test_data_area[];
@@ -44,13 +45,24 @@ extern uint8_t test_exec_target[];
 extern uint8_t __vm_test_region_start[];
 extern uint8_t __vm_test_region_end[];
 
-/* The test region base address is the start of the .vm_test_region
- * section. It is 2MB-aligned. */
-#define TEST_REGION_BASE   ((uintptr_t)__vm_test_region_start)
+/* ===================================================================
+ * Shared VS-mode SUM-controlled load helper
+ *
+ * Used by Group 1 (test_vs_only), Group 7 (test_perm_cross), and
+ * Group 9 (test_sum). The caller sets g_vs_sum_value before entering
+ * VS-mode; the helper configures vsstatus.SUM accordingly then loads.
+ * =================================================================== */
+static volatile int g_vs_sum_value;
 
-/* Common identity-mapping flags for setting up the code/data region.
- * G-stage requires U=1 because all G-stage accesses are treated as
- * U-mode. */
-#define G_FLAGS_RWXU_AD    (PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D)
+static uintptr_t vs_load_with_sum(uintptr_t va) {
+    uintptr_t sm = SSTATUS_SUM_BIT;
+    if (g_vs_sum_value)
+        asm volatile ("csrs sstatus, %0" :: "r"(sm) : "memory");
+    else
+        asm volatile ("csrc sstatus, %0" :: "r"(sm) : "memory");
+    volatile uint64_t *p = (volatile uint64_t *)va;
+    (void)*p;
+    return 0;
+}
 
 #endif /* SV39_SV39X4_TEST_HELPERS_H */

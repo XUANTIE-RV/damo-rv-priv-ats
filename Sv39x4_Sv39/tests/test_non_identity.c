@@ -72,21 +72,21 @@ static bool g5_write_and_check(two_stage_ctx_t *ctx, uintptr_t va,
      * VS-mode side stateless (no need to thread arbitrary magics in). */
     uintptr_t r = ts2_run_check_no_fault(ctx, test_vs_store, va);
     if (r != 0) {
-        printf("  VS-mode store returned %lu (expected 0)\n",
-               (unsigned long)r);
+        LOG_E("VS-mode store returned %lu (expected 0)\n",
+              (unsigned long)r);
         return false;
     }
     if (*(volatile uint64_t *)expect_spa != HYP_TEST_MAGIC) {
-        printf("  expected SPA 0x%lx not modified (got 0x%lx)\n",
-               (unsigned long)expect_spa,
-               (unsigned long)*(volatile uint64_t *)expect_spa);
+        LOG_E("expected SPA 0x%lx not modified (got 0x%lx)\n",
+              (unsigned long)expect_spa,
+              (unsigned long)*(volatile uint64_t *)expect_spa);
         return false;
     }
     for (int i = 0; i < n_others; i++) {
         if (*(volatile uint64_t *)other_spas[i] != 0) {
-            printf("  unexpected modification at SPA 0x%lx (got 0x%lx)\n",
-                   (unsigned long)other_spas[i],
-                   (unsigned long)*(volatile uint64_t *)other_spas[i]);
+            LOG_E("unexpected modification at SPA 0x%lx (got 0x%lx)\n",
+                  (unsigned long)other_spas[i],
+                  (unsigned long)*(volatile uint64_t *)other_spas[i]);
             return false;
         }
     }
@@ -238,11 +238,11 @@ bool test_ts_nid_04_multi_page(void) {
               (*(volatile uint64_t *)S2 == G5_MAGIC_2) &&
               (*(volatile uint64_t *)S3 == G5_MAGIC_3);
     if (!ok) {
-        printf("  S0=0x%lx S1=0x%lx S2=0x%lx S3=0x%lx\n",
-               (unsigned long)*(volatile uint64_t *)S0,
-               (unsigned long)*(volatile uint64_t *)S1,
-               (unsigned long)*(volatile uint64_t *)S2,
-               (unsigned long)*(volatile uint64_t *)S3);
+        LOG_W("S0=0x%lx S1=0x%lx S2=0x%lx S3=0x%lx\n",
+              (unsigned long)*(volatile uint64_t *)S0,
+              (unsigned long)*(volatile uint64_t *)S1,
+              (unsigned long)*(volatile uint64_t *)S2,
+              (unsigned long)*(volatile uint64_t *)S3);
     }
     TEST_ASSERT("4 SPAs hold the 4 distinct magics in order", ok);
 

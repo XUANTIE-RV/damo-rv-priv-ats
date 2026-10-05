@@ -40,7 +40,7 @@ bool test_hcfi_ss_15(void) {
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_read_ssp, 0);
     TEST_ASSERT_EQ("virtual-instruction exception", r, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-16: VS-mode + henvcfg.SSE=1 + menvcfg.SSE=1, ssp normal */
@@ -61,7 +61,7 @@ bool test_hcfi_ss_16(void) {
     r = two_stage_run_in_vs(&ctx, vs_read_ssp, 0);
     TEST_ASSERT("ssp read succeeds (SSE=1)", r == 0);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-17: VS-mode + menvcfg.SSE=0 -> illegal-instruction */
@@ -79,7 +79,7 @@ bool test_hcfi_ss_17(void) {
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_read_ssp, 0);
     TEST_ASSERT_EQ("illegal-instruction exception", r, (uintptr_t)CAUSE_ILLEGAL_INST);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-18: VU-mode + henvcfg.SSE=0 -> virtual-instruction */
@@ -93,12 +93,12 @@ bool test_hcfi_ss_18(void) {
     pt_pool_reset(); gpt_pool_reset();
     ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(false, true);
-    senvcfg_set(SENVCFG_SSE);
+    senvcfg_set_bits(SENVCFG_SSE);
 
     uintptr_t r = two_stage_run_in_vu(&ctx, vu_read_ssp, 0);
     TEST_ASSERT_EQ("virtual-instruction exception", r, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-19: VU-mode + senvcfg.SSE=0 -> virtual-instruction */
@@ -112,13 +112,13 @@ bool test_hcfi_ss_19(void) {
     pt_pool_reset(); gpt_pool_reset();
     ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
-    senvcfg_clear(SENVCFG_SSE);
+    senvcfg_clear_bits(SENVCFG_SSE);
 
     uintptr_t r = two_stage_run_in_vu(&ctx, vu_read_ssp, 0);
     TEST_ASSERT_EQ("virtual-instruction exception", r, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
 
-    senvcfg_set(SENVCFG_SSE);
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    senvcfg_set_bits(SENVCFG_SSE);
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-20: VU-mode + all enable, ssp normal */
@@ -132,7 +132,7 @@ bool test_hcfi_ss_20(void) {
     pt_pool_reset(); gpt_pool_reset();
     ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, true);
-    senvcfg_set(SENVCFG_SSE);
+    senvcfg_set_bits(SENVCFG_SSE);
 
     uintptr_t r = two_stage_run_in_vu(&ctx, vu_write_ssp, 0xBEEF);
     TEST_ASSERT("ssp write in VU-mode succeeds", r == 0);
@@ -140,8 +140,8 @@ bool test_hcfi_ss_20(void) {
     r = two_stage_run_in_vu(&ctx, vu_read_ssp, 0);
     TEST_ASSERT("ssp read in VU-mode succeeds", r == 0);
 
-    senvcfg_clear(SENVCFG_SSE);
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    senvcfg_clear_bits(SENVCFG_SSE);
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-21: VU-mode + menvcfg.SSE=0 -> illegal-instruction */
@@ -159,7 +159,7 @@ bool test_hcfi_ss_21(void) {
     uintptr_t r = two_stage_run_in_vu(&ctx, vu_read_ssp, 0);
     TEST_ASSERT_EQ("illegal-instruction exception", r, (uintptr_t)CAUSE_ILLEGAL_INST);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-22: VS-mode write ssp, HS-mode can read */
@@ -186,7 +186,7 @@ bool test_hcfi_ss_22(void) {
     uintptr_t val = ssp_read();
     TEST_ASSERT_EQ("HS-mode reads ssp value from VS-mode write", val, (uintptr_t)0x1238);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }
 
 /* HCFI-SS-23: VS-mode ssp alignment check */
@@ -209,5 +209,5 @@ bool test_hcfi_ss_23(void) {
     TEST_ASSERT_EQ("store/AMO access-fault from misaligned ssp",
                    r, (uintptr_t)CAUSE_STORE_ACCESS_FAULT);
 
-    cfi_restore_henvcfg(orig_h); ts2_finish(&ctx); HYP_TEST_END();
+    henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
 }

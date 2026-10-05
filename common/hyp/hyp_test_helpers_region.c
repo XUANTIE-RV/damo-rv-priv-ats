@@ -116,6 +116,15 @@ uintptr_t setup_implicit_walk_victim(two_stage_ctx_t *ctx,
                                      uintptr_t test_va,
                                      uintptr_t victim_g_flags)
 {
+    return setup_implicit_walk_victim_level(ctx, test_va, PT_LEVEL_4K,
+                                            victim_g_flags);
+}
+
+uintptr_t setup_implicit_walk_victim_level(two_stage_ctx_t *ctx,
+                                           uintptr_t test_va,
+                                           int victim_pt_level,
+                                           uintptr_t victim_g_flags)
+{
     gpt_pool_reset();
     two_stage_init(ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
@@ -131,9 +140,9 @@ uintptr_t setup_implicit_walk_victim(two_stage_ctx_t *ctx,
                           vs_flags, PT_LEVEL_2M);
     two_stage_vs_map(ctx, test_va, r_start, vs_flags, PT_LEVEL_4K);
 
-    /* Leaf PT page holding the PTE for test_va (level 0). */
+    /* PT page holding the PTE for test_va at the requested level. */
     uintptr_t victim_gpa =
-        two_stage_vs_pt_page_addr(ctx, test_va, PT_LEVEL_4K);
+        two_stage_vs_pt_page_addr(ctx, test_va, victim_pt_level);
     if (victim_gpa == 0)
         return 0;
     uintptr_t victim_page = victim_gpa & ~(PAGE_SIZE_4K - 1);

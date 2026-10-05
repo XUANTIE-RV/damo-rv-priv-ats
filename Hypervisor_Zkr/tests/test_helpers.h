@@ -25,8 +25,6 @@
  * seed CSR definitions (address 0x015)
  * =================================================================== */
 
-#define CSR_SEED        0x015
-
 /* OPST field: bits [31:30] */
 #define SEED_OPST_SHIFT     30
 #define SEED_OPST_MASK      (0x3UL << SEED_OPST_SHIFT)

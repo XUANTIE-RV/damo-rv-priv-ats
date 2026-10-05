@@ -26,6 +26,7 @@
  */
 
 #include "hyp_test_helpers.h"
+#include "cmo/cmo.h"
 
 /* Group 1 */ #include "test_csr_basics.c"
 /* Group 2 */ #include "test_hstatus.c"

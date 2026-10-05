@@ -39,8 +39,6 @@
 extern uint8_t __vm_test_region_start[];
 extern uint8_t __vm_test_region_end[];
 
-#define TEST_REGION_BASE   ((uintptr_t)__vm_test_region_start)
-
 /* First 64 KiB NAPOT region */
 #define NAPOT_TEST_REGION_0  TEST_REGION_BASE
 
@@ -48,18 +46,8 @@ extern uint8_t __vm_test_region_end[];
 #define NAPOT_TEST_REGION_1  (TEST_REGION_BASE + NAPOT_64K_SIZE)
 
 /* ===================================================================
- * Guest-page-fault cause codes
- * =================================================================== */
-#define CAUSE_INST_GUEST_PAGE_FAULT    20
-#define CAUSE_LOAD_GUEST_PAGE_FAULT    21
-#define CAUSE_STORE_GUEST_PAGE_FAULT   23
-
-/* ===================================================================
  * NAPOT PTE Constants (from Svnapot spec)
  * =================================================================== */
-
-/* PTE N bit (bit 63) - enables NAPOT translation contiguity */
-#define PTE_N               (1UL << 63)
 
 /* NAPOT 64 KiB region parameters */
 #define NAPOT_64K_PAGES     16                      /* 16 x 4 KiB pages */
@@ -149,7 +137,7 @@ static void gstage_napot_install_pte(gpt_context_t *g_ctx,
     /* Get pointer to the L0 PTE for the base GPA */
     uintptr_t *base_pte = gpt_get_pte(g_ctx, base_gpa, PT_LEVEL_4K);
     if (!base_pte) {
-        printf("ERROR: gstage_napot_install_pte: could not get L0 PTE\n");
+        LOG_E("gstage_napot_install_pte: could not get L0 PTE\n");
         return;
     }
 
@@ -185,7 +173,7 @@ static void vstage_napot_install_pte(two_stage_ctx_t *ctx,
 
     uintptr_t *base_pte = pt_get_pte(&ctx->vs_ctx, base_va, PT_LEVEL_4K);
     if (!base_pte) {
-        printf("ERROR: vstage_napot_install_pte: could not get L0 PTE\n");
+        LOG_E("vstage_napot_install_pte: could not get L0 PTE\n");
         return;
     }
 
@@ -217,20 +205,6 @@ static uintptr_t vs_access_all_16_pages(uintptr_t base) {
         if (val != expected)
             return (uintptr_t)i * PAGE_SIZE_4K + 1;
     }
-    return 0;
-}
-
-/*
- * vs_read_write_single - Write and read back a single location
- * @addr: Address to test
- * Returns 0 on success, 1 on mismatch.
- */
-static uintptr_t vs_read_write_single(uintptr_t addr) {
-    volatile uintptr_t *ptr = (volatile uintptr_t *)addr;
-    *ptr = MAGIC_WRITE;
-    uintptr_t val = *ptr;
-    if (val != MAGIC_WRITE)
-        return 1;
     return 0;
 }
 

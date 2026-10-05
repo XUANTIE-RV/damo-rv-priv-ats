@@ -18,12 +18,6 @@
  *     violations raise page faults); ADUE=1 (Svadu) => hardware updates.
  * =================================================================== */
 
-#ifndef MENVCFG_ADUE
-#define MENVCFG_ADUE   (1ULL << 61)
-#endif
-#ifndef HENVCFG_ADUE
-#define HENVCFG_ADUE   (1ULL << 61)
-#endif
 #define HZ_HENVCFG_FIOM   (1UL << 0)
 
 /* lr.w.aq + sc.w.rl pair (FIOM ordering variants). */
@@ -57,7 +51,7 @@ static void hzlrsc_fiom_case(int fiom)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("FIOM setting: lr.w.aq/sc.w.rl executable (no trap)", !fired);
     TEST_ASSERT_NEQ("FIOM setting: no virtual-instruction (cause=22)",
                     cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
@@ -81,8 +75,8 @@ bool test_hzlrsc_30_fiom1(void)
     REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
     hzlrsc_fiom_case(1);
-    printf("  [INFO] FIOM ordering effect requires multi-hart: %s\n",
-           HZLRSC_SMP_SKIP_REASON);
+    LOG_I("FIOM ordering effect requires multi-hart: %s\n",
+          HZLRSC_SMP_SKIP_REASON);
     HYP_TEST_END();
 }
 
@@ -146,9 +140,9 @@ bool test_hzlrsc_32_failed_sc_d_side_effect(void)
     ts2_disable_adue();
     ts2_finish(&ctx);
 
-    printf("  [RECORD] failed-SC VS-stage D bit after: %s (trap=%d); "
-           "both set and clear are UNSPECIFIED-compliant\n",
-           d_after ? "SET" : "clear", (int)fired);
+    LOG_I("failed-SC VS-stage D bit after: %s (trap=%d); "
+          "both set and clear are UNSPECIFIED-compliant\n",
+          d_after ? "SET" : "clear", (int)fired);
     /* Record-type: no mandatory assertion on the D-bit outcome. */
     TEST_ASSERT("record-type case executed", true);
 
@@ -195,9 +189,9 @@ bool test_hzlrsc_33_failed_sc_gstage_d_side_effect(void)
     ts2_disable_adue();
     ts2_finish(&ctx);
 
-    printf("  [RECORD] failed-SC G-stage D bit after: %s (trap=%d); "
-           "UNSPECIFIED (each stage independently)\n",
-           gd_after ? "SET" : "clear", (int)fired);
+    LOG_I("failed-SC G-stage D bit after: %s (trap=%d); "
+          "UNSPECIFIED (each stage independently)\n",
+          gd_after ? "SET" : "clear", (int)fired);
     TEST_ASSERT("record-type case executed", true);
 
     HYP_TEST_END();

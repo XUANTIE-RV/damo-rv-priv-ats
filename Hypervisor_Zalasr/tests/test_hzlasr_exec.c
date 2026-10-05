@@ -71,7 +71,7 @@ bool test_hzlasr_01_hs_exec(void)
     uintptr_t cause = fired ? trap_get_cause() : 0;
     trap_expect_end();
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("HS-mode load-acquire/store-release set took no trap", !fired);
 
     /* load-acquire rd sign-extension: a byte with bit7 set. */
@@ -119,7 +119,7 @@ bool test_hzlasr_02_vs_exec_no_cause22(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("VS-mode Zalasr set took no trap", !fired);
     TEST_ASSERT_NEQ("VS-mode Zalasr did not report cause=22",
                     cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
@@ -153,7 +153,7 @@ bool test_hzlasr_03_vu_exec_no_cause22(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu\n", (unsigned long)cause);
     TEST_ASSERT("VU-mode Zalasr set took no trap", !fired);
     TEST_ASSERT_NEQ("VU-mode Zalasr did not report cause=22",
                     cause, (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);

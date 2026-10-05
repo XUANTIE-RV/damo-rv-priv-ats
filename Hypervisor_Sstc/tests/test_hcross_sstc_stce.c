@@ -26,15 +26,15 @@ bool test_hcross_sstc_01(void)
     uintptr_t orig_h = henvcfg_read();
 
     /* menvcfg.STCE must be 1 for henvcfg.STCE to be writable */
-    menvcfg_set(MENVCFG_STCE);
+    menvcfg_set_bits(MENVCFG_STCE);
 
     /* Write henvcfg.STCE=1 */
-    henvcfg_set(HENVCFG_STCE);
+    henvcfg_set_bits(HENVCFG_STCE);
     uintptr_t val = henvcfg_read();
     TEST_ASSERT("henvcfg.STCE set to 1", (val & HENVCFG_STCE) != 0);
 
     /* Write henvcfg.STCE=0 */
-    henvcfg_clear(HENVCFG_STCE);
+    henvcfg_clear_bits(HENVCFG_STCE);
     val = henvcfg_read();
     TEST_ASSERT("henvcfg.STCE cleared to 0", (val & HENVCFG_STCE) == 0);
 
@@ -58,10 +58,10 @@ bool test_hcross_sstc_02(void)
     uintptr_t orig_h = henvcfg_read();
 
     /* Ensure menvcfg.STCE=0 */
-    menvcfg_clear(MENVCFG_STCE);
+    menvcfg_clear_bits(MENVCFG_STCE);
 
     /* Try to set henvcfg.STCE=1 -- should be ignored */
-    henvcfg_set(HENVCFG_STCE);
+    henvcfg_set_bits(HENVCFG_STCE);
     uintptr_t val = henvcfg_read();
     TEST_ASSERT("henvcfg.STCE remains 0 when menvcfg.STCE=0",
                 (val & HENVCFG_STCE) == 0);

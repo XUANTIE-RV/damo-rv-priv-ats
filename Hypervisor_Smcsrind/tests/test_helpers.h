@@ -24,205 +24,26 @@
 #endif
 
 /* ===================================================================
- * VS-mode CSR addresses (vsiselect/vsireg*)
- * Accessed from HS-mode or M-mode via CSR addresses 0x250-0x257
+ * Indirect CSR accessors (vsiselect/vsireg*, miselect/mireg*) are
+ * provided by common/hyp/hyp_csr.h. Only suite-specific VS-mode
+ * callbacks and the stateen writable-probe below remain local.
  * =================================================================== */
-#define CSR_VSISELECT_ADDR  0x250
-#define CSR_VSIREG_ADDR     0x251
-#define CSR_VSIREG2_ADDR    0x252
-#define CSR_VSIREG3_ADDR    0x253
-/* 0x254 = vsiph */
-#define CSR_VSIREG4_ADDR    0x255
-#define CSR_VSIREG5_ADDR    0x256
-#define CSR_VSIREG6_ADDR    0x257
 
 /* ===================================================================
- * M-mode CSR addresses (miselect/mireg* for setup)
+ * State-enable CSR helpers
+ *
+ * mstateen0 / hstateen0 read/write/set/clear accessors come from
+ * common/hyp/hyp_csr.h (mstateen_read(0) / hstateen_set_bits(0, ...) etc.).
+ * Only the writable-probe helper below is suite-specific.
  * =================================================================== */
-#define CSR_MISELECT_ADDR   0x350
-#define CSR_MIREG_ADDR      0x351
-
-/* ===================================================================
- * VS-mode CSR access helpers (vsiselect/vsireg*)
- * =================================================================== */
-
-static inline uintptr_t vsiselect_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_VSISELECT_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void vsiselect_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_VSISELECT_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t vsireg_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_VSIREG_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void vsireg_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_VSIREG_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t vsireg2_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_VSIREG2_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void vsireg2_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_VSIREG2_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t vsireg3_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_VSIREG3_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void vsireg3_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_VSIREG3_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t vsireg4_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_VSIREG4_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void vsireg4_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_VSIREG4_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t vsireg5_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_VSIREG5_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void vsireg5_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_VSIREG5_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t vsireg6_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_VSIREG6_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void vsireg6_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_VSIREG6_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-/* ===================================================================
- * M-mode CSR access helpers (miselect/mireg* for setup)
- * =================================================================== */
-
-static inline uintptr_t miselect_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MISELECT_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void miselect_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_MISELECT_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t mireg_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MIREG_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void mireg_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_MIREG_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-/* ===================================================================
- * State-enable CSR helpers (mstateen0)
- * =================================================================== */
-
-static inline uintptr_t mstateen0_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MSTATEEN0) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void mstateen0_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(v) : "memory");
-}
-
-static inline void mstateen0_set(uintptr_t bits)
-{
-    asm volatile("csrs " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(bits) : "memory");
-}
-
-static inline void mstateen0_clear(uintptr_t bits)
-{
-    asm volatile("csrc " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(bits) : "memory");
-}
-
-/* mstateen0 CSRIND bit (bit 60) */
-#define MSTATEEN0_CSRIND    (1ULL << 60)
-
-/* mstateen0 SE0 bit (bit 63) - controls HS-mode access to hstateen */
-#define MSTATEEN0_SE0       (1ULL << 63)
-
-/* ===================================================================
- * State-enable CSR helpers (hstateen0 - CSR 0x60C)
- * =================================================================== */
-
-static inline uintptr_t hstateen0_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_HSTATEEN0) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void hstateen0_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_HSTATEEN0) ", %0" :: "r"(v) : "memory");
-}
-
-static inline void hstateen0_set(uintptr_t bits)
-{
-    asm volatile("csrs " CSR_STR(CSR_HSTATEEN0) ", %0" :: "r"(bits) : "memory");
-}
-
-static inline void hstateen0_clear(uintptr_t bits)
-{
-    asm volatile("csrc " CSR_STR(CSR_HSTATEEN0) ", %0" :: "r"(bits) : "memory");
-}
 
 /* Check if a specific bit in hstateen0 is writable */
 static inline bool hstateen0_bit_writable(uintptr_t bit)
 {
-    uintptr_t saved = hstateen0_read();
-    hstateen0_set(bit);
-    uintptr_t rb = hstateen0_read();
-    hstateen0_write(saved);
+    uintptr_t saved = hstateen_read(0);
+    hstateen_set_bits(0, bit);
+    uintptr_t rb = hstateen_read(0);
+    hstateen_write(0, saved);
     return (rb & bit) != 0;
 }
 

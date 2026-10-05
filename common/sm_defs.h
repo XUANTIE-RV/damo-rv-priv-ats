@@ -291,6 +291,9 @@
 #define CSR_MHPMCOUNTER30  0xB1E
 #define CSR_MHPMCOUNTER31  0xB1F
 
+/* Parametric M-mode HPM counter CSR address by index n (3..31) */
+#define CSR_MHPMCOUNTER(n)  (CSR_MHPMCOUNTER3 + ((n) - 3))
+
 /* HPM Event CSRs (mhpmevent3-31) */
 #define CSR_MHPMEVENT3   0x323
 #define CSR_MHPMEVENT4   0x324

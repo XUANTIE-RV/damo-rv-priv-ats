@@ -25,7 +25,7 @@
 
 static bool _run_mode_check(int g_mode, const char *mode_name) {
     if (!hgatp_supports_mode(g_mode)) {
-        printf("  [SKIP-mode] %s not supported\n", mode_name);
+        LOG_W("%s not supported\n", mode_name);
         return true;
     }
     uintptr_t target = (uintptr_t)test_fault_page;
@@ -35,19 +35,19 @@ static bool _run_mode_check(int g_mode, const char *mode_name) {
     bool ok = fired;
     if (fired) {
         if (trap_get_cause() != CAUSE_LOAD_GUEST_PAGE_FAULT) {
-            printf("  [%s] cause %lu != 21\n",
-                   mode_name, (unsigned long)trap_get_cause());
+            LOG_E("[%s] cause %lu != 21\n",
+                  mode_name, (unsigned long)trap_get_cause());
             ok = false;
         }
         if (trap_get_htval() != target >> 2) {
-            printf("  [%s] htval 0x%lx != 0x%lx\n",
-                   mode_name,
-                   (unsigned long)trap_get_htval(),
-                   (unsigned long)(target >> 2));
+            LOG_E("[%s] htval 0x%lx != 0x%lx\n",
+                  mode_name,
+                  (unsigned long)trap_get_htval(),
+                  (unsigned long)(target >> 2));
             ok = false;
         }
     } else {
-        printf("  [%s] no trap fired\n", mode_name);
+        LOG_E("[%s] no trap fired\n", mode_name);
     }
     hyp_reset_state();
     return ok;

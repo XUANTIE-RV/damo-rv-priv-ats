@@ -180,6 +180,7 @@ void __attribute__((noreturn)) goto_vs_mode(void) {
         "mret\n\t"
         ::: "memory"
     );
+    __builtin_unreachable();
 }
 
 void __attribute__((noreturn)) goto_vu_mode(void) {
@@ -202,6 +203,7 @@ void __attribute__((noreturn)) goto_vu_mode(void) {
         "mret\n\t"
         ::: "memory"
     );
+    __builtin_unreachable();
 }
 
 void return_to_hs_mode(void) {

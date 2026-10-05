@@ -66,18 +66,7 @@ static void tret_sstatus_write(uintptr_t v)
     asm volatile ("csrw sstatus, %0" :: "r"(v));
 }
 
-static uintptr_t tret_vsstatus_read(void)
-{
-    uintptr_t v;
 
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(v));  /* vsstatus */
-    return v;
-}
-
-static void tret_vsstatus_write(uintptr_t v)
-{
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(v));  /* vsstatus */
-}
 
 static uintptr_t tret_sepc_read(void)
 {
@@ -500,7 +489,7 @@ bool tret_11_sret_v1_to_vs(void) {
                    tret_sepc_read(), TRET_POISON_EPC);
 
     /* vsstatus: SPP=1 (return to VS), SPIE=1, SIE=0. */
-    tret_vsstatus_write(TRET_SSTATUS_SPP | TRET_SSTATUS_SPIE);
+    vsstatus_write(TRET_SSTATUS_SPP | TRET_SSTATUS_SPIE);
     g_tret_landing = 0;
     g_tret_land = (uintptr_t)tret_sret_land;
 
@@ -508,7 +497,7 @@ bool tret_11_sret_v1_to_vs(void) {
 
     TEST_ASSERT_EQ("landed at vsepc target (vsscratch sentinel)",
                    g_tret_landing, TRET_MAGIC_VS);
-    uintptr_t vss = tret_vsstatus_read();
+    uintptr_t vss = vsstatus_read();
     TEST_ASSERT_EQ("vsstatus.SPP cleared by SRET",
                    vss & TRET_SSTATUS_SPP, 0);
     TEST_ASSERT("vsstatus.SIE == old SPIE (1)",
@@ -533,7 +522,7 @@ bool tret_12_sret_v1_to_vu(void) {
 
     tret_sepc_write(TRET_POISON_EPC);
     /* vsstatus: SPP=0 (return to VU), SPIE=1, SIE=0. */
-    tret_vsstatus_write(TRET_SSTATUS_SPIE);
+    vsstatus_write(TRET_SSTATUS_SPIE);
     g_tret_landing = 0;
     g_tret_land = (uintptr_t)tret_sret_land;
 
@@ -549,7 +538,7 @@ bool tret_12_sret_v1_to_vu(void) {
     trap_expect_end();
 
     TEST_ASSERT_EQ("vsstatus.SPP cleared by SRET",
-                   tret_vsstatus_read() & TRET_SSTATUS_SPP, 0);
+                   vsstatus_read() & TRET_SSTATUS_SPP, 0);
     TEST_ASSERT_EQ("HS sepc untouched by SRET(V=1)",
                    tret_sepc_read(), TRET_POISON_EPC);
 
@@ -568,27 +557,27 @@ bool tret_13_sret_v1_sie_spie(void) {
     asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
 
     /* Pattern (a): SPIE=1, SIE=0 -> after SRET: SIE=1, SPIE=1. */
-    tret_vsstatus_write(TRET_SSTATUS_SPP | TRET_SSTATUS_SPIE);
+    vsstatus_write(TRET_SSTATUS_SPP | TRET_SSTATUS_SPIE);
     g_tret_landing = 0;
     g_tret_land = (uintptr_t)tret_sret_land;
 
     VS_EXPECT_NO_TRAP(run_in_vs_mode(vs_sret_probe, 0));
     TEST_ASSERT_EQ("pattern (a): landed in VS-mode",
                    g_tret_landing, TRET_MAGIC_VS);
-    uintptr_t vss = tret_vsstatus_read();
+    uintptr_t vss = vsstatus_read();
     TEST_ASSERT("pattern (a): SIE == old SPIE (1)",
                 (vss & TRET_SSTATUS_SIE) != 0);
     TEST_ASSERT("pattern (a): SPIE == 1",
                 (vss & TRET_SSTATUS_SPIE) != 0);
 
     /* Pattern (b): SPIE=0, SIE=1 -> after SRET: SIE=0, SPIE=1. */
-    tret_vsstatus_write(TRET_SSTATUS_SPP | TRET_SSTATUS_SIE);
+    vsstatus_write(TRET_SSTATUS_SPP | TRET_SSTATUS_SIE);
     g_tret_landing = 0;
 
     VS_EXPECT_NO_TRAP(run_in_vs_mode(vs_sret_probe, 0));
     TEST_ASSERT_EQ("pattern (b): landed in VS-mode",
                    g_tret_landing, TRET_MAGIC_VS);
-    vss = tret_vsstatus_read();
+    vss = vsstatus_read();
     TEST_ASSERT("pattern (b): SIE == old SPIE (0)",
                 (vss & TRET_SSTATUS_SIE) == 0);
     TEST_ASSERT("pattern (b): SPIE == 1",
@@ -658,7 +647,7 @@ bool tret_16_sret_v1_preserves_v0(void) {
     tret_sepc_write(TRET_POISON_EPC);
 
     /* vsstatus: SPP=1 keeps the probe in VS-mode across the SRET. */
-    tret_vsstatus_write(TRET_SSTATUS_SPP | TRET_SSTATUS_SPIE);
+    vsstatus_write(TRET_SSTATUS_SPP | TRET_SSTATUS_SPIE);
     g_tret_landing = 0;
     g_tret_land = (uintptr_t)tret_sret_land;
 
@@ -686,7 +675,7 @@ bool tret_17_sret_v0_preserves_vs(void) {
     TEST_BEGIN("TRET-17: SRET(V=0) leaves vsstatus/vsepc intact");
 
     /* Pre-load VS state that a spec-compliant SRET(V=0) must keep. */
-    tret_vsstatus_write(TRET_SSTATUS_SPP);
+    vsstatus_write(TRET_SSTATUS_SPP);
     tret_vsepc_write(TRET_POISON_EPC);
     asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
 
@@ -703,7 +692,7 @@ bool tret_17_sret_v0_preserves_vs(void) {
                    g_tret_landing, TRET_MAGIC_VS);
     /* sret_v0 operates only on hstatus/sstatus/sepc. */
     TEST_ASSERT("vsstatus.SPP unchanged by SRET(V=0)",
-                (tret_vsstatus_read() & TRET_SSTATUS_SPP) != 0);
+                (vsstatus_read() & TRET_SSTATUS_SPP) != 0);
     TEST_ASSERT_EQ("vsepc unchanged by SRET(V=0)",
                    tret_vsepc_read(), TRET_POISON_EPC);
 
@@ -779,7 +768,7 @@ bool tret_19_vs_trap_vs_sret_resume(void) {
     TEST_ASSERT_EQ("VS handler SRET resumed guest execution",
                    g_tret_flag, TRET_FLAG_MAGIC);
     TEST_ASSERT_EQ("vsstatus.SPP cleared by VS SRET",
-                   tret_vsstatus_read() & TRET_SSTATUS_SPP, 0);
+                   vsstatus_read() & TRET_SSTATUS_SPP, 0);
     TEST_ASSERT("HS sstatus.SPP untouched by the V=1 path",
                 (tret_sstatus_read() & TRET_SSTATUS_SPP) != 0);
 

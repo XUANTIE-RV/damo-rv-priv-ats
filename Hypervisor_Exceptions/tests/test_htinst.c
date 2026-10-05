@@ -357,10 +357,10 @@ bool htinst_compressed_encoding(void) {
 
     uintptr_t val = trap_get_htinst();
     if (!(val == 0 || val == golden)) {
-        printf("  [INFO] TINST-08: trap-inst-reg=0x%lx golden=0x%lx "
-               "tval=0x%lx\n",
-               (unsigned long)val, (unsigned long)golden,
-               (unsigned long)tval);
+        LOG_W("TINST-08: trap-inst-reg=0x%lx golden=0x%lx "
+              "tval=0x%lx\n",
+              (unsigned long)val, (unsigned long)golden,
+              (unsigned long)tval);
     }
     TEST_ASSERT("htinst == 0 or transformed uncompressed equivalent",
                 val == 0 || val == golden);

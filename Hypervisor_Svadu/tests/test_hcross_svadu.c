@@ -45,11 +45,11 @@ bool test_hcross_svadu_01(void) {
         uintptr_t old_henvcfg = henvcfg_read();
 
         /* Try to write henvcfg.ADUE=1 */
-        henvcfg_adue_set(1);
+        henvcfg_set_adue(1);
         int readback_1 = henvcfg_adue_read();
 
         /* Try to write henvcfg.ADUE=0 */
-        henvcfg_adue_set(0);
+        henvcfg_set_adue(0);
         int readback_0 = henvcfg_adue_read();
 
         /* Restore original values */
@@ -60,7 +60,7 @@ bool test_hcross_svadu_01(void) {
         TEST_ASSERT("ADUE=0 writable", readback_0 == 0);
     } else {
         /* Svadu not implemented: henvcfg.ADUE must be read-only zero. */
-        henvcfg_adue_set(1);
+        henvcfg_set_adue(1);
         int readback_1 = henvcfg_adue_read();
         TEST_ASSERT("ADUE read-only zero without Svadu", readback_1 == 0);
     }
@@ -98,7 +98,7 @@ bool test_hcross_svadu_02(void) {
 
     /* Enable ADUE: menvcfg.ADUE=1 + henvcfg.ADUE=1 */
     menvcfg_adue_set(1);
-    henvcfg_adue_set(1);
+    henvcfg_set_adue(1);
 
     /* Target VA in test region */
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -158,7 +158,7 @@ bool test_hcross_svadu_03(void) {
 
     /* Enable ADUE: menvcfg.ADUE=1 + henvcfg.ADUE=1 */
     menvcfg_adue_set(1);
-    henvcfg_adue_set(1);
+    henvcfg_set_adue(1);
 
     /* Target VA in test region */
     uintptr_t test_va = (uintptr_t)test_data_area;
@@ -219,7 +219,7 @@ bool test_hcross_svadu_04(void) {
 
     /* Disable ADUE: menvcfg.ADUE=0 + henvcfg.ADUE=0 */
     menvcfg_adue_set(0);
-    henvcfg_adue_set(0);
+    henvcfg_set_adue(0);
 
     /* Target VA in test region */
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -294,7 +294,7 @@ bool test_hcross_svadu_05(void) {
      * Note: henvcfg.ADUE is read-only zero when menvcfg.ADUE=0
      * (norm:menvcfg_adue_henvcfg_adue_rdonly0) */
     menvcfg_adue_set(0);
-    henvcfg_adue_set(1);
+    henvcfg_set_adue(1);
 
     /* Target VA in test region */
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -312,15 +312,15 @@ bool test_hcross_svadu_05(void) {
     /* Re-set henvcfg.ADUE=1: when menvcfg.ADUE was 0, henvcfg.ADUE
      * was forced to read-only zero. After enabling menvcfg.ADUE,
      * henvcfg.ADUE must be explicitly set again. */
-    henvcfg_adue_set(1);
+    henvcfg_set_adue(1);
 
     /* First VS-mode access WITHOUT HFENCE.GVMA.
      * Behavior is implementation-dependent: TLB may still cache
      * the old ADUE=0 interpretation, causing a fault; or the
      * implementation may immediately pick up the new ADUE=1. */
     uintptr_t result_first = two_stage_run_in_vs(&ctx, vs_load, test_va);
-    printf("  First access (no HFENCE.GVMA): result=0x%lx (impl-defined)\n",
-           (unsigned long)result_first);
+    LOG_I("First access (no HFENCE.GVMA): result=0x%lx (impl-defined)\n",
+          (unsigned long)result_first);
 
     /* Clear A-bit again (in case first access set it) */
     vs_pte_clear_ad(&ctx, test_va, PT_LEVEL_4K);
@@ -371,7 +371,7 @@ bool test_hcross_svadu_06(void) {
 
     /* Initial: menvcfg.ADUE=1, henvcfg.ADUE=1 */
     menvcfg_adue_set(1);
-    henvcfg_adue_set(1);
+    henvcfg_set_adue(1);
 
     /* Target VA in test region */
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -437,8 +437,8 @@ bool test_hcross_svadu_06(void) {
      * - If TLB miss (implementation invalidated on ADUE change):
      *   walker re-walks with ADUE=0, faults on A=0. */
     uintptr_t result_vmid6 = run_in_vs_mode(vs_load, test_va);
-    printf("  VMID=6 access (not HFENCE'd): result=0x%lx (impl-defined)\n",
-           (unsigned long)result_vmid6);
+    LOG_I("VMID=6 access (not HFENCE'd): result=0x%lx (impl-defined)\n",
+          (unsigned long)result_vmid6);
 
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -478,7 +478,7 @@ bool test_hcross_svadu_07(void) {
 
     /* menvcfg.ADUE=1 (keep enabled so henvcfg.ADUE is writable) */
     menvcfg_adue_set(1);
-    henvcfg_adue_set(1);
+    henvcfg_set_adue(1);
 
     /* Target VA in test region */
     uintptr_t test_va = (uintptr_t)test_fault_page;
@@ -503,7 +503,7 @@ bool test_hcross_svadu_07(void) {
     vs_pte_clear_ad_nofence(&ctx, test_va, PT_LEVEL_4K);
 
     /* Change henvcfg.ADUE from 1 to 0 (VS-stage now uses Svade) */
-    henvcfg_adue_set(0);
+    henvcfg_set_adue(0);
 
     /* First VS-mode access WITHOUT HFENCE.VVMA.
      * Behavior is implementation-dependent:
@@ -512,8 +512,8 @@ bool test_hcross_svadu_07(void) {
      * - TLB miss (implementation invalidated on ADUE change):
      *   walker re-walks with ADUE=0, faults on A=0. */
     uintptr_t result_first = run_in_vs_mode(vs_load, test_va);
-    printf("  First access (no HFENCE.VVMA): result=0x%lx (impl-defined)\n",
-           (unsigned long)result_first);
+    LOG_I("First access (no HFENCE.VVMA): result=0x%lx (impl-defined)\n",
+          (unsigned long)result_first);
 
     /* Execute HFENCE.VVMA(x0,x0) to synchronize VS-stage TLB
      * for the currently active VMID. */

@@ -32,10 +32,6 @@
 #endif
 
 
-#ifndef SSTATUS_MXR
-#define SSTATUS_MXR  (1UL << 19)
-#endif
-
 /* PTE flag bundles. */
 #define G8_VS_X       (PTE_V        |PTE_X  |PTE_A|PTE_D)        /* X-only S */
 #define G8_VS_RWX     (PTE_V|PTE_R|PTE_W|PTE_X|PTE_A|PTE_D)

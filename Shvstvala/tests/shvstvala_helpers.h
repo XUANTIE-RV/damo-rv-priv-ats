@@ -28,6 +28,8 @@
 #include "hyp/two_stage.h"
 #include "hyp/gstage_pt.h"
 #include "hyp/test_vs_helpers.h"
+#include "hyp/hyp_test_helpers.h"   /* vs_write_stval, vs_read_stval */
+#include "hyp/two_stage_helpers.h"  /* ts2_setup_full */
 #include "pmp/pmp_cfg.h"
 
 /* ===================================================================
@@ -132,20 +134,10 @@ static uintptr_t vsmode_exec_at(uintptr_t addr) {
     return 0;
 }
 
-/* --- Transparent (vstval read/write) payloads --- */
-static uintptr_t vsmode_write_stval(uintptr_t val) {
-    /* V=1: csrw stval actually writes vstval */
-    asm volatile ("csrw stval, %0" :: "r"(val));
-    return 0;
-}
-
-static uintptr_t vsmode_read_stval(uintptr_t dummy) {
-    (void)dummy;
-    uintptr_t val;
-    /* V=1: csrr stval actually reads vstval */
-    asm volatile ("csrr %0, stval" : "=r"(val));
-    return val;
-}
+/* --- Transparent (vstval read/write) payloads ---
+ * vs_write_stval / vs_read_stval are provided by
+ * common/hyp/hyp_test_helpers.c (identical semantics:
+ * V=1 csrw/csrr stval actually writes/reads vstval). */
 
 /* --- Breakpoint payloads --- */
 static uintptr_t vsmode_exec_target(uintptr_t addr) {

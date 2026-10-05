@@ -54,7 +54,7 @@ bool test_htval_imp_01_l1_invalid(void) {
     uintptr_t test_va = IMP_TEST_VA;
 
     /* Set up: VS-stage Sv39 + G-stage Sv39x4, L1 page marked V=0 */
-    uintptr_t victim_gpa = _setup_imp_victim(&ctx, test_va,
+    uintptr_t victim_gpa = setup_implicit_walk_victim_level(&ctx, test_va,
                                               /*victim_pt_level=*/1,
                                               /*victim_g_flags=*/0);
 
@@ -106,7 +106,7 @@ bool test_htval_imp_02_l0_invalid(void) {
     two_stage_ctx_t ctx;
     uintptr_t test_va = IMP_TEST_VA;
 
-    uintptr_t victim_gpa = _setup_imp_victim(&ctx, test_va,
+    uintptr_t victim_gpa = setup_implicit_walk_victim_level(&ctx, test_va,
                                               /*victim_pt_level=*/0,
                                               /*victim_g_flags=*/0);
 
@@ -145,7 +145,7 @@ bool test_htval_imp_03_l0_perm(void) {
     uintptr_t test_va = IMP_TEST_VA;
 
     /* V=1 but R=0: page table walker reads are denied. */
-    uintptr_t victim_gpa = _setup_imp_victim(&ctx, test_va,
+    uintptr_t victim_gpa = setup_implicit_walk_victim_level(&ctx, test_va,
                                               /*victim_pt_level=*/0,
                                               G_FLAGS_RWXU_AD & ~PTE_R);
 
@@ -184,7 +184,7 @@ bool test_htval_imp_04_store_walk(void) {
     two_stage_ctx_t ctx;
     uintptr_t test_va = IMP_TEST_VA;
 
-    uintptr_t victim_gpa = _setup_imp_victim(&ctx, test_va,
+    uintptr_t victim_gpa = setup_implicit_walk_victim_level(&ctx, test_va,
                                               /*victim_pt_level=*/0,
                                               /*victim_g_flags=*/0);
 
@@ -229,7 +229,7 @@ bool test_htval_imp_05_htinst_read(void) {
     two_stage_ctx_t ctx;
     uintptr_t test_va = IMP_TEST_VA;
 
-    uintptr_t victim_gpa = _setup_imp_victim(&ctx, test_va,
+    uintptr_t victim_gpa = setup_implicit_walk_victim_level(&ctx, test_va,
                                               /*victim_pt_level=*/0,
                                               /*victim_g_flags=*/0);
 
@@ -272,7 +272,7 @@ bool test_htval_imp_04_fetch_walk(void) {
     two_stage_ctx_t ctx;
     uintptr_t test_va = IMP_TEST_VA;
 
-    uintptr_t victim_gpa = _setup_imp_victim(&ctx, test_va,
+    uintptr_t victim_gpa = setup_implicit_walk_victim_level(&ctx, test_va,
                                               /*victim_pt_level=*/0,
                                               /*victim_g_flags=*/0);
 
@@ -321,7 +321,7 @@ bool test_htval_imp_06_implicit_write(void) {
      * page faults because D=0. */
     uintptr_t victim_g_flags = G_FLAGS_RWXU_AD & ~PTE_D;
 
-    uintptr_t victim_gpa = _setup_imp_victim(&ctx, test_va,
+    uintptr_t victim_gpa = setup_implicit_walk_victim_level(&ctx, test_va,
                                               /*victim_pt_level=*/0,
                                               victim_g_flags);
 
@@ -336,7 +336,7 @@ bool test_htval_imp_06_implicit_write(void) {
     if (!fired) {
         /* Platform has Svadu or does not fault on D=0 for A-bit writes.
          * The implicit write succeeded — no GPF. */
-        printf("  [SKIP] platform auto-updates A/D (Svadu), no implicit write GPF\n");
+        LOG_W("platform auto-updates A/D (Svadu), no implicit write GPF\n");
         two_stage_cleanup(&ctx);
         hyp_reset_state();
         TEST_SKIP("Svadu prevents implicit write GPF");

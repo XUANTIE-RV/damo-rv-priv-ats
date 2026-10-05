@@ -24,16 +24,16 @@ bool test_shvstvecd_vec_01_probe(void) {
     /* Write MODE=1 (Vectored) + a reasonable BASE */
     uintptr_t base = 0x80001000UL;
     uintptr_t write_val = base | VSTVEC_MODE_VECTORED;
-    vstvec_write_raw(write_val);
+    vstvec_write(write_val);
 
-    uintptr_t readback = vstvec_read_raw();
+    uintptr_t readback = vstvec_read();
     unsigned mode = readback & VSTVEC_MODE_MASK;
 
     if (mode == VSTVEC_MODE_VECTORED) {
-        printf("    [INFO] vstvec Vectored mode (MODE=1) is SUPPORTED\n");
+        LOG_I("vstvec Vectored mode (MODE=1) is SUPPORTED\n");
     } else {
-        printf("    [INFO] vstvec Vectored mode (MODE=1) is NOT supported "
-               "(readback MODE=%u)\n", mode);
+        LOG_I("vstvec Vectored mode (MODE=1) is NOT supported "
+              "(readback MODE=%u)\n", mode);
     }
 
     /* This test always PASS — it's purely informational. */
@@ -110,9 +110,9 @@ bool test_shvstvecd_vec_02_vectored_offset(void) {
     TEST_ASSERT("trap handler was invoked (cause != 0)",
                 g_shvstvecd_trap_cause != 0);
 
-    printf("    [INFO] Vectored: marker=%lu, trap_cause=0x%lx\n",
-           (unsigned long)g_shvstvecd_vec_marker,
-           (unsigned long)g_shvstvecd_trap_cause);
+    LOG_D("Vectored: marker=%lu, trap_cause=0x%lx\n",
+          (unsigned long)g_shvstvecd_vec_marker,
+          (unsigned long)g_shvstvecd_trap_cause);
 
     hvip_set_vssi(false);
     hyp_undelegate();

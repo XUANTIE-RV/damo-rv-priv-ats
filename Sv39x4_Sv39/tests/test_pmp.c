@@ -36,27 +36,15 @@
 #include "pmp/pmp_cfg.h"
 
 
-/* Save/restore PMP entries 0 and 1 around a deny window. */
-typedef struct {
-    pmp_entry_t e0;
-    pmp_entry_t e1;
-} g19_pmp_save_t;
+/* PMP deny-window helpers from common/pmp/pmp_cfg.h. */
+typedef pmp_save_t g19_pmp_save_t;
 
 static void g19_pmp_deny_page(uintptr_t pa, g19_pmp_save_t *save) {
-    pmp_get_entry(0, &save->e0);
-    pmp_get_entry(1, &save->e1);
-
-    /* Entry 0: deny target 4KB. */
-    pmp_entry_t deny = PMP_ENTRY_NAPOT(pa & ~0xfffUL, 0x1000UL, 0);
-    pmp_set_entry(0, &deny);
-    /* Entry 1: allow all RWX (NAPOT spanning low 54 bits). */
-    pmp_entry_t allow = PMP_ENTRY_NAPOT(0, (uintptr_t)1UL << 54, PMP_RWX);
-    pmp_set_entry(1, &allow);
+    pmp_deny_page_4k(pa, save);
 }
 
 static void g19_pmp_restore(const g19_pmp_save_t *save) {
-    pmp_set_entry(0, &save->e0);
-    pmp_set_entry(1, &save->e1);
+    pmp_restore(save);
 }
 
 /* ===================================================================

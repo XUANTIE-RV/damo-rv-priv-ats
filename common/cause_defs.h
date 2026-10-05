@@ -99,4 +99,29 @@
 #define CAUSE_S_TIMER_INTERRUPT  5
 #define SCAUSE_INTERRUPT         CAUSE_INTERRUPT_BIT
 
+/* ===================================================================
+ * Inline helpers for cause register field extraction (C only)
+ * =================================================================== */
+#ifndef __ASSEMBLER__
+#include "types.h"
+
+/** Check if a cause value represents an interrupt (MSB set). */
+static inline int cause_is_interrupt(uintptr_t cause) {
+    return (cause & CAUSE_INTERRUPT_BIT) != 0;
+}
+
+/** Extract the exception/interrupt code (strip the interrupt bit). */
+static inline uintptr_t cause_get_code(uintptr_t cause) {
+    return cause & ~CAUSE_INTERRUPT_BIT;
+}
+
+/** Check if a cause value is a guest-page-fault (20, 21, or 23).
+ * Used by hgatp=Bare tests to assert no guest-page-fault can occur. */
+static inline int cause_is_guest_page_fault(uintptr_t cause) {
+    return cause == CAUSE_INST_GUEST_PAGE_FAULT ||
+           cause == CAUSE_LOAD_GUEST_PAGE_FAULT ||
+           cause == CAUSE_STORE_GUEST_PAGE_FAULT;
+}
+#endif /* __ASSEMBLER__ */
+
 #endif /* CAUSE_DEFS_H */

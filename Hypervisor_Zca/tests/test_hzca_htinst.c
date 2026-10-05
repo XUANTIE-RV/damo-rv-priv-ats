@@ -231,9 +231,9 @@ bool test_hzca_15_load_store_format(void)
         TEST_ASSERT_EQ("store imm[11:7] cleared",
                        ts.xtinst & 0x00000F80UL, 0UL);
     } else {
-        printf("  [INFO] load htinst=0x%lx store htinst=0x%lx: zero is legal "
-               "for an explicit fault; format contrast not observable\n",
-               (unsigned long)tl.xtinst, (unsigned long)ts.xtinst);
+        LOG_I("load htinst=0x%lx store htinst=0x%lx: zero is legal "
+              "for an explicit fault; format contrast not observable\n",
+              (unsigned long)tl.xtinst, (unsigned long)ts.xtinst);
     }
 
     HYP_TEST_END();
@@ -272,7 +272,7 @@ bool test_hzca_16_fields_match_expanded(void)
         TEST_ASSERT_EQ("imm[31:20] cleared by transform",
                        restored & 0xFFF00000UL, 0UL);
     } else {
-        printf("  [INFO] load htinst=0 (legal); field match not observable\n");
+        LOG_I("load htinst=0 (legal); field match not observable\n");
     }
 
     hzca_trap_t s = hzca_fire_mem_fault(hz_vs_c_sw, va, HZ_G_RU,
@@ -289,7 +289,7 @@ bool test_hzca_16_fields_match_expanded(void)
                        (restored >> 20) & 0x1FUL,
                        (HZCA_EXP_SW_A0_A0 >> 20) & 0x1FUL);
     } else {
-        printf("  [INFO] store htinst=0 (legal); field match not observable\n");
+        LOG_I("store htinst=0 (legal); field match not observable\n");
     }
 
     HYP_TEST_END();
@@ -324,12 +324,12 @@ bool test_hzca_17_compressed_marker_contrast(void)
         TEST_ASSERT_EQ("compressed htinst bits[1:0] == 01",
                        c.xtinst & 3UL, 1UL);
     else
-        printf("  [INFO] compressed htinst=0 (legal); marker not observable\n");
+        LOG_I("compressed htinst=0 (legal); marker not observable\n");
     if (n.xtinst != 0)
         TEST_ASSERT_EQ("non-compressed htinst bits[1:0] == 11",
                        n.xtinst & 3UL, 3UL);
     else
-        printf("  [INFO] non-compressed htinst=0 (legal); marker not observable\n");
+        LOG_I("non-compressed htinst=0 (legal); marker not observable\n");
 
     HYP_TEST_END();
 }
@@ -363,12 +363,12 @@ bool test_hzca_18_addr_offset_zero(void)
         TEST_ASSERT_EQ("load htinst Addr. Offset (bits19:15) == 0",
                        (l.xtinst >> 15) & 0x1FUL, 0UL);
     else
-        printf("  [INFO] load htinst=0; Addr. Offset not observable\n");
+        LOG_I("load htinst=0; Addr. Offset not observable\n");
     if (s.xtinst != 0)
         TEST_ASSERT_EQ("store htinst Addr. Offset (bits19:15) == 0",
                        (s.xtinst >> 15) & 0x1FUL, 0UL);
     else
-        printf("  [INFO] store htinst=0; Addr. Offset not observable\n");
+        LOG_I("store htinst=0; Addr. Offset not observable\n");
 
     HYP_TEST_END();
 }
@@ -397,9 +397,9 @@ bool test_hzca_19_htinst_may_be_zero(void)
     TEST_ASSERT("golden computable", golden != 0);
     TEST_ASSERT("htinst == 0 (legal) or == golden exactly",
                 t.xtinst == 0 || t.xtinst == golden);
-    printf("  [INFO] htinst=0x%lx golden=0x%lx (%s)\n",
-           (unsigned long)t.xtinst, (unsigned long)golden,
-           t.xtinst == 0 ? "zero accepted" : "nonzero exact match");
+    LOG_D("htinst=0x%lx golden=0x%lx (%s)\n",
+          (unsigned long)t.xtinst, (unsigned long)golden,
+          t.xtinst == 0 ? "zero accepted" : "nonzero exact match");
 
     HYP_TEST_END();
 }
@@ -428,7 +428,7 @@ bool test_hzca_20_misaligned_record(void)
 
     two_stage_ctx_t ctx;
     ts2_setup_with_g_victim(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE, victim, HZ_G_INV);
-    hz_route_to_hs(1UL << CAUSE_LOAD_GUEST_PAGE_FAULT);
+    hyp_route_exc_to_hs(1UL << CAUSE_LOAD_GUEST_PAGE_FAULT);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_c_lw, mis_va);
@@ -437,18 +437,18 @@ bool test_hzca_20_misaligned_record(void)
     uintptr_t xtinst = fired ? trap_get_htinst() : 0;
     uintptr_t tval   = fired ? trap_get_tval()   : 0;
     trap_expect_end();
-    hz_unroute_from_hs(1UL << CAUSE_LOAD_GUEST_PAGE_FAULT);
+    hyp_unroute_exc_from_hs(1UL << CAUSE_LOAD_GUEST_PAGE_FAULT);
     ts2_finish(&ctx);
 
-    printf("  [RECORD] misaligned c.lw: fired=%d cause=%lu htinst=0x%lx "
-           "tval=0x%lx\n", (int)fired, (unsigned long)cause,
-           (unsigned long)xtinst, (unsigned long)tval);
+    LOG_D("misaligned c.lw: fired=%d cause=%lu htinst=0x%lx "
+          "tval=0x%lx\n", (int)fired, (unsigned long)cause,
+          (unsigned long)xtinst, (unsigned long)tval);
     if (fired && cause == (uintptr_t)CAUSE_LOAD_GUEST_PAGE_FAULT &&
         xtinst != 0) {
         uintptr_t off_field = (xtinst >> 15) & 0x1FUL;
-        printf("  [RECORD] Addr. Offset field (bits19:15) = %lu "
-               "(nonzero allowed for a split misaligned access)\n",
-               (unsigned long)off_field);
+        LOG_I("Addr. Offset field (bits19:15) = %lu "
+              "(nonzero allowed for a split misaligned access)\n",
+              (unsigned long)off_field);
         /* Even when misaligned, a nonzero compressed transformed value
          * still carries the bits[1:0]=01 marker. */
         TEST_ASSERT_EQ("compressed transformed marker bits[1:0] == 01",

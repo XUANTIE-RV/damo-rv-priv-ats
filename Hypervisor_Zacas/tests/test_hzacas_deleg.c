@@ -56,9 +56,9 @@ static int hzacas_cas_vs_fault(uintptr_t victim_va, uintptr_t vs_flags,
     }
     ts2_finish(&ctx);
 
-    printf("  [INFO] %s: fired=%d cause=%lu (expected %lu)%s\n",
-           tag, fired, (unsigned long)cause, (unsigned long)exp_cause,
-           vs_trap ? " [deleg->VS]" : "");
+    LOG_D("%s: fired=%d cause=%lu (expected %lu)%s\n",
+          tag, fired, (unsigned long)cause, (unsigned long)exp_cause,
+          vs_trap ? " [deleg->VS]" : "");
     return fired && cause == exp_cause;
 }
 

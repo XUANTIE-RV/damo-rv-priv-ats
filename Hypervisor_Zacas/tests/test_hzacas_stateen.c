@@ -101,11 +101,11 @@ bool test_hzacas_36_hstateen0_no_gate(void)
 
     hstateen_write(0, saved);   /* restore */
 
-    printf("  [INFO] hstateen0=0: VS fired=%d cause=%lu | VS-fail fired=%d "
-           "cause=%lu | VU fired=%d cause=%lu\n",
-           (int)fired_vs, (unsigned long)cause_vs,
-           (int)fired_vs_f, (unsigned long)cause_vs_f,
-           (int)fired_vu, (unsigned long)cause_vu);
+    LOG_D("hstateen0=0: VS fired=%d cause=%lu | VS-fail fired=%d "
+          "cause=%lu | VU fired=%d cause=%lu\n",
+          (int)fired_vs, (unsigned long)cause_vs,
+          (int)fired_vs_f, (unsigned long)cause_vs_f,
+          (int)fired_vu, (unsigned long)cause_vu);
 
     TEST_ASSERT("VS-mode amocas (success) with hstateen0=0 took no trap",
                 !fired_vs);

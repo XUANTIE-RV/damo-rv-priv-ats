@@ -343,7 +343,7 @@ bool test_hcross_sssta_31(void)
 
     /* With IMSIC=1 and valid VGEIN, VS-mode stopei access should
      * not trap due to stateen gating. */
-    printf("  IMSIC=1, VGEIN=1; verifying VS-mode stopei not blocked\n");
+    LOG_I("IMSIC=1, VGEIN=1; verifying VS-mode stopei not blocked\n");
     VS_EXPECT_NO_TRAP(run_in_vs_mode(_vs_read_stopei, 0));
 
     asm volatile("csrw " CSR_STR(CSR_HSTATUS) ", %0" :: "r"(saved_hstatus));
@@ -423,7 +423,7 @@ bool test_hcross_sssta_33(void)
      * On typical RV64, CSRIND+IMSIC cover all main Ssaia supervisor
      * state (siselect/sireg* + stopei). The AIA bit may control
      * implementation-specific state; verified at register level. */
-    printf("  AIA=0: on RV64, remaining Ssaia state is platform-specific\n");
+    LOG_I("AIA=0: on RV64, remaining Ssaia state is platform-specific\n");
 #endif
 
     hstateen_write(0, saved_h);
@@ -460,7 +460,7 @@ bool test_hcross_sssta_34(void)
 #else
     /* RV64: AIA controls Ssaia state not covered by CSRIND/IMSIC.
      * On typical RV64, no additional supervisor state remains. */
-    printf("  AIA=1: on RV64, remaining Ssaia state is platform-specific\n");
+    LOG_I("AIA=1: on RV64, remaining Ssaia state is platform-specific\n");
 #endif
 
     hstateen_write(0, saved_h);
@@ -534,7 +534,7 @@ bool test_hcross_sssta_35(void)
         }
         else
         {
-            printf("  stopei VS-mode access skipped: GEILEN=0\n");
+            LOG_W("stopei VS-mode access skipped: GEILEN=0\n");
         }
     }
 

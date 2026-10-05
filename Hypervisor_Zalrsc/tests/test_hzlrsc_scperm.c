@@ -40,8 +40,8 @@ static int hzlrsc_failed_sc_vs(uintptr_t victim_va, uintptr_t resv_va,
     uintptr_t cause = fired ? trap_get_cause() : 0;
     trap_expect_end();
     ts2_finish(&ctx);
-    printf("  [INFO] %s: fired=%d cause=%lu (expected %lu)\n",
-           tag, (int)fired, (unsigned long)cause, (unsigned long)exp_cause);
+    LOG_D("%s: fired=%d cause=%lu (expected %lu)\n",
+          tag, (int)fired, (unsigned long)cause, (unsigned long)exp_cause);
     return fired && cause == exp_cause;
 }
 
@@ -127,7 +127,7 @@ bool test_hzlrsc_24_failed_sc_gstage(void)
     hz_resv_other_va = rw;
     /* Route the guest-page fault into HS-mode so hstatus.GVA/SPV are
      * written by hardware (norm:hstatus_gva_op / spv_op). */
-    hz_route_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
+    hyp_route_exc_to_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_sc_w_holding_other, va);
@@ -138,12 +138,12 @@ bool test_hzlrsc_24_failed_sc_gstage(void)
     uintptr_t htval = fired ? trap_get_htval() : 0;
     trap_expect_end();
 
-    hz_unroute_from_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
+    hyp_unroute_exc_from_hs(1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
     ts2_finish(&ctx);
 
-    printf("  [INFO] failed-SC G-stage: fired=%d cause=%lu gva=%d spv=%d "
-           "htval=0x%lx\n", (int)fired, (unsigned long)cause,
-           (int)gva, (int)spv, (unsigned long)htval);
+    LOG_D("failed-SC G-stage: fired=%d cause=%lu gva=%d spv=%d "
+          "htval=0x%lx\n", (int)fired, (unsigned long)cause,
+          (int)gva, (int)spv, (unsigned long)htval);
 
     TEST_ASSERT("failed-SC G-stage fault fired", fired);
     TEST_ASSERT_EQ("cause == store/AMO guest-page-fault (23)",
@@ -182,8 +182,8 @@ bool test_hzlrsc_25_lr_read_only_ok(void)
     ts2_finish(&ctx);
 
     if (fired)
-        printf("  UNEXPECTED TRAP: cause=%lu (LR needs only read)\n",
-               (unsigned long)cause);
+        LOG_E("UNEXPECTED TRAP: cause=%lu (LR needs only read)\n",
+              (unsigned long)cause);
     TEST_ASSERT("LR to R=1/W=0 page took no trap (norm:load_page_fault_no_r)",
                 !fired);
 

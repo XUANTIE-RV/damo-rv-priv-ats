@@ -15,9 +15,6 @@
 /* sstatus.SDT bit position (bit 24) */
 #define SSTATUS_SDT_BIT (1ULL << 24)
 
-/* sstatus.SIE bit position (bit 1) */
-#define SSTATUS_SIE_BIT (1ULL << 1)
-
 /* sstatus.SPIE bit position (bit 5) */
 #define SSTATUS_SPIE_BIT (1ULL << 5)
 

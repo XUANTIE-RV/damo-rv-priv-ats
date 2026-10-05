@@ -128,6 +128,14 @@ static inline void sfence_vma(void) {
 #define CSR_SCONTEXT    0x5A8
 #endif
 
+/* Trigger Module CSRs (Sdtrig) */
+#define CSR_TSELECT     0x7A0
+#define CSR_TDATA1      0x7A1
+#define CSR_TDATA2      0x7A2
+#define CSR_TDATA3      0x7A3
+#define CSR_TINFO       0x7A4
+#define CSR_TCONTROL    0x7A5
+
 /* Shadow Stack Pointer (Zicfiss) */
 #define CSR_SSP         0x011
 
@@ -166,6 +174,9 @@ static inline void sfence_vma(void) {
 #define CSR_HPMCOUNTER29  0xC1D
 #define CSR_HPMCOUNTER30  0xC1E
 #define CSR_HPMCOUNTER31  0xC1F
+
+/* Parametric HPM counter CSR address by index n (3..31), S/U-mode read-only shadow */
+#define CSR_HPMCOUNTER(n)   (CSR_HPMCOUNTER3 + ((n) - 3))
 
 /* ===================================================================
  * Pointer Masking (PM) common constants

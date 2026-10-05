@@ -19,20 +19,8 @@
  * test_vsstatus.c when both files are compiled in one suite.
  * =================================================================== */
 
-#ifndef SSTATUS_FS_SHIFT
-#define SSTATUS_FS_SHIFT   13
-#define SSTATUS_FS_MASK    (3UL << SSTATUS_FS_SHIFT)
-#define SSTATUS_FS_OFF     (0UL << SSTATUS_FS_SHIFT)
-#define SSTATUS_FS_INITIAL (1UL << SSTATUS_FS_SHIFT)
-#define SSTATUS_VS_SHIFT   9
-#define SSTATUS_VS_MASK    (3UL << SSTATUS_VS_SHIFT)
-#define SSTATUS_VS_OFF     (0UL << SSTATUS_VS_SHIFT)
-#define SSTATUS_VS_INITIAL (1UL << SSTATUS_VS_SHIFT)
-#endif
-
 #ifndef MISA_F
 #define MISA_F  (1UL << ('F' - 'A'))
-#define MISA_V  (1UL << ('V' - 'A'))
 #endif
 
 /* ===================================================================
@@ -47,40 +35,13 @@
 /* ===================================================================
  * Local FP/Vector instruction trampolines.
  *
- * Encoded as raw .4byte to avoid -march dependency.
+ * vs_exec_fp_inst() and vs_exec_vector_inst() are provided by
+ * common/hyp/hyp_test_helpers.h (raw .4byte encodings, no -march
+ * dependency).
  * =================================================================== */
 
-/* fadd.s f0, f0, f0 */
-static uintptr_t vinst_exec_fp_inst(uintptr_t arg)
-{
-    (void)arg;
-    asm volatile (".4byte 0x00000053" ::: "memory");
-    return 0;
-}
-
-/* vsetvli t0, zero, e8, m1, ta, ma */
-static uintptr_t vinst_exec_vector_inst(uintptr_t arg)
-{
-    (void)arg;
-    asm volatile (".4byte 0x0C0072D7" ::: "memory");
-    return 0;
-}
-
-/* ===================================================================
- * Read a 32-bit instruction from a potentially misaligned address.
- *
- * RISC-V allows PCs to be 2-byte aligned (RVC compressed instructions),
- * so a direct uint32_t* dereference can cause a load-misaligned trap.
- * Use byte-wise loads to avoid this.
- * =================================================================== */
-static uint32_t vinst_read_inst_at(uintptr_t addr)
-{
-    const volatile uint8_t *p = (const volatile uint8_t *)addr;
-    return (uint32_t)p[0]
-         | ((uint32_t)p[1] << 8)
-         | ((uint32_t)p[2] << 16)
-         | ((uint32_t)p[3] << 24);
-}
+/* hyp_fetch_inst32() from common/hyp/hyp_test_helpers.h safely reads
+ * a 32-bit instruction from a potentially 2-byte-aligned address. */
 
 /* ===================================================================
  * VINST-01: VS executes HLV
@@ -424,7 +385,7 @@ bool vinst_21_fs0_illegal(void)
      * (cause=2), NOT virtual-instruction (cause=22).
      * This validates norm:H_illegalinst_xstatus_fs_vs.
      */
-    EXPECT_ILLEGAL_INST(run_in_vs_mode(vinst_exec_fp_inst, 0));
+    EXPECT_ILLEGAL_INST(run_in_vs_mode(vs_exec_fp_inst, 0));
 
     /* Restore mstatus.FS. */
     asm volatile ("csrw mstatus, %0" :: "r"(saved_mstatus));
@@ -464,7 +425,7 @@ bool vinst_22_vs0_illegal(void)
      * (cause=2), NOT virtual-instruction (cause=22).
      * This validates norm:H_illegalinst_xstatus_fs_vs.
      */
-    EXPECT_ILLEGAL_INST(run_in_vs_mode(vinst_exec_vector_inst, 0));
+    EXPECT_ILLEGAL_INST(run_in_vs_mode(vs_exec_vector_inst, 0));
 
     /* Restore mstatus. */
     asm volatile ("csrw mstatus, %0" :: "r"(saved_mstatus));
@@ -501,7 +462,7 @@ bool vinst_23_virtual_inst_stval(void)
          */
         uintptr_t epc = trap_get_epc();
         uintptr_t tval = trap_get_tval();
-        uint32_t inst_at_epc = vinst_read_inst_at(epc);
+        uint32_t inst_at_epc = hyp_fetch_inst32(epc);
 
         if (tval == 0) {
             /* Implementation chose to write 0 (spec-compliant). */

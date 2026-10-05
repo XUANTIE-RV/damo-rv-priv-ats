@@ -52,10 +52,10 @@ bool test_hcross_sssta_46(void)
     TEST_ASSERT("hstateen0 known bits are subset of mstateen0",
                 hsta_only == 0);
 
-    printf("  mstateen0 writable mask:  0x%lx\n", (unsigned long)msta_mask);
-    printf("  hstateen0 writable mask:  0x%lx\n", (unsigned long)hsta_mask);
-    printf("  mstateen0 known bits:     0x%lx\n", (unsigned long)msta_known);
-    printf("  hstateen0 known bits:     0x%lx\n", (unsigned long)hsta_known);
+    LOG_D("mstateen0 writable mask:  0x%lx\n", (unsigned long)msta_mask);
+    LOG_D("hstateen0 writable mask:  0x%lx\n", (unsigned long)hsta_mask);
+    LOG_D("mstateen0 known bits:     0x%lx\n", (unsigned long)msta_known);
+    LOG_D("hstateen0 known bits:     0x%lx\n", (unsigned long)hsta_known);
 
     hstateen_write(0, saved_h);
     mstateen_write(0, saved_m);
@@ -86,14 +86,14 @@ bool test_hcross_sssta_47(void)
     TEST_ASSERT("hstateen0 has no bits outside mstateen0 mask",
                 hsta_extra == 0);
 
-    printf("  Overlap mask:  0x%lx\n", (unsigned long)overlap);
-    printf("  hstateen0 extra (should be 0): 0x%lx\n",
-           (unsigned long)hsta_extra);
+    LOG_D("Overlap mask:  0x%lx\n", (unsigned long)overlap);
+    LOG_D("hstateen0 extra (should be 0): 0x%lx\n",
+          (unsigned long)hsta_extra);
 
     /* mstateen0 may have bits not in hstateen0 (e.g., P1P13, SRMCFG) */
     uintptr_t msta_extra = msta_mask & ~hsta_mask;
-    printf("  mstateen0 extra (OK, may have M-only bits): 0x%lx\n",
-           (unsigned long)msta_extra);
+    LOG_D("mstateen0 extra (OK, may have M-only bits): 0x%lx\n",
+          (unsigned long)msta_extra);
 
     hstateen_write(0, saved_h);
     mstateen_write(0, saved_m);
@@ -128,8 +128,8 @@ bool test_hcross_sssta_48(void)
     uintptr_t hsta_extra = hsta_mask & ~msta_mask;
     TEST_ASSERT("hstateen1 bits are subset of mstateen1", hsta_extra == 0);
 
-    printf("  mstateen1 mask: 0x%lx\n", (unsigned long)msta_mask);
-    printf("  hstateen1 mask: 0x%lx\n", (unsigned long)hsta_mask);
+    LOG_D("mstateen1 mask: 0x%lx\n", (unsigned long)msta_mask);
+    LOG_D("hstateen1 mask: 0x%lx\n", (unsigned long)hsta_mask);
 
     hstateen_write(1, saved_h);
     mstateen_write(1, saved_m);
@@ -164,8 +164,8 @@ bool test_hcross_sssta_49(void)
     uintptr_t hsta_extra = hsta_mask & ~msta_mask;
     TEST_ASSERT("hstateen2 bits are subset of mstateen2", hsta_extra == 0);
 
-    printf("  mstateen2 mask: 0x%lx\n", (unsigned long)msta_mask);
-    printf("  hstateen2 mask: 0x%lx\n", (unsigned long)hsta_mask);
+    LOG_D("mstateen2 mask: 0x%lx\n", (unsigned long)msta_mask);
+    LOG_D("hstateen2 mask: 0x%lx\n", (unsigned long)hsta_mask);
 
     hstateen_write(2, saved_h);
     mstateen_write(2, saved_m);
@@ -200,8 +200,8 @@ bool test_hcross_sssta_50(void)
     uintptr_t hsta_extra = hsta_mask & ~msta_mask;
     TEST_ASSERT("hstateen3 bits are subset of mstateen3", hsta_extra == 0);
 
-    printf("  mstateen3 mask: 0x%lx\n", (unsigned long)msta_mask);
-    printf("  hstateen3 mask: 0x%lx\n", (unsigned long)hsta_mask);
+    LOG_D("mstateen3 mask: 0x%lx\n", (unsigned long)msta_mask);
+    LOG_D("hstateen3 mask: 0x%lx\n", (unsigned long)hsta_mask);
 
     hstateen_write(3, saved_h);
     mstateen_write(3, saved_m);

@@ -956,8 +956,8 @@ bool hvip_nonwritable_readzero(void)
      * Report for informational purposes. */
     uintptr_t high_bits = val & ~0x1FFFUL;
     if (high_bits != 0) {
-        printf("  [INFO] hvip has AIA/impl-specific writable bits: "
-               "0x%lx\n", (unsigned long)high_bits);
+        LOG_I("hvip has AIA/impl-specific writable bits: "
+              "0x%lx\n", (unsigned long)high_bits);
     }
 
     /* Cleanup */
@@ -1499,9 +1499,9 @@ bool hgeip_and_hgeie_triggers_sgeip(void)
         /* Note: verifying SGEIP=1 requires an active external interrupt
          * source (e.g., IMSIC guest interrupt file). On platforms without
          * such a source, we can only verify the negative case. */
-        printf("  [INFO] hgeip=0x%lx: no external source, "
-               "SGEIP=1 path not testable\n",
-               (unsigned long)hgeip_val);
+        LOG_W("hgeip=0x%lx: no external source, "
+              "SGEIP=1 path not testable\n",
+              (unsigned long)hgeip_val);
     }
 
     /* Cleanup */

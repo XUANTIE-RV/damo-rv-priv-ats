@@ -72,8 +72,8 @@ bool test_hzlasr_25_misaligned_load_acq(void)
     trap_expect_end();
     ts2_finish(&ctx);
 
-    printf("  [INFO] (A) misaligned load-acquire @+off=%lu cause=%lu fired=%d\n",
-           (unsigned long)off, (unsigned long)cause_a, (int)fired_a);
+    LOG_D("(A) misaligned load-acquire @+off=%lu cause=%lu fired=%d\n",
+          (unsigned long)off, (unsigned long)cause_a, (int)fired_a);
     TEST_ASSERT("(A) misaligned load-acquire faulted (not MAG-covered)", fired_a);
     hzlasr_record_load_cause("(A) misaligned load-acquire (expect 4/5)", cause_a);
 
@@ -91,16 +91,16 @@ bool test_hzlasr_25_misaligned_load_acq(void)
     uintptr_t cause_b = vs_b ? g_hz_vs_cause : cause_mB;
     ts2_finish(&ctx);
 
-    printf("  [INFO] (B) misaligned load-acquire hedeleg[4/5]=1: vs=%d cause=%lu\n",
-           (int)vs_b, (unsigned long)cause_b);
+    LOG_D("(B) misaligned load-acquire hedeleg[4/5]=1: vs=%d cause=%lu\n",
+          (int)vs_b, (unsigned long)cause_b);
     if (hzlasr_load_align_cause(cause_a)) {
         TEST_ASSERT("(B) load-align cause (4/5) delegated to VS-mode", vs_b);
         TEST_ASSERT("(B) vscause in load-align class {4,5}",
                     hzlasr_load_align_cause(cause_b));
     } else {
-        printf("  [RECORD] (B) Part-A cause=%lu not load-align; delegation of "
-               "4/5 not exercised (SPEC-ambiguous class)\n",
-               (unsigned long)cause_a);
+        LOG_I("(B) Part-A cause=%lu not load-align; delegation of "
+              "4/5 not exercised (SPEC-ambiguous class)\n",
+              (unsigned long)cause_a);
     }
 
     HYP_TEST_END();
@@ -137,8 +137,8 @@ bool test_hzlasr_26_misaligned_store_rel(void)
     trap_expect_end();
     ts2_finish(&ctx);
 
-    printf("  [INFO] (A) misaligned store-release @+off=%lu cause=%lu fired=%d\n",
-           (unsigned long)off, (unsigned long)cause_a, (int)fired_a);
+    LOG_D("(A) misaligned store-release @+off=%lu cause=%lu fired=%d\n",
+          (unsigned long)off, (unsigned long)cause_a, (int)fired_a);
     TEST_ASSERT("(A) misaligned store-release faulted (not MAG-covered)", fired_a);
     TEST_ASSERT("(A) cause in store/AMO class {6,7} (never load 4/5)",
                 hzlasr_cause_in2(cause_a, CAUSE_STORE_ADDR_MISALIGN,
@@ -191,8 +191,8 @@ bool test_hzlasr_27_mag_intra_no_fault(void)
     trap_expect_end();
     ts2_finish(&ctx);
     if (fired_l)
-        printf("  [INFO] MAG intra load-acquire trapped cause=%lu\n",
-               (unsigned long)cause_l);
+        LOG_D("MAG intra load-acquire trapped cause=%lu\n",
+              (unsigned long)cause_l);
     TEST_ASSERT("MAG intra-granule misaligned load-acquire raised no alignment "
                 "exception (norm:zalasr_misaligned_single_op)", !fired_l);
 
@@ -206,8 +206,8 @@ bool test_hzlasr_27_mag_intra_no_fault(void)
     trap_expect_end();
     ts2_finish(&ctx);
     if (fired_s)
-        printf("  [INFO] MAG intra store-release trapped cause=%lu\n",
-               (unsigned long)cause_s);
+        LOG_D("MAG intra store-release trapped cause=%lu\n",
+              (unsigned long)cause_s);
     TEST_ASSERT("MAG intra-granule misaligned store-release raised no alignment "
                 "exception (norm:zalasr_misaligned_single_op)", !fired_s);
 
@@ -239,7 +239,7 @@ bool test_hzlasr_28_misaligned_trap_context(void)
     hzlasr_preset_granule();
     hedeleg_write(hedeleg_read() & ~((1UL << 6) | (1UL << 7)));
     hz_clear_gva_spv();
-    hz_route_to_hs((1UL << 6) | (1UL << 7));
+    hyp_route_exc_to_hs((1UL << 6) | (1UL << 7));
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_sw_rl, mis);
     bool fired_s = trap_was_triggered();
@@ -250,11 +250,11 @@ bool test_hzlasr_28_misaligned_trap_context(void)
     bool gva_s = trap_get_gva();
     bool spv_s = trap_get_spv();
     trap_expect_end();
-    hz_unroute_from_hs((1UL << 6) | (1UL << 7));
+    hyp_unroute_exc_from_hs((1UL << 6) | (1UL << 7));
     ts2_finish(&ctx);
 
-    printf("  [INFO] store-release misaligned: cause=%lu tval=0x%lx gva=%d spv=%d\n",
-           (unsigned long)cause_s, (unsigned long)tval_s, (int)gva_s, (int)spv_s);
+    LOG_D("store-release misaligned: cause=%lu tval=0x%lx gva=%d spv=%d\n",
+          (unsigned long)cause_s, (unsigned long)tval_s, (int)gva_s, (int)spv_s);
     TEST_ASSERT("store-release misaligned faulted", fired_s);
     TEST_ASSERT("store-release cause in store/AMO class {6,7}",
                 hzlasr_cause_in2(cause_s, CAUSE_STORE_ADDR_MISALIGN,
@@ -273,7 +273,7 @@ bool test_hzlasr_28_misaligned_trap_context(void)
     hzlasr_preset_granule();
     hedeleg_write(hedeleg_read() & ~((1UL << 4) | (1UL << 5)));
     hz_clear_gva_spv();
-    hz_route_to_hs((1UL << 4) | (1UL << 5));
+    hyp_route_exc_to_hs((1UL << 4) | (1UL << 5));
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, hz_vs_lw_aq, mis);
     bool fired_l = trap_was_triggered();
@@ -283,11 +283,11 @@ bool test_hzlasr_28_misaligned_trap_context(void)
     bool gva_l = trap_get_gva();
     bool spv_l = trap_get_spv();
     trap_expect_end();
-    hz_unroute_from_hs((1UL << 4) | (1UL << 5));
+    hyp_unroute_exc_from_hs((1UL << 4) | (1UL << 5));
     ts2_finish(&ctx);
 
-    printf("  [INFO] load-acquire misaligned: cause=%lu tval=0x%lx gva=%d spv=%d\n",
-           (unsigned long)cause_l, (unsigned long)tval_l, (int)gva_l, (int)spv_l);
+    LOG_D("load-acquire misaligned: cause=%lu tval=0x%lx gva=%d spv=%d\n",
+          (unsigned long)cause_l, (unsigned long)tval_l, (int)gva_l, (int)spv_l);
     TEST_ASSERT("load-acquire misaligned faulted", fired_l);
     hzlasr_record_load_cause("load-acquire misaligned (expect 4/5)", cause_l);
     TEST_ASSERT_EQ("load-acquire stval == misaligned address itself", tval_l, mis);

@@ -26,29 +26,14 @@
 #define ENVCFG_FIOM       (1ULL << 0)   /* Fence of I/O implies Memory */
 #define ENVCFG_LPE        (1ULL << 2)   /* Landing Pad Enable (Zicfilp) */
 #define ENVCFG_SSE        (1ULL << 3)   /* Shadow Stack Enable (Zicfiss) */
-#define ENVCFG_CBIE_OFF   4             /* CBIE field offset [5:4] */
-#define ENVCFG_CBIE_MASK  (3ULL << 4)   /* CBIE field mask */
-#define ENVCFG_CBCFE      (1ULL << 6)   /* CBO.CLEAN/FLUSH Enable */
-#define ENVCFG_CBZE       (1ULL << 7)   /* CBO.ZERO Enable */
 #define ENVCFG_PMM_OFF    32            /* PMM field offset [33:32] */
 #define ENVCFG_PMM_MASK   (3ULL << 32)  /* PMM field mask */
 #define ENVCFG_DTE        (1ULL << 59)  /* Double Trap Enable (Ssdbltrp) */
 #define ENVCFG_PBMTE      (1ULL << 62)  /* Page-Based Memory Types Enable */
 #define ENVCFG_STCE       (1ULL << 63)  /* STimecmp Enable */
 
-/* CBIE field encodings */
-#define CBIE_ILLEGAL      0ULL          /* CBO.INVAL raises exception */
-#define CBIE_FLUSH        1ULL          /* CBO.INVAL performs flush */
-#define CBIE_INVAL        3ULL          /* CBO.INVAL performs invalidate */
-
 /* vsstatus.SDT bit (Ssdbltrp double-trap indicator, bit 24) */
 #define VSSTATUS_SDT      (1ULL << 24)
-
-/* VS-stage PTE PBMT field: Non-Cacheable (bit 61) */
-#define PTE_PBMT_NC       (1ULL << 61)
-
-/* sstatus / vsstatus SUM bit (bit 18) */
-#define SSTATUS_SUM       (1UL << 18)
 
 /* ===================================================================
  * Extension probing and henvcfg field manipulation helpers
@@ -93,7 +78,7 @@ static void disable_henvcfg_bit(uintptr_t bit) {
 static void set_henvcfg_cbie(uintptr_t value) {
     uintptr_t cfg = henvcfg_read();
     cfg &= ~ENVCFG_CBIE_MASK;
-    cfg |= (value << ENVCFG_CBIE_OFF) & ENVCFG_CBIE_MASK;
+    cfg |= (value << ENVCFG_CBIE_SHIFT) & ENVCFG_CBIE_MASK;
     henvcfg_write(cfg);
 }
 
@@ -194,7 +179,7 @@ static void setup_vs_two_stage(two_stage_ctx_t *ctx) {
     /* Allow VS-mode to access U-flagged pages (load/store only). */
     uintptr_t vsstatus;
     asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
-    vsstatus |= SSTATUS_SUM;
+    vsstatus |= SSTATUS_SUM_BIT;
     asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 }
 
@@ -227,7 +212,7 @@ bool henvcfg_01_basic_rw(void) {
      * and WPRI bits may have implementation-defined behaviour.
      */
     uintptr_t pattern = ENVCFG_FIOM
-                      | (CBIE_FLUSH << ENVCFG_CBIE_OFF)
+                      | (CBIE_FLUSH << ENVCFG_CBIE_SHIFT)
                       | ENVCFG_CBCFE
                       | ENVCFG_STCE;
     henvcfg_write(pattern);
@@ -328,7 +313,7 @@ bool henvcfg_04_pbmte_enabled(void) {
     uintptr_t target = (uintptr_t)test_data_area;
     uintptr_t page   = target & ~(PAGE_SIZE_4K - 1);
     uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_U | PTE_A | PTE_D
-                         | PTE_PBMT_NC;
+                         | PBMT_NC;
     two_stage_vs_map(&ctx, page, page, vs_flags, PT_LEVEL_4K);
 
     /* VS-mode load should succeed — PBMT=NC is valid when PBMTE=1. */
@@ -366,7 +351,7 @@ bool henvcfg_05_pbmte_disabled(void) {
     uintptr_t target = (uintptr_t)test_data_area;
     uintptr_t page   = target & ~(PAGE_SIZE_4K - 1);
     uintptr_t vs_flags = PTE_V | PTE_R | PTE_W | PTE_U | PTE_A | PTE_D
-                         | PTE_PBMT_NC;
+                         | PBMT_NC;
     two_stage_vs_map(&ctx, page, page, vs_flags, PT_LEVEL_4K);
 
     /* VS-mode load should fault: PBMT≠0 is reserved when PBMTE=0. */
@@ -656,7 +641,7 @@ bool henvcfg_14_cbie_flush(void) {
 
     /* Set henvcfg.CBIE=01 (flush). */
     set_henvcfg_cbie(CBIE_FLUSH);
-    uintptr_t cbie_val = (henvcfg_read() & ENVCFG_CBIE_MASK) >> ENVCFG_CBIE_OFF;
+    uintptr_t cbie_val = (henvcfg_read() & ENVCFG_CBIE_MASK) >> ENVCFG_CBIE_SHIFT;
     TEST_ASSERT_EQ("henvcfg.CBIE=01", cbie_val, CBIE_FLUSH);
 
     uintptr_t target = (uintptr_t)test_data_area;
@@ -687,9 +672,9 @@ bool henvcfg_15_cbie_illegal(void) {
     menvcfg_write(mcfg);
 
     /* Set henvcfg.CBIE=00 (illegal). */
-    set_henvcfg_cbie(CBIE_ILLEGAL);
-    uintptr_t cbie_val = (henvcfg_read() & ENVCFG_CBIE_MASK) >> ENVCFG_CBIE_OFF;
-    TEST_ASSERT_EQ("henvcfg.CBIE=00", cbie_val, CBIE_ILLEGAL);
+    set_henvcfg_cbie(CBIE_DISABLE);
+    uintptr_t cbie_val = (henvcfg_read() & ENVCFG_CBIE_MASK) >> ENVCFG_CBIE_SHIFT;
+    TEST_ASSERT_EQ("henvcfg.CBIE=00", cbie_val, CBIE_DISABLE);
 
     uintptr_t target = (uintptr_t)test_data_area;
 
@@ -831,7 +816,7 @@ bool henvcfg_20_cbie_inval(void) {
 
     /* Set henvcfg.CBIE=11 (invalidate). */
     set_henvcfg_cbie(CBIE_INVAL);
-    uintptr_t cbie_val = (henvcfg_read() & ENVCFG_CBIE_MASK) >> ENVCFG_CBIE_OFF;
+    uintptr_t cbie_val = (henvcfg_read() & ENVCFG_CBIE_MASK) >> ENVCFG_CBIE_SHIFT;
     TEST_ASSERT_EQ("henvcfg.CBIE=11", cbie_val, CBIE_INVAL);
 
     uintptr_t target = (uintptr_t)test_data_area;
@@ -865,12 +850,12 @@ bool henvcfg_21_cbie_reserved(void) {
     /* Also enable menvcfg.CBIE=11 so henvcfg.CBIE is not constrained. */
     mcfg = menvcfg_read();
     mcfg &= ~ENVCFG_CBIE_MASK;
-    mcfg |= (CBIE_INVAL << ENVCFG_CBIE_OFF) & ENVCFG_CBIE_MASK;
+    mcfg |= (CBIE_INVAL << ENVCFG_CBIE_SHIFT) & ENVCFG_CBIE_MASK;
     menvcfg_write(mcfg);
 
     /* Write reserved encoding 10b to henvcfg.CBIE. */
     set_henvcfg_cbie(2ULL);
-    uintptr_t cbie_val = (henvcfg_read() & ENVCFG_CBIE_MASK) >> ENVCFG_CBIE_OFF;
+    uintptr_t cbie_val = (henvcfg_read() & ENVCFG_CBIE_MASK) >> ENVCFG_CBIE_SHIFT;
 
     /* WARL: the reserved encoding 10b must NOT be retained. */
     TEST_ASSERT("CBIE does not retain reserved encoding 10b",

@@ -223,4 +223,51 @@ bool smepmp_is_supported(void);
     (pmp_entry_t){ .cfg = PMP_L | PMP_A_TOR | (rwx_flags), \
                    .addr = (top_addr), .size = 0 }
 
+/* ===================================================================
+ * PMP deny-window helpers
+ *
+ * Convenience API for the common test pattern: temporarily deny or
+ * restrict access to a single 4KB page using PMP entries 0 and 1,
+ * then restore the original configuration.
+ *
+ * Strategy:
+ *   - Entry 0: NAPOT matching the target 4KB page (deny or restrict)
+ *   - Entry 1: NAPOT covering all space with full RWX (fall-through)
+ *   - Both entries unlocked (L=0) so M-mode is never affected.
+ *
+ * Callers that need TLB/PMP-cache synchronization should issue
+ * appropriate fences (sfence.vma / hfence.gvma) after calling these.
+ * =================================================================== */
+
+typedef struct {
+    pmp_entry_t e0;
+    pmp_entry_t e1;
+} pmp_save_t;
+
+/* Deny a 4KB page completely (no R/W/X). */
+static inline void pmp_deny_page_4k(uintptr_t pa, pmp_save_t *save) {
+    pmp_get_entry(0, &save->e0);
+    pmp_get_entry(1, &save->e1);
+    pmp_entry_t deny = PMP_ENTRY_NAPOT(pa & ~0xfffUL, 0x1000UL, 0);
+    pmp_set_entry(0, &deny);
+    pmp_entry_t allow = PMP_ENTRY_NAPOT(0, (uintptr_t)1UL << 54, PMP_RWX);
+    pmp_set_entry(1, &allow);
+}
+
+/* Grant execute-only on a 4KB page (X=1, R=0, W=0). */
+static inline void pmp_xonly_page_4k(uintptr_t pa, pmp_save_t *save) {
+    pmp_get_entry(0, &save->e0);
+    pmp_get_entry(1, &save->e1);
+    pmp_entry_t xonly = PMP_ENTRY_NAPOT(pa & ~0xfffUL, 0x1000UL, PMP_X);
+    pmp_set_entry(0, &xonly);
+    pmp_entry_t allow = PMP_ENTRY_NAPOT(0, (uintptr_t)1UL << 54, PMP_RWX);
+    pmp_set_entry(1, &allow);
+}
+
+/* Restore PMP entries 0 and 1 from a saved state. */
+static inline void pmp_restore(const pmp_save_t *save) {
+    pmp_set_entry(0, &save->e0);
+    pmp_set_entry(1, &save->e1);
+}
+
 #endif /* PMP_CFG_H */

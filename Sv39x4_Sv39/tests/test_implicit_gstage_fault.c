@@ -51,15 +51,6 @@
 #define G6_HTINST_READ_RV64    0x00003000UL
 #define G6_HTINST_WRITE_RV64   0x00003020UL
 
-/* menvcfg/henvcfg ADUE bit (Svadu). Local guarded copies avoid a hard
- * dependency on sm_defs.h / sh_defs.h include order in the aggregator. */
-#ifndef MENVCFG_ADUE
-#define MENVCFG_ADUE           (1ULL << 61)
-#endif
-#ifndef HENVCFG_ADUE
-#define HENVCFG_ADUE           (1ULL << 61)
-#endif
-
 /* ---- file-scope helpers ---------------------------------------------- */
 
 /* Compute the exact GPA of the PTE that maps @va at @level within the
