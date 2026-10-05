@@ -1,5 +1,5 @@
 CASE,TOTAL,PASS,FAIL,SKIP
-Ss_CSR,75,60,1,14
+Ss_CSR,75,61,0,14
 Ss_Exceptions,50,29,0,21
 Ss_Interrupts,38,38,0,0
 Ssccfg,0,0,0,0
