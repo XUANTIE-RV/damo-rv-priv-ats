@@ -9,7 +9,7 @@
 
 #include "gstage_pt.h"
 #include "hyp_csr.h"
-#include "uart.h"
+#include "test_framework.h"
 
 /* Pool boundaries provided by the linker script of each test target
  * (e.g. sv39x4/kernel.ld). The section is 16KB aligned, so its first
@@ -42,8 +42,8 @@ static uintptr_t *gpt_alloc_aligned(unsigned n_pages, uintptr_t align_bytes) {
     uintptr_t next = aligned + (uintptr_t)n_pages * PAGE_SIZE_4K;
 
     if (next > (uintptr_t)&__gpt_pool_end) {
-        printf("ERROR: gpt pool exhausted (need %u pages, align=0x%lx)\n",
-               n_pages, (unsigned long)align_bytes);
+        LOG_E("gpt pool exhausted (need %u pages, align=0x%lx)\n",
+              n_pages, (unsigned long)align_bytes);
         return NULL;
     }
 
@@ -71,7 +71,7 @@ void gpt_init(gpt_context_t *ctx, int mode) {
     case HGATP_MODE_SV48X4: ctx->levels = SV48X4_LEVELS; break;
     case HGATP_MODE_SV57X4: ctx->levels = SV57X4_LEVELS; break;
     default:
-        printf("ERROR: gpt_init: unsupported mode %d\n", mode);
+        LOG_E("gpt_init: unsupported mode %d\n", mode);
         ctx->levels = SV39X4_LEVELS;
         break;
     }
@@ -79,7 +79,7 @@ void gpt_init(gpt_context_t *ctx, int mode) {
     /* Allocate 16KB-aligned, 16KB-large root table. */
     ctx->root_pt = gpt_alloc_aligned(GPT_ROOT_PAGES, GPT_ROOT_ALIGN);
     if (!ctx->root_pt)
-        printf("ERROR: gpt_init: failed to allocate root table\n");
+        LOG_E("gpt_init: failed to allocate root table\n");
 }
 
 /* ===================================================================
@@ -113,13 +113,13 @@ static uintptr_t page_size_for_level(int level) {
 int gpt_map_page(gpt_context_t *ctx, uintptr_t gpa, uintptr_t spa,
                  uintptr_t flags, int level) {
     if (!ctx || !ctx->root_pt) {
-        printf("ERROR: gpt_map_page: NULL root\n");
+        LOG_E("gpt_map_page: NULL root\n");
         return -1;
     }
     uintptr_t pgsz = page_size_for_level(level);
     if ((gpa & (pgsz - 1)) != 0 || (spa & (pgsz - 1)) != 0) {
-        printf("ERROR: gpt_map_page: misaligned gpa=0x%lx spa=0x%lx pgsz=0x%lx\n",
-               (unsigned long)gpa, (unsigned long)spa, (unsigned long)pgsz);
+        LOG_E("gpt_map_page: misaligned gpa=0x%lx spa=0x%lx pgsz=0x%lx\n",
+              (unsigned long)gpa, (unsigned long)spa, (unsigned long)pgsz);
         return -1;
     }
 
@@ -131,8 +131,8 @@ int gpt_map_page(gpt_context_t *ctx, uintptr_t gpa, uintptr_t spa,
         uintptr_t pte = pt[idx];
         if (pte & PTE_V) {
             if (PTE_IS_LEAF(pte)) {
-                printf("ERROR: gpt_map_page: leaf already at level %d for gpa 0x%lx\n",
-                       cur, (unsigned long)gpa);
+                LOG_E("gpt_map_page: leaf already at level %d for gpa 0x%lx\n",
+                      cur, (unsigned long)gpa);
                 return -1;
             }
             pt = (uintptr_t *)PTE_TO_PA(pte);

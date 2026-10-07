@@ -11,7 +11,7 @@
  * =================================================================== */
 
 #include "two_stage_helpers.h"
-#include "uart.h"
+#include "test_framework.h"
 
 /* ===================================================================
  * Internal helpers
@@ -341,13 +341,13 @@ bool ts2_run_check_fault(two_stage_ctx_t *ctx,
     hyp_reset_state();
 
     if (!fired) {
-        printf("  expected fault (cause=%lu) but none fired\n",
-               (unsigned long)expected_cause);
+        LOG_E("expected fault (cause=%lu) but none fired\n",
+              (unsigned long)expected_cause);
         return false;
     }
     if (cause != expected_cause) {
-        printf("  cause mismatch: got %lu, expected %lu\n",
-               (unsigned long)cause, (unsigned long)expected_cause);
+        LOG_E("cause mismatch: got %lu, expected %lu\n",
+              (unsigned long)cause, (unsigned long)expected_cause);
         return false;
     }
     return true;
@@ -361,8 +361,8 @@ uintptr_t ts2_run_check_no_fault(two_stage_ctx_t *ctx,
     uintptr_t result = two_stage_run_in_vs(ctx, fn, arg);
     bool fired = trap_was_triggered();
     if (fired) {
-        printf("  unexpected trap, cause=%lu\n",
-               (unsigned long)trap_get_cause());
+        LOG_E("unexpected trap, cause=%lu\n",
+              (unsigned long)trap_get_cause());
         result = 0;
     }
     trap_expect_end();

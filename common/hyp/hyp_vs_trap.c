@@ -9,7 +9,7 @@
 
 #include "hyp_vs_trap.h"
 #include "hyp_csr.h"
-#include "uart.h"
+#include "test_framework.h"
 
 /* Internal VS trap record (singleton — one active test at a time) */
 static vs_trap_record_t _vs_trap_record;
@@ -24,8 +24,8 @@ void vs_trap_setup(vs_trap_config_t *cfg) {
      * trap entry start 2 bytes BEFORE the handler (executing whatever
      * instruction precedes it). Fail visibly instead of mis-trapping. */
     if (cfg->handler_base & 0x3UL) {
-        printf("ERROR: vs_trap_setup: handler 0x%lx not 4-byte aligned\n",
-               (unsigned long)cfg->handler_base);
+        LOG_E("vs_trap_setup: handler 0x%lx not 4-byte aligned\n",
+              (unsigned long)cfg->handler_base);
         while (1) {}
     }
     uintptr_t tvec_val = (cfg->handler_base & VSTVEC_BASE_MASK) |

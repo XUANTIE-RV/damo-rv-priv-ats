@@ -10,7 +10,7 @@
 #include "two_stage.h"
 #include "hyp_priv.h"
 #include "hyp_csr.h"
-#include "uart.h"
+#include "test_framework.h"
 
 void two_stage_init(two_stage_ctx_t *ctx, int vs_mode, int g_mode) {
     ctx->vs_mode = vs_mode;
@@ -106,7 +106,7 @@ void two_stage_cleanup(two_stage_ctx_t *ctx) {
 int two_stage_vs_map(two_stage_ctx_t *ctx, uintptr_t va,
                      uintptr_t gpa, uintptr_t flags, int level) {
     if (ctx->vs_mode == SATP_MODE_BARE) {
-        printf("ERROR: two_stage_vs_map: vs_mode is BARE\n");
+        LOG_E("two_stage_vs_map: vs_mode is BARE\n");
         return -1;
     }
     return pt_map_page(&ctx->vs_ctx, va, gpa, flags, level);
@@ -115,7 +115,7 @@ int two_stage_vs_map(two_stage_ctx_t *ctx, uintptr_t va,
 int two_stage_vs_identity(two_stage_ctx_t *ctx, uintptr_t base,
                           uintptr_t size, uintptr_t flags, int level) {
     if (ctx->vs_mode == SATP_MODE_BARE) {
-        printf("ERROR: two_stage_vs_identity: vs_mode is BARE\n");
+        LOG_E("two_stage_vs_identity: vs_mode is BARE\n");
         return -1;
     }
     return pt_setup_identity_mapping(&ctx->vs_ctx, base, size, flags, level);

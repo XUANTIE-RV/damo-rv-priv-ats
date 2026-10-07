@@ -3,9 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "types.h"
-#include "encoding.h"
-#include "uart.h"
+#include "test_framework.h"
 
 /* Halt the machine with a fail status via RVMODEL_HALT_FAIL (entry.S).
  * On QEMU/Spike/Sail this terminates the simulation; on HW it spins. */
@@ -163,20 +161,20 @@ static inline void _trace_add(unsigned priv, uintptr_t cause,
 static void _trace_dump(void) {
     if (!trap_trace_enabled)
         return;
-    printf("  [TRACE] last trap entries (old -> new):\n");
+    LOG_T("last trap entries (old -> new):\n");
     unsigned start = (_trace_idx < TRAP_TRACE_DEPTH)
                          ? 0 : _trace_idx;
     for (unsigned k = 0; k < TRAP_TRACE_DEPTH && k < _trace_idx; k++) {
         unsigned i = (start + k) % TRAP_TRACE_DEPTH;
-        printf("    priv=%c cause=0x%lx epc=0x%lx status=0x%lx "
-               "tval=0x%lx mtval2=0x%lx armed=%d\n",
-               _trace_ring[i].priv == 3 ? 'M' : 'S',
-               (unsigned long)_trace_ring[i].cause,
-               (unsigned long)_trace_ring[i].epc,
-               (unsigned long)_trace_ring[i].status,
-               (unsigned long)_trace_ring[i].tval,
-               (unsigned long)_trace_ring[i].mtval2,
-               _trace_ring[i].armed);
+        LOG_T("  priv=%c cause=0x%lx epc=0x%lx status=0x%lx "
+              "tval=0x%lx mtval2=0x%lx armed=%d\n",
+              _trace_ring[i].priv == 3 ? 'M' : 'S',
+              (unsigned long)_trace_ring[i].cause,
+              (unsigned long)_trace_ring[i].epc,
+              (unsigned long)_trace_ring[i].status,
+              (unsigned long)_trace_ring[i].tval,
+              (unsigned long)_trace_ring[i].mtval2,
+              _trace_ring[i].armed);
     }
 }
 
@@ -647,8 +645,8 @@ unsigned m_trap_handler(void) {
              * instead of hanging. */
             if (_ssdbltrp_probe_present() && ssdbltrp_probe_active &&
                 ++ssdbltrp_dt_entries > 8) {
-                printf("\n!!! UNRECOVERABLE: double-trap escalation "
-                       "does not terminate; aborting\n");
+                LOG_E("UNRECOVERABLE: double-trap escalation "
+                      "does not terminate; aborting\n");
                 _halt_fail();
             }
             /* Snapshot the record now: a later delivery may overwrite
@@ -743,20 +741,20 @@ unsigned m_trap_handler(void) {
     }
 
     /* ---- Unexpected exception: fatal error ---- */
-    printf("\n!!! UNEXPECTED TRAP in M-mode !!!\n");
+    LOG_E("UNEXPECTED TRAP in M-mode !!!\n");
 #ifdef ENABLE_TRAP_ARM_DIAG
-    printf("  [DIAG] begin=%lu end=%lu handler_clear=%lu\n",
-           _diag_arm_begin_count, _diag_arm_end_count,
-           _diag_arm_handler_clear);
-    printf("  [DIAG] last_clear epc=0x%lx cause=0x%lx\n",
-           _diag_arm_last_clear_epc, _diag_arm_last_clear_cause);
+    LOG_D("[DIAG] begin=%lu end=%lu handler_clear=%lu\n",
+          _diag_arm_begin_count, _diag_arm_end_count,
+          _diag_arm_handler_clear);
+    LOG_D("[DIAG] last_clear epc=0x%lx cause=0x%lx\n",
+          _diag_arm_last_clear_epc, _diag_arm_last_clear_cause);
 #endif
-    printf("  mcause  = 0x%lx\n", (unsigned long)cause);
-    printf("  mepc    = 0x%lx\n", (unsigned long)epc);
-    printf("  mtval   = 0x%lx\n", (unsigned long)tval);
-    printf("  mstatus = 0x%lx\n", (unsigned long)CSRR(mstatus));
-    printf("  armed   = %d  current_priv = %u\n",
-           (int)trap_record.armed, current_priv);
+    LOG_E("mcause  = 0x%lx\n", (unsigned long)cause);
+    LOG_E("mepc    = 0x%lx\n", (unsigned long)epc);
+    LOG_E("mtval   = 0x%lx\n", (unsigned long)tval);
+    LOG_E("mstatus = 0x%lx\n", (unsigned long)CSRR(mstatus));
+    LOG_E("armed   = %d  current_priv = %u\n",
+          (int)trap_record.armed, current_priv);
     _trace_dump();
 
     /* Halt with fail status */
@@ -969,10 +967,10 @@ unsigned s_trap_handler(void) {
     }
 
     /* ---- Unexpected exception ---- */
-    printf("\n!!! UNEXPECTED TRAP in S-mode !!!\n");
-    printf("  scause = 0x%lx\n", (unsigned long)cause);
-    printf("  sepc   = 0x%lx\n", (unsigned long)epc);
-    printf("  stval  = 0x%lx\n", (unsigned long)tval);
+    LOG_E("UNEXPECTED TRAP in S-mode !!!\n");
+    LOG_E("scause = 0x%lx\n", (unsigned long)cause);
+    LOG_E("sepc   = 0x%lx\n", (unsigned long)epc);
+    LOG_E("stval  = 0x%lx\n", (unsigned long)tval);
     _trace_dump();
 
     /* Halt with fail status */

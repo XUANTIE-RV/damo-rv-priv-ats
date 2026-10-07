@@ -3,9 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "types.h"
-#include "encoding.h"
-#include "uart.h"
+#include "test_framework.h"
 
 /* ===================================================================
  * Privilege mode definitions are in encoding.h.
@@ -64,8 +62,8 @@ static void set_prev_priv(unsigned target) {
     case PRIV_S: {
 #ifdef ENABLE_HYP
         if (is_virt_target(target)) {
-            printf("ERROR: set_prev_priv from S/VS-mode for virtualized target %d\n",
-                   target);
+            LOG_E("set_prev_priv from S/VS-mode for virtualized target %d\n",
+                  target);
             break;
         }
 #endif
@@ -79,7 +77,7 @@ static void set_prev_priv(unsigned target) {
         break;
     }
     default:
-        printf("ERROR: set_prev_priv from unsupported priv %d\n", current_priv);
+        LOG_E("set_prev_priv from unsupported priv %d\n", current_priv);
         break;
     }
 }
@@ -109,14 +107,14 @@ static void lower_priv(unsigned target) {
 
     /* Check if we're actually going down in privilege using proper comparison */
     if (priv_cmp(target, current_priv) > 0) {
-        printf("ERROR: lower_priv called with higher target %d > %d\n",
-               target, current_priv);
+        LOG_E("lower_priv called with higher target %d > %d\n",
+              target, current_priv);
         return;
     }
 #else
     if (target > current_priv) {
-        printf("ERROR: lower_priv called with higher target %d > %d\n",
-               target, current_priv);
+        LOG_E("lower_priv called with higher target %d > %d\n",
+              target, current_priv);
         return;
     }
 #endif
