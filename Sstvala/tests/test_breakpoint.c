@@ -188,8 +188,8 @@ bool test_sstvala_bkp_03(void) {
     CHECK_TRAP("EBREAK trap", CAUSE_BREAKPOINT);
     /* Per Sstvala spec, EBREAK's stval behavior is defined by
      * other specifications. We only log the value, no assertion. */
-    printf("  [INFO] EBREAK stval = 0x%lx (not asserted)\n",
-           (unsigned long)trap_get_tval());
+    LOG_I("EBREAK stval = 0x%lx (not asserted)\n",
+          (unsigned long)trap_get_tval());
 
     TEST_END();
 }

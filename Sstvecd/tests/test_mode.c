@@ -59,10 +59,10 @@ bool test_sstvecd_mode_02_round_trip(void) {
     TEST_ASSERT("after write MODE=1, readback in {0, 1}",
                 rb2 == STVEC_MODE_DIRECT || rb2 == STVEC_MODE_VECTORED);
     if (rb2 == STVEC_MODE_VECTORED) {
-        printf("    [INFO] platform implements Vectored mode\n");
+        LOG_I("platform implements Vectored mode\n");
     } else {
-        printf("    [INFO] platform does NOT implement Vectored "
-               "(MODE=1 -> 0)\n");
+        LOG_I("platform does NOT implement Vectored "
+              "(MODE=1 -> 0)\n");
     }
 
     /* Step 3: write MODE=0 again, expect readback == 0 */

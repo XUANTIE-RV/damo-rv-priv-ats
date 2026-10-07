@@ -50,7 +50,7 @@ bool test_hcfi_ss_25(void) {
 
     vs_pte_modify(&ctx, SS_PAGE_ADDR, PT_LEVEL_4K, PTE_SS_PAGE_FLAGS);
 
-    uintptr_t r = two_stage_run_in_vs(&ctx, vs_store, SS_PAGE_ADDR);
+    uintptr_t r = two_stage_run_in_vs(&ctx, probe_store, SS_PAGE_ADDR);
     TEST_ASSERT("page-fault for pte.xwr=010 when SSE=0",
                 r == CAUSE_STORE_PAGE_FAULT || r == CAUSE_STORE_ACCESS_FAULT);
 
@@ -71,7 +71,7 @@ bool test_hcfi_ss_26(void) {
 
     vs_pte_modify(&ctx, SS_PAGE_ADDR, PT_LEVEL_4K, PTE_SS_PAGE_FLAGS);
 
-    uintptr_t r = two_stage_run_in_vs(&ctx, vs_store, SS_PAGE_ADDR);
+    uintptr_t r = two_stage_run_in_vs(&ctx, probe_store, SS_PAGE_ADDR);
     TEST_ASSERT_EQ("store/AMO access-fault on SS page", r, (uintptr_t)CAUSE_STORE_ACCESS_FAULT);
 
     henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
@@ -91,7 +91,7 @@ bool test_hcfi_ss_27(void) {
 
     vs_pte_modify(&ctx, SS_PAGE_ADDR, PT_LEVEL_4K, PTE_SS_PAGE_FLAGS);
 
-    uintptr_t r = two_stage_run_in_vs(&ctx, vs_load, SS_PAGE_ADDR);
+    uintptr_t r = two_stage_run_in_vs(&ctx, probe_load, SS_PAGE_ADDR);
     TEST_ASSERT("load from SS page succeeds", r == 0);
 
     henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
@@ -161,7 +161,7 @@ bool test_hcfi_ss_30(void) {
      * must also raise a store/AMO access-fault; the normal-store case
      * (norm:ssmp_ss_page_access_fault) exercises the same SS-page
      * write-protection path. Tracked as a known gap. */
-    uintptr_t r = two_stage_run_in_vs(&ctx, vs_store, SS_PAGE_ADDR);
+    uintptr_t r = two_stage_run_in_vs(&ctx, probe_store, SS_PAGE_ADDR);
     TEST_ASSERT_EQ("access-fault for store on SS page", r, (uintptr_t)CAUSE_STORE_ACCESS_FAULT);
 
     henvcfg_write(orig_h); ts2_finish(&ctx); HYP_TEST_END();
@@ -305,7 +305,7 @@ bool test_hcfi_ss_36(void) {
     vsstatus_write(vss | MSTATUS_MXR_BIT);
 
     /* Load from SS page should still succeed */
-    uintptr_t r = two_stage_run_in_vs(&ctx, vs_load, SS_PAGE_ADDR);
+    uintptr_t r = two_stage_run_in_vs(&ctx, probe_load, SS_PAGE_ADDR);
     TEST_ASSERT("load from SS page with MXR=1 succeeds", r == 0);
 
     vsstatus_write(vss);

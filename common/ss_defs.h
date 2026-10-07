@@ -30,6 +30,7 @@
 #define SSTATUS_SUM_BIT  BIT(18)  /* Permit Supervisory User Accesses (== mstatus.SUM) */
 #define SSTATUS_MXR_BIT  BIT(19)  /* Make eXecutable Readable (== mstatus.MXR) */
 #define SSTATUS_SD_BIT   BIT(63)  /* State Dirty summary (FS!=0 or VS!=0 or XS!=0) */
+#define SSTATUS_SDT_BIT  BIT(24)  /* S-mode Double Trap enable (Ssdbltrp) */
 
 /* sstatus.VS field [10:9] - vector context state (Off/Initial/Clean/Dirty) */
 #define SSTATUS_VS_SHIFT    9
@@ -50,6 +51,13 @@
 /* sstatus.UXL field [33:32] - U-mode effective XLEN (RV64) */
 #define SSTATUS_UXL_SHIFT   32
 #define SSTATUS_UXL_MASK    (3UL << SSTATUS_UXL_SHIFT)
+
+/* ----- stvec field layout (Sstvecd) -----
+ * Authoritative source; suites must not redefine these locally. */
+#define STVEC_MODE_MASK      0x3UL               /* MODE field [1:0] */
+#define STVEC_MODE_DIRECT    0x0UL               /* MODE=0: Direct mode */
+#define STVEC_MODE_VECTORED  0x1UL               /* MODE=1: Vectored mode */
+#define STVEC_BASE_MASK      (~STVEC_MODE_MASK)  /* BASE field [XLEN-1:2] */
 
 /* Supervisor Counter Inhibit (Ssccfg) */
 #ifndef CSR_SCOUNTINHIBIT
@@ -73,6 +81,7 @@
 #define SENVCFG_CBZE    (1ULL << 7)     /* Cache-Block Zero Enable (Zicboz) */
 #define SENVCFG_PMM_OFF  32             /* PMM field offset in senvcfg */
 #define SENVCFG_PMM_MASK (3ULL << 32)   /* PMM field mask [33:32] (Ssnpm) */
+#define SENVCFG_FIOM    (1ULL << 0)     /* FENCE.I implicit memory ordering (Zifencei) */
 
 /* ===================================================================
  * satp layout constants
@@ -205,6 +214,20 @@
 #define CSR_SRMCFG        0x181
 #endif
 
+/* srmcfg field layout (Ssqosid): [11:0] RCID, [27:16] MCID (both WARL) */
+#ifndef SRMCFG_RCID_MASK
+#define SRMCFG_RCID_MASK  0xFFFUL
+#endif
+#ifndef SRMCFG_RCID_SHIFT
+#define SRMCFG_RCID_SHIFT 0
+#endif
+#ifndef SRMCFG_MCID_MASK
+#define SRMCFG_MCID_MASK  0xFFFUL
+#endif
+#ifndef SRMCFG_MCID_SHIFT
+#define SRMCFG_MCID_SHIFT 16
+#endif
+
 /* ===================================================================
  * Smstateen S-mode CSRs
  * =================================================================== */
@@ -212,5 +235,58 @@
 #define CSR_SSTATEEN1      0x10D
 #define CSR_SSTATEEN2      0x10E
 #define CSR_SSTATEEN3      0x10F
+
+/* ===================================================================
+ * Ssctr: sctrctl field aliases (same layout as mctrctl; sctrctl.M
+ * (bit 2) and sctrctl.MTE (bit 9) are read-only zero per SPEC)
+ * =================================================================== */
+#define SCTRCTL_U           CTRCTL_U
+#define SCTRCTL_S           CTRCTL_S
+#define SCTRCTL_RASEMU      CTRCTL_RASEMU
+#define SCTRCTL_STE         CTRCTL_STE
+#define SCTRCTL_BPFRZ       CTRCTL_BPFRZ
+#define SCTRCTL_LCOFIFRZ    CTRCTL_LCOFIFRZ
+#define SCTRCTL_EXCINH      CTRCTL_EXCINH
+#define SCTRCTL_INTRINH     CTRCTL_INTRINH
+#define SCTRCTL_TRETINH     CTRCTL_TRETINH
+#define SCTRCTL_NTBREN      CTRCTL_NTBREN
+#define SCTRCTL_TKBRINH     CTRCTL_TKBRINH
+#define SCTRCTL_INDCALLINH  CTRCTL_INDCALLINH
+#define SCTRCTL_DIRCALLINH  CTRCTL_DIRCALLINH
+#define SCTRCTL_INDJMPINH   CTRCTL_INDJMPINH
+#define SCTRCTL_DIRJMPINH   CTRCTL_DIRJMPINH
+#define SCTRCTL_CORSWAPINH  CTRCTL_CORSWAPINH
+#define SCTRCTL_RETINH      CTRCTL_RETINH
+#define SCTRCTL_INDLJMPINH  CTRCTL_INDLJMPINH
+#define SCTRCTL_DIRLJMPINH  CTRCTL_DIRLJMPINH
+#define SCTRCTL_CUSTOM_MASK CTRCTL_CUSTOM_MASK
+
+/* ===================================================================
+ * sstatus.SDT (S-mode Double Trap enable, Ssdbltrp) accessors.
+ * Authoritative source; suites must not redefine these locally.
+ * =================================================================== */
+#ifndef __ASSEMBLER__
+#include "types.h"
+
+/** Read sstatus.SDT as a boolean. */
+static inline bool get_sdt(void)
+{
+    uintptr_t sstatus;
+    asm volatile ("csrr %0, sstatus" : "=r"(sstatus));
+    return (sstatus & SSTATUS_SDT_BIT) != 0;
+}
+
+/** Set sstatus.SDT. */
+static inline void set_sdt(void)
+{
+    asm volatile ("csrs sstatus, %0" :: "r"(SSTATUS_SDT_BIT));
+}
+
+/** Clear sstatus.SDT. */
+static inline void clear_sdt(void)
+{
+    asm volatile ("csrc sstatus, %0" :: "r"(SSTATUS_SDT_BIT));
+}
+#endif /* __ASSEMBLER__ */
 
 #endif /* SS_DEFS_H */

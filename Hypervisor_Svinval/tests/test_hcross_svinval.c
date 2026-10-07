@@ -45,7 +45,7 @@ bool test_hcross_svinval_01(void) {
     uintptr_t test_va = (uintptr_t)test_data_area;
 
     /* VS-mode store to verify initial mapping (RW) */
-    uintptr_t result1 = two_stage_run_in_vs(&ctx, vs_store, test_va);
+    uintptr_t result1 = two_stage_run_in_vs(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("initial VS-mode store succeeded", result1, (uintptr_t)0);
 
     /* HS-mode modifies VS-stage PTE to read-only (clear W bit) */
@@ -57,7 +57,7 @@ bool test_hcross_svinval_01(void) {
     SFENCE_INVAL_IR();
 
     /* VS-mode store should now trigger store page-fault */
-    uintptr_t result2 = two_stage_run_in_vs(&ctx, vs_store, test_va);
+    uintptr_t result2 = two_stage_run_in_vs(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("VS-mode store triggered page-fault after HINVAL.VVMA",
                    result2, (uintptr_t)CAUSE_VS_STORE_PAGE_FAULT);
 
@@ -87,7 +87,7 @@ bool test_hcross_svinval_02(void) {
     uintptr_t test_gpa = test_va;  /* identity mapping */
 
     /* VS-mode store to verify initial mapping */
-    uintptr_t result1 = two_stage_run_in_vs(&ctx, vs_store, test_va);
+    uintptr_t result1 = two_stage_run_in_vs(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("initial VS-mode store succeeded", result1, (uintptr_t)0);
 
     /* HS-mode modifies G-stage PTE to read-only */
@@ -99,7 +99,7 @@ bool test_hcross_svinval_02(void) {
     SFENCE_INVAL_IR();
 
     /* VS-mode store should now trigger store guest-page-fault */
-    uintptr_t result2 = two_stage_run_in_vs(&ctx, vs_store, test_va);
+    uintptr_t result2 = two_stage_run_in_vs(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("VS-mode store triggered guest-page-fault after HINVAL.GVMA",
                    result2, (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);
 
@@ -139,8 +139,8 @@ bool test_hcross_svinval_03(void) {
     SFENCE_INVAL_IR();
 
     /* Verify both PTEs take effect */
-    uintptr_t result1 = two_stage_run_in_vs(&ctx, vs_store, va1);
-    uintptr_t result2 = two_stage_run_in_vs(&ctx, vs_store, va2);
+    uintptr_t result1 = two_stage_run_in_vs(&ctx, probe_store, va1);
+    uintptr_t result2 = two_stage_run_in_vs(&ctx, probe_store, va2);
 
     TEST_ASSERT_EQ("va1 store page-fault", result1, (uintptr_t)CAUSE_VS_STORE_PAGE_FAULT);
     TEST_ASSERT_EQ("va2 store page-fault", result2, (uintptr_t)CAUSE_VS_STORE_PAGE_FAULT);
@@ -183,8 +183,8 @@ bool test_hcross_svinval_04(void) {
     SFENCE_INVAL_IR();
 
     /* Verify both PTEs take effect */
-    uintptr_t result1 = two_stage_run_in_vs(&ctx, vs_store, va1);
-    uintptr_t result2 = two_stage_run_in_vs(&ctx, vs_store, va2);
+    uintptr_t result1 = two_stage_run_in_vs(&ctx, probe_store, va1);
+    uintptr_t result2 = two_stage_run_in_vs(&ctx, probe_store, va2);
 
     TEST_ASSERT_EQ("va1 store guest-page-fault", result1, (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);
     TEST_ASSERT_EQ("va2 store guest-page-fault", result2, (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);
@@ -224,7 +224,7 @@ bool test_hcross_svinval_05(void) {
 
     /* Enable two-stage with VMID=5, verify new PTE takes effect */
     two_stage_enable(&ctx, 5);
-    uintptr_t result_vmid5 = two_stage_run_in_vs(&ctx, vs_store, test_va);
+    uintptr_t result_vmid5 = two_stage_run_in_vs(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("VMID=5 store guest-page-fault (new PTE)",
                    result_vmid5, (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);
 
@@ -265,13 +265,13 @@ bool test_hcross_svinval_06(void) {
 
     /* Verify VMID=5 uses new PTE */
     two_stage_enable(&ctx, 5);
-    uintptr_t result_vmid5 = two_stage_run_in_vs(&ctx, vs_store, test_va);
+    uintptr_t result_vmid5 = two_stage_run_in_vs(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("VMID=5 store guest-page-fault",
                    result_vmid5, (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);
 
     /* Verify VMID=6 uses new PTE */
     two_stage_enable(&ctx, 6);
-    uintptr_t result_vmid6 = two_stage_run_in_vs(&ctx, vs_store, test_va);
+    uintptr_t result_vmid6 = two_stage_run_in_vs(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("VMID=6 store guest-page-fault",
                    result_vmid6, (uintptr_t)CAUSE_STORE_GUEST_PAGE_FAULT);
 

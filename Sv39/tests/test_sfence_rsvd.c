@@ -245,7 +245,7 @@ bool SVFN(rsvd01)(void) {
     volatile uintptr_t *pte = (volatile uintptr_t *)(pt_page + vpn0 * sizeof(uintptr_t));
     *pte |= (1UL << 54);  /* Set reserved bit 54 */
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("reserved bit 54 triggers load page fault",
                 result == CAUSE_LPF);
 
@@ -278,7 +278,7 @@ bool SVFN(rsvd02)(void) {
     volatile uintptr_t *pte = (volatile uintptr_t *)(pt_page + vpn0 * sizeof(uintptr_t));
     *pte |= (1UL << 56);  /* Set reserved bit 56 */
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("reserved bit 56 triggers store page fault",
                 result == CAUSE_SPF);
 

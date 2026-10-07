@@ -270,4 +270,27 @@ static inline void pmp_restore(const pmp_save_t *save) {
     pmp_set_entry(1, &save->e1);
 }
 
+/* Quick PMP entry-0 full-space NAPOT RWX open (for S/U-mode access).
+ * Lightweight inline-asm alternative to pmp_set_entry() when only
+ * a catch-all permission grant is needed (no save/restore). */
+static inline void pmp_open_entry0_all(void)
+{
+    asm volatile(
+        "li t0, -1\n\t"
+        "csrw pmpaddr0, t0\n\t"
+        "li t0, 0x1F\n\t"
+        "csrw pmpcfg0, t0\n\t"
+        ::: "t0");
+}
+
+/* Clear all PMP entries then open entry 0 as a full-space RWX NAPOT
+ * region, so S-mode (and U-mode) accesses are permitted by PMP. This
+ * is the authoritative version of the per-suite ensure_smode_pmp(). */
+static inline void ensure_smode_pmp(void)
+{
+    pmp_clear_all();
+    pmp_entry_t pmp_all = PMP_ENTRY_FULL(PMP_RWX);
+    pmp_set_entry(0, &pmp_all);
+}
+
 #endif /* PMP_CFG_H */

@@ -4,7 +4,7 @@
  */
 
 #include "vm.h"
-#include "uart.h"
+#include "test_framework.h"
 
 /* ===================================================================
  * External dependencies from privilege.c and trap.c
@@ -123,7 +123,7 @@ void vm_sfence_vma(uintptr_t vaddr, uintptr_t asid) {
  */
 void vm_enable(pt_context_t *ctx, unsigned asid) {
     if (!ctx || !ctx->root_pt) {
-        printf("ERROR: vm_enable: invalid context\n");
+        LOG_E("vm_enable: invalid context\n");
         return;
     }
 

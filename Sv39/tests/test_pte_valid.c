@@ -28,7 +28,7 @@ bool SVFN(valid01)(void) {
                 PTE_R | PTE_W | PTE_A | PTE_D,  /* no PTE_V */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("V=0 triggers load page fault", result == CAUSE_LPF);
 
     pt_pool_reset();
@@ -49,7 +49,7 @@ bool SVFN(valid02)(void) {
                 PTE_R | PTE_W | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("V=0 triggers store page fault", result == CAUSE_SPF);
 
     pt_pool_reset();
@@ -71,7 +71,7 @@ bool SVFN(valid03)(void) {
                 PTE_R | PTE_X | PTE_A | PTE_D,  /* no PTE_V */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_exec, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec, test_va);
     TEST_ASSERT("V=0 triggers instruction page fault", result == CAUSE_IPF);
 
     pt_pool_reset();
@@ -92,7 +92,7 @@ bool SVFN(valid04)(void) {
                 PTE_V | PTE_W | PTE_A | PTE_D,  /* R=0, W=1 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("R=0,W=1 triggers load page fault", result == CAUSE_LPF);
 
     pt_pool_reset();
@@ -113,7 +113,7 @@ bool SVFN(valid05)(void) {
                 PTE_V | PTE_W | PTE_A | PTE_D,  /* R=0, W=1 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("R=0,W=1 triggers store page fault", result == CAUSE_SPF);
 
     pt_pool_reset();

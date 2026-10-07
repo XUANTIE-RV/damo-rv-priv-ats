@@ -28,7 +28,7 @@ bool test_ssccptr_basic_sv39_4k_smode_load(void) {
                 PTE_V | PTE_R | PTE_W | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("S-mode load via page walk succeeds", result, 0);
 
     pt_pool_reset();
@@ -50,7 +50,7 @@ bool test_ssccptr_basic_sv39_4k_smode_store(void) {
                 PTE_V | PTE_R | PTE_W | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("S-mode store via page walk succeeds", result, 0);
 
     pt_pool_reset();
@@ -73,7 +73,7 @@ bool test_ssccptr_basic_sv39_4k_smode_fetch(void) {
                 PTE_V | PTE_R | PTE_X | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_exec, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec, test_va);
     TEST_ASSERT_EQ("S-mode fetch via page walk succeeds", result, 0);
 
     pt_pool_reset();
@@ -95,7 +95,7 @@ bool test_ssccptr_basic_sv39_4k_umode_load(void) {
                 PTE_V | PTE_R | PTE_W | PTE_U | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_umode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_umode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("U-mode load via page walk succeeds", result, 0);
 
     pt_pool_reset();
@@ -117,7 +117,7 @@ bool test_ssccptr_basic_sv39_4k_umode_store(void) {
                 PTE_V | PTE_R | PTE_W | PTE_U | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_umode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_umode(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("U-mode store via page walk succeeds", result, 0);
 
     pt_pool_reset();
@@ -140,7 +140,7 @@ bool test_ssccptr_basic_sv39_4k_umode_fetch(void) {
                 PTE_V | PTE_R | PTE_X | PTE_U | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_umode(&ctx, test_smode_exec, test_va);
+    uintptr_t result = vm_run_in_umode(&ctx, probe_exec, test_va);
     TEST_ASSERT_EQ("U-mode fetch via page walk succeeds", result, 0);
 
     pt_pool_reset();

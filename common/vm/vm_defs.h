@@ -41,11 +41,15 @@
 #define PAGE_SHIFT_2M   21
 #define PAGE_SHIFT_4M   22      /* Sv32 megapage (RV32 only) */
 #define PAGE_SHIFT_1G   30
+#define PAGE_SHIFT_512G 39      /* Sv48/Sv57 level-1 huge page */
+#define PAGE_SHIFT_256T 48      /* Sv57 level-1 huge page */
 
 #define PAGE_SIZE_4K    (1UL << PAGE_SHIFT_4K)   /* 4 KB   = 0x1000     */
 #define PAGE_SIZE_2M    (1UL << PAGE_SHIFT_2M)   /* 2 MB   = 0x200000   */
 #define PAGE_SIZE_4M    (1UL << PAGE_SHIFT_4M)   /* 4 MB   = 0x400000   (Sv32 megapage) */
 #define PAGE_SIZE_1G    (1UL << PAGE_SHIFT_1G)   /* 1 GB   = 0x40000000 */
+#define PAGE_SIZE_512G  (1UL << PAGE_SHIFT_512G) /* 512 GB (Sv48/Sv57)  */
+#define PAGE_SIZE_256T  (1UL << PAGE_SHIFT_256T) /* 256 TB (Sv57)       */
 
 #define PAGE_SIZE       PAGE_SIZE_4K
 #define PAGE_SHIFT      PAGE_SHIFT_4K
@@ -158,5 +162,14 @@
  * =================================================================== */
 #define PT_POOL_PAGES   64                          /* Number of 4KB pages in pool */
 #define PT_POOL_SIZE    (PT_POOL_PAGES * PAGE_SIZE) /* 256 KB total */
+
+/* ===================================================================
+ * Shared test-data magic constants
+ *
+ * Authoritative values used by the VM test suites to tag written data
+ * and verify translation/readback. Do NOT redefine these locally.
+ * =================================================================== */
+#define MAGIC_WRITE     0xDEADBEEF12345678UL
+#define MAGIC_READ      0xCAFEBABE87654321UL
 
 #endif /* VM_DEFS_H */

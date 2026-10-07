@@ -64,7 +64,7 @@ bool test_napot_tlb_replace_standard(void) {
     uintptr_t result = vm_run_in_smode(&ctx, smode_read_write, test_va);
     TEST_ASSERT("NAPOT region accessible", result == 0);
 
-    result = vm_run_in_smode(&ctx, smode_load, test_va + 0x4000);
+    result = vm_run_in_smode(&ctx, probe_load, test_va + 0x4000);
     TEST_ASSERT("NAPOT offset 0x4000 accessible", result == 0);
 
     /* Replace all 16 NAPOT PTE slots with: base slot gets standard 4 KiB
@@ -90,7 +90,7 @@ bool test_napot_tlb_replace_standard(void) {
 
     /* Other pages within the old NAPOT region should fault
      * (their PTEs are now invalid) */
-    result = vm_run_in_smode(&ctx, smode_load_expect_fault,
+    result = vm_run_in_smode(&ctx, probe_load,
                               test_va + 0x4000);
     TEST_ASSERT("offset 0x4000 faults after NAPOT->standard replace",
                 result == CAUSE_LOAD_PAGE_FAULT);
@@ -120,7 +120,7 @@ bool test_napot_tlb_v0(void) {
     /* Note: no PTE_V set, so the PTE is invalid */
     napot_install_pte(&ctx, test_va, napot_pte);
 
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load,
                                         test_va);
     TEST_ASSERT("NAPOT V=0 triggers page fault",
                 result == CAUSE_LOAD_PAGE_FAULT);

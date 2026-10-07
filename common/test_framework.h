@@ -363,6 +363,12 @@ extern bool g_trap_force_pelp;
 static inline void clear_mdt(void) {
     CSRC(mstatus, MSTATUS_MDT_BIT);
 }
+static inline void set_mdt(void) {
+    CSRS(mstatus, MSTATUS_MDT_BIT);
+}
+static inline bool get_mdt(void) {
+    return (CSRR(mstatus) & MSTATUS_MDT_BIT) != 0;
+}
 #else
 /* On RV32, mstatus.MDT is bit 42 of the full 64-bit mstatus register.
  * The low 32 bits are accessed via mstatus, the high 32 bits via mstatush.
@@ -371,9 +377,17 @@ static inline void clear_mdt(void) {
 static inline void clear_mdt(void) {
     CSRC(CSR_MSTATUSH, MSTATUSH_MDT_BIT);
 }
+static inline void set_mdt(void) {
+    CSRS(CSR_MSTATUSH, MSTATUSH_MDT_BIT);
+}
+static inline bool get_mdt(void) {
+    return (CSRR(CSR_MSTATUSH) & MSTATUSH_MDT_BIT) != 0;
+}
 #endif
 #else
 static inline void clear_mdt(void) { /* no-op */ }
+static inline void set_mdt(void) { /* no-op */ }
+static inline bool get_mdt(void) { return false; }
 #endif
 
 /**
@@ -453,6 +467,25 @@ static inline void clear_mdt(void) { /* no-op */ }
     TEST_ASSERT("exec no trap", !trap_was_triggered()); \
     trap_expect_end(); \
 } while (0)
+
+/* ===================================================================
+ * CSR existence probe (M-mode, trap-armed)
+ *
+ * PROBE_CSR(csr_num, out_val) - Attempts to read a CSR with trap
+ * arming. Evaluates to true if the CSR is accessible (no trap),
+ * storing the read value into *(out_val). Must run in M-mode.
+ * =================================================================== */
+#define PROBE_CSR(csr_num, out_val) ({ \
+    uintptr_t _probe_v = 0; \
+    bool _probe_ok; \
+    M_TRAP_EXPECT_BEGIN(); \
+    asm volatile ("csrr %0, " CSR_STR(csr_num) : "=r"(_probe_v)); \
+    _probe_ok = !trap_was_triggered(); \
+    trap_expect_end(); \
+    if (_probe_ok) \
+        *(out_val) = _probe_v; \
+    _probe_ok; \
+})
 
 /* ===================================================================
  * S/U-mode safe trap macros
@@ -619,5 +652,19 @@ int test_print_summary(void);
 #define LOG_D(fmt, ...) do { if (LOG_LEVEL >= LOG_DEBUG)   printf("  [DEBUG] " fmt, ##__VA_ARGS__); } while(0)
 #define LOG_T(fmt, ...) do { if (LOG_LEVEL >= LOG_TRACE)   printf("  [TRACE] " fmt, ##__VA_ARGS__); } while(0)
 #define LOG_V(fmt, ...) do { if (LOG_LEVEL >= LOG_VERBOSE) printf("  [VERBOSE] " fmt, ##__VA_ARGS__); } while(0)
+
+/* ===================================================================
+ * Instruction-retirement workload helper
+ *
+ * Executes `count` NOPs to create a measurable number of retired
+ * instructions (used by counter / HPM tests). This is the single
+ * authoritative implementation; suites must not keep a local copy.
+ * =================================================================== */
+static inline void execute_nops(unsigned count)
+{
+    for (volatile unsigned i = 0; i < count; i++) {
+        asm volatile("nop");
+    }
+}
 
 #endif /* COMMON_TEST_FRAMEWORK_H */

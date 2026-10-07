@@ -4,7 +4,7 @@
  */
 
 #include "mpt_table.h"
-#include "uart.h"
+#include "test_framework.h"
 
 /* ===================================================================
  * Per-mode radix parameters (chapter4)
@@ -103,7 +103,7 @@ static uintptr_t mpt_pool_alloc(uintptr_t align, uintptr_t size) {
 
     uintptr_t p = (mpt_pool_next + align - 1) & ~(align - 1);
     if (p + size > (uintptr_t)&__mpt_pool_end) {
-        printf("ERROR: MPT table pool exhausted\n");
+        LOG_E("MPT table pool exhausted\n");
         return 0;
     }
     mpt_pool_next = p + size;
@@ -131,12 +131,12 @@ static uintptr_t mpt_alloc_table(mpt_ctx_t *ctx, bool is_root) {
 
 int mpt_init(mpt_ctx_t *ctx, int mode) {
     if (mpt_mode_info(mode, &ctx->info) != 0) {
-        printf("ERROR: unsupported MPT mode %d\n", mode);
+        LOG_E("unsupported MPT mode %d\n", mode);
         return -1;
     }
     ctx->root_pa = mpt_alloc_table(ctx, true);
     if (!ctx->root_pa) {
-        printf("ERROR: failed to allocate MPT root table\n");
+        LOG_E("failed to allocate MPT root table\n");
         return -1;
     }
     return 0;

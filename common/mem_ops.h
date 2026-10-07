@@ -143,6 +143,79 @@ static inline void mem_store64(uintptr_t addr, uint64_t val) {
 #define mem_store_xlen  mem_store32
 #endif
 
+/* ===== Byte-wise little-endian accessors (misaligned-safe) =====
+ *
+ * These decompose a 16/32/64-bit access into single-byte accesses, so
+ * they NEVER fault on a misaligned address - unlike mem_load16/32/64
+ * above, which emit a single lh/lw/ld and trap on a misaligned target.
+ * The atomic-extension suites use them to capture the pre/post image of
+ * a misaligned atomic operand byte by byte. Bytes are assembled and
+ * dispersed little-endian (RISC-V memory byte order). Defined for both
+ * RV32 and RV64 (the 64-bit forms decompose into two 32-bit ones). */
+static inline uint16_t mem_load_le16(uintptr_t addr) {
+    volatile uint8_t *p = (volatile uint8_t *)addr;
+    return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8));
+}
+
+static inline uint32_t mem_load_le32(uintptr_t addr) {
+    volatile uint8_t *p = (volatile uint8_t *)addr;
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
+           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
+static inline uint64_t mem_load_le64(uintptr_t addr) {
+    return (uint64_t)mem_load_le32(addr) |
+           ((uint64_t)mem_load_le32(addr + 4) << 32);
+}
+
+static inline void mem_store_le16(uintptr_t addr, uint16_t val) {
+    volatile uint8_t *p = (volatile uint8_t *)addr;
+    p[0] = (uint8_t)(val);
+    p[1] = (uint8_t)(val >> 8);
+}
+
+static inline void mem_store_le32(uintptr_t addr, uint32_t val) {
+    volatile uint8_t *p = (volatile uint8_t *)addr;
+    p[0] = (uint8_t)(val);
+    p[1] = (uint8_t)(val >> 8);
+    p[2] = (uint8_t)(val >> 16);
+    p[3] = (uint8_t)(val >> 24);
+}
+
+static inline void mem_store_le64(uintptr_t addr, uint64_t val) {
+    mem_store_le32(addr, (uint32_t)val);
+    mem_store_le32(addr + 4, (uint32_t)(val >> 32));
+}
+
+/* ===== Misaligned atomicity granule (MAG) geometry =====
+ *
+ * mag_in_one_granule - true when every byte of an nbytes access at addr
+ * lies inside one naturally aligned ZAMA16B_MAG_GRANULE-byte block
+ * (norm:zama16b_mag / norm:pma_mag_op_within). This is a PURE geometric
+ * predicate: it does NOT check whether Zama16b is implemented, so it can
+ * be used to assert test-buffer layout facts unconditionally. A caller
+ * that needs "does the MAG relaxation make this misaligned access
+ * fault-free" must gate on availability itself:
+ *     ZAMA16B_AVAILABLE && mag_in_one_granule(addr, nbytes)
+ * ZAMA16B_MAG_GRANULE is provided by the force-included capabilities.h
+ * (default 16, DUT-overridable) and is therefore already defined here. */
+static inline bool mag_in_one_granule(uintptr_t addr, uintptr_t nbytes) {
+    uintptr_t g = (uintptr_t)ZAMA16B_MAG_GRANULE;
+    uintptr_t granule_start = addr & ~(g - 1);
+    return (addr + nbytes - 1) < (granule_start + g);
+}
+
+/* mag_relaxation_applies - true when the Zama16b MAG relaxation is in
+ * force AND the whole nbytes access at addr lies inside one granule, so
+ * a misaligned access here must complete as a single atomic operation
+ * with no alignment exception (norm:pma_mag_op_within). When Zama16b is
+ * unavailable there is no relaxation, so every misaligned atomic access
+ * must fault and this returns false. This is the gated counterpart of
+ * the pure mag_in_one_granule geometry predicate above. */
+static inline bool mag_relaxation_applies(uintptr_t addr, uintptr_t nbytes) {
+    return ZAMA16B_AVAILABLE && mag_in_one_granule(addr, nbytes);
+}
+
 /* ===== Execute operation ===== */
 
 /*
@@ -343,5 +416,15 @@ static inline uint64_t mem_amo_maxu_d(uintptr_t addr, uint64_t val) {
     return _MEM_AMO_OP_D("amomaxu.d", addr, val);
 }
 #endif /* __riscv_xlen == 64 */
+
+/* ===================================================================
+ * Instruction-fetch synchronization (Zifencei)
+ *
+ * fence.i orders preceding stores to instruction memory with
+ * subsequent implicit instruction fetches. Shared by suites that
+ * patch and re-execute code (Zifencei, Ziccid, ...).
+ * =================================================================== */
+#define FENCEI() \
+    do { asm volatile ("fence.i" ::: "memory"); } while (0)
 
 #endif /* COMMON_MEM_OPS_H */

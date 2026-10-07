@@ -81,8 +81,8 @@ bool test_napot_pa_alignment(void) {
         uintptr_t addr = napot_base + offsets[i];
         uintptr_t result = vm_run_in_smode(&ctx, smode_read_write, addr);
         if (result != 0) {
-            printf("  offset 0x%lx failed: result=0x%lx\n",
-                   (unsigned long)offsets[i], (unsigned long)result);
+            LOG_W("offset 0x%lx failed: result=0x%lx\n",
+                  (unsigned long)offsets[i], (unsigned long)result);
             all_pass = false;
         }
     }

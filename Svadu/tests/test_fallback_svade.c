@@ -39,7 +39,7 @@ bool test_svadu_fb01(void) {
                 PTE_V | PTE_R,    /* A=0, D=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("A=0 load -> CAUSE_LPF", result, CAUSE_LPF);
 
     uintptr_t pte = pte_read(&ctx, test_va, PT_LEVEL_4K);
@@ -66,7 +66,7 @@ bool test_svadu_fb02(void) {
                 PTE_V | PTE_R | PTE_W | PTE_A,    /* D=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("D=0 store -> CAUSE_SPF", result, CAUSE_SPF);
 
     uintptr_t pte = pte_read(&ctx, test_va, PT_LEVEL_4K);
@@ -94,7 +94,7 @@ bool test_svadu_fb03(void) {
                 PTE_V | PTE_X,    /* A=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_exec, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec, test_va);
     TEST_ASSERT_EQ("A=0 fetch -> CAUSE_INST_PAGE_FAULT",
                    result, CAUSE_INST_PAGE_FAULT);
 
@@ -149,7 +149,7 @@ bool test_svadu_fb05(void) {
                 PTE_V | PTE_R | PTE_W,    /* A=0, D=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("A=0,D=0 store -> CAUSE_SPF", result, CAUSE_SPF);
 
     uintptr_t pte = pte_read(&ctx, test_va, PT_LEVEL_4K);

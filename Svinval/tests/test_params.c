@@ -35,7 +35,7 @@ bool test_sinval_param_addr_only(void) {
                 PT_LEVEL_4K);
 
     /* Build TLB */
-    vm_run_in_smode(&ctx, smode_load, test_va);
+    vm_run_in_smode(&ctx, probe_load, test_va);
 
     /* Upgrade to RW */
     pt_map_page(&ctx, test_va, test_va,
@@ -48,7 +48,7 @@ bool test_sinval_param_addr_only(void) {
     SFENCE_INVAL_IR();
 
     /* Verify new permission */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("Specific address flush: write succeeds", result == 0);
 
     pt_pool_reset();
@@ -74,8 +74,8 @@ bool test_sinval_param_global(void) {
     pt_map_page(&ctx, va1, va1, PTE_V | PTE_R | PTE_A | PTE_D, PT_LEVEL_4K);
 
     /* Build TLB */
-    vm_run_in_smode(&ctx, smode_load, va0);
-    vm_run_in_smode(&ctx, smode_load, va1);
+    vm_run_in_smode(&ctx, probe_load, va0);
+    vm_run_in_smode(&ctx, probe_load, va1);
 
     /* Upgrade both to RW */
     pt_map_page(&ctx, va0, va0, PTE_V | PTE_R | PTE_W | PTE_A | PTE_D, PT_LEVEL_4K);
@@ -87,8 +87,8 @@ bool test_sinval_param_global(void) {
     SFENCE_INVAL_IR();
 
     /* Both should be writable */
-    uintptr_t r0 = vm_run_in_smode(&ctx, smode_store, va0);
-    uintptr_t r1 = vm_run_in_smode(&ctx, smode_store, va1);
+    uintptr_t r0 = vm_run_in_smode(&ctx, probe_store, va0);
+    uintptr_t r1 = vm_run_in_smode(&ctx, probe_store, va1);
     TEST_ASSERT("Page 0 write succeeds (global flush)", r0 == 0);
     TEST_ASSERT("Page 1 write succeeds (global flush)", r1 == 0);
 
@@ -119,7 +119,7 @@ bool test_sinval_param_addr_asid(void) {
 
     /* Build TLB (via vm_run_in_smode which uses ASID=0 internally,
      * but we test the SINVAL.VMA parameter semantics) */
-    vm_run_in_smode(&ctx, smode_load, test_va);
+    vm_run_in_smode(&ctx, probe_load, test_va);
 
     /* Upgrade to RW */
     pt_map_page(&ctx, test_va, test_va,
@@ -138,7 +138,7 @@ bool test_sinval_param_addr_asid(void) {
     SFENCE_INVAL_IR();
 
     /* Verify new permission */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("Address+ASID flush: write succeeds", result == 0);
 
     pt_pool_reset();
@@ -164,8 +164,8 @@ bool test_sinval_param_asid_only(void) {
     pt_map_page(&ctx, va1, va1, PTE_V | PTE_R | PTE_A | PTE_D, PT_LEVEL_4K);
 
     /* Build TLB */
-    vm_run_in_smode(&ctx, smode_load, va0);
-    vm_run_in_smode(&ctx, smode_load, va1);
+    vm_run_in_smode(&ctx, probe_load, va0);
+    vm_run_in_smode(&ctx, probe_load, va1);
 
     /* Upgrade both to RW */
     pt_map_page(&ctx, va0, va0, PTE_V | PTE_R | PTE_W | PTE_A | PTE_D, PT_LEVEL_4K);
@@ -177,8 +177,8 @@ bool test_sinval_param_asid_only(void) {
     SFENCE_INVAL_IR();
 
     /* Both should be writable */
-    uintptr_t r0 = vm_run_in_smode(&ctx, smode_store, va0);
-    uintptr_t r1 = vm_run_in_smode(&ctx, smode_store, va1);
+    uintptr_t r0 = vm_run_in_smode(&ctx, probe_store, va0);
+    uintptr_t r1 = vm_run_in_smode(&ctx, probe_store, va1);
     TEST_ASSERT("Page 0 write succeeds (ASID flush)", r0 == 0);
     TEST_ASSERT("Page 1 write succeeds (ASID flush)", r1 == 0);
 
@@ -208,7 +208,7 @@ bool test_sinval_param_mismatch(void) {
     pt_map_page(&ctx, va_b, va_b, PTE_V | PTE_R | PTE_A | PTE_D, PT_LEVEL_4K);
 
     /* Build TLB for page A */
-    vm_run_in_smode(&ctx, smode_load, va_a);
+    vm_run_in_smode(&ctx, probe_load, va_a);
 
     /* Upgrade page A to RW */
     pt_map_page(&ctx, va_a, va_a, PTE_V | PTE_R | PTE_W | PTE_A | PTE_D, PT_LEVEL_4K);
@@ -219,13 +219,13 @@ bool test_sinval_param_mismatch(void) {
     SFENCE_INVAL_IR();
 
     /* Page A behavior is undefined - just record what happens */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_store_expect_fault, va_a);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, va_a);
     if (result == 0) {
-        printf("  INFO: Mismatched flush: page A write succeeded (impl may have flushed all)\n");
+        LOG_I("Mismatched flush: page A write succeeded (impl may have flushed all)\n");
     } else if (result == CAUSE_SPF) {
-        printf("  INFO: Mismatched flush: page A write faulted (old TLB entry still in use)\n");
+        LOG_I("Mismatched flush: page A write faulted (old TLB entry still in use)\n");
     } else {
-        printf("  INFO: Mismatched flush: unexpected result 0x%lx\n", (unsigned long)result);
+        LOG_W("Mismatched flush: unexpected result 0x%lx\n", (unsigned long)result);
     }
     TEST_ASSERT("probe completed", true);
 

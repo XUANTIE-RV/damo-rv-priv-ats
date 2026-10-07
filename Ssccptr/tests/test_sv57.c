@@ -33,7 +33,7 @@ bool test_ssccptr_sv57_4k_load(void) {
     pt_map_page(&ctx, test_va, test_va,
                 PTE_V | PTE_R | PTE_A | PTE_D, PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("Sv57 4K page walk succeeds", result, 0);
 
     pt_pool_reset();
@@ -55,7 +55,7 @@ bool test_ssccptr_sv57_4k_store(void) {
     pt_map_page(&ctx, test_va, test_va,
                 PTE_V | PTE_R | PTE_W | PTE_A | PTE_D, PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("Sv57 4K store succeeds", result, 0);
 
     pt_pool_reset();
@@ -78,7 +78,7 @@ bool test_ssccptr_sv57_4k_fetch(void) {
     pt_map_page(&ctx, test_va, test_va,
                 PTE_V | PTE_R | PTE_X | PTE_A | PTE_D, PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_exec, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec, test_va);
     TEST_ASSERT_EQ("Sv57 4K fetch succeeds", result, 0);
 
     pt_pool_reset();
@@ -103,7 +103,7 @@ bool test_ssccptr_sv57_2m_load(void) {
     uintptr_t test_va = test_region_2m_va;
     pt_map_page(&ctx, test_va, test_va, flags, PT_LEVEL_2M);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("Sv57 2M megapage load succeeds", result, 0);
 
     pt_pool_reset();
@@ -127,7 +127,7 @@ bool test_ssccptr_sv57_1g_load(void) {
     TEST_ASSERT("1G identity mapping", ret == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("Sv57 1G gigapage load succeeds", result, 0);
 
     pt_pool_reset();
@@ -158,7 +158,7 @@ bool test_ssccptr_sv57_512g_load(void) {
                 uart_flags, PT_LEVEL_4K);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("Sv57 512G terapage load succeeds", result, 0);
 
     pt_pool_reset();
@@ -189,7 +189,7 @@ bool test_ssccptr_sv57_256t_load(void) {
                 uart_flags, PT_LEVEL_4K);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("Sv57 256T petapage load succeeds", result, 0);
 
     pt_pool_reset();

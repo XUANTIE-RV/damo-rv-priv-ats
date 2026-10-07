@@ -20,6 +20,7 @@
 
 #include "test_framework.h"
 #include "vm/vm.h"
+#include "test_utils.h"
 #include "hyp/hyp_defs.h"
 #include "hyp/hyp_csr.h"
 #include "hyp/hyp_priv.h"
@@ -122,8 +123,6 @@ void smstateen_open_envcfg_gates(void)
  *
  * For testing, we use .word to emit these instructions.
  * =================================================================== */
-#define INSN_SSPUSH_X1     0xCE104073
-#define INSN_SSPOPCHK_X1   0xCDC0C073
 
 /* SSAMOSWAP.W/D test values loaded into x1 (rs2) so tests can verify
  * the swapped-in data on the memory side. */
@@ -339,26 +338,8 @@ static uintptr_t vs_exec_ssamoswap_d(uintptr_t addr) {
  * VS-mode trampolines for memory access
  * =================================================================== */
 
-/* VS-mode: store to address */
-static uintptr_t vs_store(uintptr_t arg) {
-    trap_expect_begin();
-    *(volatile uintptr_t *)arg = 0xDEADBEEF;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
-
-/* VS-mode: load from address */
-static uintptr_t vs_load(uintptr_t arg) {
-    trap_expect_begin();
-    volatile uintptr_t val = *(volatile uintptr_t *)arg;
-    (void)val;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
+/* probe_load / probe_store (common/test_utils.h) are privilege-agnostic
+ * access probes; run them in VS-mode via the goto_vs runner. */
 
 /* ===================================================================
  * VU-mode trampolines
@@ -397,16 +378,7 @@ static uintptr_t vu_exec_sspush(uintptr_t arg) {
     return 0;
 }
 
-/* VU-mode: load from address */
-static uintptr_t vu_load(uintptr_t arg) {
-    trap_expect_begin();
-    volatile uintptr_t val = *(volatile uintptr_t *)arg;
-    (void)val;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
+/* vu_load is provided by common/test_utils.h (probe_load), run in VU-mode. */
 
 /* ===================================================================
  * VS-mode exception handler for delegation tests.

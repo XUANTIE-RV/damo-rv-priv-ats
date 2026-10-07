@@ -77,7 +77,7 @@ bool test_ss_uctl_c_one_allows_umode(void) {
      * if the custom CSR itself doesn't exist. The point is
      * that stateen gate is NOT the one blocking it.
      * We verify that at least the stateen gate passes through. */
-    printf("  sstateen0.C=1 set; custom CSR access depends on impl\n");
+    LOG_I("sstateen0.C=1 set; custom CSR access depends on impl\n");
     TEST_ASSERT("sstateen0.C set to 1", (sstateen_read(0) & STATEEN0_C) != 0);
 
     sstateen_write(0, saved_sstateen0);
@@ -328,7 +328,7 @@ bool test_ss_uctl_vumode_cause22(void) {
      * should block VS-mode's U-mode (VU) access. Since run_in_vs_mode
      * runs at VS privilege, not VU, we verify the VS-mode behavior
      * and document VU as a constraint. */
-    printf("  VU-mode test: verifying via VS-mode sstateen0.JVT=0 gate\n");
+    LOG_I("VU-mode test: verifying via VS-mode sstateen0.JVT=0 gate\n");
 
     /* From VS-mode, reading sstateen0 with bit63=1 should work.
      * The JVT=0 blocks VU-mode, not VS-mode. We verify the bit state. */

@@ -122,6 +122,30 @@ static inline int cause_is_guest_page_fault(uintptr_t cause) {
            cause == CAUSE_LOAD_GUEST_PAGE_FAULT ||
            cause == CAUSE_STORE_GUEST_PAGE_FAULT;
 }
+
+/** Check if a cause is a load-class alignment/access fault (4 or 5).
+ * norm:mcause_exccode_ld_ldrsv: a load and a load-reserved (lr.w/lr.d)
+ * report the load class. The atomic suites use this to classify a
+ * misaligned or faulting lr / load-acquire. */
+static inline int cause_is_load_align_fault(uintptr_t cause) {
+    return cause == CAUSE_LOAD_ADDR_MISALIGN ||
+           cause == CAUSE_LOAD_ACCESS_FAULT;
+}
+
+/** Check if a cause is a store/AMO-class alignment/access fault (6 or 7).
+ * norm:mcause_exccode_st_sc_amo: a store, store-conditional (sc.w/sc.d),
+ * AMO and amocas report the store/AMO class - never the load class. */
+static inline int cause_is_store_amo_align_fault(uintptr_t cause) {
+    return cause == CAUSE_STORE_ADDR_MISALIGN ||
+           cause == CAUSE_STORE_ACCESS_FAULT;
+}
+
+/** Check if a cause is any alignment/access fault (load or store/AMO
+ * class, i.e. 4/5/6/7). */
+static inline int cause_is_align_fault(uintptr_t cause) {
+    return cause_is_load_align_fault(cause) ||
+           cause_is_store_amo_align_fault(cause);
+}
 #endif /* __ASSEMBLER__ */
 
 #endif /* CAUSE_DEFS_H */

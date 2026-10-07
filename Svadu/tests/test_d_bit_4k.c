@@ -34,7 +34,7 @@ bool test_svadu_d4k01(void) {
                 PTE_V | PTE_R | PTE_W | PTE_A,    /* A=1, D=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("store succeeds under ADUE=1", result, 0);
 
     uintptr_t pte = pte_read(&ctx, test_va, PT_LEVEL_4K);
@@ -62,7 +62,7 @@ bool test_svadu_d4k02(void) {
                 PTE_V | PTE_R | PTE_W,    /* A=0, D=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("store succeeds under ADUE=1", result, 0);
 
     uintptr_t pte = pte_read(&ctx, test_va, PT_LEVEL_4K);
@@ -117,7 +117,7 @@ bool test_svadu_d4k04(void) {
                 PTE_V | PTE_R | PTE_W | PTE_A | PTE_D,    /* A=1, D=1 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("store succeeds", result, 0);
 
     uintptr_t pte = pte_read(&ctx, test_va, PT_LEVEL_4K);

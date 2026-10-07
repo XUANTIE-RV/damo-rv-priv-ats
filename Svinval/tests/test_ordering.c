@@ -38,7 +38,7 @@ bool test_sinval_ordering_complete(void) {
                 PT_LEVEL_4K);
 
     /* First access to build TLB entry */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("Initial write succeeds", result == 0);
 
     /* Modify PTE: downgrade to R-only */
@@ -52,7 +52,7 @@ bool test_sinval_ordering_complete(void) {
     SFENCE_INVAL_IR();
 
     /* Store should use new translation (R-only), trigger fault */
-    result = vm_run_in_smode(&ctx, smode_store_expect_fault, test_va);
+    result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("After complete sequence: write faults (R-only)",
                 result == CAUSE_SPF);
 
@@ -84,7 +84,7 @@ bool test_sinval_ordering_missing_w_inval(void) {
                 PT_LEVEL_4K);
 
     /* Build TLB entry */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("Initial write succeeds", result == 0);
 
     /* Modify PTE: downgrade to R-only */
@@ -97,12 +97,12 @@ bool test_sinval_ordering_missing_w_inval(void) {
     SFENCE_INVAL_IR();
 
     /* Behavior is undefined - just record what happens */
-    result = vm_run_in_smode(&ctx, smode_store_expect_fault, test_va);
+    result = vm_run_in_smode(&ctx, probe_store, test_va);
     if (result == CAUSE_SPF) {
-        printf("  INFO: Missing W.INVAL: new translation took effect (impl may treat SINVAL.VMA as SFENCE.VMA)\n");
+        LOG_I("Missing W.INVAL: new translation took effect (impl may treat SINVAL.VMA as SFENCE.VMA)\n");
     } else {
-        printf("  INFO: Missing W.INVAL: old translation still in use (result=0x%lx)\n",
-               (unsigned long)result);
+        LOG_I("Missing W.INVAL: old translation still in use (result=0x%lx)\n",
+              (unsigned long)result);
     }
     /* No assertion - this is a probe test */
     TEST_ASSERT("probe completed", true);
@@ -130,7 +130,7 @@ bool test_sinval_ordering_missing_inval_ir(void) {
                 PT_LEVEL_4K);
 
     /* Build TLB entry */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("Initial write succeeds", result == 0);
 
     /* Modify PTE: downgrade to R-only */
@@ -143,12 +143,12 @@ bool test_sinval_ordering_missing_inval_ir(void) {
     SINVAL_VMA(test_va, 0);
 
     /* Behavior is undefined - just record what happens */
-    result = vm_run_in_smode(&ctx, smode_store_expect_fault, test_va);
+    result = vm_run_in_smode(&ctx, probe_store, test_va);
     if (result == CAUSE_SPF) {
-        printf("  INFO: Missing INVAL.IR: new translation took effect\n");
+        LOG_I("Missing INVAL.IR: new translation took effect\n");
     } else {
-        printf("  INFO: Missing INVAL.IR: old translation still in use (result=0x%lx)\n",
-               (unsigned long)result);
+        LOG_I("Missing INVAL.IR: old translation still in use (result=0x%lx)\n",
+              (unsigned long)result);
     }
     TEST_ASSERT("probe completed", true);
 
@@ -179,7 +179,7 @@ bool test_sinval_ordering_equivalence(void) {
                 PT_LEVEL_4K);
 
     /* Build TLB */
-    vm_run_in_smode(&ctx, smode_load, test_va);
+    vm_run_in_smode(&ctx, probe_load, test_va);
 
     /* Upgrade to RW */
     pt_map_page(&ctx, test_va, test_va,
@@ -189,7 +189,7 @@ bool test_sinval_ordering_equivalence(void) {
     /* Use SFENCE.VMA */
     vm_sfence_vma(test_va, 0);
 
-    uintptr_t result_sfence = vm_run_in_smode(&ctx, smode_store, test_va);
+    uintptr_t result_sfence = vm_run_in_smode(&ctx, probe_store, test_va);
 
     /* --- Test with three-instruction sequence --- */
     pt_pool_reset();
@@ -201,7 +201,7 @@ bool test_sinval_ordering_equivalence(void) {
                 PT_LEVEL_4K);
 
     /* Build TLB */
-    vm_run_in_smode(&ctx, smode_load, test_va);
+    vm_run_in_smode(&ctx, probe_load, test_va);
 
     /* Upgrade to RW */
     pt_map_page(&ctx, test_va, test_va,
@@ -213,7 +213,7 @@ bool test_sinval_ordering_equivalence(void) {
     SINVAL_VMA(test_va, 0);
     SFENCE_INVAL_IR();
 
-    uintptr_t result_sinval = vm_run_in_smode(&ctx, smode_store, test_va);
+    uintptr_t result_sinval = vm_run_in_smode(&ctx, probe_store, test_va);
 
     /* Both should produce the same result */
     TEST_ASSERT("SFENCE.VMA result: write succeeds", result_sfence == 0);
@@ -246,7 +246,7 @@ bool test_sinval_ordering_sfence_as_fence(void) {
                 PT_LEVEL_4K);
 
     /* Build TLB */
-    vm_run_in_smode(&ctx, smode_load, test_va);
+    vm_run_in_smode(&ctx, probe_load, test_va);
 
     /* Upgrade to RW */
     pt_map_page(&ctx, test_va, test_va,
@@ -258,7 +258,7 @@ bool test_sinval_ordering_sfence_as_fence(void) {
     vm_sfence_vma(0, 0);
 
     /* Verify new translation takes effect */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("SFENCE.VMA orders SINVAL.VMA: write succeeds", result == 0);
 
     pt_pool_reset();
@@ -287,8 +287,8 @@ bool test_sinval_ordering_multi_sinval_sfence(void) {
     pt_map_page(&ctx, va1, va1, PTE_V | PTE_R | PTE_A | PTE_D, PT_LEVEL_4K);
 
     /* Build TLB entries */
-    vm_run_in_smode(&ctx, smode_load, va0);
-    vm_run_in_smode(&ctx, smode_load, va1);
+    vm_run_in_smode(&ctx, probe_load, va0);
+    vm_run_in_smode(&ctx, probe_load, va1);
 
     /* Upgrade both to RW */
     pt_map_page(&ctx, va0, va0, PTE_V | PTE_R | PTE_W | PTE_A | PTE_D, PT_LEVEL_4K);
@@ -300,8 +300,8 @@ bool test_sinval_ordering_multi_sinval_sfence(void) {
     vm_sfence_vma(0, 0);
 
     /* Both pages should be writable */
-    uintptr_t r0 = vm_run_in_smode(&ctx, smode_store, va0);
-    uintptr_t r1 = vm_run_in_smode(&ctx, smode_store, va1);
+    uintptr_t r0 = vm_run_in_smode(&ctx, probe_store, va0);
+    uintptr_t r1 = vm_run_in_smode(&ctx, probe_store, va1);
     TEST_ASSERT("Page 0 write succeeds", r0 == 0);
     TEST_ASSERT("Page 1 write succeeds", r1 == 0);
 

@@ -17,6 +17,7 @@
  * =================================================================== */
 
 #include "hyp_defs.h"
+#include "csr_ops.h"   /* M/S-level named accessors (single source) */
 
 /* ----- hgatp ----- */
 uintptr_t hgatp_read(void);
@@ -58,24 +59,9 @@ uintptr_t hideleg_read(void);
 void      henvcfg_write(uintptr_t value);
 uintptr_t henvcfg_read(void);
 
-/* ----- menvcfg (M-mode only; CSR 0x30A) -----
- * Used by GAD diagnostics to probe the reset value / writability of
- * the ADUE bit, which (per spec norm:menvcfg_adue_op) controls
- * whether G-stage A/D updates raise Svade page-faults (ADUE=0) or
- * are performed by hardware (ADUE=1, requires Svadu). */
-uintptr_t menvcfg_read(void);
-void      menvcfg_write(uintptr_t value);
-
-/* ----- mstatus (M-mode status; CSR 0x300) -----
- * Direct M-mode access for field inspection/manipulation. Provided as
- * the single authoritative accessor pair so suites do not hand-roll a
- * local `static inline mstatus_read()`. */
-uintptr_t mstatus_read(void);
-void      mstatus_write(uintptr_t value);
-
-/* ----- senvcfg (S-mode; CSR 0x10A) ----- */
-uintptr_t senvcfg_read(void);
-void      senvcfg_write(uintptr_t value);
+/* ----- menvcfg / mstatus / senvcfg (M/S-level, non-H) -----
+ * Provided by csr_ops.h (included above): menvcfg_read/write,
+ * mstatus_read/write, senvcfg_read/write. */
 
 /* ----- hcounteren / htimedelta (write-only, used by reset) ----- */
 void      hcounteren_write(uintptr_t value);
@@ -174,23 +160,11 @@ uintptr_t hcounteren_read(void);
 void htimedelta_set(uint64_t delta);
 
 /* ===================================================================
- * mcounteren / scounteren
- *
- * Standard M/S-mode Counter Enable CSRs. Provided here alongside
- * hcounteren for convenience; all H-extension test suites that
- * need counter-access chain verification (mcounteren -> hcounteren
- * -> scounteren) include hyp_csr.h.
+ * mcounteren / scounteren (M/S-level)
+ * Provided by csr_ops.h (included above). H-extension suites that need
+ * the counter-access chain (mcounteren -> hcounteren -> scounteren)
+ * still include hyp_csr.h for hcounteren below.
  * =================================================================== */
-
-uintptr_t mcounteren_read(void);
-void      mcounteren_write(uintptr_t value);
-void      mcounteren_set(uintptr_t mask);
-void      mcounteren_clear(uintptr_t mask);
-
-uintptr_t scounteren_read(void);
-void      scounteren_write(uintptr_t value);
-void      scounteren_set(uintptr_t mask);
-void      scounteren_clear(uintptr_t mask);
 
 /* ===================================================================
  * vstvec (CSR 0x205) -- VS-mode trap vector
@@ -354,20 +328,9 @@ bool     hpmcounter_is_writable(int idx);
  *     or virtual-inst if V=1)
  * =================================================================== */
 
-uintptr_t mstateen_read(int idx);
-void      mstateen_write(int idx, uintptr_t value);
-void      mstateen_set_bits(int idx, uintptr_t mask);
-void      mstateen_clear_bits(int idx, uintptr_t mask);
-
-uintptr_t hstateen_read(int idx);
-void      hstateen_write(int idx, uintptr_t value);
-void      hstateen_set_bits(int idx, uintptr_t mask);
-void      hstateen_clear_bits(int idx, uintptr_t mask);
-
-uintptr_t sstateen_read(int idx);
-void      sstateen_write(int idx, uintptr_t value);
-void      sstateen_set_bits(int idx, uintptr_t mask);
-void      sstateen_clear_bits(int idx, uintptr_t mask);
+/* mstateen/hstateen/sstateen read/write/set_bits/clear_bits are provided
+ * by csr_ops.h (included above). Only the bit-63 hierarchy convenience
+ * wrappers remain here. */
 
 /* Bit 63 convenience (hierarchy control) */
 static inline void mstateen_set_bit63(int idx, bool enable) {
@@ -390,58 +353,18 @@ static inline void hstateen_set_bit63(int idx, bool enable) {
 /* ===================================================================
  * Indirect CSR accessors (Smcsrind / Sscsrind / Ssccfg)
  *
- * Centralized CSRR/CSRW wrappers for the miselect/mireg,
- * siselect/sireg* and vsiselect/vsireg* indirect-CSR windows.
- * Suites must NOT re-define these locally; trap-armed probing
- * variants (e.g. *_read_safe) stay suite-local.
+ * The miselect/mireg, siselect/sireg* and vsiselect/vsireg* plain
+ * CSRR/CSRW wrappers are provided by csr_ops.h (included above).
+ * Trap-armed probing variants (e.g. *_read_safe) stay suite-local.
  * =================================================================== */
-
-uintptr_t miselect_read(void);
-void      miselect_write(uintptr_t v);
-uintptr_t mireg_read(void);
-void      mireg_write(uintptr_t v);
-
-uintptr_t siselect_read(void);
-void      siselect_write(uintptr_t v);
-uintptr_t sireg_read(void);
-void      sireg_write(uintptr_t v);
-uintptr_t sireg2_read(void);
-void      sireg2_write(uintptr_t v);
-uintptr_t sireg3_read(void);
-void      sireg3_write(uintptr_t v);
-uintptr_t sireg4_read(void);
-void      sireg4_write(uintptr_t v);
-uintptr_t sireg5_read(void);
-void      sireg5_write(uintptr_t v);
-uintptr_t sireg6_read(void);
-void      sireg6_write(uintptr_t v);
-
-uintptr_t vsiselect_read(void);
-void      vsiselect_write(uintptr_t v);
-uintptr_t vsireg_read(void);
-void      vsireg_write(uintptr_t v);
-uintptr_t vsireg2_read(void);
-void      vsireg2_write(uintptr_t v);
-uintptr_t vsireg3_read(void);
-void      vsireg3_write(uintptr_t v);
-uintptr_t vsireg4_read(void);
-void      vsireg4_write(uintptr_t v);
-uintptr_t vsireg5_read(void);
-void      vsireg5_write(uintptr_t v);
-uintptr_t vsireg6_read(void);
-void      vsireg6_write(uintptr_t v);
 
 /* ===================================================================
  * Generic atomic set/clear bit helpers (single CSRS/CSRC instruction)
  *
- * Replace per-suite menvcfg_set/clear, senvcfg_set/clear, henvcfg_set/clear,
- * hvip_set/clear, hstatus_set/clear, vsstatus_set/clear csrs/csrc wrappers.
+ * H-level only (henvcfg/hvip/hstatus/vsstatus). The M/S-level
+ * menvcfg/senvcfg set_bits/clear_bits are provided by csr_ops.h.
  * =================================================================== */
 
-void menvcfg_set_bits(uintptr_t mask);
-void menvcfg_clear_bits(uintptr_t mask);
-void senvcfg_set_bits(uintptr_t mask);
-void senvcfg_clear_bits(uintptr_t mask);
 void henvcfg_set_bits(uintptr_t mask);
 void henvcfg_clear_bits(uintptr_t mask);
 void hvip_set_bits(uintptr_t mask);

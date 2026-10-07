@@ -12,8 +12,7 @@
  * SDT / SIE / DTE bit definitions
  * =================================================================== */
 
-/* sstatus.SDT bit position (bit 24) */
-#define SSTATUS_SDT_BIT (1ULL << 24)
+/* sstatus.SDT bit position: SSTATUS_SDT_BIT provided by common/ss_defs.h */
 
 /* sstatus.SPIE bit position (bit 5) */
 #define SSTATUS_SPIE_BIT (1ULL << 5)
@@ -55,22 +54,9 @@ extern uintptr_t ssdbltrp_s_trap_mtval2;
 extern volatile bool ssdbltrp_probe_active;
 
 /* ===================================================================
- * SDT / SIE helper functions
+ * SIE helper functions
+ * (get_sdt / set_sdt / clear_sdt are provided by common/ss_defs.h.)
  * =================================================================== */
-
-static inline bool get_sdt(void) {
-    uint64_t sstatus;
-    asm volatile("csrr %0, sstatus" : "=r"(sstatus));
-    return (sstatus & SSTATUS_SDT_BIT) != 0;
-}
-
-static inline void set_sdt(void) {
-    asm volatile("csrs sstatus, %0" :: "r"(SSTATUS_SDT_BIT));
-}
-
-static inline void clear_sdt(void) {
-    asm volatile("csrc sstatus, %0" :: "r"(SSTATUS_SDT_BIT));
-}
 
 static inline bool get_sie(void) {
     uint64_t sstatus;

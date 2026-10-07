@@ -46,7 +46,7 @@ bool test_medeleg16_02(void)
     uint64_t medeleg;
     asm volatile("csrr %0, medeleg" : "=r"(medeleg));
 
-    printf("[INFO] medeleg after all-1 write = 0x%lx\n", (unsigned long)medeleg);
+    LOG_D("medeleg after all-1 write = 0x%lx\n", (unsigned long)medeleg);
 
     /* Clean up: restore medeleg to 0 */
     asm volatile("csrw medeleg, %0" :: "r"(0ULL));

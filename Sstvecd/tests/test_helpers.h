@@ -30,12 +30,9 @@
 
 /* ===================================================================
  * stvec field layout / mode encoding
+ * (STVEC_MODE_MASK / DIRECT / VECTORED / BASE_MASK are provided by
+ *  common/ss_defs.h; do not redefine locally.)
  * =================================================================== */
-#define STVEC_MODE_MASK       0x3UL
-#define STVEC_MODE_DIRECT     0x0UL
-#define STVEC_MODE_VECTORED   0x1UL
-
-#define STVEC_BASE_MASK       (~STVEC_MODE_MASK)
 
 /* SSIE / SSIP bit position in mideleg / sie / sip (= bit 1) */
 #define BIT_SSI               (1UL << 1)
@@ -113,27 +110,8 @@ static inline void sstvecd_reset_trap_record(void) {
  * I/O (we never actually print from S-mode here).
  * =================================================================== */
 static int sstvecd_setup_code_mapping(pt_context_t *ctx) {
-    uintptr_t flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    uintptr_t base  = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-
-    uintptr_t test_4k_2m = (uintptr_t)&__vm_test_region_start
-                           & ~(PAGE_SIZE_2M - 1);
-    uintptr_t end        = test_4k_2m + 2 * PAGE_SIZE_2M;
-
-    for (uintptr_t addr = base; addr < end; addr += PAGE_SIZE_2M) {
-        if (addr == test_4k_2m)
-            continue;   /* leave this 2MB region unmapped for fault tests */
-        int ret = pt_map_page(ctx, addr, addr, flags, PT_LEVEL_2M);
-        if (ret != 0)
-            return ret;
-    }
-
-    /* UART (4K page) */
-    uintptr_t uart_flags = PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;
-    pt_map_page(ctx, PLATFORM_UART0_BASE, PLATFORM_UART0_BASE,
-                uart_flags, PT_LEVEL_4K);
-
-    return 0;
+    uintptr_t regions[] = { (uintptr_t)&__vm_test_region_start };
+    return vm_setup_code_mapping(ctx, PAGE_SIZE_2M, regions, 1);
 }
 
 /* ===================================================================
@@ -175,15 +153,9 @@ static inline uintptr_t sstvecd_run_in_smode(pt_context_t *ctx,
 
 /* ===================================================================
  * scause helpers
+ * Use cause_is_interrupt() / cause_get_code() and CAUSE_INTERRUPT_BIT
+ * from common/cause_defs.h (reachable via test_framework.h -> encoding.h).
+ * Do NOT define local scause_* equivalents.
  * =================================================================== */
-#define SCAUSE_INTERRUPT_BIT  (1UL << ((sizeof(uintptr_t) * 8) - 1))
-
-static inline int scause_is_interrupt(uintptr_t cause) {
-    return (cause & SCAUSE_INTERRUPT_BIT) != 0;
-}
-
-static inline uintptr_t scause_code(uintptr_t cause) {
-    return cause & ~SCAUSE_INTERRUPT_BIT;
-}
 
 #endif /* SSTVECD_TEST_HELPERS_H */

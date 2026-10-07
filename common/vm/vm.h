@@ -200,6 +200,74 @@ void pt_dump(pt_context_t *ctx);
 uintptr_t *pt_get_pte(pt_context_t *ctx, uintptr_t va, int level);
 
 /**
+ * pte_read - Read the PTE value for VA at the given level
+ *
+ * Thin wrapper over pt_get_pte(): returns the PTE value, or 0 if the
+ * PTE at the target level does not exist.
+ */
+uintptr_t pte_read(pt_context_t *ctx, uintptr_t va, int level);
+
+/**
+ * pte_set_bits - OR additional bits into the PTE for VA at the given
+ * level, then issue an SFENCE.VMA to flush stale TLB entries.
+ *
+ * No-op if the PTE at the target level does not exist.
+ */
+void pte_set_bits(pt_context_t *ctx, uintptr_t va, int level,
+                  uintptr_t bits);
+
+/**
+ * pte_clear_bits - AND the complement of @bits out of the PTE for VA at
+ * the given level, then issue an SFENCE.VMA to flush stale TLB entries.
+ *
+ * No-op if the PTE at the target level does not exist.
+ */
+void pte_clear_bits(pt_context_t *ctx, uintptr_t va, int level,
+                    uintptr_t bits);
+
+/**
+ * pte_write - Overwrite the PTE for VA at the given level with @value,
+ * then issue an SFENCE.VMA to flush stale TLB entries.
+ *
+ * No-op if the PTE at the target level does not exist.
+ */
+void pte_write(pt_context_t *ctx, uintptr_t va, int level,
+               uintptr_t value);
+
+/**
+ * vm_fill_exec_page - Fill a 4 KiB page with a nop sled ending in ret
+ * @addr: Start address of the page (must be writable in the current
+ *        address space; typically the .vm_test_region exec page)
+ *
+ * Writes 1023 nop (addi x0,x0,0) words followed by a single ret
+ * (jalr x0,ra,0) at word 1023, so that a fetch landing anywhere in
+ * the page slides to the ret. This is the authoritative version of the
+ * per-suite init_exec_page()/init_exec_page_at() helper.
+ */
+void vm_fill_exec_page(uintptr_t addr);
+
+/**
+ * vm_setup_code_mapping - Identity-map the code/stack/page-table region
+ * @ctx:       Page table context
+ * @page_size: Mapping granularity (PAGE_SIZE_2M; PAGE_SIZE_4M for Sv32/RV32)
+ * @regions:   Array of test-region start addresses (linker symbols) whose
+ *             containing @page_size-aligned block must NOT be mapped, so that
+ *             individual tests can install their own mappings there
+ * @n_regions: Number of entries in @regions (0..N)
+ *
+ * Maps VA=PA identity pages over [PLATFORM_MEM_BASE, end) where
+ * end = max(region aligned down to @page_size) + 2*@page_size, skipping the
+ * aligned block of every region, then maps the UART page for S-mode console
+ * output. Returns 0 on success or the first pt_map_page() error.
+ *
+ * This is the authoritative, parameterized version of the per-suite
+ * setup_code_mapping(); the caller resolves its own linker symbols (which may
+ * be declared as scalar or array) and passes the raw addresses here.
+ */
+int vm_setup_code_mapping(pt_context_t *ctx, uintptr_t page_size,
+                          const uintptr_t *regions, unsigned int n_regions);
+
+/**
  * get_pt_page_addr - Get physical address of page table page at level
  *
  * Walks the page table from root to find the page table page that

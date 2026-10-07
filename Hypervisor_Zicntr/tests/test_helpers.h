@@ -28,7 +28,7 @@
 #include "hyp/hyp_test_helpers.h"
 
 /* Dynamic CSR read (defined in common/csr_accessors.c) */
-extern uintptr_t csr_read(uint16_t csr);
+#include "csr_accessors.h"
 
 /* ===================================================================
  * counteren bit definitions

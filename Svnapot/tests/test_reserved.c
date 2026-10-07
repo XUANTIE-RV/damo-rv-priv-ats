@@ -43,15 +43,15 @@ static bool test_napot_reserved_encoding(const char *name,
                                 ppn0_low4);
     napot_install_pte(&ctx, test_va, reserved_pte);
 
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load,
                                         test_va);
 
     if (result == 0) {
-        printf("  [DIAG] N=1 ppn[0]=0x%x: no fault (hardware may ignore N bit)\n",
-               ppn0_low4);
+        LOG_W("N=1 ppn[0]=0x%x: no fault (hardware may ignore N bit)\n",
+              ppn0_low4);
     } else if (result == CAUSE_LOAD_ACCESS_FAULT) {
-        printf("  [DIAG] N=1 ppn[0]=0x%x: got access fault (cause=5) instead of page fault (cause=13)\n",
-               ppn0_low4);
+        LOG_W("N=1 ppn[0]=0x%x: got access fault (cause=5) instead of page fault (cause=13)\n",
+              ppn0_low4);
     }
 
     TEST_ASSERT("reserved encoding triggers fault",
@@ -150,13 +150,13 @@ bool test_napot_reserved_level1(void) {
                                 PT_LEVEL_2M);
     napot_install_pte_at_level(&ctx, test_va, reserved_pte, PT_LEVEL_2M);
 
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load,
                                         test_va);
 
     if (result == 0) {
-        printf("  [DIAG] N=1 at level 1: no fault (hardware may ignore N bit at superpage level)\n");
+        LOG_W("N=1 at level 1: no fault (hardware may ignore N bit at superpage level)\n");
     } else if (result == CAUSE_LOAD_ACCESS_FAULT) {
-        printf("  [DIAG] N=1 at level 1: got access fault (cause=5) instead of page fault (cause=13)\n");
+        LOG_W("N=1 at level 1: got access fault (cause=5) instead of page fault (cause=13)\n");
     }
 
     TEST_ASSERT("N=1 at level 1 triggers fault",
@@ -199,13 +199,13 @@ bool test_napot_reserved_level2(void) {
                                 PT_LEVEL_1G);
     napot_install_pte_at_level(&ctx, test_va, reserved_pte, PT_LEVEL_1G);
 
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load,
                                         test_va);
 
     if (result == 0) {
-        printf("  [DIAG] N=1 at level 2: no fault (hardware may ignore N bit at gigapage level)\n");
+        LOG_W("N=1 at level 2: no fault (hardware may ignore N bit at gigapage level)\n");
     } else if (result == CAUSE_LOAD_ACCESS_FAULT) {
-        printf("  [DIAG] N=1 at level 2: got access fault (cause=5) instead of page fault (cause=13)\n");
+        LOG_W("N=1 at level 2: got access fault (cause=5) instead of page fault (cause=13)\n");
     }
 
     TEST_ASSERT("N=1 at level 2 triggers fault",

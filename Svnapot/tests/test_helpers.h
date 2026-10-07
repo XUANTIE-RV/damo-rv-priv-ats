@@ -20,6 +20,7 @@
 #include "test_framework.h"
 #include "vm/vm.h"
 #include "mem_ops.h"
+#include "test_utils.h"
 
 /* SUITE_SATP_MODE (this suite's S-stage paging mode) is set by the suite
  * Makefile: `SUITE_SATP_MODE ?= PLATFORM_SATP_MODE`, overridable with
@@ -63,9 +64,7 @@ extern uintptr_t __vm_test_region_end;
 /* Second 64 KiB NAPOT region (pages 16-31) */
 #define NAPOT_TEST_REGION_1     (NAPOT_TEST_REGION_0 + NAPOT_64K_SIZE)
 
-/* Magic values for verification */
-#define MAGIC_WRITE         0xDEADBEEF12345678UL
-#define MAGIC_READ          0xCAFEBABE87654321UL
+/* MAGIC_WRITE / MAGIC_READ are provided by common/vm/vm_defs.h. */
 
 /* ===================================================================
  * NAPOT PTE Construction Functions
@@ -148,7 +147,7 @@ static inline uintptr_t napot_make_pte_at_level(uintptr_t pa,
 static void napot_install_pte(pt_context_t *ctx, uintptr_t va,
                                uintptr_t pte_val) {
     if (!ctx->root_pt) {
-        printf("ERROR: napot_install_pte: root page table is NULL\n");
+        LOG_E("napot_install_pte: root page table is NULL\n");
         return;
     }
 
@@ -160,14 +159,14 @@ static void napot_install_pte(pt_context_t *ctx, uintptr_t va,
     int ret = pt_map_page(ctx, base_va, base_va,
                           PTE_V | PTE_R, PT_LEVEL_4K);
     if (ret != 0) {
-        printf("ERROR: napot_install_pte: pt_map_page failed\n");
+        LOG_E("napot_install_pte: pt_map_page failed\n");
         return;
     }
 
     /* Find the level-0 page table page */
     uintptr_t pt_page_addr = get_pt_page_addr(ctx, base_va, PT_LEVEL_4K);
     if (pt_page_addr == 0) {
-        printf("ERROR: napot_install_pte: could not find L0 PT page\n");
+        LOG_E("napot_install_pte: could not find L0 PT page\n");
         return;
     }
     uintptr_t *l0_pt = (uintptr_t *)pt_page_addr;
@@ -214,7 +213,7 @@ static void napot_install_pte(pt_context_t *ctx, uintptr_t va,
 static void napot_install_pte_at_level(pt_context_t *ctx, uintptr_t va,
                                         uintptr_t pte_val, int level) {
     if (!ctx->root_pt) {
-        printf("ERROR: napot_install_pte_at_level: root PT is NULL\n");
+        LOG_E("napot_install_pte_at_level: root PT is NULL\n");
         return;
     }
 
@@ -228,8 +227,8 @@ static void napot_install_pte_at_level(pt_context_t *ctx, uintptr_t va,
     }
 
     if (level >= top_level) {
-        printf("ERROR: napot_install_pte_at_level: level %d >= top %d\n",
-               level, top_level);
+        LOG_E("napot_install_pte_at_level: level %d >= top %d\n",
+              level, top_level);
         return;
     }
 
@@ -261,7 +260,7 @@ static void napot_install_pte_at_level(pt_context_t *ctx, uintptr_t va,
          * to force creation of intermediate pages. */
         int ret = pt_map_page(ctx, va, va, PTE_V | PTE_R, level);
         if (ret != 0) {
-            printf("ERROR: napot_install_pte_at_level: alloc failed\n");
+            LOG_E("napot_install_pte_at_level: alloc failed\n");
             return;
         }
 
@@ -283,29 +282,8 @@ static void napot_install_pte_at_level(pt_context_t *ctx, uintptr_t va,
  * skipping the 2MB region containing the test pages.
  * =================================================================== */
 static int setup_code_mapping(pt_context_t *ctx) {
-    uintptr_t flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-
-    /* Determine which 2MB region contains the test pages */
-    uintptr_t test_region = (uintptr_t)&__vm_test_region_start;
-    uintptr_t test_region_2m = test_region & ~(PAGE_SIZE_2M - 1);
-
-    /* Map 2MB pages up to (but not including) the test region */
-    for (uintptr_t addr = base; addr < test_region_2m; addr += PAGE_SIZE_2M) {
-        int ret = pt_map_page(ctx, addr, addr, flags, PT_LEVEL_2M);
-        if (ret != 0) return ret;
-    }
-
-    /* Map one 2MB page after the test region */
-    uintptr_t after_test = test_region_2m + PAGE_SIZE_2M;
-    pt_map_page(ctx, after_test, after_test, flags, PT_LEVEL_2M);
-
-    /* Map UART I/O region for S-mode printf support */
-    uintptr_t uart_flags = PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;
-    pt_map_page(ctx, PLATFORM_UART0_BASE, PLATFORM_UART0_BASE,
-                uart_flags, PT_LEVEL_4K);
-
-    return 0;
+    uintptr_t regions[] = { (uintptr_t)&__vm_test_region_start };
+    return vm_setup_code_mapping(ctx, PAGE_SIZE_2M, regions, 1);
 }
 
 /**
@@ -328,30 +306,7 @@ static int setup_code_mapping_1g(pt_context_t *ctx) {
  * Use trap_expect_begin/end to detect faults.
  * =================================================================== */
 
-/**
- * smode_load - Execute a load, return 0 on success or scause on fault
- */
-static uintptr_t smode_load(uintptr_t addr) {
-    trap_expect_begin();
-    volatile uintptr_t val = *(volatile uintptr_t *)addr;
-    (void)val;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
-
-/**
- * smode_store - Execute a store, return 0 on success or scause on fault
- */
-static uintptr_t smode_store(uintptr_t addr) {
-    trap_expect_begin();
-    *(volatile uintptr_t *)addr = MAGIC_WRITE;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
+/* probe_load / probe_store are provided by common/test_utils.h. */
 
 /**
  * smode_read_write - Write magic value and read back to verify.
@@ -376,45 +331,10 @@ static uintptr_t smode_read_write(uintptr_t addr) {
     return 0;
 }
 
-/**
- * smode_load_expect_fault - Execute a load, expecting a fault.
- * Returns scause if fault, 0 if no fault.
- */
-static uintptr_t smode_load_expect_fault(uintptr_t addr) {
-    trap_expect_begin();
-    volatile uintptr_t val = *(volatile uintptr_t *)addr;
-    (void)val;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
-
-/**
- * smode_store_expect_fault - Execute a store, expecting a fault.
- * Returns scause if fault, 0 if no fault.
- */
-static uintptr_t smode_store_expect_fault(uintptr_t addr) {
-    trap_expect_begin();
-    *(volatile uintptr_t *)addr = 0xDEADBEEF;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
-
-/**
- * smode_exec_expect_fault - Jump to addr, expecting instruction fault.
- * Returns scause if fault, 0 if no fault.
- */
-static uintptr_t smode_exec_expect_fault(uintptr_t addr) {
-    trap_expect_begin();
-    exec_at(addr);
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
+/* smode_load_expect_fault / smode_store_expect_fault / smode_exec_expect_fault
+ * were byte-identical to probe_load / probe_store / probe_exec (the "expect
+ * fault" intent lives at the call site) and are collapsed into the common
+ * versions in test_utils.h. */
 
 /* ===================================================================
  * Multi-offset Access S-mode Functions

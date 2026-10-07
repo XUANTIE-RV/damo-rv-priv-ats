@@ -32,7 +32,7 @@ bool test_pbmt_reserved_load_fault(void) {
                           | PBMT_RSVD;
     pt_map_page(&ctx, test_va, test_va, pte_flags, PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load,
                                         test_va);
     TEST_ASSERT("PBMT=3 triggers load page-fault", result == CAUSE_LPF);
 
@@ -59,7 +59,7 @@ bool test_pbmt_reserved_store_fault(void) {
                           | PBMT_RSVD;
     pt_map_page(&ctx, test_va, test_va, pte_flags, PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store,
                                         test_va);
     TEST_ASSERT("PBMT=3 triggers store page-fault", result == CAUSE_SPF);
 
@@ -88,7 +88,7 @@ bool test_pbmt_reserved_exec_fault(void) {
                           | PBMT_RSVD;
     pt_map_page(&ctx, test_va, test_va, pte_flags, PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_exec_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec,
                                         test_va);
     TEST_ASSERT("PBMT=3 triggers instruction page-fault",
                 result == CAUSE_IPF);
@@ -128,7 +128,7 @@ bool test_pbmt_reserved_superpage_fault(void) {
                           | PBMT_RSVD;
     pt_map_page(&ctx, test_va, test_va, pte_flags, PT_LEVEL_2M);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load,
                                         test_va);
     TEST_ASSERT("PBMT=3 superpage triggers load page-fault",
                 result == CAUSE_LPF);

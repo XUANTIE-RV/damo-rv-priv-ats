@@ -22,26 +22,10 @@
 #include "hyp/hyp_trap.h"
 
 /* ===================================================================
- * seed CSR definitions (address 0x015)
- * =================================================================== */
-
-/* OPST field: bits [31:30] */
-#define SEED_OPST_SHIFT     30
-#define SEED_OPST_MASK      (0x3UL << SEED_OPST_SHIFT)
-#define SEED_OPST_BIST      (0x0UL << SEED_OPST_SHIFT)
-#define SEED_OPST_WAIT      (0x1UL << SEED_OPST_SHIFT)
-#define SEED_OPST_ES16      (0x2UL << SEED_OPST_SHIFT)
-#define SEED_OPST_DEAD      (0x3UL << SEED_OPST_SHIFT)
-
-/* ===================================================================
- * mseccfg SSEED/USEED field definitions (CSR 0x747)
- * =================================================================== */
-
-#define MSECCFG_USEED       (1UL << 8)
-#define MSECCFG_SSEED       (1UL << 9)
-
-/* ===================================================================
  * M-mode seed CSR access helpers
+ *
+ * CSR_SEED, SEED_OPST_* are provided by common/encoding.h.
+ * MSECCFG_SSEED/USEED are provided by common/sm_defs.h.
  *
  * IMPORTANT: seed CSR can ONLY be accessed with read-write CSR
  * instructions (csrrw). Read-only instructions (csrrs/csrrc with

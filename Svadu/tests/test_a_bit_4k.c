@@ -34,7 +34,7 @@ bool test_svadu_a4k01(void) {
                 PTE_V | PTE_R,    /* A=0, D=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("load succeeds under ADUE=1", result, 0);
 
     uintptr_t pte = pte_read(&ctx, test_va, PT_LEVEL_4K);
@@ -62,7 +62,7 @@ bool test_svadu_a4k02(void) {
                 PTE_V | PTE_X,    /* A=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_exec, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec, test_va);
     TEST_ASSERT_EQ("fetch succeeds under ADUE=1", result, 0);
 
     uintptr_t pte = pte_read(&ctx, test_va, PT_LEVEL_4K);
@@ -89,7 +89,7 @@ bool test_svadu_a4k03(void) {
                 PTE_V | PTE_R | PTE_W | PTE_D,    /* A=0, D=1 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("load succeeds", result, 0);
 
     uintptr_t pte = pte_read(&ctx, test_va, PT_LEVEL_4K);
@@ -121,7 +121,7 @@ bool test_svadu_a4k04(void) {
     /* First access: HW sets A. Subsequent accesses find A=1, no further
      * side effects expected. All must succeed. */
     for (int i = 0; i < 3; i++) {
-        uintptr_t r = vm_run_in_smode(&ctx, test_smode_load, test_va);
+        uintptr_t r = vm_run_in_smode(&ctx, probe_load, test_va);
         TEST_ASSERT_EQ("Each load succeeds", r, 0);
         uintptr_t pte = pte_read(&ctx, test_va, PT_LEVEL_4K);
         TEST_ASSERT("PTE.A remains 1", (pte & PTE_A) != 0);

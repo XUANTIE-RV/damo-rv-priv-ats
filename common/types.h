@@ -60,6 +60,21 @@ typedef int                intptr_t;
 #define INSERT_FIELD(val, off, len, field) \
     (((uintptr_t)(val) & ~BIT_MASK(off, len)) | (((uintptr_t)(field) << (off)) & BIT_MASK(off, len)))
 
+/* Sign-extension of a narrow value to XLEN, matching the RISC-V
+ * LoadSignExtend semantics that load-reserved / load-acquire and the
+ * byte/half/word AMO and CAS results obey (norm:lr_sc_rv64,
+ * norm:zalasr_sign_extend, norm:Zacas_amocas_*). The value is first
+ * narrowed to the signed type of the operand width, then widened to
+ * intptr_t and reinterpreted as uintptr_t so the result is XLEN-wide:
+ *   SEXT_B - 8-bit  operand (int8_t)
+ *   SEXT_H - 16-bit operand (int16_t)
+ *   SEXT_W - 32-bit operand (int32_t)
+ * These are the single authoritative definitions; atomic-extension
+ * suites must reuse them instead of redefining suite-local copies. */
+#define SEXT_B(v)           ((uintptr_t)(intptr_t)(int8_t)(v))
+#define SEXT_H(v)           ((uintptr_t)(intptr_t)(int16_t)(v))
+#define SEXT_W(v)           ((uintptr_t)(intptr_t)(int32_t)(v))
+
 /* Snapshot of a trap record (see trap_snapshot() in trap.c): saved by
  * flows where one hardware event can produce multiple handler records
  * (e.g. Ssdbltrp double-trap escalation on broken implementations). */

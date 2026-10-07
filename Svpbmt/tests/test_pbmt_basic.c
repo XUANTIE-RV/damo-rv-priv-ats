@@ -117,7 +117,7 @@ bool test_pbmt_pma_exec(void) {
                           | PBMT_PMA;
     pt_map_page(&ctx, test_va, test_va, pte_flags, PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_exec, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec, test_va);
     TEST_ASSERT("PBMT=PMA exec succeeds", result == 0);
 
     pt_pool_reset();
@@ -159,8 +159,8 @@ bool test_pbmt_nc_exec(void) {
     pt_map_page(&ctx, test_va, test_va, pte_flags, PT_LEVEL_4K);
 
     /* PBMT=NC exec is implementation-defined (see comment above). */
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_exec, test_va);
-    printf("  [DEBUG] PBMT=NC exec result (mcause): %lu\n", (unsigned long)result);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec, test_va);
+    LOG_D("PBMT=NC exec result (mcause): %lu\n", (unsigned long)result);
     TEST_ASSERT("PBMT=NC exec: succeeds or fault (impl-defined)",
                 result == 0 || result == CAUSE_IAF
                             || result == CAUSE_IPF
@@ -193,7 +193,7 @@ bool test_pbmt_io_exec(void) {
 
     /* PBMT=IO exec is implementation-defined:
      * may succeed or trigger an access fault. Both are acceptable. */
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_exec, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec, test_va);
     TEST_ASSERT("PBMT=IO exec: succeeds or access fault",
                 result == 0 || result == CAUSE_IAF);
 

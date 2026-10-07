@@ -24,7 +24,9 @@
 #define SVADU_TEST_HELPERS_H
 
 #include "test_framework.h"
+#include "csr_ops.h"
 #include "vm/vm.h"
+#include "test_utils.h"
 #include "mem_ops.h"
 
 /* SUITE_SATP_MODE (this suite's S-stage paging mode) is set by the suite
@@ -51,9 +53,7 @@ extern uintptr_t __vm_test_region_2m_start;
 #define test_region_2m_va ((uintptr_t)&__vm_test_region_2m_start)
 #define test_region_2m_pa ((uintptr_t)&__vm_test_region_2m_start)
 
-/* Magic values for verification */
-#define MAGIC_WRITE  0xDEADBEEF12345678UL
-#define MAGIC_READ   0xCAFEBABE87654321UL
+/* MAGIC_WRITE / MAGIC_READ are provided by common/vm/vm_defs.h. */
 
 /* ===================================================================
  * Snapshot of menvcfg at boot (populated by main.c before any test).
@@ -70,12 +70,6 @@ extern uintptr_t g_menvcfg_reset_value;
  *   #define CSR_MENVCFG  0x30A
  *   #define MENVCFG_ADUE (1ULL << 61)
  * =================================================================== */
-static inline uintptr_t menvcfg_read(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, " CSR_STR(CSR_MENVCFG) : "=r"(v));
-    return v;
-}
-
 static inline void menvcfg_set(uintptr_t mask) {
     asm volatile ("csrs " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(mask) : "memory");
 }
@@ -101,10 +95,7 @@ static inline int get_menvcfg_adue(void) {
  * Initialization helper: fill exec page with nop;ret
  * =================================================================== */
 static void init_exec_page(void) {
-    uint32_t *p = (uint32_t *)test_exec_page;
-    for (int i = 0; i < 1024 - 1; i++)
-        p[i] = 0x00000013;  /* nop (addi x0, x0, 0) */
-    p[1023] = 0x00008067;   /* ret (jalr x0, ra, 0) */
+    vm_fill_exec_page((uintptr_t)test_exec_page);
 }
 
 /* ===================================================================
@@ -115,29 +106,11 @@ static void init_exec_page(void) {
  * region(s) containing test pages. Also maps UART.
  * =================================================================== */
 static int setup_code_mapping(pt_context_t *ctx) {
-    uintptr_t flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-
-    uintptr_t test_4k_2m  = (uintptr_t)&__vm_test_region_start    & ~(PAGE_SIZE_2M - 1);
-    uintptr_t test_2m_2m  = (uintptr_t)&__vm_test_region_2m_start & ~(PAGE_SIZE_2M - 1);
-
-    uintptr_t end = test_2m_2m + 2 * PAGE_SIZE_2M;
-    if (test_4k_2m + 2 * PAGE_SIZE_2M > end)
-        end = test_4k_2m + 2 * PAGE_SIZE_2M;
-
-    for (uintptr_t addr = base; addr < end; addr += PAGE_SIZE_2M) {
-        if (addr == test_4k_2m || addr == test_2m_2m)
-            continue;
-        int ret = pt_map_page(ctx, addr, addr, flags, PT_LEVEL_2M);
-        if (ret != 0) return ret;
-    }
-
-    /* Map UART I/O region for S-mode printf support */
-    uintptr_t uart_flags = PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;
-    pt_map_page(ctx, PLATFORM_UART0_BASE, PLATFORM_UART0_BASE,
-                uart_flags, PT_LEVEL_4K);
-
-    return 0;
+    uintptr_t regions[] = {
+        (uintptr_t)&__vm_test_region_start,
+        (uintptr_t)&__vm_test_region_2m_start,
+    };
+    return vm_setup_code_mapping(ctx, PAGE_SIZE_2M, regions, 2);
 }
 
 /* ===================================================================
@@ -145,52 +118,10 @@ static int setup_code_mapping(pt_context_t *ctx) {
  *
  * Return 0 on success, scause on trap.
  * =================================================================== */
-static uintptr_t test_smode_load(uintptr_t arg) {
-    trap_expect_begin();
-    volatile uintptr_t val = *(volatile uintptr_t *)arg;
-    (void)val;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
+/* probe_* access payloads are provided by common/test_utils.h. */
 
-static uintptr_t test_smode_store(uintptr_t arg) {
-    trap_expect_begin();
-    *(volatile uintptr_t *)arg = MAGIC_WRITE;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
 
-static uintptr_t test_smode_exec(uintptr_t arg) {
-    trap_expect_begin();
-    exec_at(arg);
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
 
-static uintptr_t test_smode_load_and_store(uintptr_t arg) {
-    volatile uintptr_t *ptr = (volatile uintptr_t *)arg;
-
-    trap_expect_begin();
-    uintptr_t val = ptr[0];
-    (void)val;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-
-    trap_expect_begin();
-    ptr[0] = MAGIC_WRITE;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-
-    return 0;
-}
 
 static uintptr_t test_smode_amoadd(uintptr_t arg) {
     uint32_t result;
@@ -212,21 +143,9 @@ static uintptr_t test_smode_amoadd(uintptr_t arg) {
 }
 
 /* ===================================================================
- * PTE inspection / modification helpers (identical to svade helpers)
+ * PTE inspection / modification helpers are provided by common/vm/vm.h
+ * (pte_read / pte_set_bits).
  * =================================================================== */
-static uintptr_t pte_read(pt_context_t *ctx, uintptr_t va, int level) {
-    uintptr_t *p = pt_get_pte(ctx, va, level);
-    return p ? *p : 0;
-}
-
-static void pte_set_bits(pt_context_t *ctx, uintptr_t va, int level,
-                         uintptr_t bits) {
-    uintptr_t *p = pt_get_pte(ctx, va, level);
-    if (p) {
-        *p |= bits;
-        vm_sfence_vma(0, 0);
-    }
-}
 
 /* ===================================================================
  * Svadu capability gating

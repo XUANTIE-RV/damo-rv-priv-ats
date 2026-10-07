@@ -134,7 +134,7 @@ bool test_hcfi_ss_05(void) {
     vs_pte_modify(&ctx, SS_PAGE_ADDR, PT_LEVEL_4K, PTE_SS_PAGE_FLAGS);
 
     /* Access should trigger page-fault (encoding reserved when SSE=0) */
-    uintptr_t r = two_stage_run_in_vs(&ctx, vs_store, SS_PAGE_ADDR);
+    uintptr_t r = two_stage_run_in_vs(&ctx, probe_store, SS_PAGE_ADDR);
     TEST_ASSERT("page-fault when pte.xwr=010 and SSE=0",
                 r == CAUSE_STORE_PAGE_FAULT || r == CAUSE_STORE_ACCESS_FAULT);
 
@@ -370,7 +370,7 @@ bool test_hcfi_ss_14(void) {
     uintptr_t orig_h = cfi_setup_vs_sse(false, true);
     vs_pte_modify(&ctx, SS_PAGE_ADDR, PT_LEVEL_4K, PTE_SS_PAGE_FLAGS);
 
-    uintptr_t r = two_stage_run_in_vs(&ctx, vs_load, SS_PAGE_ADDR);
+    uintptr_t r = two_stage_run_in_vs(&ctx, probe_load, SS_PAGE_ADDR);
     TEST_ASSERT_EQ("page-fault (not access-fault) for pte.xwr=010 when SSE=0",
                    r, (uintptr_t)CAUSE_LOAD_PAGE_FAULT);
 

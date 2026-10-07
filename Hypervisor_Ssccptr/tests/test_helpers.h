@@ -93,7 +93,10 @@ static uintptr_t vs_load(uintptr_t arg) {
     return 0;
 }
 
-/* VS-mode store: returns 0 on success, cause on trap */
+/* VS-mode store: returns 0 on success, cause on trap.
+ * NOTE: stays local (must NOT be swapped for common probe_store). The stored
+ * value 0xDEADBEEF is read back and asserted by HCROSS-SSCCPTR-03, whereas
+ * probe_store writes MAGIC_WRITE -- converging it breaks that readback. */
 static uintptr_t vs_store(uintptr_t arg) {
     trap_expect_begin();
     *(volatile uintptr_t *)arg = 0xDEADBEEF;
