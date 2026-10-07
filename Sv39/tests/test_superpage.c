@@ -38,7 +38,7 @@ bool SVFN(align01)(void) {
                 PTE_V | PTE_R | PTE_W | PTE_A | PTE_D,
                 PT_LEVEL_2M);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va_2m);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va_2m);
     TEST_ASSERT("misaligned 2MB megapage triggers page fault",
                 result == CAUSE_LPF);
 
@@ -67,7 +67,7 @@ bool SVFN(align02)(void) {
                 PTE_V | PTE_R | PTE_W | PTE_A | PTE_D,
                 PT_LEVEL_1G);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va_1g);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va_1g);
     TEST_ASSERT("misaligned 1GB gigapage triggers page fault",
                 result == CAUSE_LPF);
 
@@ -122,7 +122,7 @@ bool SVFN(walk04)(void) {
                 PTE_V,  /* non-leaf: V=1, R=0, W=0, X=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("non-leaf at L0 triggers page fault", result == CAUSE_LPF);
 
     pt_pool_reset();

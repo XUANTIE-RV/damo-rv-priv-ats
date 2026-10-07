@@ -39,7 +39,7 @@ static bool detect_svade(void) {
                 PTE_V | PTE_R | PTE_D,  /* A=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     pt_pool_reset();
 
     /* If load triggered a page fault, Svade is supported */
@@ -51,7 +51,7 @@ bool SVFN(ad01)(void) {
     TEST_BEGIN("AD-01: A=0 load triggers page fault (Svade)");
 
     if (!detect_svade()) {
-        printf("  [SKIP] Platform does not support Svade (hardware sets A/D automatically)\n");
+        LOG_W("Platform does not support Svade (hardware sets A/D automatically)\n");
         TEST_ASSERT("skipped (no Svade support)", true);
         TEST_END();
     }
@@ -66,7 +66,7 @@ bool SVFN(ad01)(void) {
                 PTE_V | PTE_R | PTE_W | PTE_D,  /* A=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("A=0 triggers load page fault", result == CAUSE_LPF);
 
     pt_pool_reset();
@@ -78,7 +78,7 @@ bool SVFN(ad02)(void) {
     TEST_BEGIN("AD-02: A=0 store triggers page fault (Svade)");
 
     if (!detect_svade()) {
-        printf("  [SKIP] Platform does not support Svade (hardware sets A/D automatically)\n");
+        LOG_W("Platform does not support Svade (hardware sets A/D automatically)\n");
         TEST_ASSERT("skipped (no Svade support)", true);
         TEST_END();
     }
@@ -93,7 +93,7 @@ bool SVFN(ad02)(void) {
                 PTE_V | PTE_R | PTE_W | PTE_D,  /* A=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("A=0 triggers store page fault", result == CAUSE_SPF);
 
     pt_pool_reset();
@@ -105,7 +105,7 @@ bool SVFN(ad03)(void) {
     TEST_BEGIN("AD-03: A=1,D=0 store triggers page fault (Svade)");
 
     if (!detect_svade()) {
-        printf("  [SKIP] Platform does not support Svade (hardware sets A/D automatically)\n");
+        LOG_W("Platform does not support Svade (hardware sets A/D automatically)\n");
         TEST_ASSERT("skipped (no Svade support)", true);
         TEST_END();
     }
@@ -120,7 +120,7 @@ bool SVFN(ad03)(void) {
                 PTE_V | PTE_R | PTE_W | PTE_A,  /* D=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("A=1,D=0 triggers store page fault", result == CAUSE_SPF);
 
     pt_pool_reset();
@@ -141,7 +141,7 @@ bool SVFN(ad04)(void) {
                 PTE_V | PTE_R | PTE_A,  /* D=0, but load doesn't check D */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("A=1,D=0: load succeeds", result == 0);
 
     pt_pool_reset();
@@ -162,7 +162,7 @@ bool SVFN(ad05)(void) {
                 PTE_V | PTE_R | PTE_W | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load_and_store,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load_store,
                                         test_va);
     TEST_ASSERT("A=1,D=1: read/write succeeds", result == 0);
 

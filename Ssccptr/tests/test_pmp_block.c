@@ -274,7 +274,7 @@ bool test_ssccptr_pmp_restore(void) {
     /* Phase 2: Remove PMP restriction -> expect walk succeeds */
     pmp_clear_all();
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("restored: page walk succeeds after PMP removal",
                    result, 0);
 

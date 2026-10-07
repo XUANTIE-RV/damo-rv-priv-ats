@@ -31,11 +31,11 @@ bool test_napot_perm_read_only(void) {
     napot_install_pte(&ctx, test_va, napot_pte);
 
     /* Read should succeed */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("NAPOT R-only: read succeeds", result == 0);
 
     /* Write should trigger store page-fault */
-    result = vm_run_in_smode(&ctx, smode_store_expect_fault, test_va);
+    result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("NAPOT R-only: write faults",
                 result == CAUSE_STORE_PAGE_FAULT);
 
@@ -93,7 +93,7 @@ bool test_napot_perm_rx(void) {
     napot_install_pte(&ctx, test_va, napot_pte);
 
     /* Execute at the test VA - should succeed (nop;ret) */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_exec_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec,
                                         test_va);
     TEST_ASSERT("NAPOT RX: execute succeeds (no fault)", result == 0);
 
@@ -123,7 +123,7 @@ bool test_napot_perm_no_exec(void) {
                                           PTE_V | PTE_R | PTE_W | PTE_A | PTE_D);
     napot_install_pte(&ctx, test_va, napot_pte);
 
-    uintptr_t result = vm_run_in_smode(&ctx, smode_exec_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec,
                                         test_va);
     TEST_ASSERT("NAPOT RW: execute faults",
                 result == CAUSE_INST_PAGE_FAULT);
@@ -153,7 +153,7 @@ bool test_napot_perm_u_bit(void) {
     napot_install_pte(&ctx, test_va, napot_pte);
 
     /* S-mode with SUM=0 accessing U-page should fault */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load,
                                         test_va);
     TEST_ASSERT("NAPOT U=1 S-mode (SUM=0): load faults",
                 result == CAUSE_LOAD_PAGE_FAULT);

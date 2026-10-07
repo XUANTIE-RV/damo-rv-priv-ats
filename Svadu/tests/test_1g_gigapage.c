@@ -61,7 +61,7 @@ bool test_svadu_1g01(void) {
     uintptr_t test_va = setup_1g_dual_mapping_svadu(&ctx,
                             PTE_V | PTE_R);   /* A=0, D=0 */
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("1G load succeeds under ADUE=1", result, 0);
 
     uintptr_t pte = pte_read(&ctx, test_va, PT_LEVEL_1G);
@@ -82,7 +82,7 @@ bool test_svadu_1g02(void) {
     uintptr_t test_va = setup_1g_dual_mapping_svadu(&ctx,
                             PTE_V | PTE_R | PTE_W | PTE_A);  /* D=0 */
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("1G store succeeds under ADUE=1", result, 0);
 
     uintptr_t pte = pte_read(&ctx, test_va, PT_LEVEL_1G);
@@ -103,7 +103,7 @@ bool test_svadu_1g03(void) {
     uintptr_t test_va = setup_1g_dual_mapping_svadu(&ctx,
                             PTE_V | PTE_R | PTE_W);  /* A=0, D=0 */
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("1G store succeeds under ADUE=1", result, 0);
 
     uintptr_t pte = pte_read(&ctx, test_va, PT_LEVEL_1G);

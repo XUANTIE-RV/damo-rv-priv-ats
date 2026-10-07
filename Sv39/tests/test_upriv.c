@@ -38,7 +38,7 @@ bool SVFN(upriv03)(void) {
                 PTE_V | PTE_R | PTE_W | PTE_U | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("U=1, SUM=0: S-mode read faults", result == CAUSE_LPF);
 
     pt_pool_reset();
@@ -59,7 +59,7 @@ bool SVFN(upriv04)(void) {
                 PTE_V | PTE_R | PTE_W | PTE_U | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("U=1, SUM=0: S-mode write faults", result == CAUSE_SPF);
 
     pt_pool_reset();
@@ -104,7 +104,7 @@ bool SVFN(upriv06)(void) {
                 PTE_V | PTE_R | PTE_W | PTE_A | PTE_D,  /* U=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load_and_store,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load_store,
                                         test_va);
     TEST_ASSERT("U=0: S-mode read/write succeeds", result == 0);
 
@@ -127,7 +127,7 @@ bool SVFN(upriv07)(void) {
                 PTE_V | PTE_R | PTE_X | PTE_A | PTE_D,  /* U=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_exec, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec, test_va);
     TEST_ASSERT("U=0: S-mode exec succeeds", result == 0);
 
     pt_pool_reset();
@@ -197,7 +197,7 @@ bool SVFN(sum03)(void) {
                 PT_LEVEL_4K);
 
     /* SUM=0 by default */
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("SUM=0: S-mode read U-page faults", result == CAUSE_LPF);
 
     pt_pool_reset();
@@ -218,7 +218,7 @@ bool SVFN(sum04)(void) {
                 PTE_V | PTE_R | PTE_W | PTE_U | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("SUM=0: S-mode write U-page faults", result == CAUSE_SPF);
 
     pt_pool_reset();

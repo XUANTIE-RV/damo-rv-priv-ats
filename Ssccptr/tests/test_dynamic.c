@@ -30,7 +30,7 @@ bool test_ssccptr_dyn_perm_change(void) {
                 PTE_V | PTE_R | PTE_A | PTE_D, PT_LEVEL_4K);
 
     /* Store should fail with store page fault */
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("R-only page store triggers page-fault",
                    result, CAUSE_SPF);
 
@@ -38,7 +38,7 @@ bool test_ssccptr_dyn_perm_change(void) {
     pte_set_bits(&ctx, test_va, PT_LEVEL_4K, PTE_W);
 
     /* Store should now succeed */
-    result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("RW page store succeeds after PTE update", result, 0);
 
     pt_pool_reset();
@@ -98,7 +98,7 @@ bool test_ssccptr_dyn_add_mapping(void) {
     uintptr_t test_va = (uintptr_t)test_fault_page;
 
     /* No mapping for test_va yet -> should page fault */
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("unmapped VA triggers page fault",
                    result, CAUSE_LPF);
 
@@ -107,7 +107,7 @@ bool test_ssccptr_dyn_add_mapping(void) {
                 PTE_V | PTE_R | PTE_A | PTE_D, PT_LEVEL_4K);
 
     /* Now load should succeed */
-    result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("mapped VA load succeeds", result, 0);
 
     pt_pool_reset();
@@ -131,14 +131,14 @@ bool test_ssccptr_dyn_remove_mapping(void) {
                 PTE_V | PTE_R | PTE_A | PTE_D, PT_LEVEL_4K);
 
     /* Load should succeed */
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("mapped VA load succeeds", result, 0);
 
     /* Clear PTE.V to invalidate the mapping */
     pte_clear_bits(&ctx, test_va, PT_LEVEL_4K, PTE_V);
 
     /* Load should now page fault */
-    result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("invalidated VA triggers page fault",
                    result, CAUSE_LPF);
 

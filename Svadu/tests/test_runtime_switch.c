@@ -36,7 +36,7 @@ bool test_svadu_sw01(void) {
                 PT_LEVEL_4K);
 
     /* First access under ADUE=0 -> load page-fault */
-    uintptr_t r1 = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t r1 = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("first load faults under ADUE=0", r1, CAUSE_LPF);
 
     uintptr_t pte0 = pte_read(&ctx, test_va, PT_LEVEL_4K);
@@ -46,7 +46,7 @@ bool test_svadu_sw01(void) {
     set_menvcfg_adue(1);
 
     /* Second access under ADUE=1 -> success, HW sets PTE.A */
-    uintptr_t r2 = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t r2 = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("retry load succeeds under ADUE=1", r2, 0);
 
     uintptr_t pte1 = pte_read(&ctx, test_va, PT_LEVEL_4K);
@@ -74,7 +74,7 @@ bool test_svadu_sw02(void) {
                 PTE_V | PTE_R,    /* A=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t r_p1 = vm_run_in_smode(&ctx, test_smode_load, p1_va);
+    uintptr_t r_p1 = vm_run_in_smode(&ctx, probe_load, p1_va);
     TEST_ASSERT_EQ("P1 access succeeds under ADUE=1", r_p1, 0);
 
     uintptr_t pte_p1 = pte_read(&ctx, p1_va, PT_LEVEL_4K);
@@ -90,7 +90,7 @@ bool test_svadu_sw02(void) {
                 PTE_V | PTE_R,    /* A=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t r_p2 = vm_run_in_smode(&ctx, test_smode_load, p2_va);
+    uintptr_t r_p2 = vm_run_in_smode(&ctx, probe_load, p2_va);
     TEST_ASSERT_EQ("P2 access faults under ADUE=0", r_p2, CAUSE_LPF);
 
     uintptr_t pte_p2 = pte_read(&ctx, p2_va, PT_LEVEL_4K);
@@ -121,7 +121,7 @@ bool test_svadu_sw03(void) {
                 PTE_V | PTE_R,    /* A=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t r = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t r = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("load succeeds after final ADUE=1+fence", r, 0);
 
     uintptr_t pte = pte_read(&ctx, test_va, PT_LEVEL_4K);
@@ -153,7 +153,7 @@ bool test_svadu_sw04(void) {
                     PTE_V | PTE_R,    /* A=0 */
                     PT_LEVEL_4K);
 
-        uintptr_t r = vm_run_in_smode(&ctx, test_smode_load, test_va);
+        uintptr_t r = vm_run_in_smode(&ctx, probe_load, test_va);
         uintptr_t pte = pte_read(&ctx, test_va, PT_LEVEL_4K);
 
         if (adue) {

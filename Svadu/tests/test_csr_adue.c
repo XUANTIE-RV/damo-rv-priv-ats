@@ -91,8 +91,8 @@ bool test_svadu_csr04(void) {
     /* g_menvcfg_reset_value is captured in main.c before any test ran,
      * so it reflects the true reset value (not modified by CSR-01~03). */
     int reset_adue = (g_menvcfg_reset_value & MENVCFG_ADUE) ? 1 : 0;
-    printf("    [INFO] menvcfg reset value = 0x%lx, ADUE bit = %d\n",
-           (unsigned long)g_menvcfg_reset_value, reset_adue);
+    LOG_I("menvcfg reset value = 0x%lx, ADUE bit = %d\n",
+          (unsigned long)g_menvcfg_reset_value, reset_adue);
 
     /* Implementation-defined; do not hard-assert. Always passes. */
     TEST_ASSERT("reset value recorded", 1);

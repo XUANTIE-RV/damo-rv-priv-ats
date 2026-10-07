@@ -32,7 +32,7 @@ bool test_ssccptr_super_sv39_2m_load(void) {
     uintptr_t test_va = test_region_2m_va;
     pt_map_page(&ctx, test_va, test_va, flags, PT_LEVEL_2M);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("2M megapage load via page walk succeeds", result, 0);
 
     pt_pool_reset();
@@ -56,7 +56,7 @@ bool test_ssccptr_super_sv39_2m_store(void) {
     uintptr_t test_va = test_region_2m_va;
     pt_map_page(&ctx, test_va, test_va, flags, PT_LEVEL_2M);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("2M megapage store via page walk succeeds", result, 0);
 
     pt_pool_reset();
@@ -84,7 +84,7 @@ bool test_ssccptr_super_sv39_2m_fetch(void) {
     uintptr_t exec_2m = (uintptr_t)test_exec_page & ~(PAGE_SIZE_2M - 1);
     pt_map_page(&ctx, exec_2m, exec_2m, flags, PT_LEVEL_2M);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_exec,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec,
                                         (uintptr_t)test_exec_page);
     TEST_ASSERT_EQ("2M megapage fetch via page walk succeeds", result, 0);
 
@@ -108,7 +108,7 @@ bool test_ssccptr_super_sv39_1g_load(void) {
     TEST_ASSERT("1G identity mapping", ret == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("1G gigapage load via page walk succeeds", result, 0);
 
     pt_pool_reset();
@@ -131,7 +131,7 @@ bool test_ssccptr_super_sv39_1g_store(void) {
     TEST_ASSERT("1G identity mapping", ret == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("1G gigapage store via page walk succeeds", result, 0);
 
     pt_pool_reset();
@@ -154,7 +154,7 @@ bool test_ssccptr_super_sv39_1g_fetch(void) {
                                         flags, PT_LEVEL_1G);
     TEST_ASSERT("1G identity mapping", ret == 0);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_exec,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec,
                                         (uintptr_t)test_exec_page);
     TEST_ASSERT_EQ("1G gigapage fetch via page walk succeeds", result, 0);
 

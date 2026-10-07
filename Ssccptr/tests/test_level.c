@@ -28,7 +28,7 @@ bool test_ssccptr_level_l0(void) {
                 PTE_V | PTE_R | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("L0 PTE read succeeds (full L2->L1->L0 walk)",
                    result, 0);
 
@@ -53,7 +53,7 @@ bool test_ssccptr_level_l1(void) {
     uintptr_t test_va = test_region_2m_va;
     pt_map_page(&ctx, test_va, test_va, flags, PT_LEVEL_2M);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("L1 PTE read succeeds (L2->L1 walk)", result, 0);
 
     pt_pool_reset();
@@ -76,7 +76,7 @@ bool test_ssccptr_level_l2(void) {
     TEST_ASSERT("1G identity mapping", ret == 0);
 
     uintptr_t test_va = (uintptr_t)test_fault_page;
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("L2 PTE read succeeds (single-level walk)", result, 0);
 
     pt_pool_reset();

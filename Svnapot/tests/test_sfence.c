@@ -82,11 +82,11 @@ bool test_napot_sfence_global(void) {
     napot_install_pte(&ctx, test_va, napot_pte);
 
     /* First access - establish TLB */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("initial read succeeds", result == 0);
 
     /* Verify write fails (R-only) */
-    result = vm_run_in_smode(&ctx, smode_store_expect_fault, test_va);
+    result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("R-only: write faults", result == CAUSE_STORE_PAGE_FAULT);
 
     /* Modify PTE to RW directly in page table */
@@ -104,7 +104,7 @@ bool test_napot_sfence_global(void) {
     vm_run_in_smode(&ctx, smode_modify_pte_and_sfence, test_va);
 
     /* Write should now succeed */
-    result = vm_run_in_smode(&ctx, smode_store, test_va);
+    result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("after sfence.vma: write succeeds", result == 0);
 
     g_napot_pte_slot = NULL;
@@ -133,8 +133,8 @@ bool test_napot_sfence_global_single(void) {
     napot_install_pte(&ctx, test_va, napot_pte);
 
     /* Establish TLB for multiple pages */
-    vm_run_in_smode(&ctx, smode_load, test_va);
-    vm_run_in_smode(&ctx, smode_load, test_va + 0x4000);
+    vm_run_in_smode(&ctx, probe_load, test_va);
+    vm_run_in_smode(&ctx, probe_load, test_va + 0x4000);
 
     /* Modify to RW */
     uintptr_t pt_page = get_pt_page_addr(&ctx, test_va, PT_LEVEL_4K);
@@ -148,10 +148,10 @@ bool test_napot_sfence_global_single(void) {
     vm_run_in_smode(&ctx, smode_modify_pte_and_sfence, test_va);
 
     /* Both offsets should now be writable */
-    uintptr_t r0 = vm_run_in_smode(&ctx, smode_store, test_va);
+    uintptr_t r0 = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("offset 0x0: write succeeds after sfence", r0 == 0);
 
-    uintptr_t r1 = vm_run_in_smode(&ctx, smode_store, test_va + 0x4000);
+    uintptr_t r1 = vm_run_in_smode(&ctx, probe_store, test_va + 0x4000);
     TEST_ASSERT("offset 0x4000: write succeeds after sfence", r1 == 0);
 
     g_napot_pte_slot = NULL;
@@ -179,7 +179,7 @@ bool test_napot_sfence_per_page(void) {
     napot_install_pte(&ctx, test_va, napot_pte);
 
     /* Establish TLB */
-    vm_run_in_smode(&ctx, smode_load, test_va);
+    vm_run_in_smode(&ctx, probe_load, test_va);
 
     /* Modify to RW */
     uintptr_t pt_page = get_pt_page_addr(&ctx, test_va, PT_LEVEL_4K);
@@ -192,7 +192,7 @@ bool test_napot_sfence_per_page(void) {
 
     vm_run_in_smode(&ctx, smode_modify_pte_and_sfence, test_va);
 
-    uintptr_t result = vm_run_in_smode(&ctx, smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("after per-page sfence: write succeeds", result == 0);
 
     g_napot_pte_slot = NULL;
@@ -220,7 +220,7 @@ bool test_napot_sfence_removal(void) {
     napot_install_pte(&ctx, test_va, napot_pte);
 
     /* Establish TLB */
-    vm_run_in_smode(&ctx, smode_load, test_va);
+    vm_run_in_smode(&ctx, probe_load, test_va);
 
     /* Invalidate PTE (V=0) */
     uintptr_t pt_page = get_pt_page_addr(&ctx, test_va, PT_LEVEL_4K);
@@ -232,7 +232,7 @@ bool test_napot_sfence_removal(void) {
     vm_run_in_smode(&ctx, smode_modify_pte_and_sfence, test_va);
 
     /* Access should now fault */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load,
                                         test_va);
     TEST_ASSERT("removed mapping: page fault",
                 result == CAUSE_LOAD_PAGE_FAULT);
@@ -262,7 +262,7 @@ bool test_napot_sfence_upgrade(void) {
     napot_install_pte(&ctx, test_va, napot_pte);
 
     /* Verify write fails before upgrade */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_store_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store,
                                         test_va);
     TEST_ASSERT("before upgrade: write faults",
                 result == CAUSE_STORE_PAGE_FAULT);
@@ -279,7 +279,7 @@ bool test_napot_sfence_upgrade(void) {
     vm_run_in_smode(&ctx, smode_modify_pte_and_sfence, test_va);
 
     /* Write should succeed after upgrade */
-    result = vm_run_in_smode(&ctx, smode_store, test_va);
+    result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("after upgrade: write succeeds", result == 0);
 
     g_napot_pte_slot = NULL;
@@ -307,7 +307,7 @@ bool test_napot_sfence_single_addr(void) {
     napot_install_pte(&ctx, test_va, napot_pte);
 
     /* Establish TLB */
-    vm_run_in_smode(&ctx, smode_load, test_va);
+    vm_run_in_smode(&ctx, probe_load, test_va);
 
     /* Upgrade to RW */
     uintptr_t pt_page = get_pt_page_addr(&ctx, test_va, PT_LEVEL_4K);
@@ -322,7 +322,7 @@ bool test_napot_sfence_single_addr(void) {
     vm_run_in_smode(&ctx, smode_modify_pte_and_sfence, test_va);
 
     /* The flushed address should have new permissions */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("sfence single addr: write succeeds at flushed addr",
                 result == 0);
 

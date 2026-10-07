@@ -28,10 +28,10 @@ bool SVFN(rwx01)(void) {
                 PTE_V | PTE_R | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("R-only: read succeeds", result == 0);
 
-    result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("R-only: write faults", result == CAUSE_SPF);
 
     pt_pool_reset();
@@ -53,13 +53,13 @@ bool SVFN(rwx02)(void) {
                 PTE_V | PTE_R | PTE_W | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("RW: read succeeds", result == 0);
 
-    result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("RW: write succeeds", result == 0);
 
-    result = vm_run_in_smode(&ctx, test_smode_exec, test_va);
+    result = vm_run_in_smode(&ctx, probe_exec, test_va);
     TEST_ASSERT("RW: exec faults", result == CAUSE_IPF);
 
     pt_pool_reset();
@@ -81,13 +81,13 @@ bool SVFN(rwx03)(void) {
                 PTE_V | PTE_X | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_exec, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec, test_va);
     TEST_ASSERT("X-only: exec succeeds", result == 0);
 
-    result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("X-only: read faults", result == CAUSE_LPF);
 
-    result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("X-only: write faults", result == CAUSE_SPF);
 
     pt_pool_reset();
@@ -109,13 +109,13 @@ bool SVFN(rwx04)(void) {
                 PTE_V | PTE_R | PTE_X | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("RX: read succeeds", result == 0);
 
-    result = vm_run_in_smode(&ctx, test_smode_exec, test_va);
+    result = vm_run_in_smode(&ctx, probe_exec, test_va);
     TEST_ASSERT("RX: exec succeeds", result == 0);
 
-    result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("RX: write faults", result == CAUSE_SPF);
 
     pt_pool_reset();
@@ -137,15 +137,15 @@ bool SVFN(rwx05)(void) {
                 PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("RWX: read succeeds", result == 0);
 
-    result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("RWX: write succeeds", result == 0);
 
     /* Re-initialize exec page: the store above overwrote the nop;ret */
     init_exec_page();
-    result = vm_run_in_smode(&ctx, test_smode_exec, test_va);
+    result = vm_run_in_smode(&ctx, probe_exec, test_va);
     TEST_ASSERT("RWX: exec succeeds", result == 0);
 
     pt_pool_reset();

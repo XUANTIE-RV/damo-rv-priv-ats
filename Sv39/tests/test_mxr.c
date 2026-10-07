@@ -29,7 +29,7 @@ bool SVFN(mxr01)(void) {
                 PT_LEVEL_4K);
 
     /* MXR=0 by default */
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("MXR=0: read X-only page faults", result == CAUSE_LPF);
 
     pt_pool_reset();
@@ -95,7 +95,7 @@ bool SVFN(mxr04)(void) {
                 PT_LEVEL_4K);
 
     /* MXR only affects loads, not stores */
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("MXR=1: write X-only page faults", result == CAUSE_SPF);
 
     pt_pool_reset();
@@ -117,7 +117,7 @@ bool SVFN(mxr05)(void) {
                 PT_LEVEL_4K);
 
     /* MXR=0, but R=1 so load should succeed */
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("MXR=0: read RX page succeeds", result == 0);
 
     pt_pool_reset();

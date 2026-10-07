@@ -41,7 +41,7 @@ bool test_nonleaf_pbmt_nc_fault(void) {
     /* Flush TLB */
     vm_sfence_vma(0, 0);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load,
                                         test_va);
     TEST_ASSERT("Non-leaf PTE PBMT=NC triggers page-fault",
                 result == CAUSE_LPF);
@@ -77,7 +77,7 @@ bool test_nonleaf_pbmt_io_fault(void) {
 
     vm_sfence_vma(0, 0);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load,
                                         test_va);
     TEST_ASSERT("Non-leaf PTE PBMT=IO triggers page-fault",
                 result == CAUSE_LPF);
@@ -113,7 +113,7 @@ bool test_nonleaf_pbmt_rsvd_fault(void) {
 
     vm_sfence_vma(0, 0);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load,
                                         test_va);
     TEST_ASSERT("Non-leaf PTE PBMT=3 triggers page-fault",
                 result == CAUSE_LPF);
@@ -149,7 +149,7 @@ bool test_nonleaf_pbmt_zero_ok(void) {
         TEST_ASSERT("non-leaf PTE PBMT=0",
                      PTE_PBMT(*nonleaf_pte) == 0);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("Non-leaf PTE PBMT=0: normal access succeeds", result == 0);
 
     pt_pool_reset();
@@ -204,7 +204,7 @@ bool test_nonleaf_pbmt_root_fault(void) {
 
     vm_sfence_vma(0, 0);
 
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load,
                                         test_va);
     TEST_ASSERT("Root non-leaf PTE PBMT!=0 triggers page-fault",
                 result == CAUSE_LPF);

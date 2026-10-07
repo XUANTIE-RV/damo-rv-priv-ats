@@ -106,7 +106,7 @@ bool SVFN(SFX_SIGN_NONCANON)(void) {
 
     /* Non-canonical address for this mode (see SUITE_NONCANON_VA). */
     uintptr_t bad_va = SUITE_NONCANON_VA;
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, bad_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, bad_va);
     TEST_ASSERT("non-canonical VA triggers page fault", result == CAUSE_LPF);
 
     pt_pool_reset();

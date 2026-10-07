@@ -38,7 +38,7 @@ bool test_sinval_vma_permission_upgrade(void) {
                 PT_LEVEL_4K);
 
     /* Verify R-only: write should fault */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_store_expect_fault, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("R-only: write faults", result == CAUSE_SPF);
 
     /* Modify PTE to RW */
@@ -52,7 +52,7 @@ bool test_sinval_vma_permission_upgrade(void) {
     SFENCE_INVAL_IR();
 
     /* Verify RW: write should succeed */
-    result = vm_run_in_smode(&ctx, smode_store, test_va);
+    result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("After SINVAL.VMA sequence: write succeeds", result == 0);
 
     pt_pool_reset();
@@ -78,7 +78,7 @@ bool test_sinval_vma_mapping_invalidation(void) {
                 PT_LEVEL_4K);
 
     /* Verify access works */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("Initial load succeeds", result == 0);
 
     /* Invalidate mapping: clear V bit by mapping with flags=0 */
@@ -94,7 +94,7 @@ bool test_sinval_vma_mapping_invalidation(void) {
     SFENCE_INVAL_IR();
 
     /* Access should now fault */
-    result = vm_run_in_smode(&ctx, smode_load_expect_fault, test_va);
+    result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("After invalidation: load faults", result == CAUSE_LPF);
 
     pt_pool_reset();
@@ -120,7 +120,7 @@ bool test_sinval_vma_permission_downgrade(void) {
                 PT_LEVEL_4K);
 
     /* Verify write succeeds */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("RWX: write succeeds", result == 0);
 
     /* Downgrade to R-only */
@@ -134,7 +134,7 @@ bool test_sinval_vma_permission_downgrade(void) {
     SFENCE_INVAL_IR();
 
     /* Write should now fault */
-    result = vm_run_in_smode(&ctx, smode_store_expect_fault, test_va);
+    result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("After downgrade: store faults", result == CAUSE_SPF);
 
     pt_pool_reset();
@@ -166,7 +166,7 @@ bool test_sinval_vma_pa_remap(void) {
                 PT_LEVEL_4K);
 
     /* Read from old PA */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("Initial load succeeds", result == 0);
 
     /* Remap to new PA */
@@ -180,7 +180,7 @@ bool test_sinval_vma_pa_remap(void) {
     SFENCE_INVAL_IR();
 
     /* Verify access uses new PA by reading back */
-    result = vm_run_in_smode(&ctx, smode_load, test_va);
+    result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("After remap: load succeeds", result == 0);
 
     pt_pool_reset();
@@ -206,8 +206,8 @@ bool test_sinval_vma_global_flush(void) {
     pt_map_page(&ctx, va1, va1, PTE_V | PTE_R | PTE_A | PTE_D, PT_LEVEL_4K);
 
     /* Build TLB entries */
-    vm_run_in_smode(&ctx, smode_load, va0);
-    vm_run_in_smode(&ctx, smode_load, va1);
+    vm_run_in_smode(&ctx, probe_load, va0);
+    vm_run_in_smode(&ctx, probe_load, va1);
 
     /* Upgrade both to RW */
     pt_map_page(&ctx, va0, va0, PTE_V | PTE_R | PTE_W | PTE_A | PTE_D, PT_LEVEL_4K);
@@ -219,8 +219,8 @@ bool test_sinval_vma_global_flush(void) {
     SFENCE_INVAL_IR();
 
     /* Both pages should now be writable */
-    uintptr_t r0 = vm_run_in_smode(&ctx, smode_store, va0);
-    uintptr_t r1 = vm_run_in_smode(&ctx, smode_store, va1);
+    uintptr_t r0 = vm_run_in_smode(&ctx, probe_store, va0);
+    uintptr_t r1 = vm_run_in_smode(&ctx, probe_store, va1);
     TEST_ASSERT("Page 0 write succeeds after global flush", r0 == 0);
     TEST_ASSERT("Page 1 write succeeds after global flush", r1 == 0);
 
@@ -252,7 +252,7 @@ bool test_sinval_vma_2m_megapage(void) {
                 PT_LEVEL_2M);
 
     /* Build TLB entry with a read */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load, mega_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, mega_va);
     TEST_ASSERT("Initial read succeeds (R-only megapage)", result == 0);
 
     /* Upgrade to RW */
@@ -266,7 +266,7 @@ bool test_sinval_vma_2m_megapage(void) {
     SFENCE_INVAL_IR();
 
     /* Verify write succeeds after TLB flush */
-    result = vm_run_in_smode(&ctx, smode_store, mega_va);
+    result = vm_run_in_smode(&ctx, probe_store, mega_va);
     TEST_ASSERT("2M megapage: write succeeds after SINVAL.VMA upgrade",
                 result == 0);
 
@@ -319,7 +319,7 @@ bool test_sinval_vma_1g_gigapage(void) {
     *(volatile uintptr_t *)test_addr = 0xAAAAAAAAAAAAAAAAUL;
 
     /* Build TLB entry by reading in S-mode */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load, test_addr);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_addr);
     TEST_ASSERT("Initial read succeeds (RWX gigapage)", result == 0);
 
     /* Now write a different value (from M-mode, no VM) to the same PA */
@@ -336,11 +336,11 @@ bool test_sinval_vma_1g_gigapage(void) {
      * (On QEMU this always works because QEMU doesn't cache data
      * in TLB, but this tests the instruction sequence is valid
      * for 1G-aligned addresses.) */
-    result = vm_run_in_smode(&ctx, smode_load, test_addr);
+    result = vm_run_in_smode(&ctx, probe_load, test_addr);
     TEST_ASSERT("Read after SINVAL.VMA on 1G gigapage succeeds", result == 0);
 
     /* Also verify the SINVAL.VMA sequence works with a write */
-    result = vm_run_in_smode(&ctx, smode_store, test_addr);
+    result = vm_run_in_smode(&ctx, probe_store, test_addr);
     TEST_ASSERT("Write after SINVAL.VMA on 1G gigapage succeeds", result == 0);
 
     pt_pool_reset();

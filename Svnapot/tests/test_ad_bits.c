@@ -63,7 +63,7 @@ bool test_napot_ad_a0_fault(void) {
                                           PTE_V | PTE_R | PTE_W | PTE_D);
     napot_install_pte(&ctx, test_va, napot_pte);
 
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load,
                                         test_va);
     TEST_ASSERT("NAPOT A=0 triggers load page fault",
                 result == CAUSE_LOAD_PAGE_FAULT);
@@ -97,11 +97,11 @@ bool test_napot_ad_d0_fault(void) {
     napot_install_pte(&ctx, test_va, napot_pte);
 
     /* Read should succeed (A=1) */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("NAPOT D=0: read succeeds (A=1)", result == 0);
 
     /* Write should fault (D=0 under Svade) */
-    result = vm_run_in_smode(&ctx, smode_store_expect_fault, test_va);
+    result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("NAPOT D=0 triggers store page fault",
                 result == CAUSE_STORE_PAGE_FAULT);
 

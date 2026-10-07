@@ -29,7 +29,7 @@ bool test_ssccptr_tlb_repeated_load(void) {
                 PTE_V | PTE_R | PTE_A | PTE_D, PT_LEVEL_4K);
 
     for (int i = 0; i < TLB_REPEAT_COUNT; i++) {
-        uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, test_va);
+        uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
         TEST_ASSERT_EQ("repeated load page walk succeeds", result, 0);
     }
 
@@ -52,7 +52,7 @@ bool test_ssccptr_tlb_repeated_store(void) {
                 PTE_V | PTE_R | PTE_W | PTE_A | PTE_D, PT_LEVEL_4K);
 
     for (int i = 0; i < TLB_REPEAT_COUNT; i++) {
-        uintptr_t result = vm_run_in_smode(&ctx, test_smode_store, test_va);
+        uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
         TEST_ASSERT_EQ("repeated store page walk succeeds", result, 0);
     }
 
@@ -76,7 +76,7 @@ bool test_ssccptr_tlb_repeated_fetch(void) {
                 PTE_V | PTE_R | PTE_X | PTE_A | PTE_D, PT_LEVEL_4K);
 
     for (int i = 0; i < TLB_REPEAT_COUNT; i++) {
-        uintptr_t result = vm_run_in_smode(&ctx, test_smode_exec, test_va);
+        uintptr_t result = vm_run_in_smode(&ctx, probe_exec, test_va);
         TEST_ASSERT_EQ("repeated fetch page walk succeeds", result, 0);
     }
 
@@ -104,7 +104,7 @@ bool test_ssccptr_tlb_alternating(void) {
 
     for (int i = 0; i < TLB_REPEAT_COUNT; i++) {
         uintptr_t target = (i % 2 == 0) ? va1 : va2;
-        uintptr_t result = vm_run_in_smode(&ctx, test_smode_load, target);
+        uintptr_t result = vm_run_in_smode(&ctx, probe_load, target);
         TEST_ASSERT_EQ("alternating page walk succeeds", result, 0);
     }
 

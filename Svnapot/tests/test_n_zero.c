@@ -36,7 +36,7 @@ bool test_napot_n0_standard(void) {
 
     /* Next 4KB page should not be mapped (unlike NAPOT) */
     uintptr_t next_page = test_va + PAGE_SIZE_4K;
-    result = vm_run_in_smode(&ctx, smode_load_expect_fault, next_page);
+    result = vm_run_in_smode(&ctx, probe_load, next_page);
     TEST_ASSERT("N=0 next page is unmapped (page fault)",
                 result == CAUSE_LOAD_PAGE_FAULT);
 
@@ -72,7 +72,7 @@ bool test_napot_n0_ppn_1000(void) {
 
     /* Offset 0x1000 should NOT be accessible (no NAPOT contiguity) */
     uintptr_t next_page = test_va + PAGE_SIZE_4K;
-    result = vm_run_in_smode(&ctx, smode_load_expect_fault, next_page);
+    result = vm_run_in_smode(&ctx, probe_load, next_page);
     TEST_ASSERT("N=0 ppn[0]=1000: no NAPOT contiguity",
                 result == CAUSE_LOAD_PAGE_FAULT);
 

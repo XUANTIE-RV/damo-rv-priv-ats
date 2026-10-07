@@ -24,6 +24,7 @@
 
 #include "test_framework.h"
 #include "vm/vm.h"
+#include "test_utils.h"
 #include "pmp_cfg.h"
 #include "mem_ops.h"
 
@@ -60,10 +61,7 @@ extern uintptr_t __vm_test_region_2m_start;
  * Initialization helper: fill exec page with nop;ret
  * =================================================================== */
 static void init_exec_page(void) {
-    uint32_t *p = (uint32_t *)test_exec_page;
-    for (int i = 0; i < 1024 - 1; i++)
-        p[i] = 0x00000013;  /* nop (addi x0, x0, 0) */
-    p[1023] = 0x00008067;   /* ret (jalr x0, ra, 0) */
+    vm_fill_exec_page((uintptr_t)test_exec_page);
 }
 
 /* ===================================================================
@@ -74,29 +72,11 @@ static void init_exec_page(void) {
  * pages so individual tests can install custom mappings.
  * =================================================================== */
 static int setup_code_mapping(pt_context_t *ctx) {
-    uintptr_t flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-
-    uintptr_t test_4k_2m  = (uintptr_t)&__vm_test_region_start    & ~(PAGE_SIZE_2M - 1);
-    uintptr_t test_2m_2m  = (uintptr_t)&__vm_test_region_2m_start & ~(PAGE_SIZE_2M - 1);
-
-    uintptr_t end = test_2m_2m + 2 * PAGE_SIZE_2M;
-    if (test_4k_2m + 2 * PAGE_SIZE_2M > end)
-        end = test_4k_2m + 2 * PAGE_SIZE_2M;
-
-    for (uintptr_t addr = base; addr < end; addr += PAGE_SIZE_2M) {
-        if (addr == test_4k_2m || addr == test_2m_2m)
-            continue;
-        int ret = pt_map_page(ctx, addr, addr, flags, PT_LEVEL_2M);
-        if (ret != 0) return ret;
-    }
-
-    /* Map UART I/O region for S-mode printf support */
-    uintptr_t uart_flags = PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;
-    pt_map_page(ctx, PLATFORM_UART0_BASE, PLATFORM_UART0_BASE,
-                uart_flags, PT_LEVEL_4K);
-
-    return 0;
+    uintptr_t regions[] = {
+        (uintptr_t)&__vm_test_region_start,
+        (uintptr_t)&__vm_test_region_2m_start,
+    };
+    return vm_setup_code_mapping(ctx, PAGE_SIZE_2M, regions, 2);
 }
 
 /* ===================================================================
@@ -149,33 +129,9 @@ static int setup_code_mapping_umode(pt_context_t *ctx) {
  * detect faults. Return scause on trap, 0 on success.
  * =================================================================== */
 
-static uintptr_t test_smode_load(uintptr_t arg) {
-    trap_expect_begin();
-    volatile uintptr_t val = *(volatile uintptr_t *)arg;
-    (void)val;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
+/* probe_* access payloads are provided by common/test_utils.h. */
 
-static uintptr_t test_smode_store(uintptr_t arg) {
-    trap_expect_begin();
-    *(volatile uintptr_t *)arg = MAGIC_WRITE_A;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
 
-static uintptr_t test_smode_exec(uintptr_t arg) {
-    trap_expect_begin();
-    exec_at(arg);
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
 
 /* ===================================================================
  * S-mode function that loads and returns the value read
@@ -256,39 +212,8 @@ static bool is_superpage_feasible(int pt_level) {
 }
 
 /* ===================================================================
- * PTE inspection / modification helpers
+ * PTE inspection / modification helpers (pte_read / pte_set_bits /
+ * pte_clear_bits / pte_write) are provided by common/vm/vm.h.
  * =================================================================== */
-
-static uintptr_t pte_read(pt_context_t *ctx, uintptr_t va, int level) {
-    uintptr_t *p = pt_get_pte(ctx, va, level);
-    return p ? *p : 0;
-}
-
-static void pte_set_bits(pt_context_t *ctx, uintptr_t va, int level,
-                         uintptr_t bits) {
-    uintptr_t *p = pt_get_pte(ctx, va, level);
-    if (p) {
-        *p |= bits;
-        vm_sfence_vma(0, 0);
-    }
-}
-
-static void pte_clear_bits(pt_context_t *ctx, uintptr_t va, int level,
-                           uintptr_t bits) {
-    uintptr_t *p = pt_get_pte(ctx, va, level);
-    if (p) {
-        *p &= ~bits;
-        vm_sfence_vma(0, 0);
-    }
-}
-
-static void pte_write(pt_context_t *ctx, uintptr_t va, int level,
-                      uintptr_t value) {
-    uintptr_t *p = pt_get_pte(ctx, va, level);
-    if (p) {
-        *p = value;
-        vm_sfence_vma(0, 0);
-    }
-}
 
 #endif /* SSCCPTR_TEST_HELPERS_H */

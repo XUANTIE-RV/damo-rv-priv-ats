@@ -36,7 +36,7 @@ bool test_napot64_read(void) {
                                           PTE_V | PTE_R | PTE_A | PTE_D);
     napot_install_pte(&ctx, test_va, napot_pte);
 
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT("64 KiB NAPOT read succeeds", result == 0);
 
     pt_pool_reset();
@@ -62,7 +62,7 @@ bool test_napot64_write(void) {
                                           PTE_V | PTE_R | PTE_W | PTE_A | PTE_D);
     napot_install_pte(&ctx, test_va, napot_pte);
 
-    uintptr_t result = vm_run_in_smode(&ctx, smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT("64 KiB NAPOT write succeeds", result == 0);
 
     pt_pool_reset();
@@ -91,7 +91,7 @@ bool test_napot64_end_addr(void) {
     /* Read at the last valid address within the 64 KiB region
      * (last 8-byte aligned address = base + 0xFFF8) */
     uintptr_t end_addr = test_va + NAPOT_64K_SIZE - sizeof(uintptr_t);
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load, end_addr);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, end_addr);
     TEST_ASSERT("64 KiB NAPOT end address read succeeds", result == 0);
 
     pt_pool_reset();
@@ -147,7 +147,7 @@ bool test_napot64_out_of_region(void) {
 
     /* Access first byte past the 64 KiB region - should fault */
     uintptr_t out_addr = test_va + NAPOT_64K_SIZE;
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load,
                                         out_addr);
     TEST_ASSERT("out-of-region triggers page fault",
                 result == CAUSE_LOAD_PAGE_FAULT);

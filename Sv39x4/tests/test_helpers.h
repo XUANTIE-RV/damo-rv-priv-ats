@@ -34,10 +34,9 @@ extern uint8_t __vm_test_region_end[];
  * section. It is 2MB-aligned. */
 #define TEST_REGION_BASE   ((uintptr_t)__vm_test_region_start)
 
-/* Common identity-mapping flags for setting up the code/data region.
- * G-stage requires U=1 because all G-stage accesses are treated as
- * U-mode (norm:H_vm_gpapriv). */
-#define G_FLAGS_RWXU_AD    (PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D)
+/* G_FLAGS_RWXU_AD (identity-mapping flags with U=1, since all G-stage
+ * accesses are treated as U-mode; norm:H_vm_gpapriv) is provided by
+ * common/hyp/gstage_pt.h. Do NOT redefine it locally. */
 
 /* ===================================================================
  * Shared helpers (defined in test_helpers.c) for cross-group reuse.

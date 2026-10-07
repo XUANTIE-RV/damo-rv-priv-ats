@@ -44,8 +44,8 @@ bool test_sfence_w_inval_umode(void) {
     goto_priv(PRIV_M);
 
     if (!trap_was_triggered()) {
-        printf("  INFO: U-mode SFENCE.W.INVAL did not trap (impl treats as NOP)\n");
-        printf("  INFO: Spec requires illegal-instruction; impl may be non-compliant\n");
+        LOG_W("U-mode SFENCE.W.INVAL did not trap (impl treats as NOP)\n");
+        LOG_W("Spec requires illegal-instruction; impl may be non-compliant\n");
     } else {
         TEST_ASSERT_EQ("FENCE-01: cause is illegal instruction",
                         trap_get_cause(), (uintptr_t)CAUSE_ILLEGAL_INST);
@@ -74,8 +74,8 @@ bool test_sfence_inval_ir_umode(void) {
     goto_priv(PRIV_M);
 
     if (!trap_was_triggered()) {
-        printf("  INFO: U-mode SFENCE.INVAL.IR did not trap (impl treats as NOP)\n");
-        printf("  INFO: Spec requires illegal-instruction; impl may be non-compliant\n");
+        LOG_W("U-mode SFENCE.INVAL.IR did not trap (impl treats as NOP)\n");
+        LOG_W("Spec requires illegal-instruction; impl may be non-compliant\n");
     } else {
         TEST_ASSERT_EQ("FENCE-02: cause is illegal instruction",
                         trap_get_cause(), (uintptr_t)CAUSE_ILLEGAL_INST);

@@ -43,10 +43,10 @@ bool test_ppn_subst_basic(void) {
             (phase == 1) ? "write" :
             (phase == 2) ? "readback" :
             (phase == 3) ? "verify" : "unknown";
-        printf("  [DIAG] PPN subst failed: phase=%s, page_idx=%u (offset=0x%x)\n",
-               phase_name, page_idx, page_idx * 0x1000);
-        printf("  [DIAG] This may indicate the hardware does not correctly\n"
-               "         substitute ppn[0][3:0] with vpn[0][3:0] for NAPOT PTEs.\n");
+        LOG_W("PPN subst failed: phase=%s, page_idx=%u (offset=0x%x)\n",
+              phase_name, page_idx, page_idx * 0x1000);
+        LOG_W("This may indicate the hardware does not correctly\n"
+              "         substitute ppn[0][3:0] with vpn[0][3:0] for NAPOT PTEs.\n");
     }
 
     TEST_ASSERT("PPN substitution correct for all 16 pages", result == 0);
@@ -161,28 +161,28 @@ bool test_ppn_subst_non_identity(void) {
     napot_install_pte(&ctx, test_va, napot_pte);
 
     /* Write via VA, then verify via direct PA access after VM off */
-    uintptr_t result = vm_run_in_smode(&ctx, smode_store, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
 
     if (result != 0) {
-        printf("  [DIAG] non-identity NAPOT write failed: cause=0x%lx\n",
-               (unsigned long)result);
-        printf("  [DIAG] VA=0x%lx -> PA=0x%lx (NAPOT 64KiB)\n",
-               (unsigned long)test_va, (unsigned long)test_pa);
+        LOG_W("non-identity NAPOT write failed: cause=0x%lx\n",
+              (unsigned long)result);
+        LOG_W("VA=0x%lx -> PA=0x%lx (NAPOT 64KiB)\n",
+              (unsigned long)test_va, (unsigned long)test_pa);
     }
     TEST_ASSERT("non-identity NAPOT write succeeds", result == 0);
 
     /* Check physical memory at PA */
     volatile uintptr_t *pa_ptr = (volatile uintptr_t *)test_pa;
     if (*pa_ptr != MAGIC_WRITE) {
-        printf("  [DIAG] PA data mismatch: expected=0x%lx, got=0x%lx\n",
-               (unsigned long)MAGIC_WRITE, (unsigned long)*pa_ptr);
+        LOG_W("PA data mismatch: expected=0x%lx, got=0x%lx\n",
+              (unsigned long)MAGIC_WRITE, (unsigned long)*pa_ptr);
         /* Also check if data landed at VA (identity) instead of PA */
         volatile uintptr_t *va_ptr = (volatile uintptr_t *)test_va;
         if (*va_ptr == MAGIC_WRITE) {
-            printf("  [DIAG] Data found at VA(0x%lx) instead of PA(0x%lx)\n",
-                   (unsigned long)test_va, (unsigned long)test_pa);
-            printf("  [DIAG] -> Hardware likely ignores NAPOT PPN and uses"
-                   " VA-based PPN directly.\n");
+            LOG_W("Data found at VA(0x%lx) instead of PA(0x%lx)\n",
+                  (unsigned long)test_va, (unsigned long)test_pa);
+            LOG_W("-> Hardware likely ignores NAPOT PPN and uses"
+                  " VA-based PPN directly.\n");
         }
     }
     TEST_ASSERT("data appears at correct PA",

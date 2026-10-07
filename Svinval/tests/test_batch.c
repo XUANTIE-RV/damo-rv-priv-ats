@@ -43,9 +43,9 @@ bool test_sinval_batch_3pages(void) {
     pt_map_page(&ctx, va2, va2, PTE_V | PTE_R | PTE_A | PTE_D, PT_LEVEL_4K);
 
     /* Build TLB entries */
-    vm_run_in_smode(&ctx, smode_load, va0);
-    vm_run_in_smode(&ctx, smode_load, va1);
-    vm_run_in_smode(&ctx, smode_load, va2);
+    vm_run_in_smode(&ctx, probe_load, va0);
+    vm_run_in_smode(&ctx, probe_load, va1);
+    vm_run_in_smode(&ctx, probe_load, va2);
 
     /* Upgrade all 3 pages to RW */
     pt_map_page(&ctx, va0, va0, PTE_V | PTE_R | PTE_W | PTE_A | PTE_D, PT_LEVEL_4K);
@@ -60,9 +60,9 @@ bool test_sinval_batch_3pages(void) {
     SFENCE_INVAL_IR();
 
     /* Verify all 3 pages are writable */
-    uintptr_t r0 = vm_run_in_smode(&ctx, smode_store, va0);
-    uintptr_t r1 = vm_run_in_smode(&ctx, smode_store, va1);
-    uintptr_t r2 = vm_run_in_smode(&ctx, smode_store, va2);
+    uintptr_t r0 = vm_run_in_smode(&ctx, probe_store, va0);
+    uintptr_t r1 = vm_run_in_smode(&ctx, probe_store, va1);
+    uintptr_t r2 = vm_run_in_smode(&ctx, probe_store, va2);
     TEST_ASSERT("Page 0 write succeeds", r0 == 0);
     TEST_ASSERT("Page 1 write succeeds", r1 == 0);
     TEST_ASSERT("Page 2 write succeeds", r2 == 0);
@@ -98,9 +98,9 @@ bool test_sinval_batch_mixed_perms(void) {
     pt_map_page(&ctx, va_c, va_c, PTE_V | PTE_R | PTE_W | PTE_A | PTE_D, PT_LEVEL_4K);
 
     /* Build TLB entries */
-    vm_run_in_smode(&ctx, smode_load, va_a);
-    vm_run_in_smode(&ctx, smode_store, va_b);
-    vm_run_in_smode(&ctx, smode_load, va_c);
+    vm_run_in_smode(&ctx, probe_load, va_a);
+    vm_run_in_smode(&ctx, probe_store, va_b);
+    vm_run_in_smode(&ctx, probe_load, va_c);
 
     /* Page A: upgrade R -> RW */
     pt_map_page(&ctx, va_a, va_a, PTE_V | PTE_R | PTE_W | PTE_A | PTE_D, PT_LEVEL_4K);
@@ -122,9 +122,9 @@ bool test_sinval_batch_mixed_perms(void) {
     SFENCE_INVAL_IR();
 
     /* Verify: A writable, B write faults, C access faults */
-    uintptr_t ra = vm_run_in_smode(&ctx, smode_store, va_a);
-    uintptr_t rb = vm_run_in_smode(&ctx, smode_store_expect_fault, va_b);
-    uintptr_t rc = vm_run_in_smode(&ctx, smode_load_expect_fault, va_c);
+    uintptr_t ra = vm_run_in_smode(&ctx, probe_store, va_a);
+    uintptr_t rb = vm_run_in_smode(&ctx, probe_store, va_b);
+    uintptr_t rc = vm_run_in_smode(&ctx, probe_load, va_c);
     TEST_ASSERT("Page A: write succeeds (R->RW)", ra == 0);
     TEST_ASSERT("Page B: write faults (RW->R)", rb == CAUSE_SPF);
     TEST_ASSERT("Page C: load faults (V=0)", rc == CAUSE_LPF);
@@ -164,7 +164,7 @@ bool test_sinval_batch_16pages(void) {
 
     /* Build TLB entries */
     for (int i = 0; i < BATCH_COUNT; i++) {
-        vm_run_in_smode(&ctx, smode_load, vas[i]);
+        vm_run_in_smode(&ctx, probe_load, vas[i]);
     }
 
     /* Upgrade all to RW */
@@ -183,9 +183,9 @@ bool test_sinval_batch_16pages(void) {
     /* Verify all 16 pages are writable */
     bool all_pass = true;
     for (int i = 0; i < BATCH_COUNT; i++) {
-        uintptr_t r = vm_run_in_smode(&ctx, smode_store, vas[i]);
+        uintptr_t r = vm_run_in_smode(&ctx, probe_store, vas[i]);
         if (r != 0) {
-            printf("  Page %d write failed (result=0x%lx)\n", i, (unsigned long)r);
+            LOG_W("Page %d write failed (result=0x%lx)\n", i, (unsigned long)r);
             all_pass = false;
         }
     }
@@ -221,9 +221,9 @@ bool test_sinval_batch_mixed_rs1(void) {
     pt_map_page(&ctx, va2, va2, PTE_V | PTE_R | PTE_A | PTE_D, PT_LEVEL_4K);
 
     /* Build TLB entries */
-    vm_run_in_smode(&ctx, smode_load, va0);
-    vm_run_in_smode(&ctx, smode_load, va1);
-    vm_run_in_smode(&ctx, smode_load, va2);
+    vm_run_in_smode(&ctx, probe_load, va0);
+    vm_run_in_smode(&ctx, probe_load, va1);
+    vm_run_in_smode(&ctx, probe_load, va2);
 
     /* Upgrade all to RW */
     pt_map_page(&ctx, va0, va0, PTE_V | PTE_R | PTE_W | PTE_A | PTE_D, PT_LEVEL_4K);
@@ -237,9 +237,9 @@ bool test_sinval_batch_mixed_rs1(void) {
     SFENCE_INVAL_IR();
 
     /* All pages should be flushed (global flush covers everything) */
-    uintptr_t r0 = vm_run_in_smode(&ctx, smode_store, va0);
-    uintptr_t r1 = vm_run_in_smode(&ctx, smode_store, va1);
-    uintptr_t r2 = vm_run_in_smode(&ctx, smode_store, va2);
+    uintptr_t r0 = vm_run_in_smode(&ctx, probe_store, va0);
+    uintptr_t r1 = vm_run_in_smode(&ctx, probe_store, va1);
+    uintptr_t r2 = vm_run_in_smode(&ctx, probe_store, va2);
     TEST_ASSERT("Page 0 write succeeds", r0 == 0);
     TEST_ASSERT("Page 1 write succeeds (global flush)", r1 == 0);
     TEST_ASSERT("Page 2 write succeeds (global flush)", r2 == 0);

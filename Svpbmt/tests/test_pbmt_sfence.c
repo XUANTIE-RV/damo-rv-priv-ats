@@ -33,7 +33,7 @@ bool test_pbmt_sfence_pma_to_nc(void) {
                 PT_LEVEL_4K);
 
     /* First access to establish TLB */
-    vm_run_in_smode(&ctx, test_smode_load, test_va);
+    vm_run_in_smode(&ctx, probe_load, test_va);
 
     /* Modify PTE: PBMT change to NC */
     uintptr_t *pte = pt_get_pte(&ctx, test_va, PT_LEVEL_4K);
@@ -79,7 +79,7 @@ bool test_pbmt_sfence_pma_to_io(void) {
                 PT_LEVEL_4K);
 
     /* First access to establish TLB */
-    vm_run_in_smode(&ctx, test_smode_load, test_va);
+    vm_run_in_smode(&ctx, probe_load, test_va);
 
     /* Modify PTE: PBMT change to IO */
     uintptr_t *pte = pt_get_pte(&ctx, test_va, PT_LEVEL_4K);
@@ -125,7 +125,7 @@ bool test_pbmt_sfence_to_reserved(void) {
                 PT_LEVEL_4K);
 
     /* First access to establish TLB */
-    vm_run_in_smode(&ctx, test_smode_load, test_va);
+    vm_run_in_smode(&ctx, probe_load, test_va);
 
     /* Modify PTE: PBMT change to reserved (3) */
     uintptr_t *pte = pt_get_pte(&ctx, test_va, PT_LEVEL_4K);
@@ -140,7 +140,7 @@ bool test_pbmt_sfence_to_reserved(void) {
     vm_run_in_smode(&ctx, smode_modify_pte_and_sfence_global, test_va);
 
     /* Verify reserved value triggers page-fault */
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load,
                                         test_va);
     TEST_ASSERT("After PBMT->reserved + sfence: page-fault",
                 result == CAUSE_LPF);
@@ -171,7 +171,7 @@ bool test_pbmt_sfence_from_reserved(void) {
                 PT_LEVEL_4K);
 
     /* Verify access faults */
-    uintptr_t result = vm_run_in_smode(&ctx, test_smode_load_expect_fault,
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load,
                                         test_va);
     TEST_ASSERT("PBMT=reserved: initial load faults", result == CAUSE_LPF);
 
