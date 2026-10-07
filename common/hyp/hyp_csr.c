@@ -10,6 +10,7 @@
 #include "hyp_csr.h"
 #include "encoding.h"
 #include "sm_defs.h"          /* CSR_MHPMCOUNTER3 (counter existence probe) */
+#include "csr_accessors.h"    /* csr_read / csr_write (runtime dispatcher) */
 #include "test_framework.h"   /* PRIV_S / PRIV_U / PRIV_M */
 
 /* ===================================================================
@@ -144,40 +145,9 @@ void htimedelta_write(uintptr_t value) {
 }
 
 /* ===================================================================
- * menvcfg (M-mode CSR 0x30A)
- *
- * Defined here (rather than in a separate machine_csr.c) because the
- * GAD diagnostics in sv39x4 are the only current consumer, and they
- * already pull in hyp_csr for henvcfg / hgatp.
+ * menvcfg / mstatus / senvcfg (M/S-level, non-H): provided by csr_ops.h
+ * (included via hyp_csr.h). Not defined here.
  * =================================================================== */
-
-uintptr_t menvcfg_read(void) {
-    return CSRR(CSR_MENVCFG);
-}
-
-void menvcfg_write(uintptr_t value) {
-    CSRW(CSR_MENVCFG, value);
-}
-
-/* ===================================================================
- * mstatus (CSR 0x300)
- * =================================================================== */
-
-uintptr_t mstatus_read(void) {
-    return CSRR(mstatus);
-}
-
-void mstatus_write(uintptr_t value) {
-    CSRW(mstatus, value);
-}
-
-uintptr_t senvcfg_read(void) {
-    return CSRR(CSR_SENVCFG);
-}
-
-void senvcfg_write(uintptr_t value) {
-    CSRW(CSR_SENVCFG, value);
-}
 
 /* ===================================================================
  * hstatus field control
@@ -339,44 +309,8 @@ void htimedelta_set(uint64_t delta) {
 }
 
 /* ===================================================================
- * mcounteren (M-mode Counter Enable, CSR 0x306)
+ * mcounteren / scounteren (M/S-level): provided by csr_ops.h
  * =================================================================== */
-
-uintptr_t mcounteren_read(void) {
-    return CSRR(CSR_MCOUNTEREN);
-}
-
-void mcounteren_write(uintptr_t value) {
-    CSRW(CSR_MCOUNTEREN, value);
-}
-
-void mcounteren_set(uintptr_t mask) {
-    CSRS(CSR_MCOUNTEREN, mask);
-}
-
-void mcounteren_clear(uintptr_t mask) {
-    CSRC(CSR_MCOUNTEREN, mask);
-}
-
-/* ===================================================================
- * scounteren (S-mode Counter Enable, CSR 0x106)
- * =================================================================== */
-
-uintptr_t scounteren_read(void) {
-    return CSRR(CSR_SCOUNTEREN);
-}
-
-void scounteren_write(uintptr_t value) {
-    CSRW(CSR_SCOUNTEREN, value);
-}
-
-void scounteren_set(uintptr_t mask) {
-    CSRS(CSR_SCOUNTEREN, mask);
-}
-
-void scounteren_clear(uintptr_t mask) {
-    CSRC(CSR_SCOUNTEREN, mask);
-}
 
 /* ===================================================================
  * vstvec (CSR 0x205)
@@ -563,9 +497,7 @@ unsigned hgatp_vmid_width(void) {
  * for arbitrary CSR access.
  * =================================================================== */
 
-/* Forward declarations for csr_accessors.c */
-extern uintptr_t csr_read(uint16_t csr);
-extern void      csr_write(uint16_t csr, uintptr_t val);
+/* csr_read / csr_write are provided by csr_accessors.h (included above). */
 
 uintptr_t csr_warl_probe(unsigned csr_num, uintptr_t value) {
     uintptr_t saved = csr_read((uint16_t)csr_num);
@@ -647,157 +579,21 @@ bool hpmcounter_is_writable(int idx) {
 }
 
 /* ===================================================================
- * Smstateen / Ssstateen CSR accessors
+ * Smstateen / Ssstateen accessors and the indirect CSR windows
+ * (miselect/mireg, siselect/sireg*, vsiselect/vsireg*): provided by
+ * csr_ops.h. Trap-armed *_read_safe variants remain suite-local.
  * =================================================================== */
 
-uintptr_t mstateen_read(int idx) {
-    uintptr_t v = 0;
-    switch (idx) {
-    case 0: v = CSRR(CSR_MSTATEEN0); break;
-    case 1: v = CSRR(CSR_MSTATEEN1); break;
-    case 2: v = CSRR(CSR_MSTATEEN2); break;
-    case 3: v = CSRR(CSR_MSTATEEN3); break;
-    default: break;
-    }
-    return v;
-}
 
-void mstateen_write(int idx, uintptr_t value) {
-    switch (idx) {
-    case 0: CSRW(CSR_MSTATEEN0, value); break;
-    case 1: CSRW(CSR_MSTATEEN1, value); break;
-    case 2: CSRW(CSR_MSTATEEN2, value); break;
-    case 3: CSRW(CSR_MSTATEEN3, value); break;
-    default: break;
-    }
-}
 
-void mstateen_set_bits(int idx, uintptr_t mask) {
-    mstateen_write(idx, mstateen_read(idx) | mask);
-}
-
-void mstateen_clear_bits(int idx, uintptr_t mask) {
-    mstateen_write(idx, mstateen_read(idx) & ~mask);
-}
-
-uintptr_t hstateen_read(int idx) {
-    uintptr_t v = 0;
-    switch (idx) {
-    case 0: v = CSRR(CSR_HSTATEEN0); break;
-    case 1: v = CSRR(CSR_HSTATEEN1); break;
-    case 2: v = CSRR(CSR_HSTATEEN2); break;
-    case 3: v = CSRR(CSR_HSTATEEN3); break;
-    default: break;
-    }
-    return v;
-}
-
-void hstateen_write(int idx, uintptr_t value) {
-    switch (idx) {
-    case 0: CSRW(CSR_HSTATEEN0, value); break;
-    case 1: CSRW(CSR_HSTATEEN1, value); break;
-    case 2: CSRW(CSR_HSTATEEN2, value); break;
-    case 3: CSRW(CSR_HSTATEEN3, value); break;
-    default: break;
-    }
-}
-
-void hstateen_set_bits(int idx, uintptr_t mask) {
-    hstateen_write(idx, hstateen_read(idx) | mask);
-}
-
-void hstateen_clear_bits(int idx, uintptr_t mask) {
-    hstateen_write(idx, hstateen_read(idx) & ~mask);
-}
-
-uintptr_t sstateen_read(int idx) {
-    uintptr_t v = 0;
-    switch (idx) {
-    case 0: v = CSRR(CSR_SSTATEEN0); break;
-    case 1: v = CSRR(CSR_SSTATEEN1); break;
-    case 2: v = CSRR(CSR_SSTATEEN2); break;
-    case 3: v = CSRR(CSR_SSTATEEN3); break;
-    default: break;
-    }
-    return v;
-}
-
-void sstateen_write(int idx, uintptr_t value) {
-    switch (idx) {
-    case 0: CSRW(CSR_SSTATEEN0, value); break;
-    case 1: CSRW(CSR_SSTATEEN1, value); break;
-    case 2: CSRW(CSR_SSTATEEN2, value); break;
-    case 3: CSRW(CSR_SSTATEEN3, value); break;
-    default: break;
-    }
-}
-
-void sstateen_set_bits(int idx, uintptr_t mask) {
-    sstateen_write(idx, sstateen_read(idx) | mask);
-}
-
-void sstateen_clear_bits(int idx, uintptr_t mask) {
-    sstateen_write(idx, sstateen_read(idx) & ~mask);
-}
-
-/* ===================================================================
- * Indirect CSR accessors (Smcsrind / Sscsrind / Ssccfg)
- *
- * Plain CSRR/CSRW wrappers for the miselect/mireg, siselect/sireg*
- * and vsiselect/vsireg* indirect-CSR windows. These centralize the
- * accessors that used to be duplicated per-suite. Trap-armed probing
- * variants (e.g. *_read_safe) remain suite-local because their
- * arming/recovery semantics are test-specific.
- * =================================================================== */
-
-uintptr_t miselect_read(void) { return CSRR(CSR_MISELECT); }
-void      miselect_write(uintptr_t v) { CSRW(CSR_MISELECT, v); }
-uintptr_t mireg_read(void) { return CSRR(CSR_MIREG); }
-void      mireg_write(uintptr_t v) { CSRW(CSR_MIREG, v); }
-
-uintptr_t siselect_read(void) { return CSRR(CSR_SISELECT); }
-void      siselect_write(uintptr_t v) { CSRW(CSR_SISELECT, v); }
-uintptr_t sireg_read(void) { return CSRR(CSR_SIREG); }
-void      sireg_write(uintptr_t v) { CSRW(CSR_SIREG, v); }
-uintptr_t sireg2_read(void) { return CSRR(CSR_SIREG2); }
-void      sireg2_write(uintptr_t v) { CSRW(CSR_SIREG2, v); }
-uintptr_t sireg3_read(void) { return CSRR(CSR_SIREG3); }
-void      sireg3_write(uintptr_t v) { CSRW(CSR_SIREG3, v); }
-uintptr_t sireg4_read(void) { return CSRR(CSR_SIREG4); }
-void      sireg4_write(uintptr_t v) { CSRW(CSR_SIREG4, v); }
-uintptr_t sireg5_read(void) { return CSRR(CSR_SIREG5); }
-void      sireg5_write(uintptr_t v) { CSRW(CSR_SIREG5, v); }
-uintptr_t sireg6_read(void) { return CSRR(CSR_SIREG6); }
-void      sireg6_write(uintptr_t v) { CSRW(CSR_SIREG6, v); }
-
-uintptr_t vsiselect_read(void) { return CSRR(CSR_VSISELECT); }
-void      vsiselect_write(uintptr_t v) { CSRW(CSR_VSISELECT, v); }
-uintptr_t vsireg_read(void) { return CSRR(CSR_VSIREG); }
-void      vsireg_write(uintptr_t v) { CSRW(CSR_VSIREG, v); }
-uintptr_t vsireg2_read(void) { return CSRR(CSR_VSIREG2); }
-void      vsireg2_write(uintptr_t v) { CSRW(CSR_VSIREG2, v); }
-uintptr_t vsireg3_read(void) { return CSRR(CSR_VSIREG3); }
-void      vsireg3_write(uintptr_t v) { CSRW(CSR_VSIREG3, v); }
-uintptr_t vsireg4_read(void) { return CSRR(CSR_VSIREG4); }
-void      vsireg4_write(uintptr_t v) { CSRW(CSR_VSIREG4, v); }
-uintptr_t vsireg5_read(void) { return CSRR(CSR_VSIREG5); }
-void      vsireg5_write(uintptr_t v) { CSRW(CSR_VSIREG5, v); }
-uintptr_t vsireg6_read(void) { return CSRR(CSR_VSIREG6); }
-void      vsireg6_write(uintptr_t v) { CSRW(CSR_VSIREG6, v); }
 
 /* ===================================================================
  * Generic atomic set/clear bit helpers (single CSRS/CSRC instruction)
  *
- * menvcfg / henvcfg / hvip / hstatus / vsstatus. These complement the
- * read/write accessors above and replace the per-suite csrs/csrc
- * wrappers (menvcfg_set/clear, henvcfg_set/clear, hvip_set/clear,
- * hstatus_set/clear, vsstatus_set/clear).
+ * H-level only (henvcfg / hvip / hstatus / vsstatus). The M/S-level
+ * menvcfg/senvcfg set_bits/clear_bits are provided by csr_ops.h.
  * =================================================================== */
 
-void menvcfg_set_bits(uintptr_t mask)   { CSRS(CSR_MENVCFG, mask); }
-void menvcfg_clear_bits(uintptr_t mask) { CSRC(CSR_MENVCFG, mask); }
-void senvcfg_set_bits(uintptr_t mask)   { CSRS(CSR_SENVCFG, mask); }
-void senvcfg_clear_bits(uintptr_t mask) { CSRC(CSR_SENVCFG, mask); }
 void henvcfg_set_bits(uintptr_t mask)   { CSRS(CSR_HENVCFG, mask); }
 void henvcfg_clear_bits(uintptr_t mask) { CSRC(CSR_HENVCFG, mask); }
 void hvip_set_bits(uintptr_t mask)      { CSRS(CSR_HVIP, mask); }
