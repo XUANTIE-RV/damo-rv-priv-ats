@@ -123,9 +123,24 @@ static inline void sfence_vma(void) {
 #define CSR_SEED        0x015
 #endif
 
+/* seed CSR field definitions (Zkr) */
+#define SEED_OPST_SHIFT     30
+#define SEED_OPST_MASK      (0x3UL << SEED_OPST_SHIFT)
+#define SEED_OPST_BIST      (0x0UL << SEED_OPST_SHIFT)  /* 00 */
+#define SEED_OPST_WAIT      (0x1UL << SEED_OPST_SHIFT)  /* 01 */
+#define SEED_OPST_ES16      (0x2UL << SEED_OPST_SHIFT)  /* 10 */
+#define SEED_OPST_DEAD      (0x3UL << SEED_OPST_SHIFT)  /* 11 */
+#define SEED_ENTROPY_MASK   0xFFFFUL
+#define SEED_RESERVED_MASK  (0x3FUL << 24)
+
 /* Supervisor Context Register (Sdtrig, gated by stateen0.CONTEXT) */
 #ifndef CSR_SCONTEXT
 #define CSR_SCONTEXT    0x5A8
+#endif
+
+/* Machine Context Register (Sdtrig, gated by mstateen0.CONTEXT) */
+#ifndef CSR_MCONTEXT
+#define CSR_MCONTEXT    0x7A8
 #endif
 
 /* Trigger Module CSRs (Sdtrig) */
@@ -143,6 +158,10 @@ static inline void sfence_vma(void) {
 #define CSR_CYCLE       0xC00
 #define CSR_TIME        0xC01
 #define CSR_INSTRET     0xC02
+/* Upper 32-bit halves (RV32 only; absent on RV64) */
+#define CSR_CYCLEH      0xC80
+#define CSR_TIMEH       0xC81
+#define CSR_INSTRETH    0xC82
 
 /* HPM Counter CSRs (S/U-mode read-only shadow) */
 #define CSR_HPMCOUNTER3   0xC03
@@ -212,5 +231,20 @@ static inline void sfence_vma(void) {
 
 /* HGATP mode matches SATP mode numerically */
 #define HGATP_MODE_FOR_SATP(satp_mode) (satp_mode)
+
+/* ===================================================================
+ * Instruction field extraction macros
+ *
+ * Standard RISC-V instruction-word field decoders, shared by suites
+ * that inspect fetched/trapped instruction encodings (e.g. mtval or
+ * htinst read-back). Argument i is a 32-bit instruction word.
+ * =================================================================== */
+#define INST_OPCODE(i)      ((i) & 0x7FUL)
+#define INST_RD(i)          (((i) >> 7) & 0x1FUL)
+#define INST_FUNCT3(i)      (((i) >> 12) & 0x7UL)
+#define INST_RS1(i)         (((i) >> 15) & 0x1FUL)
+#define INST_RS2(i)         (((i) >> 20) & 0x1FUL)
+#define INST_FUNCT7(i)      (((i) >> 25) & 0x7FUL)
+#define INST_IMM12(i)       (((i) >> 20) & 0xFFFUL)
 
 #endif /* COMMON_ENCODING_H */

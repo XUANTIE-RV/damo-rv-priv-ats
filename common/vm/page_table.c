@@ -4,7 +4,7 @@
  */
 
 #include "vm.h"
-#include "uart.h"
+#include "test_framework.h"
 
 /* ===================================================================
  * Page Table Pool - Static Bump Allocator
@@ -51,7 +51,7 @@ static uintptr_t *pt_alloc_page(void) {
     uintptr_t *next = (uintptr_t *)((uintptr_t)page + PAGE_SIZE);
 
     if ((uintptr_t)next > (uintptr_t)&__page_tables_end) {
-        printf("ERROR: page table pool exhausted\n");
+        LOG_E("page table pool exhausted\n");
         return NULL;
     }
 
@@ -89,14 +89,14 @@ void pt_init(pt_context_t *ctx, int mode) {
         ctx->levels = SV57_LEVELS;
         break;
     default:
-        printf("ERROR: unsupported satp mode %d\n", mode);
+        LOG_E("unsupported satp mode %d\n", mode);
         ctx->levels = SV39_LEVELS;
         break;
     }
 
     ctx->root_pt = pt_alloc_page();
     if (!ctx->root_pt)
-        printf("ERROR: failed to allocate root page table\n");
+        LOG_E("failed to allocate root page table\n");
 }
 
 /**
@@ -150,18 +150,18 @@ int pt_map_page(pt_context_t *ctx, uintptr_t va, uintptr_t pa,
 
     /* Alignment check */
     if ((va & (pgsz - 1)) != 0) {
-        printf("ERROR: pt_map_page: VA 0x%lx not aligned to 0x%lx\n",
-               (unsigned long)va, (unsigned long)pgsz);
+        LOG_E("pt_map_page: VA 0x%lx not aligned to 0x%lx\n",
+              (unsigned long)va, (unsigned long)pgsz);
         return -1;
     }
     if ((pa & (pgsz - 1)) != 0) {
-        printf("ERROR: pt_map_page: PA 0x%lx not aligned to 0x%lx\n",
-               (unsigned long)pa, (unsigned long)pgsz);
+        LOG_E("pt_map_page: PA 0x%lx not aligned to 0x%lx\n",
+              (unsigned long)pa, (unsigned long)pgsz);
         return -1;
     }
 
     if (!ctx->root_pt) {
-        printf("ERROR: pt_map_page: root page table is NULL\n");
+        LOG_E("pt_map_page: root page table is NULL\n");
         return -1;
     }
 
@@ -186,8 +186,8 @@ int pt_map_page(pt_context_t *ctx, uintptr_t va, uintptr_t pa,
             /* PTE exists */
             if (PTE_IS_LEAF(pte)) {
                 /* Already a leaf at a higher level - conflict */
-                printf("ERROR: pt_map_page: existing leaf PTE at level %d "
-                       "for VA 0x%lx\n", cur_level, (unsigned long)va);
+                LOG_E("pt_map_page: existing leaf PTE at level %d "
+                      "for VA 0x%lx\n", cur_level, (unsigned long)va);
                 return -1;
             }
             /* Non-leaf: follow to next level */
@@ -196,8 +196,8 @@ int pt_map_page(pt_context_t *ctx, uintptr_t va, uintptr_t pa,
             /* Allocate a new page table page */
             uintptr_t *new_pt = pt_alloc_page();
             if (!new_pt) {
-                printf("ERROR: pt_map_page: failed to allocate PT page "
-                       "at level %d\n", cur_level);
+                LOG_E("pt_map_page: failed to allocate PT page "
+                      "at level %d\n", cur_level);
                 return -1;
             }
             /* Install non-leaf PTE (V=1, no R/W/X) */
@@ -222,12 +222,12 @@ int pt_map_page(pt_context_t *ctx, uintptr_t va, uintptr_t pa,
  */
 void pt_dump(pt_context_t *ctx) {
     if (!ctx || !ctx->root_pt) {
-        printf("  pt_dump: NULL context\n");
+        LOG_E("pt_dump: NULL context\n");
         return;
     }
 
-    printf("  Page table dump (mode=%d, levels=%d, root=0x%lx):\n",
-           ctx->mode, ctx->levels, (unsigned long)ctx->root_pt);
+    LOG_D("Page table dump (mode=%d, levels=%d, root=0x%lx):\n",
+          ctx->mode, ctx->levels, (unsigned long)ctx->root_pt);
 
     uintptr_t *root = ctx->root_pt;
     int top_level = ctx->levels - 1;
@@ -235,7 +235,7 @@ void pt_dump(pt_context_t *ctx) {
     for (int i = 0; i < PT_ENTRIES; i++) {
         if (root[i] & PTE_V) {
             uintptr_t pte = root[i];
-            printf("    L%d[%3d] = 0x%016lx (PA=0x%lx, flags=%s%s%s%s%s%s%s%s)\n",
+            LOG_D("L%d[%3d] = 0x%016lx (PA=0x%lx, flags=%s%s%s%s%s%s%s%s)\n",
                    top_level, i, (unsigned long)pte,
                    (unsigned long)PTE_TO_PA(pte),
                    (pte & PTE_V) ? "V" : "",
@@ -278,8 +278,8 @@ int pt_setup_identity_mapping(pt_context_t *ctx, uintptr_t base,
     for (uintptr_t addr = aligned_base; addr < end; addr += pgsz) {
         int ret = pt_map_page(ctx, addr, addr, flags, level);
         if (ret != 0) {
-            printf("ERROR: identity mapping failed at 0x%lx\n",
-                   (unsigned long)addr);
+            LOG_E("identity mapping failed at 0x%lx\n",
+                  (unsigned long)addr);
             return -1;
         }
     }
@@ -296,8 +296,8 @@ int pt_setup_identity_mapping(pt_context_t *ctx, uintptr_t base,
     if (uart_base < aligned_base || uart_base >= end) {
         int ret = pt_map_page(ctx, uart_base, uart_base, uart_flags, PT_LEVEL_4K);
         if (ret != 0) {
-            printf("WARNING: failed to map UART at 0x%lx\n",
-                   (unsigned long)uart_base);
+            LOG_W("failed to map UART at 0x%lx\n",
+                  (unsigned long)uart_base);
             /* Non-fatal: continue without UART mapping */
         }
     }
@@ -375,4 +375,80 @@ uintptr_t get_pt_page_addr(pt_context_t *ctx, uintptr_t va, int target_level) {
     }
 
     return (uintptr_t)pt;
+}
+
+uintptr_t pte_read(pt_context_t *ctx, uintptr_t va, int level) {
+    uintptr_t *p = pt_get_pte(ctx, va, level);
+    return p ? *p : 0;
+}
+
+void pte_set_bits(pt_context_t *ctx, uintptr_t va, int level,
+                  uintptr_t bits) {
+    uintptr_t *p = pt_get_pte(ctx, va, level);
+    if (p) {
+        *p |= bits;
+        vm_sfence_vma(0, 0);
+    }
+}
+
+void pte_clear_bits(pt_context_t *ctx, uintptr_t va, int level,
+                    uintptr_t bits) {
+    uintptr_t *p = pt_get_pte(ctx, va, level);
+    if (p) {
+        *p &= ~bits;
+        vm_sfence_vma(0, 0);
+    }
+}
+
+void pte_write(pt_context_t *ctx, uintptr_t va, int level,
+               uintptr_t value) {
+    uintptr_t *p = pt_get_pte(ctx, va, level);
+    if (p) {
+        *p = value;
+        vm_sfence_vma(0, 0);
+    }
+}
+
+void vm_fill_exec_page(uintptr_t addr) {
+    uint32_t *p = (uint32_t *)addr;
+    for (int i = 0; i < 1024 - 1; i++)
+        p[i] = 0x00000013;  /* nop (addi x0, x0, 0) */
+    p[1023] = 0x00008067;   /* ret (jalr x0, ra, 0) */
+}
+
+int vm_setup_code_mapping(pt_context_t *ctx, uintptr_t page_size,
+                          const uintptr_t *regions, unsigned int n_regions) {
+    uintptr_t flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
+    uintptr_t base = PLATFORM_MEM_BASE & ~(page_size - 1);
+
+    /* end = (max region aligned down to page_size) + 2 * page_size, so the
+     * block right after the last test region is also covered. */
+    uintptr_t end = base;
+    for (unsigned int i = 0; i < n_regions; i++) {
+        uintptr_t r = regions[i] & ~(page_size - 1);
+        if (r + 2 * page_size > end)
+            end = r + 2 * page_size;
+    }
+
+    for (uintptr_t addr = base; addr < end; addr += page_size) {
+        int is_region = 0;
+        for (unsigned int i = 0; i < n_regions; i++) {
+            if (addr == (regions[i] & ~(page_size - 1))) {
+                is_region = 1;
+                break;
+            }
+        }
+        if (is_region)
+            continue;
+        int ret = pt_map_page(ctx, addr, addr, flags, PT_LEVEL_2M);
+        if (ret != 0)
+            return ret;
+    }
+
+    /* Map UART I/O region for S-mode printf support */
+    uintptr_t uart_flags = PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;
+    pt_map_page(ctx, PLATFORM_UART0_BASE, PLATFORM_UART0_BASE,
+                uart_flags, PT_LEVEL_4K);
+
+    return 0;
 }

@@ -33,6 +33,18 @@
 #ifndef CSR_MIREG2
 #define CSR_MIREG2      0x352
 #endif
+#ifndef CSR_MIREG3
+#define CSR_MIREG3      0x353
+#endif
+#ifndef CSR_MIREG4
+#define CSR_MIREG4      0x355
+#endif
+#ifndef CSR_MIREG5
+#define CSR_MIREG5      0x356
+#endif
+#ifndef CSR_MIREG6
+#define CSR_MIREG6      0x357
+#endif
 
 #define CSR_MSCRATCH    0x340
 #define CSR_MEPC        0x341
@@ -62,6 +74,7 @@
 #define MENVCFG_CBIE_MASK   (3ULL << 4)  /* CBIE field mask [5:4] (Zicbom) */
 #define MENVCFG_CBCFE   (1ULL << 6)     /* Cache-Block Clean/Flush Enable (Zicbom) */
 #define MENVCFG_CBZE    (1ULL << 7)     /* Cache-Block Zero Enable (Zicboz) */
+#define MENVCFG_FIOM    (1ULL << 0)     /* FENCE.I implicit memory ordering (Zifencei) */
 
 /* ----- Machine Security Configuration ----- */
 #define CSR_MSECCFG     0x747
@@ -71,6 +84,8 @@
 #define MSECCFG_MMWP    (1ULL << 1)     /* Machine Mode Allowlist Policy */
 #define MSECCFG_RLB     (1ULL << 2)     /* Rule Locking Bypass */
 #define MSECCFG_MLPE    (1ULL << 10)    /* M-mode Landing Pad Enable (Zicfilp) */
+#define MSECCFG_USEED   (1ULL << 8)     /* U-mode seed access enable (Zkr) */
+#define MSECCFG_SSEED   (1ULL << 9)     /* S-mode seed access enable (Zkr) */
 #define MSECCFG_PMM_OFF  32             /* PMM field offset in mseccfg */
 #define MSECCFG_PMM_MASK (3ULL << 32)   /* PMM field mask [33:32] (Smmpm) */
 
@@ -345,6 +360,98 @@
 #define MIE_STIE        (1ULL << 5)
 #define MIDELEG_STIP    (1ULL << 5)
 #define MCOUNTEREN_TM   (1ULL << 1)
+
+/* ===================================================================
+ * mstatus.MPP field encodings (shifted to field position)
+ * =================================================================== */
+#define MSTATUS_MPP_U   (0UL << MSTATUS_MPP_OFF)
+#define MSTATUS_MPP_S   (1UL << MSTATUS_MPP_OFF)
+#define MSTATUS_MPP_M   (3UL << MSTATUS_MPP_OFF)
+
+/* ===================================================================
+ * Smrnmi CSRs and fields
+ * =================================================================== */
+#define CSR_MNSCRATCH   0x740
+#define CSR_MNEPC       0x741
+#define CSR_MNCAUSE     0x742
+#define CSR_MNSTATUS    0x744
+
+/* mnstatus fields */
+#define MNSTATUS_NMIE_BIT       BIT(3)
+#define MNSTATUS_MNPP_OFF       11
+#define MNSTATUS_MNPP_MASK      BIT_MASK(11, 2)
+#define MNSTATUS_MNPV_BIT       BIT(7)
+#define MNSTATUS_MNPELP_BIT     BIT(9)   /* Zicfilp previous ELP */
+
+/* mnstatus.MNPP privilege encodings (same as mstatus.MPP) */
+#define MNPP_U  0
+#define MNPP_S  1
+#define MNPP_M  3
+
+/* MNRET instruction encoding:
+ * 0111000 00010 00000 000 00000 1110011 */
+#define INSN_MNRET              0x70200073
+
+#ifndef __ASSEMBLER__
+#define MNCAUSE_INTERRUPT_BIT   (1UL << (__riscv_xlen - 1))
+#endif
+
+/* ===================================================================
+ * Smctr / Ssctr: CTR CSRs and shared field layout
+ * (mctrctl and sctrctl share the field layout; sctrctl.M and
+ * sctrctl.MTE are read-only zero per SPEC smctr.adoc)
+ * =================================================================== */
+#define CSR_MCTRCTL     0x34E
+#define CSR_SCTRCTL     0x14E
+#define CSR_SCTRSTATUS  0x14F
+#define CSR_SCTRDEPTH   0x15F
+
+/* ctrctl bit definitions per SPEC smctr.adoc */
+#define CTRCTL_U            (1ULL << 0)
+#define CTRCTL_S            (1ULL << 1)
+#define CTRCTL_M            (1ULL << 2)
+#define CTRCTL_RASEMU       (1ULL << 7)
+#define CTRCTL_STE          (1ULL << 8)
+#define CTRCTL_MTE          (1ULL << 9)
+#define CTRCTL_BPFRZ        (1ULL << 11)
+#define CTRCTL_LCOFIFRZ     (1ULL << 12)
+#define CTRCTL_EXCINH       (1ULL << 33)
+#define CTRCTL_INTRINH      (1ULL << 34)
+#define CTRCTL_TRETINH      (1ULL << 35)
+#define CTRCTL_NTBREN       (1ULL << 36)
+#define CTRCTL_TKBRINH      (1ULL << 37)
+#define CTRCTL_INDCALLINH   (1ULL << 40)
+#define CTRCTL_DIRCALLINH   (1ULL << 41)
+#define CTRCTL_INDJMPINH    (1ULL << 42)
+#define CTRCTL_DIRJMPINH    (1ULL << 43)
+#define CTRCTL_CORSWAPINH   (1ULL << 44)
+#define CTRCTL_RETINH       (1ULL << 45)
+#define CTRCTL_INDLJMPINH   (1ULL << 46)
+#define CTRCTL_DIRLJMPINH   (1ULL << 47)
+#define CTRCTL_CUSTOM_MASK  (0xFULL << 60)
+
+/* ctrsource field */
+#define CTRSOURCE_V_BIT         (1ULL << 0)
+
+/* ctrdata fields */
+#define CTRDATA_TYPE_MASK       0xFULL
+#define CTRDATA_TYPE_EXCEPTION  1
+#define CTRDATA_TYPE_INTERRUPT  2
+#define CTRDATA_TYPE_TRAPRET    3
+#define CTRDATA_TYPE_NTBRANCH   4
+#define CTRDATA_TYPE_TKBRANCH   5
+#define CTRDATA_TYPE_INDCALL    8
+#define CTRDATA_TYPE_DIRCALL    9
+#define CTRDATA_TYPE_INDJMP     10
+#define CTRDATA_TYPE_DIRJMP     11
+#define CTRDATA_TYPE_CORSWAP    12
+#define CTRDATA_TYPE_RET        13
+#define CTRDATA_TYPE_INDLJMP    14
+#define CTRDATA_TYPE_DIRLJMP    15
+#define CTRDATA_CCV_BIT         (1ULL << 15)
+#define CTRDATA_CC_MASK         (0xFFFFULL << 16)
+#define CTRDATA_CCE_SHIFT       28  /* CC[15:12] = CCE */
+#define CTRDATA_CCM_MASK        0xFFFULL  /* CC[11:0] = CCM */
 
 /* ===================================================================
  * RV32 high-half M-mode CSRs

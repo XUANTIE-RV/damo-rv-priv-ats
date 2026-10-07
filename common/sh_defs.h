@@ -131,6 +131,7 @@
 #define HENVCFG_SSE     (1ULL << 3)    /* Shadow Stack Enable for VS-mode (Zicfiss) */
 #define HENVCFG_PMM_OFF  32             /* PMM field offset in henvcfg */
 #define HENVCFG_PMM_MASK (3ULL << 32)   /* PMM field mask [33:32] (Ssnpm, VS-mode) */
+#define HENVCFG_FIOM    (1ULL << 0)    /* FENCE.I implicit memory ordering for VS/VU (Zifencei) */
 
 /* ===================================================================
  * vsstatus field bits (VS-mode version of sstatus)

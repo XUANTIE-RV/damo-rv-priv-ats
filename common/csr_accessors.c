@@ -5,6 +5,7 @@
 
 #include "types.h"
 #include "encoding.h"
+#include "csr_accessors.h"
 
 /* ===================================================================
  * Dynamic CSR read/write

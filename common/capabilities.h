@@ -102,6 +102,23 @@
 #define V_AVAILABLE 0
 #endif
 
+/* --- Privilege-mode presence (misa.S / misa.U) ------------------------- */
+/* S-mode and U-mode support is gated by config declaration like the ISA
+ * letters above; suites use S_AVAILABLE / U_AVAILABLE instead of reading
+ * misa.S / misa.U at runtime. */
+
+#ifdef S_SUPPORTED
+#define S_AVAILABLE 1
+#else
+#define S_AVAILABLE 0
+#endif
+
+#ifdef U_SUPPORTED
+#define U_AVAILABLE 1
+#else
+#define U_AVAILABLE 0
+#endif
+
 /* --- Sm and Ss privileged extensions --------------------------------- */
 /* Previously defined in common/hyp/hyp_csr.h, now centralized here. A
  * suite that touches these CSRs must still launch the simulator with the
@@ -296,6 +313,24 @@
 #define ZAMA16B_AVAILABLE 1
 #else
 #define ZAMA16B_AVAILABLE 0
+#endif
+
+/* Misaligned atomicity granule size in bytes (norm:zama16b_mag: main
+ * memory with both the coherence and cacheability PMAs has a 16-byte
+ * granule, inside which a misaligned atomic operation is a single
+ * atomic read-modify-write while one that crosses a granule boundary
+ * faults). Default 16; a DUT config may override it by defining
+ * ZAMA16B_MAG_GRANULE before this header (the per-DUT rvtest_config.h
+ * is force-included first, so its definition wins). Always defined so
+ * the atomic suites can size and align their measurement buffers even
+ * when Zama16b is unavailable; whether the MAG relaxation itself is in
+ * force is gated on ZAMA16B_AVAILABLE above, not on a separate
+ * declaration macro. Do NOT derive it from
+ * UDB_MISALIGNED_MAX_ATOMICITY_GRANULE_SIZE, which accompanies
+ * MISALIGNED_LDST and describes ordinary load/store decomposition, not
+ * the AMO/LR/SC granule. */
+#ifndef ZAMA16B_MAG_GRANULE
+#define ZAMA16B_MAG_GRANULE     16
 #endif
 
 #ifdef ZA64RS_SUPPORTED
