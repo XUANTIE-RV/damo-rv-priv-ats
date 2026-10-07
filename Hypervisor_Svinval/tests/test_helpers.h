@@ -19,6 +19,7 @@
 
 #include "test_framework.h"
 #include "vm/vm.h"
+#include "test_utils.h"
 #include "hyp/hyp_defs.h"
 #include "hyp/hyp_csr.h"
 #include "hyp/hyp_priv.h"
@@ -165,14 +166,6 @@ static uintptr_t vu_exec_sinval_vma(uintptr_t arg) {
  * VS-mode memory access trampolines
  * =================================================================== */
 
-/* VS-mode store: returns 0 on success, cause on trap */
-static uintptr_t vs_store(uintptr_t arg) {
-    trap_expect_begin();
-    *(volatile uintptr_t *)arg = 0xDEADBEEF;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
+/* vs_store is provided by common/test_utils.h (probe_store), run in VS-mode. */
 
 #endif /* HYPERVISOR_SVINVAL_TEST_HELPERS_H */

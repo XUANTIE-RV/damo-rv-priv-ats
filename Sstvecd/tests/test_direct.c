@@ -181,9 +181,9 @@ bool test_sstvecd_dir_03_load_pagefault(void) {
     TEST_ASSERT("trap PC equals stvec.BASE",
                 g_sstvecd_trap_pc == entry);
     TEST_ASSERT("scause is sync exception",
-                !scause_is_interrupt(g_sstvecd_trap_cause));
+                !cause_is_interrupt(g_sstvecd_trap_cause));
     TEST_ASSERT_EQ("scause == 13 (load page-fault)",
-                scause_code(g_sstvecd_trap_cause), 13);
+                cause_get_code(g_sstvecd_trap_cause), 13);
 
     pt_pool_reset();
     STVEC_RESTORE();
@@ -223,9 +223,9 @@ bool test_sstvecd_int_01_ssip(void) {
     TEST_ASSERT("trap PC equals BASE (Direct, NOT Vectored)",
                 g_sstvecd_trap_pc == entry);
     TEST_ASSERT("scause is interrupt (MSB == 1)",
-                scause_is_interrupt(g_sstvecd_trap_cause));
+                cause_is_interrupt(g_sstvecd_trap_cause));
     TEST_ASSERT("scause low == 1 (supervisor software interrupt)",
-                scause_code(g_sstvecd_trap_cause) == 1);
+                cause_get_code(g_sstvecd_trap_cause) == 1);
 
     /* Cleanup: clear any residual sip.SSIP and restore mideleg. */
     asm volatile ("csrc sip, %0"     :: "r"(BIT_SSI) : "memory");

@@ -12,6 +12,7 @@
 #define SSCSRIND_TEST_HELPERS_H
 
 #include "test_framework.h"
+#include "csr_ops.h"
 
 /* ===================================================================
  * CSR addresses
@@ -29,7 +30,6 @@
 
 /* M-mode CSRs (for setup/control) */
 #define CSR_MISELECT_ADDR   0x350
-#define CSR_MSTATEEN0_ADDR  0x30C
 
 /* menvcfg.CDE bit */
 #define MENVCFG_CDE         (1ULL << 12)
@@ -43,131 +43,15 @@
  * S-mode CSR access helpers (siselect/sireg*)
  * =================================================================== */
 
-static inline uintptr_t siselect_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_SISELECT_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void siselect_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_SISELECT_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t sireg_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_SIREG_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void sireg_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_SIREG_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t sireg2_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_SIREG2_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void sireg2_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_SIREG2_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t sireg3_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_SIREG3_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline uintptr_t sireg4_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_SIREG4_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline uintptr_t sireg5_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_SIREG5_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline uintptr_t sireg6_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_SIREG6_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
 /* ===================================================================
  * M-mode CSR access helpers (for setup)
  * =================================================================== */
 
-static inline uintptr_t miselect_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MISELECT_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void miselect_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_MISELECT_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t mstateen0_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MSTATEEN0_ADDR) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void mstateen0_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_MSTATEEN0_ADDR) ", %0" :: "r"(v) : "memory");
-}
-
-static inline void mstateen0_set(uintptr_t bits)
-{
-    asm volatile("csrs " CSR_STR(CSR_MSTATEEN0_ADDR) ", %0" :: "r"(bits) : "memory");
-}
-
-static inline void mstateen0_clear(uintptr_t bits)
-{
-    asm volatile("csrc " CSR_STR(CSR_MSTATEEN0_ADDR) ", %0" :: "r"(bits) : "memory");
-}
-
-static inline uintptr_t menvcfg_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MENVCFG) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void menvcfg_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(v) : "memory");
-}
-
-static inline uintptr_t mcounteren_read(void)
-{
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MCOUNTEREN) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void mcounteren_write(uintptr_t v)
-{
-    asm volatile("csrw " CSR_STR(CSR_MCOUNTEREN) ", %0" :: "r"(v) : "memory");
-}
+/* mstateen0 accessors delegate to common/csr_ops.h mstateen_*(idx=0) */
+static inline uintptr_t mstateen0_read(void) { return mstateen_read(0); }
+static inline void mstateen0_write(uintptr_t v) { mstateen_write(0, v); }
+static inline void mstateen0_set(uintptr_t bits) { mstateen_set_bits(0, bits); }
+static inline void mstateen0_clear(uintptr_t bits) { mstateen_clear_bits(0, bits); }
 
 /* ===================================================================
  * Feature detection

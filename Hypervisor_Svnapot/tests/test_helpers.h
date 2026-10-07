@@ -61,8 +61,7 @@ extern uint8_t __vm_test_region_end[];
 /* PTE flags mask (bits 9:0, includes RSW) */
 #define PTE_ALL_FLAGS_MASK  0x3FFUL
 
-/* Magic values for verification */
-#define MAGIC_WRITE         0xDEADBEEF12345678UL
+/* MAGIC_WRITE is provided by common/vm/vm_defs.h. */
 
 /* ===================================================================
  * NAPOT PTE Construction Functions

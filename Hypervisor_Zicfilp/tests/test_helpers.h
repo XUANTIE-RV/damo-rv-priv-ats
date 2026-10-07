@@ -20,6 +20,7 @@
 
 #include "test_framework.h"
 #include "vm/vm.h"
+#include "cfi/cfi.h"
 #include "hyp/hyp_defs.h"
 #include "hyp/hyp_csr.h"
 #include "hyp/hyp_priv.h"
@@ -79,30 +80,12 @@ static inline void mseccfg_clear(uintptr_t mask) {
 /* vsstatus_read()/vsstatus_write() from common/hyp/hyp_csr.h. */
 
 /* ===================================================================
- * LPAD instruction encoding
+ * Instruction emitters
  *
- * LPAD is encoded as: AUIPC x0, imm
- * With label=0: 0x00000017
+ * LPAD/RET/NOP instruction words and emit_lpad/emit_ret/emit_nop are
+ * provided by common/cfi/cfi.h (included above), shared with
+ * cfi.Zicfilp. The ECALL / SD-zero emitters below are Hypervisor-only.
  * =================================================================== */
-#define LPAD_INSN_WORD  0x00000017
-
-static inline void emit_lpad(void *addr) {
-    *(volatile uint32_t *)addr = LPAD_INSN_WORD;
-}
-
-/* RET instruction: jalr x0, x1, 0 */
-#define RET_INSN_WORD   0x00008067
-
-static inline void emit_ret(void *addr) {
-    *(volatile uint32_t *)addr = RET_INSN_WORD;
-}
-
-/* NOP instruction: addi x0, x0, 0 */
-#define NOP_INSN_WORD   0x00000013
-
-static inline void emit_nop(void *addr) {
-    *(volatile uint32_t *)addr = NOP_INSN_WORD;
-}
 
 /* ECALL instruction */
 #define ECALL_INSN_WORD 0x00000073

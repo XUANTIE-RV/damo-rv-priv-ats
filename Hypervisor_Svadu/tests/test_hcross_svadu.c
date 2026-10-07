@@ -318,7 +318,7 @@ bool test_hcross_svadu_05(void) {
      * Behavior is implementation-dependent: TLB may still cache
      * the old ADUE=0 interpretation, causing a fault; or the
      * implementation may immediately pick up the new ADUE=1. */
-    uintptr_t result_first = two_stage_run_in_vs(&ctx, vs_load, test_va);
+    uintptr_t result_first = two_stage_run_in_vs(&ctx, probe_load, test_va);
     LOG_I("First access (no HFENCE.GVMA): result=0x%lx (impl-defined)\n",
           (unsigned long)result_first);
 
@@ -330,7 +330,7 @@ bool test_hcross_svadu_05(void) {
     hfence_gvma_all();
 
     /* Second VS-mode access - must follow new ADUE=1 */
-    uintptr_t result_second = two_stage_run_in_vs(&ctx, vs_load, test_va);
+    uintptr_t result_second = two_stage_run_in_vs(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("VS-mode load succeeded after HFENCE.GVMA",
                    result_second, (uintptr_t)0);
 
@@ -389,7 +389,7 @@ bool test_hcross_svadu_06(void) {
 
     /* Pre-populate VMID=6 TLB: access with ADUE=1 succeeds,
      * A-bit set by HW, translation cached in TLB. */
-    uintptr_t result_vmid6_pre = run_in_vs_mode(vs_load, test_va);
+    uintptr_t result_vmid6_pre = run_in_vs_mode(probe_load, test_va);
     TEST_ASSERT_EQ("VMID=6 pre-population access succeeded",
                    result_vmid6_pre, (uintptr_t)0);
 
@@ -415,9 +415,9 @@ bool test_hcross_svadu_06(void) {
 
     /* VMID=5 access: TLB was flushed by HFENCE.GVMA(0,5), so the
      * walker re-walks with new ADUE=0. A=0 must cause fault.
-     * Note: vs_load handles traps internally and returns cause on
+     * Note: probe_load handles traps internally and returns cause on
      * fault, or 0 on success. No outer trap_expect needed. */
-    uintptr_t result_vmid5 = run_in_vs_mode(vs_load, test_va);
+    uintptr_t result_vmid5 = run_in_vs_mode(probe_load, test_va);
     TEST_ASSERT_NEQ("VMID=5 access trapped (ADUE=0, HFENCE'd)",
                     result_vmid5, (uintptr_t)0);
     TEST_ASSERT_EQ("VMID=5 cause is load page-fault (VS-stage fault)",
@@ -436,7 +436,7 @@ bool test_hcross_svadu_06(void) {
      *   without checking A/D bits in PTE.
      * - If TLB miss (implementation invalidated on ADUE change):
      *   walker re-walks with ADUE=0, faults on A=0. */
-    uintptr_t result_vmid6 = run_in_vs_mode(vs_load, test_va);
+    uintptr_t result_vmid6 = run_in_vs_mode(probe_load, test_va);
     LOG_I("VMID=6 access (not HFENCE'd): result=0x%lx (impl-defined)\n",
           (unsigned long)result_vmid6);
 
@@ -489,7 +489,7 @@ bool test_hcross_svadu_07(void) {
 
     /* Pre-populate TLB with ADUE=1: access succeeds, A set by HW,
      * translation cached in TLB. */
-    uintptr_t result_pre = run_in_vs_mode(vs_load, test_va);
+    uintptr_t result_pre = run_in_vs_mode(probe_load, test_va);
     TEST_ASSERT_EQ("Pre-population access succeeded (ADUE=1)",
                    result_pre, (uintptr_t)0);
 
@@ -511,7 +511,7 @@ bool test_hcross_svadu_07(void) {
      *   without checking A/D bits in PTE.
      * - TLB miss (implementation invalidated on ADUE change):
      *   walker re-walks with ADUE=0, faults on A=0. */
-    uintptr_t result_first = run_in_vs_mode(vs_load, test_va);
+    uintptr_t result_first = run_in_vs_mode(probe_load, test_va);
     LOG_I("First access (no HFENCE.VVMA): result=0x%lx (impl-defined)\n",
           (unsigned long)result_first);
 
@@ -521,7 +521,7 @@ bool test_hcross_svadu_07(void) {
 
     /* Second VS-mode access - must follow new ADUE=0.
      * TLB is flushed, so walker re-walks: A=0, ADUE=0 -> fault. */
-    uintptr_t result_second = run_in_vs_mode(vs_load, test_va);
+    uintptr_t result_second = run_in_vs_mode(probe_load, test_va);
     TEST_ASSERT_NEQ("VS-mode load trapped after HFENCE.VVMA (ADUE=0)",
                     result_second, (uintptr_t)0);
     TEST_ASSERT_EQ("Cause is load page-fault after HFENCE.VVMA (VS-stage fault)",

@@ -137,8 +137,8 @@ bool test_ss_exist_sstateen0_width(void) {
     uintptr_t high_bits = readback & 0xFFFFFFFF00000000UL;
     TEST_ASSERT("sstateen0 high 32 bits are zero", high_bits == 0);
 #endif
-    printf("  sstateen0 readback after all-1 write: 0x%lx\n",
-           (unsigned long)readback);
+    LOG_D("sstateen0 readback after all-1 write: 0x%lx\n",
+          (unsigned long)readback);
 
     sstateen_write(0, saved_sstateen0);
     mstateen_write(0, saved_mstateen0);

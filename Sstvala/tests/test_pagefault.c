@@ -42,7 +42,7 @@ bool test_sstvala_lpf_01(void) {
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
     /* UNMAPPED_VA is deliberately not mapped */
 
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load_addr, UNMAPPED_VA);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, UNMAPPED_VA);
     TEST_ASSERT_EQ("cause == load page-fault",
                    result, CAUSE_LOAD_PAGE_FAULT);
     TEST_ASSERT_EQ("stval == faulting VA",
@@ -70,7 +70,7 @@ bool test_sstvala_lpf_02(void) {
                 PTE_V | PTE_R | PTE_W | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load_addr, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("no fault on valid page", result, 0);
 
     pt_pool_reset();
@@ -95,7 +95,7 @@ bool test_sstvala_spf_01(void) {
                 PTE_V | PTE_R | PTE_A | PTE_D,
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, smode_store_addr, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, test_va);
     TEST_ASSERT_EQ("cause == store page-fault",
                    result, CAUSE_STORE_PAGE_FAULT);
     TEST_ASSERT_EQ("stval == faulting VA",
@@ -118,7 +118,7 @@ bool test_sstvala_spf_02(void) {
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
     /* UNMAPPED_VA is deliberately not mapped */
 
-    uintptr_t result = vm_run_in_smode(&ctx, smode_store_addr, UNMAPPED_VA);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_store, UNMAPPED_VA);
     TEST_ASSERT_EQ("cause == store page-fault",
                    result, CAUSE_STORE_PAGE_FAULT);
     TEST_ASSERT_EQ("stval == faulting VA",
@@ -141,7 +141,7 @@ bool test_sstvala_ipf_01(void) {
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
     /* UNMAPPED_VA is not mapped -> fetch triggers inst page-fault */
 
-    uintptr_t result = vm_run_in_smode(&ctx, smode_exec_addr, UNMAPPED_VA);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec, UNMAPPED_VA);
     TEST_ASSERT_EQ("cause == instruction page-fault",
                    result, CAUSE_INST_PAGE_FAULT);
     TEST_ASSERT_EQ("stval == faulting VA",
@@ -170,7 +170,7 @@ bool test_sstvala_ipf_02(void) {
                 PTE_V | PTE_R | PTE_A | PTE_D,  /* X=0 */
                 PT_LEVEL_4K);
 
-    uintptr_t result = vm_run_in_smode(&ctx, smode_exec_addr, test_va);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_exec, test_va);
     TEST_ASSERT_EQ("cause == instruction page-fault",
                    result, CAUSE_INST_PAGE_FAULT);
     TEST_ASSERT_EQ("stval == faulting VA",
@@ -197,7 +197,7 @@ bool test_sstvala_lpf_03(void) {
     pt_init(&ctx, SUITE_SATP_MODE);
     TEST_ASSERT("code mapping", setup_code_mapping(&ctx) == 0);
 
-    uintptr_t result = vm_run_in_smode(&ctx, smode_load_addr, NONCANONICAL_VA);
+    uintptr_t result = vm_run_in_smode(&ctx, probe_load, NONCANONICAL_VA);
     TEST_ASSERT_EQ("cause == load page-fault",
                    result, CAUSE_LOAD_PAGE_FAULT);
     TEST_ASSERT_EQ("stval == non-canonical VA",

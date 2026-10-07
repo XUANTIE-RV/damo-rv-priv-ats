@@ -25,8 +25,7 @@
 #include "hyp/hyp_test_helpers.h"   /* shared VS trampolines (vs_read_sip/sie, ...) */
 
 /* Dynamic CSR read/write (defined in common/csr_accessors.c) */
-extern uintptr_t csr_read(uint16_t csr);
-extern void csr_write(uint16_t csr, uintptr_t val);
+#include "csr_accessors.h"
 
 /* ===================================================================
  * LCOFI bit constant

@@ -27,6 +27,7 @@
 #include "vm/vm.h"
 #include "pmp/pmp_cfg.h"
 #include "mem_ops.h"
+#include "test_utils.h"
 
 /* SUITE_SATP_MODE (this suite's S-stage paging mode) is set by the suite
  * Makefile: `SUITE_SATP_MODE ?= PLATFORM_SATP_MODE`, overridable with
@@ -72,10 +73,7 @@ static void sstvala_delegate_exceptions(void) {
  * Initialization helper: fill exec page with nop;ret
  * =================================================================== */
 static void init_exec_page(void) {
-    uint32_t *p = (uint32_t *)test_exec_page;
-    for (int i = 0; i < 1024 - 1; i++)
-        p[i] = 0x00000013;  /* nop (addi x0, x0, 0) */
-    p[1023] = 0x00008067;   /* ret (jalr x0, ra, 0) */
+    vm_fill_exec_page((uintptr_t)test_exec_page);
 }
 
 /* ===================================================================
@@ -89,30 +87,11 @@ static void init_exec_page(void) {
  * Also maps the UART I/O region for S-mode printf support.
  * =================================================================== */
 static int setup_code_mapping(pt_context_t *ctx) {
-    uintptr_t flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_2M - 1);
-
-    uintptr_t test_4k_2m  = (uintptr_t)&__vm_test_region_start    & ~(PAGE_SIZE_2M - 1);
-    uintptr_t test_2m_2m  = (uintptr_t)&__vm_test_region_2m_start & ~(PAGE_SIZE_2M - 1);
-
-    /* Map 2 MiB pages from base, skipping the two test 2 MiB regions */
-    uintptr_t end = test_2m_2m + 2 * PAGE_SIZE_2M;
-    if (test_4k_2m + 2 * PAGE_SIZE_2M > end)
-        end = test_4k_2m + 2 * PAGE_SIZE_2M;
-
-    for (uintptr_t addr = base; addr < end; addr += PAGE_SIZE_2M) {
-        if (addr == test_4k_2m || addr == test_2m_2m)
-            continue;
-        int ret = pt_map_page(ctx, addr, addr, flags, PT_LEVEL_2M);
-        if (ret != 0) return ret;
-    }
-
-    /* Map UART I/O region for S-mode printf support */
-    uintptr_t uart_flags = PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;
-    pt_map_page(ctx, PLATFORM_UART0_BASE, PLATFORM_UART0_BASE,
-                uart_flags, PT_LEVEL_4K);
-
-    return 0;
+    uintptr_t regions[] = {
+        (uintptr_t)&__vm_test_region_start,
+        (uintptr_t)&__vm_test_region_2m_start,
+    };
+    return vm_setup_code_mapping(ctx, PAGE_SIZE_2M, regions, 2);
 }
 
 /* ===================================================================
@@ -124,55 +103,8 @@ static int setup_code_mapping(pt_context_t *ctx) {
  * after returning to M-mode via trap_get_tval().
  * =================================================================== */
 
-/**
- * smode_load_addr - Execute a load at arg. Returns scause on trap, 0 on success.
- */
-static uintptr_t smode_load_addr(uintptr_t arg) {
-    trap_expect_begin();
-    volatile uintptr_t val = *(volatile uintptr_t *)arg;
-    (void)val;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
+/* probe_load / probe_store / probe_exec are provided by common/test_utils.h. */
 
-/**
- * smode_store_addr - Execute a store at arg. Returns scause on trap, 0 on success.
- */
-static uintptr_t smode_store_addr(uintptr_t arg) {
-    trap_expect_begin();
-    *(volatile uintptr_t *)arg = 0xDEADBEEFUL;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
-
-/**
- * smode_exec_addr - Jump to arg and execute. Returns scause on trap, 0 on success.
- */
-static uintptr_t smode_exec_addr(uintptr_t arg) {
-    trap_expect_begin();
-    exec_at(arg);
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
-
-/* ===================================================================
- * PMP helper: ensure S-mode has full memory access
- *
- * Some tests (e.g., access-fault) reconfigure or clear PMP entries.
- * Call this before goto_priv(PRIV_S) in tests that need S-mode
- * access without custom PMP restrictions.
- * Uses PMP entry 0 with NAPOT covering the entire address space.
- * =================================================================== */
-static void ensure_smode_pmp(void) {
-    pmp_clear_all();
-    pmp_entry_t pmp_all = PMP_ENTRY_FULL(PMP_RWX);
-    pmp_set_entry(0, &pmp_all);
-}
+/* ensure_smode_pmp is provided by common/pmp/pmp_cfg.h. */
 
 #endif /* SSTVALA_TEST_HELPERS_H */

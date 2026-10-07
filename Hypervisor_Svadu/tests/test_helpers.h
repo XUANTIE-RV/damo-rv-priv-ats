@@ -19,6 +19,7 @@
 
 #include "test_framework.h"
 #include "vm/vm.h"
+#include "test_utils.h"
 #include "hyp/hyp_defs.h"
 #include "hyp/hyp_csr.h"
 #include "hyp/hyp_priv.h"
@@ -113,15 +114,6 @@ static void vs_pte_clear_ad_nofence(two_stage_ctx_t *ctx, uintptr_t va, int leve
  * VS-mode test trampolines
  * =================================================================== */
 
-/* VS-mode load: returns 0 on success, cause on trap */
-static uintptr_t vs_load(uintptr_t arg) {
-    trap_expect_begin();
-    volatile uintptr_t val = *(volatile uintptr_t *)arg;
-    (void)val;
-    trap_expect_end();
-    if (trap_was_triggered())
-        return trap_get_cause();
-    return 0;
-}
+/* vs_load is provided by common/test_utils.h (probe_load), run in VS-mode. */
 
 #endif /* HYPERVISOR_SVADU_TEST_HELPERS_H */

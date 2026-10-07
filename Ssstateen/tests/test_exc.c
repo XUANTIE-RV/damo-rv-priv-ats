@@ -181,9 +181,9 @@ bool test_ss_exc_implicit_update(void) {
      * This test documents the behavior rather than asserting a specific
      * outcome. The spec says each such case must be explicitly specified. */
 
-    printf("  Implicit state update behavior is implementation-defined.\n");
-    printf("  Specific behavior depends on which extensions and\n");
-    printf("  instructions interact with stateen-controlled state.\n");
+    LOG_I("Implicit state update behavior is implementation-defined.\n"
+          "Specific behavior depends on which extensions and\n"
+          "instructions interact with stateen-controlled state.\n");
 
     /* Verify the basic principle: sstateen gates lower-priv access */
     uintptr_t saved_mstateen0 = mstateen_read(0);

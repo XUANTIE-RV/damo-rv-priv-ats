@@ -291,10 +291,10 @@ bool test_ss_func_wpri_roz(void) {
     TEST_ASSERT("sstateen0 reserved bits [31:3] are ROZ",
                 reserved_readback == 0);
 
-    printf("  sstateen0 readback: 0x%lx, reserved mask: 0x%lx, "
-           "reserved bits: 0x%lx\n",
-           (unsigned long)rb, (unsigned long)reserved_mask,
-           (unsigned long)reserved_readback);
+    LOG_D("sstateen0 readback: 0x%lx, reserved mask: 0x%lx, "
+          "reserved bits: 0x%lx\n",
+          (unsigned long)rb, (unsigned long)reserved_mask,
+          (unsigned long)reserved_readback);
 
     sstateen_write(0, saved_sstateen0);
     mstateen_write(0, saved_mstateen0);

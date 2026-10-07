@@ -170,8 +170,8 @@ bool test_sstvecd_base_07_high_bit_scan(void) {
         stvec_write(target);
         uintptr_t rb = stvec_read();
         if (rb != target) {
-            printf("    [DETAIL] k=%d wrote 0x%lx readback 0x%lx\n",
-                   k, (unsigned long)target, (unsigned long)rb);
+            LOG_D("k=%d wrote 0x%lx readback 0x%lx\n",
+                  k, (unsigned long)target, (unsigned long)rb);
         }
         TEST_ASSERT("readback == 1<<k (Sstvecd holds any 4-aligned BASE)",
                     rb == target);

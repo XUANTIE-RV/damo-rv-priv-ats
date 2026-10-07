@@ -150,7 +150,7 @@ bool test_hcfi_ss_53(void) {
     vs_pte_modify(&ctx, SS_PAGE_ADDR, PT_LEVEL_4K, PTE_SS_PAGE_FLAGS);
 
     /* Normal store to SS page triggers access-fault */
-    uintptr_t r = two_stage_run_in_vs(&ctx, vs_store, SS_PAGE_ADDR);
+    uintptr_t r = two_stage_run_in_vs(&ctx, probe_store, SS_PAGE_ADDR);
     (void)r;
     TEST_ASSERT("SS access-fault delegated to VS (vscause=7)",
                 g_vs_exc_triggered &&
@@ -174,7 +174,7 @@ bool test_hcfi_ss_54(void) {
 
     vs_pte_modify(&ctx, SS_PAGE_ADDR, PT_LEVEL_4K, PTE_SS_PAGE_FLAGS);
 
-    uintptr_t r = two_stage_run_in_vs(&ctx, vs_store, SS_PAGE_ADDR);
+    uintptr_t r = two_stage_run_in_vs(&ctx, probe_store, SS_PAGE_ADDR);
     TEST_ASSERT_EQ("store access-fault to HS", r, (uintptr_t)CAUSE_STORE_ACCESS_FAULT);
 
     henvcfg_write(orig_h); clear_all_deleg(); ts2_finish(&ctx); HYP_TEST_END();
@@ -287,7 +287,7 @@ bool test_hcfi_ss_58(void) {
 
     vs_pte_modify(&ctx, SS_PAGE_ADDR, PT_LEVEL_4K, PTE_SS_PAGE_FLAGS);
 
-    uintptr_t r = two_stage_run_in_vs(&ctx, vs_store, SS_PAGE_ADDR);
+    uintptr_t r = two_stage_run_in_vs(&ctx, probe_store, SS_PAGE_ADDR);
     TEST_ASSERT_EQ("store access-fault", r, (uintptr_t)CAUSE_STORE_ACCESS_FAULT);
 
     uintptr_t sepc_val = CSRR(sepc);

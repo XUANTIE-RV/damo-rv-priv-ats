@@ -82,15 +82,7 @@ static inline uint64_t read_minstret(void)
     return (uint64_t)v;
 }
 
-/* ===================================================================
- * Execute a known number of NOPs
- * =================================================================== */
-static inline void execute_nops(unsigned count)
-{
-    for (volatile unsigned i = 0; i < count; i++) {
-        asm volatile("nop");
-    }
-}
+/* execute_nops() is provided by common/test_framework.h. */
 
 /* ===================================================================
  * Smcntrpmf availability

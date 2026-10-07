@@ -28,20 +28,9 @@
  *   [63:28] WPRI
  * =================================================================== */
 
-#define SRMCFG_RCID_MASK    0xFFFUL
-#define SRMCFG_RCID_SHIFT   0
-#define SRMCFG_MCID_MASK    0xFFFUL
-#define SRMCFG_MCID_SHIFT   16
+/* srmcfg RCID/MCID field masks are in common/ss_defs.h */
 
-static inline uintptr_t srmcfg_read(void) {
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_SRMCFG) : "=r"(v) :: "memory");
-    return v;
-}
-
-static inline void srmcfg_write(uintptr_t v) {
-    asm volatile("csrw " CSR_STR(CSR_SRMCFG) ", %0" :: "r"(v) : "memory");
-}
+/* srmcfg_read/write are provided by common/csr_ops.h (via hyp/hyp_csr.h) */
 
 /* ===================================================================
  * mstateen0 CSR access helpers (CSR 0x30C)

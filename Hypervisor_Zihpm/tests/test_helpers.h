@@ -27,7 +27,7 @@
 #include "hyp/hyp_trap.h"
 
 /* Dynamic CSR read (defined in common/csr_accessors.c) */
-extern uintptr_t csr_read(uint16_t csr);
+#include "csr_accessors.h"
 
 /* ===================================================================
  * Counter index range

@@ -56,8 +56,8 @@ bool test_ss_alloc_ro1_no_h(void) {
 
         if (rb & bit) {
             /* This bit is RO1 in sstateen0 */
-            printf("  sstateen0 bit 0x%lx is RO1, checking mstateen0\n",
-                   (unsigned long)bit);
+            LOG_D("sstateen0 bit 0x%lx is RO1, checking mstateen0\n",
+                  (unsigned long)bit);
 
             /* mstateen0 same bit must also be RO1 */
             uintptr_t msta_saved = mstateen_read(0);
@@ -66,7 +66,7 @@ bool test_ss_alloc_ro1_no_h(void) {
             mstateen_write(0, msta_saved);
 
             if (!(msta_rb & bit)) {
-                printf("  FAIL: sstateen0 bit RO1 but mstateen0 not RO1\n");
+                LOG_E("sstateen0 bit RO1 but mstateen0 not RO1\n");
                 all_ok = false;
             }
         }
@@ -106,7 +106,7 @@ bool test_ss_alloc_ro1_with_h(void) {
 
         if (rb & bit) {
             /* RO1 in sstateen0 */
-            printf("  sstateen0 bit 0x%lx is RO1\n", (unsigned long)bit);
+            LOG_D("sstateen0 bit 0x%lx is RO1\n", (unsigned long)bit);
 
             /* Check mstateen0 */
             uintptr_t ms = mstateen_read(0);
@@ -115,7 +115,7 @@ bool test_ss_alloc_ro1_with_h(void) {
             mstateen_write(0, ms);
 
             if (!(ms_rb & bit)) {
-                printf("  FAIL: mstateen0 same bit not RO1\n");
+                LOG_E("mstateen0 same bit not RO1\n");
                 all_ok = false;
             }
 
@@ -126,7 +126,7 @@ bool test_ss_alloc_ro1_with_h(void) {
             hstateen_write(0, hs);
 
             if (!(hs_rb & bit)) {
-                printf("  FAIL: hstateen0 same bit not RO1\n");
+                LOG_E("hstateen0 same bit not RO1\n");
                 all_ok = false;
             }
         }
@@ -193,12 +193,12 @@ bool test_ss_alloc_bit_correspondence(void) {
                 ssta_only == 0);
 
     if (ssta_only != 0) {
-        printf("  sstateen0 bits not in mstateen0: 0x%lx\n",
-               (unsigned long)ssta_only);
+        LOG_E("sstateen0 bits not in mstateen0: 0x%lx\n",
+              (unsigned long)ssta_only);
     }
 
-    printf("  mstateen0 writable mask: 0x%lx\n", (unsigned long)msta_mask);
-    printf("  sstateen0 writable mask: 0x%lx\n", (unsigned long)ssta_mask);
+    LOG_D("mstateen0 writable mask: 0x%lx\n", (unsigned long)msta_mask);
+    LOG_D("sstateen0 writable mask: 0x%lx\n", (unsigned long)ssta_mask);
 
     sstateen_write(0, saved_sstateen0);
     mstateen_write(0, saved_mstateen0);
@@ -282,7 +282,7 @@ bool test_ss_alloc_unimplemented_roz(void) {
     bool has_roz = (rb != 0xFFFFFFFFUL);
     TEST_ASSERT("sstateen0 has some ROZ bits (unimplemented/reserved)", has_roz);
 
-    printf("  sstateen0 all-1 readback: 0x%lx\n", (unsigned long)rb);
+    LOG_D("sstateen0 all-1 readback: 0x%lx\n", (unsigned long)rb);
 
     sstateen_write(0, saved_sstateen0);
     mstateen_write(0, saved_mstateen0);

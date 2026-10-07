@@ -195,23 +195,23 @@ bool test_mtval2_02(void)
                    CAUSE_DOUBLE_TRAP);
 
     if (trap_dt_snap_valid && trap_dt_snap.cause == CAUSE_DOUBLE_TRAP) {
-        printf("  [DBG] dt-snap mepc=0x%lx mcause=0x%lx "
-               "entry-mstatus=0x%lx mtval2=0x%lx m_entries=%lu "
-               "dt_entries=%u\n",
-               (unsigned long)trap_dt_snap.epc,
-               (unsigned long)trap_dt_snap.cause,
-               (unsigned long)smdbltrp_saved_mstatus,
-               (unsigned long)smdbltrp_saved_mtval2,
-               (unsigned long)smdbltrp_m_entries,
-               ssdbltrp_dt_entries);
+        LOG_D("dt-snap mepc=0x%lx mcause=0x%lx "
+              "entry-mstatus=0x%lx mtval2=0x%lx m_entries=%lu "
+              "dt_entries=%u\n",
+              (unsigned long)trap_dt_snap.epc,
+              (unsigned long)trap_dt_snap.cause,
+              (unsigned long)smdbltrp_saved_mstatus,
+              (unsigned long)smdbltrp_saved_mtval2,
+              (unsigned long)smdbltrp_m_entries,
+              ssdbltrp_dt_entries);
         unsigned n = (unsigned)smdbltrp_dbg_ring_idx;
         unsigned start = (n > 4) ? (n - 4) : 0;
         for (unsigned k = start; k < n && k < start + 4; k++) {
             const uintptr_t *s = &smdbltrp_dbg_ring[(k & 3) * 4];
-            printf("  [DBG-RING %u] mepc=0x%lx mcause=0x%lx "
-                   "mstatus=0x%lx mtval2=0x%lx\n", k,
-                   (unsigned long)s[0], (unsigned long)s[1],
-                   (unsigned long)s[2], (unsigned long)s[3]);
+            LOG_D("DBG-RING %u: mepc=0x%lx mcause=0x%lx "
+                  "mstatus=0x%lx mtval2=0x%lx\n", k,
+                  (unsigned long)s[0], (unsigned long)s[1],
+                  (unsigned long)s[2], (unsigned long)s[3]);
         }
         /* The hardware must write the cause the unexpected trap would
          * have written into mcause (illegal-instruction = 2) into
@@ -235,9 +235,9 @@ bool test_mtval2_02(void)
             TEST_ASSERT_EQ("mstatus.MPP = S-mode on double-trap entry",
                            (snap >> 11) & 0x3UL, 1);
         } else {
-            printf("  [WARN] entry mstatus capture 0x%lx implausible; "
-                   "MPP=S check not evaluated\n",
-                   (unsigned long)snap);
+            LOG_W("entry mstatus capture 0x%lx implausible; "
+                  "MPP=S check not evaluated\n",
+                  (unsigned long)snap);
         }
     }
 
@@ -334,8 +334,8 @@ bool test_mtval2_03(void)
                     "(sentinel or zero expected)",
                     mtval2_after == sentinel || mtval2_after == 0);
         if (mtval2_after == sentinel) {
-            printf("  [INFO] mtval2 still holds the sentinel: S-mode "
-                   "delivery left it untouched\n");
+            LOG_I("mtval2 still holds the sentinel: S-mode "
+                  "delivery left it untouched\n");
         }
     }
 

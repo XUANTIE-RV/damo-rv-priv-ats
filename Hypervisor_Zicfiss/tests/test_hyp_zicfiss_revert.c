@@ -99,7 +99,7 @@ bool test_hcfi_ss_72(void) {
 
     vs_pte_modify(&ctx, SS_PAGE_ADDR, PT_LEVEL_4K, PTE_SS_PAGE_FLAGS);
 
-    uintptr_t r = two_stage_run_in_vs(&ctx, vs_load, SS_PAGE_ADDR);
+    uintptr_t r = two_stage_run_in_vs(&ctx, probe_load, SS_PAGE_ADDR);
     TEST_ASSERT_EQ("page-fault for pte.xwr=010 (SSE=0, VS-stage)",
                    r, (uintptr_t)CAUSE_LOAD_PAGE_FAULT);
 
@@ -113,7 +113,7 @@ bool test_hcfi_ss_72(void) {
 
     vs_pte_modify(&ctx, SS_PAGE_ADDR, PT_LEVEL_4K, PTE_SS_PAGE_FLAGS | PTE_U);
 
-    r = two_stage_run_in_vu(&ctx, vu_load, SS_PAGE_ADDR);
+    r = two_stage_run_in_vu(&ctx, probe_load, SS_PAGE_ADDR);
     TEST_ASSERT_EQ("page-fault for pte.xwr=010 (SSE=0, VU-stage)",
                    r, (uintptr_t)CAUSE_LOAD_PAGE_FAULT);
 
