@@ -1,14 +1,15 @@
 CASE,TOTAL,PASS,FAIL,SKIP
-Hypervisor_CSR,129,111,8,10
+Hypervisor_CSR,129,116,3,10
 Hypervisor_Interrupts,41,41,0,0
 Hypervisor_Exceptions,129,113,12,4
 Sha,28,28,0,0
 Shcounterenw,22,22,0,0
 Shgatpa,21,21,0,0
 Shlcofideleg,14,0,0,14
-Shtvala,50,44,4,2
+Shtvala,50,45,3,2
 Shvstvala,22,19,0,3
 Shvsatpa,19,19,0,0
+Shvstvecd,18,18,0,0
 Sv39x4,55,55,0,0
 Sv48x4,57,57,0,0
 Sv57x4,57,57,0,0
@@ -29,7 +30,7 @@ Hypervisor_Smstateen,14,11,0,3
 Hypervisor_PMP,8,7,1,0
 Hypervisor_Ssccfg,24,11,0,13
 Hypervisor_Ssccptr,4,3,0,1
-Hypervisor_Sscofpmf,6,2,1,3
+Hypervisor_Sscofpmf,6,2,3,1
 Hypervisor_Sscsrind,33,28,3,2
 Hypervisor_Ssdbltrp,24,11,0,13
 Hypervisor_Ssnpm,48,3,0,45
