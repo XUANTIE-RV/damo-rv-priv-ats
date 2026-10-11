@@ -150,9 +150,19 @@ static void lower_priv(unsigned target) {
  * ecall - trigger ecall with arguments
  * =================================================================== */
 static void do_ecall(uintptr_t a0, uintptr_t a1) {
-    ecall_args[0] = a0;
-    ecall_args[1] = a1;
-    asm volatile("ecall" ::: "memory");
+    /* Legacy signature kept so the many call sites below stay untouched:
+     * a0 was the ECALL_GOTO_PRIV tag, a1 the target privilege level.
+     *
+     * The wire protocol is now T-SBI (tsbi.h): the opcode travels in a0
+     * as a GOTO_xMODE value and the handlers read it out of the trap
+     * frame.  The legacy tag is therefore discarded and the target is
+     * translated into its T-SBI opcode.
+     *
+     * Raising privilege is a REQUEST (only a higher level may write xPP
+     * and execute xret), which is why this goes through T-SBI at all;
+     * lowering privilege stays a direct mret/sret in lower_priv(). */
+    (void)a0;
+    (void)tsbi_ecall(tsbi_priv_to_goto((unsigned)a1), 0);
 }
 
 #ifdef ENABLE_HYP

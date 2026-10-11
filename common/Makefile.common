@@ -85,6 +85,8 @@ COMMON_OBJS = \
     $(COMMON_DIR)/trap.o \
     $(COMMON_DIR)/privilege.o \
     $(COMMON_DIR)/csr_accessors.o \
+    $(COMMON_DIR)/tsbi/tsbi_proxy.o \
+    $(COMMON_DIR)/tsbi/tsbi_deleg.o \
     $(COMMON_DIR)/uart.o \
     $(COMMON_DIR)/test_framework.o \
     $(COMMON_DIR)/string.o \
@@ -119,6 +121,7 @@ HYP_OBJS = \
     $(HYP_DIR)/two_stage.o \
     $(HYP_DIR)/test_vs_helpers.o \
     $(HYP_DIR)/hyp_vs_trap.o \
+    $(HYP_DIR)/hyp_vs_trap_asm.o \
     $(HYP_DIR)/hyp_test_helpers.o
 ifdef ENABLE_TWO_STAGE
 HYP_OBJS += $(HYP_DIR)/two_stage_helpers.o
@@ -396,23 +399,43 @@ else
 endif
 
 # =====================================================================
+# Flag fingerprint
+#
+# The objects under common/ are built in place and shared by every suite,
+# yet each suite compiles them with a different -D set (ENABLE_HYP,
+# ENABLE_PM, ...) and each CONFIG force-includes a different platform
+# header.  Make only compares timestamps, so building suite B after suite A
+# leaves A's objects in place and B silently links code compiled for A.
+#
+# The stamp below carries the current flag set and is a prerequisite of
+# every object.  It is rewritten only when the flags actually change, and
+# that rewrite is what forces the recompile.
+# =====================================================================
+FLAG_SIG_FILE = $(COMMON_DIR)/.build_flags
+FLAG_SIG      = $(CC) |$(CFLAGS) |$(ASFLAGS)
+
+ifneq ($(strip $(FLAG_SIG)),$(strip $(shell cat $(FLAG_SIG_FILE) 2>/dev/null)))
+$(file >$(FLAG_SIG_FILE),$(FLAG_SIG))
+endif
+
+# =====================================================================
 # Compile rules (shared by both single and multi-target modes)
 # =====================================================================
 
 # C source -> object (common)
-$(COMMON_DIR)/%.o: $(COMMON_DIR)/%.c
+$(COMMON_DIR)/%.o: $(COMMON_DIR)/%.c $(FLAG_SIG_FILE)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Assembly source -> object (common)
-$(COMMON_DIR)/%.o: $(COMMON_DIR)/%.S
+$(COMMON_DIR)/%.o: $(COMMON_DIR)/%.S $(FLAG_SIG_FILE)
 	$(CC) $(ASFLAGS) -c $< -o $@
 
 # C source -> object (extension)
-%.o: %.c
+%.o: %.c $(FLAG_SIG_FILE)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Assembly source -> object (extension)
-%.o: %.S
+%.o: %.S $(FLAG_SIG_FILE)
 	$(CC) $(ASFLAGS) -c $< -o $@
 
 # =====================================================================
@@ -459,6 +482,7 @@ clean:
 	rm -f $(TARGETS)
 	rm -f $(foreach t,$(TARGETS),$(basename $(t)).asm $(basename $(t)).sym $(basename $(t)).bin)
 	rm -f $(foreach t,$(TARGETS),$(basename $(t)).trace $(basename $(t)).rvvi)
+	rm -f $(FLAG_SIG_FILE)
 	find $(COMMON_DIR) \( -name "*.o" -o -name "*.d" \) -type f -delete
 
 else
@@ -485,6 +509,7 @@ clean:
 	rm -f $(ALL_OBJS) $(ALL_OBJS:.o=.d)
 	rm -f $(TARGET) $(TARGET_BASE).asm $(TARGET_BASE).sym $(TARGET_BASE).bin
 	rm -f $(TARGET_BASE).trace $(TARGET_BASE).rvvi
+	rm -f $(FLAG_SIG_FILE)
 	find $(COMMON_DIR) \( -name "*.o" -o -name "*.d" \) -type f -delete
 
 endif # ifdef TARGETS

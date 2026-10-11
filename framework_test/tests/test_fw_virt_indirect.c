@@ -118,6 +118,8 @@ bool test_fw_virt_ind_07(void)
 {
     TEST_BEGIN("FW-VIRT-IND-07: M->VS->M round-trip");
 
+    /* main() runs in S-mode; establish the M start this case documents. */
+    goto_priv(PRIV_M);
     TEST_ASSERT_EQ("start in M-mode", get_current_priv(), PRIV_M);
 
     goto_priv(PRIV_VS);
@@ -138,6 +140,7 @@ bool test_fw_virt_ind_08(void)
 {
     TEST_BEGIN("FW-VIRT-IND-08: M->VU->M round-trip");
 
+    goto_priv(PRIV_M);
     TEST_ASSERT_EQ("start in M-mode", get_current_priv(), PRIV_M);
 
     goto_priv(PRIV_VU);

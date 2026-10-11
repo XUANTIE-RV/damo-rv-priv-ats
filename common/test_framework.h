@@ -10,6 +10,8 @@
 #include "encoding.h"
 #include "uart.h"
 #include "mem_ops.h"
+#include "tsbi/tsbi.h"
+#include "csr_accessors.h"   /* by-number CSR access: csr_read/write + tsbi_csr_* */
 
 /* ===================================================================
  * Compiler Identification
@@ -175,14 +177,34 @@ static inline bool _test_end_record(void) {
 }
 
 /**
+ * TEST_EXIT_RESET - the reset every test-exit macro performs
+ *
+ * A single seam so the three exit macros below cannot drift apart.  The base
+ * definition is reset_state(); hyp_test.h overrides it so H-aware suites also
+ * clear hypervisor state on the way out.  It has to be a macro rather than a
+ * function pointer because the override must apply per translation unit: a
+ * suite that never includes hyp_test.h is not linked against the H reset at
+ * all (hyp_reset.o is built only under ENABLE_HYP).
+ *
+ * Overriding this instead of the exit macros themselves keeps the bookkeeping
+ * in one place - the counters and the printf stay here, and an override cannot
+ * fall behind by copying an older version of them.
+ */
+#define TEST_EXIT_RESET() reset_state()
+
+/**
  * TEST_END - End a test case
  *
- * Restores M-mode, clears PMP state, prints PASS/FAIL.
+ * Raises to M-mode for the reset work, then TEST_EXIT_RESET() hands control
+ * back to the S-mode normal state (see tsbi_design_brief.md section 1), so
+ * the next test starts in S-mode.  Prints PASS/FAIL.
  * Returns true if all assertions passed.
+ *
+ * With -DTSBI_BOOT_MODE_M the framework stays in M-mode throughout.
  */
 #define TEST_END() do { \
     goto_priv(PRIV_M); \
-    reset_state(); \
+    TEST_EXIT_RESET(); \
     return _test_end_record(); \
 } while (0)
 
@@ -202,7 +224,7 @@ static inline bool _test_end_record(void) {
     } \
     printf("[SKIP] %s: %s\n\n", test_results.current_test_name, (reason)); \
     goto_priv(PRIV_M); \
-    reset_state(); \
+    TEST_EXIT_RESET(); \
     return true; \
 } while (0)
 
@@ -218,7 +240,7 @@ static inline bool _test_end_record(void) {
     test_results.current_test_failed = true; \
     printf("[FATAL] %s: %s\n\n", test_results.current_test_name, (reason)); \
     goto_priv(PRIV_M); \
-    reset_state(); \
+    TEST_EXIT_RESET(); \
     IF_FAIL_FATAL(); \
     return false; \
 } while (0)
@@ -564,12 +586,69 @@ extern void goto_priv(unsigned target);
 extern unsigned get_current_priv(void);
 extern uintptr_t run_in_priv(unsigned priv, uintptr_t (*fn)(uintptr_t), uintptr_t arg);
 
+/* Canonical T-SBI-prefixed names (see DOCS/framework/tsbi_design_brief.md).
+ * New code should use these; goto_priv/run_in_priv stay valid as the historical
+ * spelling so the ~2500 existing call sites need no churn. */
+#define tsbi_goto_priv    goto_priv
+#define tsbi_run_in_priv  run_in_priv
+
+/* The by-number CSR access layer -- direct csr_read()/csr_write(), the T-SBI
+ * tsbi_csr_read/write/set/clear() proxy primitives with their guard, and
+ * the mcsr_write()/mcsr_write_readback() M-excursion accessors -- lives in
+ * csr_accessors.h (included at the top of this header); csr_ops.h (the named
+ * accessors) builds on it too. Keeping the CSR-access mechanism in that one
+ * lower-level header avoids a dependency inversion (csr_ops.h -> here). */
+
+/* ===================================================================
+ * Delegation control (implemented in tsbi/tsbi_deleg.c)
+ *
+ * The baseline is delegation-first, so the DELEGATED leg comes for free and
+ * a test that wants to observe "this trap must land in M" has to switch the
+ * cause out explicitly.  reset_state() restores the baseline afterwards.
+ *
+ * Both must run with M-mode authority (inside an M excursion, or from a
+ * test already in M).  trap_delegate_exc() refuses ecall-from-S: delegating
+ * it would break the T-SBI service channel and dead-loop run_in_priv().
+ * =================================================================== */
+extern bool tsbi_delegate_exc(unsigned cause);
+extern bool tsbi_undelegate_exc(unsigned cause);
+extern void tsbi_deleg_apply_baseline(void);
+extern void tsbi_deleg_restore_baseline(void);
+extern uintptr_t tsbi_deleg_effective_medeleg(void);
+extern uintptr_t tsbi_deleg_effective_mideleg(void);
+
+/* M-safe bulk delegation setters: OR / clear bits in medeleg (exc_mask) and
+ * mideleg (int_mask), raising to M internally so they are callable from
+ * S(HS)-mode.  Single source of truth shared by the H-extension delegation
+ * helpers; tsbi_deleg_or() keeps the medeleg[9] invariant.  See tsbi/tsbi_deleg.c. */
+extern void tsbi_deleg_or(uintptr_t exc_mask, uintptr_t int_mask);
+extern void tsbi_deleg_clear(uintptr_t exc_mask, uintptr_t int_mask);
+
+/* Framework-facing aliases (naming kept close to the trap_* family). */
+#define trap_delegate_exc(cause)    tsbi_delegate_exc(cause)
+#define trap_undelegate_exc(cause)  tsbi_undelegate_exc(cause)
+
 #ifdef ENABLE_HYP
-/* Hypervisor trap-record extensions, defined in trap.c when ENABLE_HYP=1.
- * Available after a guest-page-fault / virtual-instruction trap. */
+/* Hypervisor trap-record extensions.  Available after a guest-page-fault /
+ * virtual-instruction trap, wherever it was taken: these are defined in
+ * common/hyp/hyp_trap.c and answer from the HS-mode record when the trap was
+ * delegated there by hedeleg, falling back to the M-mode snapshots below
+ * otherwise.  Same arrangement as trap_get_spv()/trap_get_spv_snap().
+ *
+ * Note that trap_get_cause()/epc()/tval() are NOT merged this way.  They are
+ * the generic accessors, paired with the armed/triggered handshake behind
+ * EXPECT_TRAP, and the HS handler records unconditionally - it has no armed
+ * check.  Folding it in would make an HS trap satisfy an M-mode EXPECT_TRAP.
+ * A test watching an hedeleg-delegated trap reads hs_trap_get_cause() instead
+ * (common/hyp/hyp_trap.h). */
 extern uintptr_t trap_get_htval(void);
 extern uintptr_t trap_get_htinst(void);
 extern bool      trap_get_gva(void);
+
+/* The M-mode record's own view of the three above, for the fallback path. */
+extern uintptr_t trap_get_htval_snap(void);
+extern uintptr_t trap_get_htinst_snap(void);
+extern bool      trap_get_gva_snap(void);
 
 /* mstatus.MPV/MPP snapshots captured at M-mode trap entry, before
  * the handler modifies them. Used to verify hardware auto-writes on

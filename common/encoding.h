@@ -19,9 +19,9 @@
  *   sh_defs.h     — Hypervisor CSR addresses and bit fields
  *   cause_defs.h  — Exception / interrupt cause codes
  *
- * This file retains: CSR access macros, privilege level constants,
- * unprivileged CSRs, PM common constants, shared stateen bits, and
- * cross-level utility macros.
+ * This file retains: CSR access macros (including the RV32 split-pair
+ * 64-bit logical view), privilege level constants, unprivileged CSRs,
+ * PM common constants, shared stateen bits, and cross-level utility macros.
  * =================================================================== */
 
 #include "types.h"
@@ -70,6 +70,96 @@
 
 #define CSRC(csr, val) \
     asm volatile("csrc " CSR_STR(csr) ", %0" :: "rK"(val) : "memory")
+
+/* -------------------------------------------------------------------
+ * 64-bit logical view of a split CSR pair
+ *
+ * On RV32 many architectural 64-bit CSRs are split into a low half and a
+ * separate high-half register.  These macros present the pair as one
+ * uint64_t so test code never needs `#if __riscv_xlen == 32`; on RV64 they
+ * collapse to a single access and csr_hi is ignored.
+ *
+ * THE HIGH HALF IS NOT DERIVABLE FROM THE LOW HALF -- the offset differs by
+ * register family, so callers must pass both addresses:
+ *   +0x80   counters         cycle 0xC00 -> cycleh 0xC80, mcycle 0xB00 -> 0xB80
+ *   +0x10   config           menvcfg 0x30A -> menvcfgh 0x31A, stimecmp 0x14D -> 0x15D
+ *   +0x400  event selectors  mhpmevent3 0x323 -> mhpmeventh3 0x723
+ * The macro NAME is not derivable either: counters and config append "H"
+ * (CSR_MCYCLEH) while mhpmevent inflects it (CSR_MHPMEVENTH3).
+ *
+ * NOT ATOMIC ON RV32.  CSR_READ64 is two independent accesses, so it MUST NOT
+ * be used on a register that changes by itself (cycle / time / instret /
+ * mhpmcounterN): a carry out of the low half between the two reads yields a
+ * value that never existed, and only ever on RV32.  Use CSR_READ64_ATOMIC for
+ * live counters and CSR_READ64 for STATIC config pairs (menvcfg, mstateen0,
+ * stimecmp, ...).  On RV64 the two are identical.
+ *
+ * Bit masks need the same XLEN treatment as the addresses: a bit-63 mask is
+ * meaningless on RV32, where that bit lives at position 31 of the high half.
+ * ------------------------------------------------------------------- */
+#if __riscv_xlen == 32
+
+#define CSR_READ64(csr_lo, csr_hi) ({ \
+    uint32_t _lo = CSRR(csr_lo); \
+    uint32_t _hi = CSRR(csr_hi); \
+    ((uint64_t)_hi << 32) | (uint64_t)_lo; \
+})
+
+/* Same result as CSR_READ64, but safe for a register that increments by
+ * itself (cycle / time / instret / mcycle / minstret / mhpmcounterN): the low
+ * half can carry into the high half between the two reads, so the high half is
+ * re-read and the sequence retried until it is stable.  This is the ordering
+ * the privileged spec recommends.  Use CSR_READ64 for static config pairs and
+ * this one for live counters -- on RV64 they are identical. */
+#define CSR_READ64_ATOMIC(csr_lo, csr_hi) ({ \
+    uint32_t _hi, _lo, _hi2; \
+    do { \
+        _hi  = CSRR(csr_hi); \
+        _lo  = CSRR(csr_lo); \
+        _hi2 = CSRR(csr_hi); \
+    } while (_hi != _hi2); \
+    ((uint64_t)_hi << 32) | (uint64_t)_lo; \
+})
+
+#define CSR_WRITE64(csr_lo, csr_hi, val64) ({ \
+    CSRW(csr_lo, (uint32_t)(val64)); \
+    CSRW(csr_hi, (uint32_t)((uint64_t)(val64) >> 32)); \
+})
+
+/* bits_lo / bits_hi select which half each bit lands in; on RV64 bits_hi is
+ * unused because everything is in the single register. */
+#define CSR_SET64(csr_lo, csr_hi, bits_lo, bits_hi) ({ \
+    CSRS(csr_lo, bits_lo); \
+    CSRS(csr_hi, bits_hi); \
+})
+
+#define CSR_CLEAR64(csr_lo, csr_hi, bits_lo, bits_hi) ({ \
+    CSRC(csr_lo, bits_lo); \
+    CSRC(csr_hi, bits_hi); \
+})
+
+#else /* __riscv_xlen == 64 */
+
+#define CSR_READ64(csr_lo, csr_hi) ({ \
+    (uint64_t)CSRR(csr_lo); \
+})
+
+/* A single RV64 read is already atomic, so the two variants coincide. */
+#define CSR_READ64_ATOMIC(csr_lo, csr_hi) CSR_READ64(csr_lo, csr_hi)
+
+#define CSR_WRITE64(csr_lo, csr_hi, val64) ({ \
+    CSRW(csr_lo, (uintptr_t)(val64)); \
+})
+
+#define CSR_SET64(csr_lo, csr_hi, bits, _bits_hi_unused) ({ \
+    CSRS(csr_lo, (uintptr_t)(bits)); \
+})
+
+#define CSR_CLEAR64(csr_lo, csr_hi, bits, _bits_hi_unused) ({ \
+    CSRC(csr_lo, (uintptr_t)(bits)); \
+})
+
+#endif /* __riscv_xlen */
 
 /* SFENCE.VMA */
 static inline void sfence_vma(void) {

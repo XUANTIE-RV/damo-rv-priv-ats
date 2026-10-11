@@ -10,6 +10,7 @@
  * Hypervisor-aware test macros
  *
  * Layered on top of common/test_framework.h:
+ *   - TEST_EXIT_RESET override:   every test exit also clears H state.
  *   - HYP_TEST_END:               TEST_END counterpart, uses hyp_reset_state.
  *   - EXPECT_GUEST_PAGE_FAULT:    arm trap, run stmt, assert cause matches.
  *   - CHECK_HTVAL/HTINST/GVA:     post-trap inspectors.
@@ -21,9 +22,32 @@
 #include "hyp_defs.h"
 #include "hyp_vs_trap.h"
 
+/* Every exit from a test in this translation unit clears hypervisor state.
+ *
+ * HYP_TEST_END covered the case of a test that runs to completion, but
+ * TEST_SKIP and TEST_FATAL return through the base TEST_EXIT_RESET and used to
+ * leave the next test whatever hgatp/hstatus/vs* the abandoned one had already
+ * installed.  Overriding the seam fixes all three at once and needs no change
+ * in any suite: a skipped test now hands on the same clean baseline as a
+ * passing one.
+ *
+ * Guarded rather than direct (see hyp_reset_state_if_h) because the most
+ * frequent skip reason is that H is absent, which is precisely when writing
+ * hypervisor CSRs would raise an illegal instruction.
+ *
+ * Only translation units that include this header are affected, and it is
+ * itself only reachable under ENABLE_HYP - the same condition that puts
+ * hyp_reset.o into the link. */
+#undef TEST_EXIT_RESET
+#define TEST_EXIT_RESET() hyp_reset_state_if_h()
+
 /* HYP_TEST_END: like TEST_END but resets hypervisor state.
  * Uses the shared _test_end_record() from test_framework.h for
- * pass/fail bookkeeping (avoids duplicating statistics logic). */
+ * pass/fail bookkeeping (avoids duplicating statistics logic).
+ *
+ * Now equivalent to TEST_END given the override above; kept because it states
+ * the intent at the call site, and because it resets unconditionally - a test
+ * that got far enough to reach its own end has already proved H is there. */
 #define HYP_TEST_END() do { \
     goto_priv(PRIV_M); \
     hyp_reset_state(); \

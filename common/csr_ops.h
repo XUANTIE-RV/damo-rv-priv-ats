@@ -4,9 +4,15 @@
  *
  * csr_ops.h - M/S-level named CSR accessors (single authoritative source)
  *
- * Named, compile-time CSR accessors for the machine- and supervisor-
- * level registers that do NOT depend on the H extension. Each wraps a
- * fixed CSR number and expands to a single csrr/csrw/csrs/csrc.
+ * Named CSR accessors for the machine- and supervisor-level registers that do
+ * NOT depend on the H extension. Every accessor here expands to a single
+ * csrr/csrw in the CURRENT privilege (direct, by-name). mstatus_* deliberately
+ * stays direct -- mstatus is only partially trap-state (MPP/MPIE/MIE are
+ * consumed by the serving handler's own mret), so it must never be proxied.
+ *
+ * The M-level CONFIG registers (menvcfg / mcounteren / mstateen) are NOT
+ * wrapped here: from S(HS)-mode reach them explicitly via the tsbi_csr_* proxy
+ * (tsbi/tsbi.h), or via csr_read()/csr_write() inside an M excursion.
  *
  * This header is the single source of truth for these accessors:
  *   - non-HYP suites (Sm / Ss families) include it directly, because
@@ -30,25 +36,7 @@
 #include <stdbool.h>
 #include "types.h"
 #include "encoding.h"
-
-/* ===================================================================
- * menvcfg (CSR 0x30A)
- * =================================================================== */
-static inline uintptr_t menvcfg_read(void) {
-    return CSRR(CSR_MENVCFG);
-}
-
-static inline void menvcfg_write(uintptr_t value) {
-    CSRW(CSR_MENVCFG, value);
-}
-
-static inline void menvcfg_set_bits(uintptr_t mask) {
-    CSRS(CSR_MENVCFG, mask);
-}
-
-static inline void menvcfg_clear_bits(uintptr_t mask) {
-    CSRC(CSR_MENVCFG, mask);
-}
+#include "csr_accessors.h"   /* csr_read/csr_write + mcsr_* (by-number CSR access layer) */
 
 /* ===================================================================
  * senvcfg (CSR 0x10A)
@@ -67,25 +55,6 @@ static inline void senvcfg_set_bits(uintptr_t mask) {
 
 static inline void senvcfg_clear_bits(uintptr_t mask) {
     CSRC(CSR_SENVCFG, mask);
-}
-
-/* ===================================================================
- * mcounteren (CSR 0x306)
- * =================================================================== */
-static inline uintptr_t mcounteren_read(void) {
-    return CSRR(CSR_MCOUNTEREN);
-}
-
-static inline void mcounteren_write(uintptr_t value) {
-    CSRW(CSR_MCOUNTEREN, value);
-}
-
-static inline void mcounteren_set(uintptr_t mask) {
-    CSRS(CSR_MCOUNTEREN, mask);
-}
-
-static inline void mcounteren_clear(uintptr_t mask) {
-    CSRC(CSR_MCOUNTEREN, mask);
 }
 
 /* ===================================================================
@@ -127,39 +96,11 @@ static inline void mstatus_clear(uintptr_t mask) {
 }
 
 /* ===================================================================
- * Smstateen: mstateen0-3 (0x30C-0x30F), hstateen0-3 (0x60C-0x60F),
- * sstateen0-3 (0x10C-0x10F)
+ * Smstateen: hstateen0-3 (0x60C-0x60F), sstateen0-3 (0x10C-0x10F).
+ * mstateen0-3 (0x30C-0x30F) are M-level and NOT wrapped here: reach them
+ * via tsbi_csr_*(CSR_MSTATEENn) from S(HS)-mode, or csr_read()/csr_write()
+ * inside an M excursion.
  * =================================================================== */
-static inline uintptr_t mstateen_read(int idx) {
-    uintptr_t v = 0;
-    switch (idx) {
-    case 0: v = CSRR(CSR_MSTATEEN0); break;
-    case 1: v = CSRR(CSR_MSTATEEN1); break;
-    case 2: v = CSRR(CSR_MSTATEEN2); break;
-    case 3: v = CSRR(CSR_MSTATEEN3); break;
-    default: break;
-    }
-    return v;
-}
-
-static inline void mstateen_write(int idx, uintptr_t value) {
-    switch (idx) {
-    case 0: CSRW(CSR_MSTATEEN0, value); break;
-    case 1: CSRW(CSR_MSTATEEN1, value); break;
-    case 2: CSRW(CSR_MSTATEEN2, value); break;
-    case 3: CSRW(CSR_MSTATEEN3, value); break;
-    default: break;
-    }
-}
-
-static inline void mstateen_set_bits(int idx, uintptr_t mask) {
-    mstateen_write(idx, mstateen_read(idx) | mask);
-}
-
-static inline void mstateen_clear_bits(int idx, uintptr_t mask) {
-    mstateen_write(idx, mstateen_read(idx) & ~mask);
-}
-
 static inline uintptr_t hstateen_read(int idx) {
     uintptr_t v = 0;
     switch (idx) {

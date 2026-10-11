@@ -899,8 +899,8 @@
 | HCROSS-SSCOFPMF-06 | 未实现 H 扩展时 VSINH/VUINH 只读零 | 若 H 扩展未实现，写 mhpmevent VSINH/VUINH=1 后读回 | VSINH/VUINH 为只读零（实现 H 扩展的平台 TEST_SKIP） | `norm:mhpmevent_inh_op` |
 
 > [!NOTE]
-> - 本组测试验证 Sscofpmf 扩展在 Hypervisor 场景下的行为。HCROSS-SSCOFPMF-01~05 必须在运行时通过 `HAS_H_EXT()` 检测 H 扩展可用性，不可用时 TEST_SKIP；HCROSS-SSCOFPMF-06 仅在 H 扩展**未实现**时执行，实现 H 扩展时 TEST_SKIP。
-> - 所有用例需先探测 Sscofpmf 是否实现（trap-protected 写 `mhpmevent` OF 位并读回，写触发 illegal-instruction 则未实现），未实现时整组 TEST_SKIP；并采用动态发现法探测目标 `mhpmcounter`（写非零值读回为零则未实现，改用其他计数器或 TEST_SKIP）。
+> - 本组测试验证 Sscofpmf 扩展在 Hypervisor 场景下的行为。扩展可用性一律以**编译期 config 能力宏**判定，不做运行时探测：HCROSS-SSCOFPMF-01~05 以 `H_AVAILABLE` 判定 H 扩展（为 0 时 TEST_SKIP）；HCROSS-SSCOFPMF-06 仅在 `H_AVAILABLE` 为 0（H 扩展未实现）时执行，H 扩展可用时 TEST_SKIP。
+> - 所有用例以编译期 `SSCOFPMF_AVAILABLE`（由 `config/<platform>/rvtest_config.h` 的 `SSCOFPMF_SUPPORTED` 经 `common/capabilities.h` 归一而来）判定 Sscofpmf 是否实现，未声明时整组 TEST_SKIP；目标 `mhpmcounter` 采用固定索引 `COFPMF_TEST_COUNTER`（默认 3，可经 `-DCOFPMF_TEST_COUNTER=<n>` 覆盖），不再动态探测计数器，也不做 `scountovf`/计数功能性探测。**理由**：运行时能力探测（trap-protected 写读、`scountovf`/计数功能性探测、动态发现计数器）会把“平台已在 config 声明扩展、但实现不合规”静默降级为 SKIP，从而掩盖非合规；改用编译期门控后，声明支持却实现错误的平台会让用例**响亮失败**，符合框架约定（扩展能力检测用编译期 `<EXT>_AVAILABLE` 门控而非运行时 trap 探测）与“绝不降低标准”的准则。
 > - HCROSS-SSCOFPMF-01~03 的访问控制语义与 `hpmcounter` 一致：VS-mode 读 `scountovf` bit X 需 `mcounteren[X]` 与 `hcounteren[X]` **同时**为 1 才读到真实 OF 值，否则读为零（注意是读零而非触发 trap）。
 > - HCROSS-SSCOFPMF-04~05 需使用 `goto_priv(PRIV_VS)`/`goto_priv(PRIV_VU)` 进入虚拟特权级执行计数循环，回到 M-mode 读取 `mhpmcounter` 差值，不做精确计数断言。模式切换本身产生指令计数，可设 MINH=1 抑制 M-mode 计数以排除干扰（与 `Sscofpmf_test_plan.md` Group 2 NOTE 的处理方式一致）；需编译时启用 `ENABLE_HYP` 宏并配置两阶段翻译使 VS/VU-mode 可执行。
 > - 与 `Sscofpmf_test_plan.md` COFPMF-RW-05/06 的关系：原用例验证 VSINH/VUINH 的 WARL 读写正分支（不依赖 H 扩展），保留在独立方案；本组 06 承接"未实现 H 扩展时只读零"负分支，04~05 承接依赖 H 扩展的计数抑制功能验证。VSINH/VUINH 与 Smcntrpmf 的 `mcyclecfg`/`minstretcfg` VSINH/VUINH 共用相同位编码（bit 59/58），但属不同寄存器，与 `Hypervisor_Sm_test_plan.md` Group 3 无重叠。

@@ -74,9 +74,11 @@
 
 ## 前提与约束
 
-### 计数器发现策略
+### 扩展门控与计数器选择策略
 
-由于不同实现支持的 hpmcounter 数量不同（3–31），测试用例采用**动态发现法**：在 M-mode 下尝试写 `mhpmcounter` 为非零值再读回，如果读回为零则认为该计数器未实现，对应测试跳过。
+用例是否跳过一律由**编译期 config 能力宏**决定，不做运行时探测：以 `SSCOFPMF_AVAILABLE`（由 `config/<platform>/rvtest_config.h` 的 `SSCOFPMF_SUPPORTED` 经 `common/capabilities.h` 归一）判定 Sscofpmf 是否实现，未声明时整组 TEST_SKIP；S/U-mode 相关用例另以 `S_AVAILABLE`/`U_AVAILABLE` 门控。被测 `mhpmcounter` 取固定索引 `COFPMF_TEST_COUNTER`（默认 3）、多计数器用例另用 `COFPMF_TEST_COUNTER2`（默认 4），可经 `-DCOFPMF_TEST_COUNTER=<n>` 覆盖；不再动态发现计数器，也不做 `scountovf`/计数/WPRI 功能性探测。唯一例外 COFPMF-RW-10（遍历所有已实现计数器）因计数器数量属实现可选、config 无法表达，保留 `is_counter_implemented()` 逐个枚举。
+
+**理由**：运行时能力探测（trap-protected 写读、`scountovf`/计数/WPRI 功能性探测、动态发现计数器）会把"平台已在 config 声明扩展、但实现不合规"静默降级为 SKIP，掩盖非合规；改用编译期门控后，声明支持却实现错误的平台会让用例**响亮失败**，符合本文档"任一平台违反 SPEC 时用例保持 FAIL"与框架约定"扩展能力检测用编译期 `<EXT>_AVAILABLE` 门控而非运行时 trap 探测"。
 
 ### 事件触发策略
 
@@ -124,7 +126,7 @@
 
 **测试职责**：验证各 xINH bit 能正确抑制/允许对应特权模式下的事件计数。
 
-**测试前提**：需要先确认至少一个 hpmcounter 已实现，并找到一个可用的事件编号（由平台配置提供，通常为已退休指令事件）。
+**测试前提**：以编译期 `SSCOFPMF_AVAILABLE` 门控；被测计数器取固定 `COFPMF_TEST_COUNTER`，事件编号由平台配置宏 `COFPMF_EVENT_INSTRET` 提供（通常为已退休指令事件）。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
@@ -201,16 +203,11 @@
 
 ## 设计要点
 
-### 1. 计数器动态发现
+### 1. 扩展门控与固定计数器
 
-由于 hpmcounter3–31 的实现数量是可选的，所有测试用例在开始前必须先动态探测目标计数器是否存在：
+用例是否跳过由编译期 `SSCOFPMF_AVAILABLE`（及所需的 `S_AVAILABLE`/`U_AVAILABLE`/`H_AVAILABLE`）决定，不探测 DUT；被测计数器取固定索引 `COFPMF_TEST_COUNTER`（默认 3）与 `COFPMF_TEST_COUNTER2`（默认 4），可经 `-D` 覆盖。唯一例外是 COFPMF-RW-10，其职责是"遍历所有已实现计数器验证 OF 读写"，而计数器数量属实现可选、无法由 config 表达，故保留 `is_counter_implemented()` 逐个枚举、跳过未实现者。
 
-1. 尝试在 M-mode 写入非零值到目标 mhpmcounter
-2. 回读该计数器
-3. 恢复为 0
-4. 若回读非零则认为已实现，否则认为未实现
-
-若计数器未实现，用例应使用 `TEST_SKIP()` 跳过。
+（原"动态发现计数器 + 功能性探测（`is_counting_functional`/`is_scountovf_functional`/`is_wpri_masked`）后 TEST_SKIP"的做法已废弃：它会把平台非合规静默降级为 SKIP。）
 
 ### 2. 事件配置策略
 

@@ -5,9 +5,17 @@
  * hedeleg-delegated traps (traps from VS/VU-mode delivered to
  * HS-mode via stvec instead of mtvec).
  *
- * Register save/restore follows the same convention as the existing
- * M-mode trap_asm.S: save all caller-saved registers + ra/sp on the
- * stack, call the C handler, then restore and sret.
+ * The frame is built with the shared SAVE_CONTEXT/RESTORE_CONTEXT macros
+ * from common/trap_context.h, byte-identical to the one m_trap_entry /
+ * s_trap_entry build.  That is mandatory, not tidiness: while a test has
+ * this vector installed in stvec it REPLACES s_trap_entry, so this is the
+ * only S-level T-SBI service point in existence - and hs_trap_handler can
+ * only serve a request if it can read the opcode out of the frame at
+ * TSBI_FRAME_A0 and write the result back there.  A private layout would
+ * shift that slot.
+ *
+ * Using the full x1-x31 frame also removes the old 23-register frame's
+ * caveat that VS-mode payloads must avoid s7-s11.
  *
  * NOTE: This is only needed when tests explicitly set up hedeleg to
  * delegate certain exceptions to VS-mode (which first traps to
@@ -18,97 +26,27 @@
 
 #ifdef ENABLE_HYP
 
-#if __riscv_xlen == 64
-    #define LOAD    ld
-    #define STORE   sd
-    #define REGSIZE 8
-#else
-    #define LOAD    lw
-    #define STORE   sw
-    #define REGSIZE 4
-#endif
-
-#define HS_CONTEXT_SIZE (REGSIZE * 23)
+#include "trap_context.h"
 
 .section .text
 .global _hs_trap_entry
 .align 4
 
 _hs_trap_entry:
-    /* Save context on the current stack (sscratch should hold
-     * HS-mode stack pointer if entered from VS/VU-mode, or we
-     * are already on HS-mode stack if trap from HS-mode itself). */
+    /* Save context on the current stack.  Tests run with a shared flat
+     * address space and a single stack, so no sscratch swap is needed even
+     * when the trap came from V=1. */
+    SAVE_CONTEXT
 
-    /* Swap sp with sscratch if coming from V=1 (SPV=1 in hstatus).
-     * For simplicity in this test framework, we assume the stack is
-     * already valid (tests run with a shared flat address space). */
-    addi sp, sp, -HS_CONTEXT_SIZE
+    /* Call C handler: unsigned hs_trap_handler(uintptr_t *frame) */
+    mv      a0, sp                  /* frame pointer -> first argument */
+    call    hs_trap_handler
 
-    /* Save s0-s6: VS-mode test code uses these; s7-s11 are unused by
-     * VS test payloads AND preserved by hs_trap_handler (C callee-saved).
-     *
-     * WARNING: s7-s11 are NOT saved/restored here. If any VS-mode test
-     * code uses s7-s11, their values will be corrupted by the C handler.
-     * All VS-mode test trampolines in this framework only use s0-s6.
-     * If you add new VS-mode code that uses s7-s11, you MUST either:
-     *   1. Increase HS_CONTEXT_SIZE and save/restore them here, OR
-     *   2. Ensure the C handler does not clobber them (not guaranteed).
-     * Current context size: 23 registers (ra + t0-t6 + a0-a7 + s0-s6). */
-    STORE ra,   0*REGSIZE(sp)
-    STORE t0,   1*REGSIZE(sp)
-    STORE t1,   2*REGSIZE(sp)
-    STORE t2,   3*REGSIZE(sp)
-    STORE t3,   4*REGSIZE(sp)
-    STORE t4,   5*REGSIZE(sp)
-    STORE t5,   6*REGSIZE(sp)
-    STORE t6,   7*REGSIZE(sp)
-    STORE a0,   8*REGSIZE(sp)
-    STORE a1,   9*REGSIZE(sp)
-    STORE a2,  10*REGSIZE(sp)
-    STORE a3,  11*REGSIZE(sp)
-    STORE a4,  12*REGSIZE(sp)
-    STORE a5,  13*REGSIZE(sp)
-    STORE a6,  14*REGSIZE(sp)
-    STORE a7,  15*REGSIZE(sp)
-    STORE s0,  16*REGSIZE(sp)
-    STORE s1,  17*REGSIZE(sp)
-    STORE s2,  18*REGSIZE(sp)
-    STORE s3,  19*REGSIZE(sp)
-    STORE s4,  20*REGSIZE(sp)
-    STORE s5,  21*REGSIZE(sp)
-    STORE s6,  22*REGSIZE(sp)
-
-    /* Call C handler: unsigned hs_trap_handler(void) */
-    call hs_trap_handler
-
-    /* a0 = return value (unused for now, reserved for future use) */
-
-    /* Restore registers */
-    LOAD ra,   0*REGSIZE(sp)
-    LOAD t0,   1*REGSIZE(sp)
-    LOAD t1,   2*REGSIZE(sp)
-    LOAD t2,   3*REGSIZE(sp)
-    LOAD t3,   4*REGSIZE(sp)
-    LOAD t4,   5*REGSIZE(sp)
-    LOAD t5,   6*REGSIZE(sp)
-    LOAD t6,   7*REGSIZE(sp)
-    LOAD a0,   8*REGSIZE(sp)
-    LOAD a1,   9*REGSIZE(sp)
-    LOAD a2,  10*REGSIZE(sp)
-    LOAD a3,  11*REGSIZE(sp)
-    LOAD a4,  12*REGSIZE(sp)
-    LOAD a5,  13*REGSIZE(sp)
-    LOAD a6,  14*REGSIZE(sp)
-    LOAD a7,  15*REGSIZE(sp)
-    LOAD s0,  16*REGSIZE(sp)
-    LOAD s1,  17*REGSIZE(sp)
-    LOAD s2,  18*REGSIZE(sp)
-    LOAD s3,  19*REGSIZE(sp)
-    LOAD s4,  20*REGSIZE(sp)
-    LOAD s5,  21*REGSIZE(sp)
-    LOAD s6,  22*REGSIZE(sp)
-
-    addi sp, sp, HS_CONTEXT_SIZE
+    /* The return value only documents the handler level (always PRIV_S
+     * here); RESTORE_CONTEXT reloads a0 from the frame, so a T-SBI result
+     * reaches the requester through frame[TSBI_FRAME_A0], never through the
+     * C return value.  HS always leaves via sret. */
+    RESTORE_CONTEXT
 
     sret
 

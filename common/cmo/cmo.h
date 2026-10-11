@@ -21,6 +21,7 @@
 #include "types.h"
 #include "sm_defs.h"
 #include "ss_defs.h"
+#include "tsbi/tsbi.h"   /* tsbi_csr_*: menvcfg is M-level */
 
 /* ===================================================================
  * envcfg CMO field definitions
@@ -175,51 +176,53 @@
 
 /* ===================================================================
  * envcfg CMO field access helpers
+ *
+ * menvcfg is M-level. Under the S-mode-normal (T-SBI) execution model the
+ * suites run in S/HS-mode, where a bare csrr/csrw menvcfg raises
+ * illegal-instruction, so the menvcfg_* helpers go through the tsbi_csr_*
+ * proxy. senvcfg/henvcfg are S/HS-level and stay direct (they are gated by
+ * Smstateen ENVCFG, which the suites open via hyp_enable_envcfg_access()).
  * =================================================================== */
 
 static inline uintptr_t menvcfg_get_cbie(void)
 {
-    uintptr_t val;
-    asm volatile("csrr %0, 0x30A" : "=r"(val));
+    uintptr_t val = tsbi_csr_read(CSR_MENVCFG);
     return (val & ENVCFG_CBIE_MASK) >> ENVCFG_CBIE_SHIFT;
 }
 
 static inline void menvcfg_set_cbie(unsigned cbie)
 {
-    uintptr_t val;
-    asm volatile("csrr %0, 0x30A" : "=r"(val));
+    uintptr_t val = tsbi_csr_read(CSR_MENVCFG);
     val = (val & ~ENVCFG_CBIE_MASK) | ((uintptr_t)cbie << ENVCFG_CBIE_SHIFT);
-    asm volatile("csrw 0x30A, %0" :: "r"(val));
+    tsbi_csr_write(CSR_MENVCFG, val);
 }
 
 static inline uintptr_t menvcfg_get_cbcfe(void)
 {
-    uintptr_t val;
-    asm volatile("csrr %0, 0x30A" : "=r"(val));
+    uintptr_t val = tsbi_csr_read(CSR_MENVCFG);
     return (val & ENVCFG_CBCFE) ? 1 : 0;
 }
 
 static inline void menvcfg_set_cbcfe(unsigned en)
 {
     if (en)
-        asm volatile("csrs 0x30A, %0" :: "r"(ENVCFG_CBCFE));
+        tsbi_csr_set(CSR_MENVCFG, ENVCFG_CBCFE);
     else
-        asm volatile("csrc 0x30A, %0" :: "r"(ENVCFG_CBCFE));
+        tsbi_csr_clear(CSR_MENVCFG, ENVCFG_CBCFE);
 }
 
 static inline uintptr_t menvcfg_get_cbze(void)
 {
-    uintptr_t val;
-    asm volatile("csrr %0, 0x30A" : "=r"(val));
+    uintptr_t val = tsbi_csr_read(CSR_MENVCFG);
     return (val & ENVCFG_CBZE) ? 1 : 0;
 }
 
 static inline void menvcfg_set_cbze(unsigned en)
 {
     if (en)
-        asm volatile("csrs 0x30A, %0" :: "r"(ENVCFG_CBZE));
+        tsbi_csr_set(CSR_MENVCFG, ENVCFG_CBZE);
     else
-        asm volatile("csrc 0x30A, %0" :: "r"(ENVCFG_CBZE));
+        tsbi_csr_clear(CSR_MENVCFG, ENVCFG_CBZE);
 }
 
 static inline uintptr_t senvcfg_get_cbie(void)

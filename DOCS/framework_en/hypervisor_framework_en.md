@@ -1175,8 +1175,6 @@ Named by CSR field + variant, providing 4 variants per field: `_EQ / _NONZERO / 
 ### Module 17: CSR WARL/MODE Common Probing (`common/hyp/hyp_csr.*` Extension)
 
 ```c
-/* Write ~0, read back to get actual WARL-retained bits */
-uintptr_t csr_warl_probe       (unsigned csr_num);
 unsigned  csr_field_width      (unsigned csr_num, unsigned shift, uintptr_t mask);
 unsigned  csr_mode_field_supported(unsigned csr_num,
                                    unsigned mode_shift,
@@ -1207,7 +1205,6 @@ ASFLAGS += $(HYP_EXT_FLAGS)
 | `delegate_gpf_to_hs()` | `delegate_causes_to_hs(MASK_GPF)` |
 | `delegate_nongpf_traps_to_hs()` | `delegate_causes_to_hs(<other masks>)` |
 | `two_stage_setup_bare_vsatp_*x4_hgatp()` × 3 | `two_stage_build(scene{ .fault=FAULT_G_STAGE_EXPLICIT, .g_mode=SV*X4 })` |
-| `htval_warl_probe()` / `htval_impl_width_bits()` | `csr_warl_probe(CSR_HTVAL)` / `csr_field_width(CSR_HTVAL,...)` |
 | `hgatp_supported_modes_mask()` | `csr_mode_field_supported(CSR_HGATP, HGATP_MODE_SHIFT, 15)` |
 | `CHECK_HTVAL_NONZERO/_ZERO/_RECONSTRUCT_GPA` | Same-named macros, but aligned with `CHECK_VSTVAL_*` / `CHECK_VSEPC_*` templates |
 | Sub-extensions scattered directly in `hyp_csr.c` | `common/hyp/ext/<name>.h` isolated, one file per extension |

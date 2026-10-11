@@ -59,6 +59,11 @@ uintptr_t hideleg_read(void);
 void      henvcfg_write(uintptr_t value);
 uintptr_t henvcfg_read(void);
 
+/* Open the Smstateen ENVCFG gate so henvcfg/senvcfg are reachable from HS/VS
+ * mode (see hyp_csr.c). A suite that manipulates envcfg from S(HS)-mode calls
+ * this once from its setup; no-op when Smstateen is not declared. */
+void      hyp_enable_envcfg_access(void);
+
 /* ----- menvcfg / mstatus / senvcfg (M/S-level, non-H) -----
  * Provided by csr_ops.h (included above): menvcfg_read/write,
  * mstatus_read/write, senvcfg_read/write. */
@@ -227,14 +232,18 @@ static inline void vsstatus_set_field(unsigned shift, unsigned val) {
 }
 
 static inline unsigned mstatus_get_field(unsigned shift) {
-    return (unsigned)((CSRR(mstatus) >> shift) & XSTATUS_FIELD_MASK);
+    /* mstatus is M-level; under the T-SBI S-mode-normal model the hart
+     * runs in HS-mode, so proxy the read. FS/VS survive the proxy ecall
+     * (trap entry only rewrites the RETCTL bits MPP/MPIE/MIE). */
+    return (unsigned)((tsbi_csr_read(CSR_MSTATUS) >> shift) & XSTATUS_FIELD_MASK);
 }
 
 static inline void mstatus_set_field(unsigned shift, unsigned val) {
-    uintptr_t ms = CSRR(mstatus);
-    ms = (ms & ~(XSTATUS_FIELD_MASK << shift)) |
-         ((uintptr_t)(val & XSTATUS_FIELD_MASK) << shift);
-    CSRW(mstatus, ms);
+    /* FS/VS are context-status config bits, not return-path RETCTL bits,
+     * so they are proxy-safe: clear then set the 2-bit field. */
+    uintptr_t mask = XSTATUS_FIELD_MASK << shift;
+    tsbi_csr_clear(CSR_MSTATUS, mask);
+    tsbi_csr_set(CSR_MSTATUS, (uintptr_t)(val & XSTATUS_FIELD_MASK) << shift);
 }
 
 /* ===================================================================
@@ -260,14 +269,28 @@ void      satp_write(uintptr_t value);
  * =================================================================== */
 
 /**
+ * satp_probe_mode - Write MODE to satp and return the whole satp read-back.
+ *
+ * Probe-and-restore, performed inside one M-mode excursion: satp translates
+ * the mode that writes it, so probing a non-Bare MODE from S/HS-mode with
+ * PPN=0 would fault on the next instruction fetch. M-mode fetches ignore
+ * satp, so the write/read-back/restore sequence is safe there.
+ *
+ * Returns the satp value read back while the probe MODE was written; use
+ * SATP_GET_MODE() on it to see which MODE stuck (an unsupported MODE makes
+ * the write be ignored, so the previous value -- Bare -- reads back).
+ */
+uintptr_t satp_probe_mode(int mode);
+
+/**
  * satp_supports_mode - Test whether satp supports a given MODE.
  *
- * Probe-and-restore: writes MODE to satp, reads back.
+ * Probe-and-restore via satp_probe_mode().
  * Per spec, writing an unsupported MODE causes the entire write to be
  * ignored (satp remains unchanged). So if read-back MODE matches the
  * requested value, it is supported.
  *
- * Must be called from M-mode (or HS-mode with TVM=0).
+ * Callable from any privilege level.
  */
 bool satp_supports_mode(int mode);
 
@@ -300,14 +323,6 @@ unsigned vsatp_asid_width(void);
 unsigned hgatp_vmid_width(void);
 
 /* ===================================================================
- * Generic CSR WARL probe
- *
- * Write value, read back, restore original. Returns read-back value.
- * =================================================================== */
-
-uintptr_t csr_warl_probe(unsigned csr_num, uintptr_t value);
-
-/* ===================================================================
  * Counter implementation detection (shcounterenw)
  * =================================================================== */
 
@@ -334,8 +349,10 @@ bool     hpmcounter_is_writable(int idx);
 
 /* Bit 63 convenience (hierarchy control) */
 static inline void mstateen_set_bit63(int idx, bool enable) {
-    if (enable) mstateen_set_bits(idx, STATEEN_BIT63);
-    else        mstateen_clear_bits(idx, STATEEN_BIT63);
+    /* mstateen0..3 are contiguous (0x30C..0x30F). Callers run in S(HS)-mode
+     * where these M-level CSRs are unreachable, so proxy via tsbi_csr_*. */
+    if (enable) tsbi_csr_set(CSR_MSTATEEN0 + idx, STATEEN_BIT63);
+    else        tsbi_csr_clear(CSR_MSTATEEN0 + idx, STATEEN_BIT63);
 }
 
 static inline void hstateen_set_bit63(int idx, bool enable) {

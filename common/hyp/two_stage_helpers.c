@@ -503,28 +503,28 @@ void ts2_setup_granular(two_stage_ctx_t *ctx, int vs_mode, int g_mode,
 
 void ts2_enable_adue(void)
 {
-    uintptr_t mv = menvcfg_read();
-    menvcfg_write(mv | MENVCFG_ADUE);
+    uintptr_t mv = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, mv | MENVCFG_ADUE);
     henvcfg_set_adue(true);
 }
 
 void ts2_disable_adue(void)
 {
     henvcfg_set_adue(false);
-    uintptr_t mv = menvcfg_read();
-    menvcfg_write(mv & ~MENVCFG_ADUE);
+    uintptr_t mv = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, mv & ~MENVCFG_ADUE);
 }
 
 void ts2_enable_pbmte(void)
 {
-    uintptr_t mv = menvcfg_read();
-    menvcfg_write(mv | MENVCFG_PBMTE);
+    uintptr_t mv = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, mv | MENVCFG_PBMTE);
     henvcfg_set_pbmte(true);
 }
 
 void ts2_disable_pbmte(void)
 {
     henvcfg_set_pbmte(false);
-    uintptr_t mv = menvcfg_read();
-    menvcfg_write(mv & ~MENVCFG_PBMTE);
+    uintptr_t mv = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, mv & ~MENVCFG_PBMTE);
 }

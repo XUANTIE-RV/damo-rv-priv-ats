@@ -666,6 +666,83 @@ void exec_at(uintptr_t addr);
 
 ---
 
+### CSR 访问接口
+
+框架提供四类 CSR 访问方式。选择取决于两个维度：**CSR 号是编译期已知还是运行时决定**、**当前特权级能否直达该 CSR**。
+
+#### 四类接口概览
+
+| 接口 | 定义 | CSR 号 | 机制 | 典型场景 |
+|------|------|--------|------|---------|
+| `CSRR/CSRW/CSRS/CSRC(name)` | `encoding.h` | 编译期 | 单条 asm 指令 | 编译期已知 + 当前特权级可直访 |
+| `csr_read/write/set/clear(n)` | `csr_accessors.h/.c` | 运行时 | switch 分派 | 运行时 CSR 号（循环/表驱动/探测）|
+| `tsbi_csr_read/write/set/clear(n)` | `tsbi/tsbi.h` | 运行时 | ecall 代理 | S(HS) 态访问 M 级 CSR（无直访权限）|
+| `mcsr_write/mcsr_write_readback(n)` | `csr_accessors.h/.c` | 运行时 | M-excursion | trap-state CSR 的写 / 写后读回 |
+
+下面重点对比前两类「直访」方式——它们都在**当前特权级**执行一条 csrr/csrw，结果等价，但机制、效率与适用面不同。
+
+#### CSRR 宏 —— by-name 编译期单指令
+
+```c
+#define CSRR(csr) ({ uint64_t _v; \
+    asm volatile("csrr %0, " CSR_STR(csr) : "=r"(_v) :: "memory"); _v; })
+#define CSRW(csr, val) asm volatile("csrw " CSR_STR(csr) ", %0" :: "rK"(val) : "memory")
+#define CSRS(csr, val) asm volatile("csrs " CSR_STR(csr) ", %0" :: "rK"(val) : "memory")
+#define CSRC(csr, val) asm volatile("csrc " CSR_STR(csr) ", %0" :: "rK"(val) : "memory")
+```
+
+- **底层实现**：`CSR_STR(csr)` 两级 stringify 把 CSR 名（`mstatus`）或号宏（`CSR_MSTATUS`→`0x300`）转成汇编文本，汇编器在**编译期**将其编码为指令的 12-bit csr 立即数，内联展开成**单条** csrr/csrw/csrs/csrc。
+- **编译态**：CSR 号必须编译期已知；`"rK"` 约束让小立即数（5-bit）自动编成 csrsi/csrci。
+- **运行态**：1 条指令，无函数调用、无分支、无跳转表。
+- **必要性**：最高效；`CSRS/CSRC` 是**硬件单指令原子** RMW；trap handler 内、性能敏感、需原子位操作、或访问 by-number 表未覆盖的 CSR 时，是唯一选择。
+- **局限性**：① CSR 号必须编译期常量，无法用循环变量/表驱动；② 无覆盖检查——任意编译期 CSR 号都会生成指令（访问无效号触发 illegal，这正是 trap 激励所需）。
+
+#### csr_read 函数 —— by-number 运行时分派
+
+```c
+uintptr_t csr_read(uint16_t csr) {
+    uintptr_t val = 0;
+    switch (csr) {
+    case CSR_MSTATUS: asm volatile("csrr %0, 0x300" : "=r"(val) :: "memory"); break;
+    /* ... 共 183 个 case ... */
+    default: return csr_table_miss(csr, "read");   /* 表外：LOG_E + 返回哨兵 */
+    }
+    return val;
+}
+```
+
+- **底层实现**：运行时 `switch` 把 CSR 号分派到对应的编译期 case，每个 case 内是一条固定立即数的 csrr。`csr_write` 同理（168 个 case）。
+- **编译态**：183-case switch 编译成跳转表（或比较树）。
+- **运行态**：函数调用（call/ret）+ 跳转表间接跳转 + 目标 csrr + 返回，约 5–10 条指令。
+- **必要性**：**这是唯一能「用运行时变量作 CSR 号」访问的手段**——RISC-V 的 CSR 号是 12-bit 编译期立即数，硬件不支持寄存器间接寻址。循环遍历 CSR 范围（`for i: csr_read(CSR_MHPMCOUNTER0+i)`）、表驱动测试、通用 WARL 探测都依赖它。
+- **局限性**：① 分派开销（比 CSRR 慢约一个数量级）；② **覆盖缺口**——仅表内 CSR 有效，表外号触发 `csr_table_miss`（见下）；③ **读写表不对称**（read 183 / write 168），只读 CSR（hgeip/time/cycle/…）不在 write 表，`csr_write` 它们会 no-op——故「写只读 CSR 触发 illegal」的激励必须用裸 `asm csrw`。
+
+#### set bit / clear bit
+
+两类直访都已提供位操作，无需另加宏：
+- **by-name**：`CSRS(csr,mask)` / `CSRC(csr,mask)`（`encoding.h`）——单指令 csrs/csrc，**硬件原子**；小立即数经 `"rK"` 约束自动用 csrsi/csrci。
+- **by-number**：`csr_set(n,mask)` / `csr_clear(n,mask)`（`csr_accessors.h`）——inline RMW（`csr_write(n, csr_read(n) |/&~ mask)`），两步非原子（测试单线程、无 handler 竞争，故安全）。
+
+#### 覆盖缺口护栏
+
+`csr_read/csr_write` 的 switch `default` 分支调用 `csr_table_miss(csr, op)`：表外 CSR 号 → `LOG_E` 报告 + 返回 `TSBI_RESERVED_RET`(-1)（write 则报告后 no-op），而非静默返回 0。新增 CSR 忘记加表、或误用 `csr_write` 写只读 CSR，都会立即响亮暴露（回归实测：15 套件零表外访问）。
+
+#### 选择指引
+
+| 场景 | 推荐接口 |
+|------|---------|
+| CSR 号编译期已知 + 当前特权级可直访 | **`CSRR/CSRW/CSRS/CSRC`**（单指令、无缺口、原子）|
+| CSR 号运行时决定（循环/表驱动/探测）| `csr_read/write/set/clear` |
+| S(HS) 态访问 M 级 CSR（无直访权限）| `tsbi_csr_read/write/set/clear`（代理）|
+| mstatus/sstatus 配置位（S 态）| `tsbi_csr_set/clear`（护栏放行配置位、拦返回路径位）|
+| trap-state CSR 写并读回 | `mcsr_write_readback` |
+| 只读 CSR 写激励（测 illegal）| 裸 `asm csrw`（`csr_write` 会 no-op）|
+| 观测某次 trap 记录 | `trap_get_cause/epc/tval()` |
+
+> **原则**：编译期已知 CSR 号时优先 by-name 宏（`CSRR/CSRW`——单指令、无覆盖缺口）；`csr_read/write` 仅用于运行时 CSR 号。`tsbi_csr_*`（代理）无法用宏替代，因为它是 ecall 转发而非直访。
+
+---
+
 ### 日志系统
 
 框架提供分级日志宏，编译时通过 `LOG_LEVEL` 控制输出粒度：

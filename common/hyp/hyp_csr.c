@@ -186,18 +186,12 @@ void hstatus_set_hu(bool enable) {
  * =================================================================== */
 
 void hyp_delegate_to_vs(uintptr_t hedeleg_mask, uintptr_t hideleg_mask) {
-    /* First ensure medeleg/mideleg delegates these to HS-mode.
-     * Read current medeleg and OR in the requested bits.
-     * Local variables use _val suffix to avoid shadowing the CSR
-     * name macros used in CSRR/CSRW. */
-    uintptr_t md_val  = CSRR(medeleg);
-    uintptr_t mid_val = CSRR(mideleg);
-    md_val  |= hedeleg_mask;
-    mid_val |= hideleg_mask;
-    CSRW(medeleg, md_val);
-    CSRW(mideleg, mid_val);
+    /* First-level (M->HS) delegation: medeleg/mideleg are M-level, so go
+     * through the M-safe primitive (it raises to M under S-mode-normal and
+     * keeps the medeleg[9] invariant). */
+    tsbi_deleg_or(hedeleg_mask, hideleg_mask);
 
-    /* Then delegate from HS-mode to VS-mode via hedeleg/hideleg. */
+    /* Second-level (HS->VS) via hedeleg/hideleg - HS-level, direct. */
     hedeleg_write(hedeleg_read() | hedeleg_mask);
     hideleg_write(hideleg_read() | hideleg_mask);
 }
@@ -205,6 +199,35 @@ void hyp_delegate_to_vs(uintptr_t hedeleg_mask, uintptr_t hideleg_mask) {
 void hyp_undelegate(void) {
     hedeleg_write(0);
     hideleg_write(0);
+}
+
+/* ===================================================================
+ * hyp_enable_envcfg_access - open the Smstateen ENVCFG gate
+ *
+ * With Smstateen implemented, mstateen0.ENVCFG=0 (a common reset default, and
+ * spike's) makes ANY henvcfg/senvcfg access from below M raise illegal-
+ * instruction. Under the S-mode-normal model the H tests run in S(HS)-mode, so
+ * every henvcfg/senvcfg touch would trap. A real system's M-mode firmware
+ * enables ENVCFG for the hypervisor; suites that manipulate envcfg from HS/VS
+ * (and do not themselves test the stateen gate) call this once from their setup.
+ * mstateen0/hstateen0 are M/HS-level, so this runs in an M excursion. No-op
+ * when Smstateen is not declared (nothing gates envcfg then).
+ *
+ * Deliberately NOT folded into the hyp_reset_state baseline: the Smstateen /
+ * Ssstateen suites test this very gate and must control it themselves.
+ * =================================================================== */
+void hyp_enable_envcfg_access(void) {
+#if SMSTATEEN_AVAILABLE
+    unsigned saved = get_current_priv();
+    if (saved != PRIV_M)
+        goto_priv(PRIV_M);
+
+    CSRS(CSR_MSTATEEN0, STATEEN0_ENVCFG | STATEEN0_SE0);
+    CSRS(CSR_HSTATEEN0, STATEEN0_ENVCFG);
+
+    if (saved != PRIV_M)
+        goto_priv(saved);
+#endif
 }
 
 /* ===================================================================
@@ -413,16 +436,44 @@ void satp_write(uintptr_t value) {
  * causes the entire write to be IGNORED (satp reads back the old
  * value). This differs from hgatp where unsupported MODE still
  * processes the write.
+ *
+ * The satp half of the probe cannot run in the probing mode itself:
+ * satp governs the translation of S/HS-mode, so writing MODE=SvNN with
+ * PPN=0 turns translation on against a nonexistent root page table and
+ * the very next instruction fetch faults (the write and its read-back
+ * never complete). M-mode fetches ignore satp, which is why the probe
+ * is safe inside an M-mode excursion -- and why it was safe before the
+ * S-mode-normal T-SBI boot moved the caller out of M-mode. The whole
+ * write/read-back/restore sequence therefore runs in one excursion, so
+ * satp is never left holding the bogus probe value while S/HS-mode
+ * executes. vsatp/hgatp need no such protection: they only translate
+ * V=1 modes, and G-stage translations, respectively.
  * =================================================================== */
 
-bool satp_supports_mode(int mode) {
+static int _satp_probe_req;
+
+static uintptr_t _satp_probe_mode_fn(uintptr_t unused) {
+    (void)unused;
     uintptr_t saved = satp_read();
-    uintptr_t probe = MAKE_SATP(mode, 0, 0);
-    satp_write(probe);
+    /* Bare first: the probe result must not depend on the mode satp
+     * already held (an ignored write leaves the previous value). */
+    satp_write(MAKE_SATP(SATP_MODE_BARE, 0, 0));
+    satp_write(MAKE_SATP(_satp_probe_req, 0, 0));
     uintptr_t got = satp_read();
     satp_write(saved);
     asm volatile ("sfence.vma" ::: "memory");
-    return SATP_GET_MODE(got) == (uintptr_t)mode;
+    return got;
+}
+
+uintptr_t satp_probe_mode(int mode) {
+    _satp_probe_req = mode;
+    if (get_current_priv() == PRIV_M)
+        return _satp_probe_mode_fn(0);
+    return run_in_priv(PRIV_M, _satp_probe_mode_fn, 0);
+}
+
+bool satp_supports_mode(int mode) {
+    return SATP_GET_MODE(satp_probe_mode(mode)) == (uintptr_t)mode;
 }
 
 bool vsatp_supports_mode(int mode) {
@@ -491,23 +542,6 @@ unsigned hgatp_vmid_width(void) {
 }
 
 /* ===================================================================
- * Generic CSR WARL probe
- *
- * Uses the csr_accessors infrastructure (csr_read / csr_write)
- * for arbitrary CSR access.
- * =================================================================== */
-
-/* csr_read / csr_write are provided by csr_accessors.h (included above). */
-
-uintptr_t csr_warl_probe(unsigned csr_num, uintptr_t value) {
-    uintptr_t saved = csr_read((uint16_t)csr_num);
-    csr_write((uint16_t)csr_num, value);
-    uintptr_t readback = csr_read((uint16_t)csr_num);
-    csr_write((uint16_t)csr_num, saved);
-    return readback;
-}
-
-/* ===================================================================
  * Counter detection helpers
  * =================================================================== */
 
@@ -521,18 +555,28 @@ uintptr_t csr_warl_probe(unsigned csr_num, uintptr_t value) {
  * either. Use hpmcounter_is_writable() for counter existence
  * detection. */
 uint32_t counteren_probe_implemented(void) {
-    uintptr_t saved = mcounteren_read();
+    /* mcounteren (0x306) is M-level and this probes it 29 times, so run the
+     * whole loop inside one M excursion rather than a proxy round-trip per
+     * access.  Direct csr_read/csr_write are valid once we are in M. */
+    unsigned saved_priv = get_current_priv();
+    if (saved_priv != PRIV_M)
+        goto_priv(PRIV_M);
+
+    uintptr_t saved = csr_read(CSR_MCOUNTEREN);
     uint32_t bitmap = 0;
 
     /* Probe bits 3..31 (0=cycle, 1=time, 2=instret are always special) */
     for (int i = 3; i < 32; i++) {
         uint32_t bit = (1U << i);
-        mcounteren_write(saved | bit);
-        if (mcounteren_read() & bit)
+        csr_write(CSR_MCOUNTEREN, saved | bit);
+        if (csr_read(CSR_MCOUNTEREN) & bit)
             bitmap |= bit;
     }
 
-    mcounteren_write(saved);
+    csr_write(CSR_MCOUNTEREN, saved);
+
+    if (saved_priv != PRIV_M)
+        goto_priv(saved_priv);
     return bitmap;
 }
 
@@ -554,28 +598,45 @@ bool hpmcounter_is_writable(int idx) {
 
     uint16_t csr = (uint16_t)(CSR_MHPMCOUNTER3 + (idx - 3));
     bool trapped;
+    bool writable = false;
+
+    /* mhpmcounterN (0xB03..0xB1F) are M-level.  Under the S-mode-normal
+     * (T-SBI) model the caller sits in S(HS)-mode, where a direct access
+     * traps illegal-instruction and every counter would be reported
+     * unimplemented, so run the whole probe inside one M excursion -- the
+     * idiom counteren_probe_implemented() above already uses.  Direct
+     * csr_read/csr_write are valid once we are in M, and the trap-armed
+     * steps still work there (M takes its own traps). */
+    unsigned saved_priv = get_current_priv();
+    if (saved_priv != PRIV_M)
+        goto_priv(PRIV_M);
 
     trap_expect_begin();
     uintptr_t saved = csr_read(csr);
     trapped = trap_was_triggered();
     trap_expect_end();
-    if (trapped)
-        return false;
 
-    trap_expect_begin();
-    csr_write(csr, 0xDEADBEEFUL);
-    uintptr_t rb = csr_read(csr);
-    trapped = trap_was_triggered();
-    trap_expect_end();
-    if (trapped)
-        return false;
+    if (!trapped) {
+        trap_expect_begin();
+        csr_write(csr, 0xDEADBEEFUL);
+        uintptr_t rb = csr_read(csr);
+        trapped = trap_was_triggered();
+        trap_expect_end();
 
-    /* Best-effort restore; a read-only-zero mirror ignores it. */
-    trap_expect_begin();
-    csr_write(csr, saved);
-    trap_expect_end();
+        if (!trapped) {
+            /* Best-effort restore; a read-only-zero mirror ignores it. */
+            trap_expect_begin();
+            csr_write(csr, saved);
+            trap_expect_end();
 
-    return rb != 0;
+            writable = (rb != 0);
+        }
+    }
+
+    if (saved_priv != PRIV_M)
+        goto_priv(saved_priv);
+
+    return writable;
 }
 
 /* ===================================================================

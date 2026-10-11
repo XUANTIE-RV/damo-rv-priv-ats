@@ -13,7 +13,7 @@
  * execute a function in the VS / VU virtualized privilege levels
  * (V=1) and have it return back to M-mode for assertion/cleanup.
  *
- * The helpers cooperate with the goto_priv()/ECALL_GOTO_PRIV
+ * The helpers cooperate with the goto_priv() / T-SBI GOTO protocol
  * machinery in common/trap.c + common/privilege.c, which has been
  * extended (under ENABLE_HYP) to set mstatus.MPV when the target
  * privilege has bit 2 (PRIV_VU=4 / PRIV_VS=5).

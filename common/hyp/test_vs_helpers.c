@@ -43,10 +43,12 @@ uintptr_t test_vs_store(uintptr_t arg) {
  * Fault-expecting helpers
  *
  * The M-mode caller must call trap_expect_begin() before entering
- * VS-mode. The S-mode (nominal) trap that fires inside VS-mode is
- * actually delivered to M-mode (because hedeleg=0) and recorded by
- * common/trap.c. The helper then reads back the captured cause via
- * trap_get_cause() and returns it.
+ * VS-mode, and must arrange for the trap to reach M at all: under the
+ * delegation baseline ordinary stimulus raised at V=1 is delegated down
+ * to the VS handler, so a caller that wants the M-mode record has to
+ * clear the corresponding hedeleg bit for the duration of the case.
+ * With that done the trap is recorded by common/trap.c, and the helper
+ * reads back the captured cause via trap_get_cause() and returns it.
  *
  * To make the trap deterministic we issue the access then immediately
  * read trap_get_cause(); if no fault occurred, the cause is 0.

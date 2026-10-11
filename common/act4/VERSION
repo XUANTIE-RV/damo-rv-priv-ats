@@ -1,0 +1,62 @@
+# ACT4 Upstream Vendored Files
+
+本目录存放从 RISC-V 官方 ACT4 仓库入库的协议权威源文件（以**原样入库**为原则；逐文件实际状态见“来源 § 本地状态”）。
+
+## 纪律
+
+- 本目录下的上游文件 **禁止本地修改**：任何 diff 都必须伴随本 VERSION 更新，
+  且 diff 内容与上游一致（升级）。
+- 所有本地适配一律放入辅助头（future: `rvtest_env.h`），不得改动上游文件本身。
+- 当前状态：**仅入库占位，不接入构建**（无 rvtest_env.h、不参与编译）。
+  它作为 T-SBI 协议常量与参考实现的权威对照源，供 `common/tsbi/tsbi.h` 校验对齐。
+
+## 文件清单
+
+| 文件 | 上游路径 | 说明 |
+|------|---------|------|
+| `rvtest_trap_handler.h` | `tests/env/rvtest_trap_handler.h` | Trap handler / T-SBI / 辅助宏（纯汇编宏文件，3292 行；见下方“本地状态”） |
+| `abstraction.adoc` | `docs/ctp/src/abstraction.adoc` | Abstraction Layer 文档，含 T-SBI Calls 表（opcode / CSR / 内存代理编码的权威说明），324 行 |
+| `rva23_crd.adoc` | `docs/crd/src/rva23_crd.adoc` | RVA23 Certification Requirements Document (rev 0.3)，214 行 |
+
+## 来源
+
+- 仓库：https://github.com/riscv-non-isa/riscv-arch-test （原 `riscv/riscv-arch-test`，已迁移至 `riscv-non-isa` org）
+- 分支：`act4`
+- 本地对照检出：`../riscv-arch-test` @ `97f85e034ba625021e17f12f827afec91cebb17e`（2026-09-14）
+- 获取方式：从本地检出 `../riscv-arch-test` 复制对应上游路径的文件
+- 获取日期：`abstraction.adoc` / `rva23_crd.adoc` 于 2026-10-08 入库
+- 各文档上游最后修改提交：`abstraction.adoc` = `b868f871`（2026-09-11）、`rva23_crd.adoc` = `fe3e73a1`（2026-08-14）
+- 许可：`rvtest_trap_handler.h` 为 BSD-3-Clause（见文件头 SPDX）；`rva23_crd.adoc` 为 CC-BY-4.0（见文首声明）；`abstraction.adoc` 随 CTP 文档采用 CC-BY-4.0
+
+### 本地状态（重要）
+
+- `abstraction.adoc`、`rva23_crd.adoc`：与 `../riscv-arch-test` @ `97f85e03` **逐字节一致**，属原样入库。
+- `rvtest_trap_handler.h`：当前树内版本为 3292 行，**比 `../riscv-arch-test` @ `97f85e03` 的 `act4` 检出（3158 行）更新**，
+  含该检出全部历史中都不存在的 T-SBI 扩展（`TSBI_SFENCE_VMA`、`TSBI_RELOCATE_EPC`、`tramp_copy_size` 等），
+  因此与该检出**并非逐字节一致**。升级/校对前须先确认其真实上游来源（可能是更新的上游快照或本地扩展），
+  勿直接以 `97f85e03` 覆盖。
+
+## 协议常量对照（本地 tsbi.h 必须与之一致）
+
+行号对应当前树内 `rvtest_trap_handler.h`（3292 行版本）。
+
+| 常量 | 上游值 | 行号 |
+|------|--------|------|
+| `TSBI_GOTO_MMODE` | 0x00000001 | 199 |
+| `TSBI_GOTO_SMODE` | 0x00000002 | 200 |
+| `TSBI_GOTO_UMODE` | 0x00000003 | 201 |
+| `TSBI_GOTO_VSMODE` | 0x00000004 | 202 |
+| `TSBI_GOTO_VUMODE` | 0x00000005 | 203 |
+| `TSBI_ECALL_TEST` | 0x00000073 | 204 |
+| `TSBI_SFENCE_VMA` | 0x12000073 | 205 |
+| `TSBI_RESERVED_RET` | (-1) | 226 |
+
+CSR_ACCESS 判定规则（`rvtest_trap_handler.h` 190~194 行 dispatch 顺序、220~224 行编码说明）：
+`a0[6:0]==0x73 && a0[14:12]!=0` → CSR_ACCESS；`a0` 即完整 CSR 指令编码。
+
+内存代理编码（权威源：`abstraction.adoc` § T-SBI Calls 表 253~258 行，与 `rvtest_trap_handler.h` 206~211 行、
+本地 `common/tsbi/tsbi.h` 86~91 行一致）：
+`TSBI_LW=0x0005a503`、`TSBI_LWP4=0x0045a503`、`TSBI_LD=0x0005b503`、
+`TSBI_SW=0x00c5a023`、`TSBI_SWP4=0x00c5a223`、`TSBI_SD=0x00c5b023`。
+注：新版 `abstraction.adoc` 已将 store 打印为 `SW a2, 0(a1)`（`0x00c5a023`），与参考实现一致；
+旧文档的 `SW a0, 0(a1)`（`0x00a5a023`）为已修正的上游笔误，本地 `tsbi.h` 一直采用 `a2` 形式。

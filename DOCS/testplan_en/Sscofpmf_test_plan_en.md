@@ -74,9 +74,11 @@ Official repository:
 
 ## Prerequisites and Constraints
 
-### Counter Discovery Strategy
+### Extension Gating and Counter Selection Strategy
 
-Since different implementations support varying numbers of hpmcounters (3–31), test cases employ **dynamic discovery**: in M-mode, attempt to write a non-zero value to `mhpmcounter` and read it back; if the read-back value is zero, the counter is considered unimplemented and the corresponding test is skipped.
+Whether a case skips is decided solely by **compile-time config capability macros**, with no runtime probing: `SSCOFPMF_AVAILABLE` (normalized by `common/capabilities.h` from `SSCOFPMF_SUPPORTED` in `config/<platform>/rvtest_config.h`) determines whether Sscofpmf is implemented, and the whole group TEST_SKIPs when it is not declared; S/U-mode cases are additionally gated by `S_AVAILABLE`/`U_AVAILABLE`. The target `mhpmcounter` uses a fixed index `COFPMF_TEST_COUNTER` (default 3), with `COFPMF_TEST_COUNTER2` (default 4) for multi-counter cases, overridable via `-DCOFPMF_TEST_COUNTER=<n>`; counters are no longer dynamically discovered, and no `scountovf`/counting/WPRI functional probe is performed. The sole exception is COFPMF-RW-10 (iterate all implemented counters): because the counter count is implementation-optional and cannot be expressed in config, it keeps `is_counter_implemented()` to enumerate them one by one.
+
+**Rationale**: runtime capability probing (trap-protected write/read-back, `scountovf`/counting/WPRI functional probes, dynamic counter discovery) silently downgrades "the platform declared the extension in config but implements it non-compliantly" into a SKIP, masking non-compliance; with compile-time gating, a platform that declares support but implements it incorrectly makes the case **fail loudly**, consistent with this document's "if any platform violates the SPEC the case remains FAIL" and the framework convention "detect extension capability via the compile-time `<EXT>_AVAILABLE` gate rather than runtime trap probing".
 
 ### Event Trigger Strategy
 
@@ -124,7 +126,7 @@ If any platform violates the SPEC, the corresponding case remains FAIL, and impl
 
 **Test Scope**: Verify that each xINH bit correctly inhibits or permits event counting in the corresponding privilege mode.
 
-**Prerequisites**: At least one hpmcounter must be confirmed as implemented, and a usable event number must be identified (provided by platform configuration, typically the retired-instructions event).
+**Prerequisites**: gated by the compile-time `SSCOFPMF_AVAILABLE`; the target counter is the fixed `COFPMF_TEST_COUNTER`, and the event number is provided by the platform configuration macro `COFPMF_EVENT_INSTRET` (typically the retired-instructions event).
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
@@ -201,16 +203,11 @@ If any platform violates the SPEC, the corresponding case remains FAIL, and impl
 
 ## Design Points
 
-### 1. Dynamic Counter Discovery
+### 1. Extension Gating and Fixed Counter
 
-Since the number of implemented hpmcounter3–31 CSRs is optional, all test cases must dynamically probe whether the target counter exists before proceeding:
+Whether a case skips is decided by the compile-time `SSCOFPMF_AVAILABLE` (plus the required `S_AVAILABLE`/`U_AVAILABLE`/`H_AVAILABLE`), not by probing the DUT; the counter under test uses the fixed indices `COFPMF_TEST_COUNTER` (default 3) and `COFPMF_TEST_COUNTER2` (default 4), overridable via `-D`. The sole exception is COFPMF-RW-10, whose job is to "iterate all implemented counters and verify OF read/write"; since the counter count is implementation-optional and cannot be expressed in config, it keeps `is_counter_implemented()` to enumerate and skip unimplemented ones.
 
-1. Attempt to write a non-zero value to the target mhpmcounter in M-mode.
-2. Read back the counter.
-3. Restore the original value.
-4. If the read-back is non-zero, the counter is considered implemented; otherwise unimplemented.
-
-If a counter is not implemented, the test case should use `TEST_SKIP()` to skip.
+(The former approach of "dynamically discovering counters + functional probes (`is_counting_functional`/`is_scountovf_functional`/`is_wpri_masked`) then TEST_SKIP" is deprecated: it silently downgrades platform non-compliance into a SKIP.)
 
 ### 2. Event Configuration Strategy
 

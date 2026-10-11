@@ -14,6 +14,10 @@ bool test_fw_noop_01(void)
 {
     TEST_BEGIN("FW-NOOP-01: M->M same-privilege switch");
 
+    /* Establish the M start first: from main()'s S-mode the call below would
+     * be a real ecall-driven raise, the opposite of the no-op under test. */
+    goto_priv(PRIV_M);
+
     /* Should be no-op, no ecall/mret executed */
     goto_priv(PRIV_M);
     TEST_ASSERT_EQ("current_priv should remain PRIV_M", get_current_priv(), PRIV_M);

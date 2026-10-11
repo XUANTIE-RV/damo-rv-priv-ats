@@ -35,6 +35,12 @@ bool test_fw_virt_down_01(void)
 {
     TEST_BEGIN("FW-VIRT-DOWN-01: M->VS current_priv verification");
 
+    /* main() runs in S-mode, so every case in this file raises to M first.
+     * Without it the descent below starts from HS and becomes S->VS, which
+     * FW-VIRT-IND-01 already covers - the M->VS path would go untested. */
+    goto_priv(PRIV_M);
+    TEST_ASSERT_EQ("raised to M before descending", get_current_priv(), PRIV_M);
+
     goto_priv(PRIV_VS);
     unsigned priv = get_current_priv();
     TEST_ASSERT_EQ("current_priv should be PRIV_VS", priv, PRIV_VS);
@@ -46,6 +52,8 @@ bool test_fw_virt_down_01(void)
 bool test_fw_virt_down_02(void)
 {
     TEST_BEGIN("FW-VIRT-DOWN-02: M->VU current_priv verification");
+
+    goto_priv(PRIV_M);
 
     goto_priv(PRIV_VU);
     unsigned priv = get_current_priv();
@@ -67,6 +75,8 @@ bool test_fw_virt_down_03(void)
      * Note: hstatus.SPV is only set when trapping FROM VS/VU-mode TO HS-mode,
      * not when entering VS-mode from M-mode, so we cannot use it for verification.
      */
+    goto_priv(PRIV_M);
+
     goto_priv(PRIV_VS);
     TEST_ASSERT_EQ("current_priv should be PRIV_VS", get_current_priv(), PRIV_VS);
 
@@ -86,6 +96,8 @@ bool test_fw_virt_down_04(void)
      * After mret, MPP is cleared by hardware. We verify the switch
      * succeeded by checking current_priv.
      */
+    goto_priv(PRIV_M);
+
     goto_priv(PRIV_VS);
     goto_priv(PRIV_M);
 
@@ -101,6 +113,8 @@ bool test_fw_virt_down_05(void)
 {
     TEST_BEGIN("FW-VIRT-DOWN-05: M->VU mstatus.MPP=U verification");
 
+    goto_priv(PRIV_M);
+
     goto_priv(PRIV_VU);
     goto_priv(PRIV_M);
 
@@ -115,6 +129,8 @@ bool test_fw_virt_down_05(void)
 bool test_fw_virt_down_06(void)
 {
     TEST_BEGIN("FW-VIRT-DOWN-06: M->VU mstatus.MPV=1 verification");
+
+    goto_priv(PRIV_M);
 
     goto_priv(PRIV_VU);
     TEST_ASSERT_EQ("current_priv should be PRIV_VU", get_current_priv(), PRIV_VU);
@@ -139,6 +155,8 @@ bool test_fw_virt_down_07(void)
      * Note: hstatus.SPV is only set when trapping FROM VS/VU-mode TO HS-mode,
      * not when entering VS-mode from M-mode, so we verify execution instead.
      */
+    goto_priv(PRIV_M);
+
     goto_priv(PRIV_VS);
     TEST_ASSERT_EQ("current_priv should be PRIV_VS", get_current_priv(), PRIV_VS);
 
@@ -174,6 +192,8 @@ bool test_fw_virt_down_09(void)
      * In VU-mode, reading sstatus should trigger virtual-instruction
      * or illegal-instruction exception.
      */
+    goto_priv(PRIV_M);
+
     goto_priv(PRIV_VU);
     PRIV_DO(CSRR(sstatus));
     goto_priv(PRIV_M);

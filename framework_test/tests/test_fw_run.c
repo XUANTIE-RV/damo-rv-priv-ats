@@ -80,6 +80,12 @@ bool test_fw_run_05(void)
 {
     TEST_BEGIN("FW-RUN-05: run_in_priv returns to M-mode");
 
+    /* This case is specifically about returning to an M-mode caller, so it
+     * has to be one.  The S-mode caller is covered implicitly: FW-RUN-01..04
+     * now call run_in_priv from S, and their later assertions only execute
+     * because the return leg put them back there. */
+    goto_priv(PRIV_M);
+
     run_in_priv(PRIV_S, return_magic_fn, 0);
     TEST_ASSERT_EQ("should be back in M-mode", get_current_priv(), PRIV_M);
 
@@ -102,6 +108,10 @@ bool test_fw_run_06(void)
 bool test_fw_run_07(void)
 {
     TEST_BEGIN("FW-RUN-07: run_in_priv M-mode direct call");
+
+    /* The direct-call path only exists for a caller that already holds the
+     * target privilege, so establish M rather than inheriting main()'s S. */
+    goto_priv(PRIV_M);
 
     /*
      * When target priv >= current priv, run_in_priv calls fn directly

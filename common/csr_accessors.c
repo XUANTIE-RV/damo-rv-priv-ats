@@ -6,6 +6,7 @@
 #include "types.h"
 #include "encoding.h"
 #include "csr_accessors.h"
+#include "test_framework.h"   /* run_in_priv / get_current_priv / LOG_E / TSBI_RESERVED_RET */
 
 /* ===================================================================
  * Dynamic CSR read/write
@@ -28,6 +29,21 @@
 
 #define _CSR_WRITE_CASE(addr) \
     case (addr): asm volatile("csrw " CSR_STR(addr) ", %0" :: "r"(val) : "memory"); break;
+
+/* Reports a CSR number absent from the dispatch table (a coverage gap) and
+ * returns the reserved sentinel, so a table miss fails loudly instead of
+ * silently handing back a fabricated 0 (read) or dropping the write. Note the
+ * read-only CSRs (hgeip/time/cycle/instret/scountovf) are deliberately absent
+ * from the WRITE table; a write-to-RO trap stimulus must use bare asm csrw,
+ * which is exactly what this guard now flags instead of silently no-op'ing. */
+static uintptr_t csr_table_miss(uint16_t csr, const char *op)
+{
+    LOG_E("csr_%s: CSR 0x%x is absent from the %s dispatch table -> no-op. "
+          "Add it to csr_accessors.c, or use CSRR/CSRW for a compile-time-fixed "
+          "CSR; a write-to-read-only stimulus must use bare asm csrw.\n",
+          op, csr, op);
+    return TSBI_RESERVED_RET;
+}
 
 /* ===================================================================
  * csr_read - read a CSR by runtime address
@@ -203,6 +219,18 @@ uintptr_t csr_read(uint16_t csr) {
     _CSR_READ_CASE(CSR_MHPMCOUNTERH24) _CSR_READ_CASE(CSR_MHPMCOUNTERH25) _CSR_READ_CASE(CSR_MHPMCOUNTERH26)
     _CSR_READ_CASE(CSR_MHPMCOUNTERH27) _CSR_READ_CASE(CSR_MHPMCOUNTERH28) _CSR_READ_CASE(CSR_MHPMCOUNTERH29)
     _CSR_READ_CASE(CSR_MHPMCOUNTERH30) _CSR_READ_CASE(CSR_MHPMCOUNTERH31)
+
+    /* ----- RV32 high-half mhpmevent registers ----- */
+    _CSR_READ_CASE(CSR_MHPMEVENTH3)  _CSR_READ_CASE(CSR_MHPMEVENTH4)  _CSR_READ_CASE(CSR_MHPMEVENTH5)
+    _CSR_READ_CASE(CSR_MHPMEVENTH6)  _CSR_READ_CASE(CSR_MHPMEVENTH7)  _CSR_READ_CASE(CSR_MHPMEVENTH8)
+    _CSR_READ_CASE(CSR_MHPMEVENTH9)  _CSR_READ_CASE(CSR_MHPMEVENTH10) _CSR_READ_CASE(CSR_MHPMEVENTH11)
+    _CSR_READ_CASE(CSR_MHPMEVENTH12) _CSR_READ_CASE(CSR_MHPMEVENTH13) _CSR_READ_CASE(CSR_MHPMEVENTH14)
+    _CSR_READ_CASE(CSR_MHPMEVENTH15) _CSR_READ_CASE(CSR_MHPMEVENTH16) _CSR_READ_CASE(CSR_MHPMEVENTH17)
+    _CSR_READ_CASE(CSR_MHPMEVENTH18) _CSR_READ_CASE(CSR_MHPMEVENTH19) _CSR_READ_CASE(CSR_MHPMEVENTH20)
+    _CSR_READ_CASE(CSR_MHPMEVENTH21) _CSR_READ_CASE(CSR_MHPMEVENTH22) _CSR_READ_CASE(CSR_MHPMEVENTH23)
+    _CSR_READ_CASE(CSR_MHPMEVENTH24) _CSR_READ_CASE(CSR_MHPMEVENTH25) _CSR_READ_CASE(CSR_MHPMEVENTH26)
+    _CSR_READ_CASE(CSR_MHPMEVENTH27) _CSR_READ_CASE(CSR_MHPMEVENTH28) _CSR_READ_CASE(CSR_MHPMEVENTH29)
+    _CSR_READ_CASE(CSR_MHPMEVENTH30) _CSR_READ_CASE(CSR_MHPMEVENTH31)
 #endif
 
     /* ----- cycle / time / instret (read-only) ----- */
@@ -259,7 +287,7 @@ uintptr_t csr_read(uint16_t csr) {
 #endif /* ENABLE_HYP */
 
     default:
-        break;
+        return csr_table_miss(csr, "read");
     }
 
     return val;
@@ -437,6 +465,18 @@ void csr_write(uint16_t csr, uintptr_t val) {
     _CSR_WRITE_CASE(CSR_MHPMCOUNTERH24) _CSR_WRITE_CASE(CSR_MHPMCOUNTERH25) _CSR_WRITE_CASE(CSR_MHPMCOUNTERH26)
     _CSR_WRITE_CASE(CSR_MHPMCOUNTERH27) _CSR_WRITE_CASE(CSR_MHPMCOUNTERH28) _CSR_WRITE_CASE(CSR_MHPMCOUNTERH29)
     _CSR_WRITE_CASE(CSR_MHPMCOUNTERH30) _CSR_WRITE_CASE(CSR_MHPMCOUNTERH31)
+
+    /* ----- RV32 high-half mhpmevent registers ----- */
+    _CSR_WRITE_CASE(CSR_MHPMEVENTH3)  _CSR_WRITE_CASE(CSR_MHPMEVENTH4)  _CSR_WRITE_CASE(CSR_MHPMEVENTH5)
+    _CSR_WRITE_CASE(CSR_MHPMEVENTH6)  _CSR_WRITE_CASE(CSR_MHPMEVENTH7)  _CSR_WRITE_CASE(CSR_MHPMEVENTH8)
+    _CSR_WRITE_CASE(CSR_MHPMEVENTH9)  _CSR_WRITE_CASE(CSR_MHPMEVENTH10) _CSR_WRITE_CASE(CSR_MHPMEVENTH11)
+    _CSR_WRITE_CASE(CSR_MHPMEVENTH12) _CSR_WRITE_CASE(CSR_MHPMEVENTH13) _CSR_WRITE_CASE(CSR_MHPMEVENTH14)
+    _CSR_WRITE_CASE(CSR_MHPMEVENTH15) _CSR_WRITE_CASE(CSR_MHPMEVENTH16) _CSR_WRITE_CASE(CSR_MHPMEVENTH17)
+    _CSR_WRITE_CASE(CSR_MHPMEVENTH18) _CSR_WRITE_CASE(CSR_MHPMEVENTH19) _CSR_WRITE_CASE(CSR_MHPMEVENTH20)
+    _CSR_WRITE_CASE(CSR_MHPMEVENTH21) _CSR_WRITE_CASE(CSR_MHPMEVENTH22) _CSR_WRITE_CASE(CSR_MHPMEVENTH23)
+    _CSR_WRITE_CASE(CSR_MHPMEVENTH24) _CSR_WRITE_CASE(CSR_MHPMEVENTH25) _CSR_WRITE_CASE(CSR_MHPMEVENTH26)
+    _CSR_WRITE_CASE(CSR_MHPMEVENTH27) _CSR_WRITE_CASE(CSR_MHPMEVENTH28) _CSR_WRITE_CASE(CSR_MHPMEVENTH29)
+    _CSR_WRITE_CASE(CSR_MHPMEVENTH30) _CSR_WRITE_CASE(CSR_MHPMEVENTH31)
 #endif
 
 #ifdef ENABLE_HYP
@@ -472,6 +512,73 @@ void csr_write(uint16_t csr, uintptr_t val) {
 #endif /* ENABLE_HYP */
 
     default:
-        break;
+        (void)csr_table_miss(csr, "write");
+        return;
     }
+}
+
+/* ===================================================================
+ * Trap-state / M-level CSR access via a single M-mode excursion
+ *
+ * A trap-state CSR (mtval/mepc/mcause/mtval2/mtinst/... see
+ * tsbi_csr_is_trap_state()) cannot be read through the T-SBI proxy: the proxy
+ * is an ecall, and the trap entry it causes overwrites the register before the
+ * handler can read it.  tsbi_csr_* refuses those; these accessors run the access
+ * inside one run_in_priv(PRIV_M) excursion instead, so a write followed by a
+ * read-back has no intervening trap and returns the value just written.
+ *
+ * Reading the AMBIENT value of a trap-state CSR is deliberately NOT offered:
+ * the excursion's own entry trap destroys it first.  Use trap_get_cause()/
+ * epc()/tval() for what a trap recorded.
+ * =================================================================== */
+
+/* tsbi_csr_* guard back-end: report a refused trap-state / return-path proxy and
+ * hand back the reserved sentinel so the caller's assertion fails loudly
+ * instead of silently comparing a garbage value. */
+uintptr_t tsbi_trap_state_guard(uint16_t csr, const char *op)
+{
+    LOG_E("tsbi_csr_%s: CSR 0x%x is trap-state (or a return-path mstatus/sstatus "
+          "field); the T-SBI proxy is itself an ecall trap that clobbers it. "
+          "Use trap_get_cause/epc/tval() for a recorded value, or "
+          "mcsr_write()/mcsr_write_readback() to set it.\n", op, csr);
+    return TSBI_RESERVED_RET;
+}
+
+static uint16_t  _mcsr_csr;
+static uintptr_t _mcsr_val;
+
+static uintptr_t _mcsr_write_fn(uintptr_t unused)
+{
+    (void)unused;
+    csr_write(_mcsr_csr, _mcsr_val);   /* in M-mode: direct, no proxy */
+    return 0;
+}
+
+static uintptr_t _mcsr_write_readback_fn(uintptr_t unused)
+{
+    (void)unused;
+    csr_write(_mcsr_csr, _mcsr_val);
+    return csr_read(_mcsr_csr);        /* same excursion, no intervening trap */
+}
+
+void mcsr_write(uint16_t csr, uintptr_t val)
+{
+    if (get_current_priv() == PRIV_M) {
+        csr_write(csr, val);
+        return;
+    }
+    _mcsr_csr = csr;
+    _mcsr_val = val;
+    (void)run_in_priv(PRIV_M, _mcsr_write_fn, 0);
+}
+
+uintptr_t mcsr_write_readback(uint16_t csr, uintptr_t val)
+{
+    if (get_current_priv() == PRIV_M) {
+        csr_write(csr, val);
+        return csr_read(csr);
+    }
+    _mcsr_csr = csr;
+    _mcsr_val = val;
+    return run_in_priv(PRIV_M, _mcsr_write_readback_fn, 0);
 }
