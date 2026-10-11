@@ -161,4 +161,58 @@ static uintptr_t vsmode_ebreak(uintptr_t dummy) {
     return 0;
 }
 
+/* ===================================================================
+ * PMP configuration wrappers (M-mode excursions)
+ *
+ * The PMP CSRs are M-level and common/pmp/pmp_cfg.c accesses them directly,
+ * but under the T-SBI S-mode-normal boot this suite's body runs in S(HS)-mode,
+ * where every such access raises illegal-instruction. The shared layer is left
+ * untouched; the two operations this suite needs are wrapped instead.
+ *
+ * Both the whole setup sequence and the whole teardown sequence have to live
+ * in ONE excursion each. With no matching PMP entry the implicit rule denies
+ * every S/U/V access (see hyp_pmp_open_all() in common/hyp/hyp_reset.c), so
+ * returning to S(HS)-mode between pmp_clear_all() and installing the catch-all
+ * entry would fault on the very instruction the mret lands on. The teardown
+ * therefore reinstalls the same wide-open entry 0 that hyp_reset_state() keeps
+ * as the framework baseline instead of leaving the table empty.
+ *
+ * PMP configuration is per-hart and survives the privilege switch, so entries
+ * written in M-mode still govern the VS-mode accesses the tests drive next.
+ * =================================================================== */
+static uintptr_t _pmp_m_pa;
+static uintptr_t _pmp_m_size;
+static uint8_t   _pmp_m_perms;
+
+/* Deny `perms` on one page and allow everything else. */
+static uintptr_t _pmp_deny_page_fn(uintptr_t arg) {
+    (void)arg;
+    pmp_clear_all();
+    pmp_entry_t deny  = PMP_ENTRY_NAPOT(_pmp_m_pa, _pmp_m_size, _pmp_m_perms);
+    pmp_set_entry(0, &deny);
+    pmp_entry_t allow = PMP_ENTRY_FULL(PMP_RWX);
+    pmp_set_entry(1, &allow);
+    return 0;
+}
+
+/* Drop the deny window and restore the wide-open baseline entry. */
+static uintptr_t _pmp_restore_open_fn(uintptr_t arg) {
+    (void)arg;
+    pmp_clear_all();
+    pmp_entry_t allow = PMP_ENTRY_FULL(PMP_RWX);
+    pmp_set_entry(0, &allow);
+    return 0;
+}
+
+static inline void pmp_deny_page_m(uintptr_t pa, uintptr_t size, uint8_t perms) {
+    _pmp_m_pa    = pa;
+    _pmp_m_size  = size;
+    _pmp_m_perms = perms;
+    (void)run_in_priv(PRIV_M, _pmp_deny_page_fn, 0);
+}
+
+static inline void pmp_restore_open_m(void) {
+    (void)run_in_priv(PRIV_M, _pmp_restore_open_fn, 0);
+}
+
 #endif /* SHVSTVALA_HELPERS_H */

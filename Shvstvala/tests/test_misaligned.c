@@ -24,10 +24,10 @@ bool test_shvstvala_ima_01(void) {
 
     /* With C extension (IALIGN=16), JALR clears bit 0 of target address,
      * making it always 2-byte aligned. Instruction-address-misaligned is
-     * impossible in this configuration. Detect C extension via misa. */
-    uintptr_t misa;
-    asm volatile ("csrr %0, misa" : "=r"(misa));
-    if (misa & (1UL << 2)) {  /* bit 2 = 'C' extension */
+     * impossible in this configuration. C availability is a build property of
+     * the -march this suite is compiled for (capabilities.h): misa is M-level
+     * and cannot be read from the S(HS)-mode the suite body runs in. */
+    if (C_AVAILABLE) {  /* C extension present */
         TEST_SKIP("C extension present: JALR always clears bit 0, "
                   "instruction misaligned impossible");
     }
