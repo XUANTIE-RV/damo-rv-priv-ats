@@ -34,6 +34,7 @@
 #include "test_framework.h"
 #include "hyp/hyp_defs.h"
 #include "hyp/hyp_reset.h"
+#include "hyp/hyp_csr.h"
 
 extern test_func_t _test_table[];
 extern test_func_t _test_table_end[];
@@ -70,6 +71,13 @@ int main(void)
     if (H_AVAILABLE)
     {
         hyp_reset_state();
+
+        /* These suites read/write henvcfg from HS-mode (ADUE/FIOM cases).
+         * With Smstateen implemented, mstateen0.ENVCFG=0 (the reset default)
+         * makes any henvcfg access from below M trap as illegal-instruction.
+         * Open the gate once here; this suite does not test the stateen gate
+         * itself, so the global baseline stays untouched (contained). */
+        hyp_enable_envcfg_access();
     }
 
     for (unsigned int i = 0; i < test_count; i++)

@@ -77,9 +77,8 @@ static void vs_exc_handler(void)
 /* ===================================================================
  * Helper: set up VS exception test infrastructure.
  *
- * Configures medeleg/hedeleg for the given exception mask, installs
- * the VS exception handler at vstvec, and enables MPIE for interrupt
- * delivery.
+ * Configures medeleg/hedeleg for the given exception mask and installs
+ * the VS exception handler at vstvec.
  * =================================================================== */
 static void setup_vs_exc_test(uintptr_t exc_mask)
 {
@@ -92,11 +91,13 @@ static void setup_vs_exc_test(uintptr_t exc_mask)
     /* Install VS-mode trap handler (Direct mode) */
     vs_trap_setup_direct((uintptr_t)vs_exc_handler);
 
-    /* Set mstatus.MPIE=1 so MIE=1 after mret into VS-mode */
-    uintptr_t mstatus_val;
-    asm volatile ("csrr %0, mstatus" : "=r"(mstatus_val));
-    mstatus_val |= (1UL << 7);
-    asm volatile ("csrw mstatus, %0" :: "r"(mstatus_val) : "memory");
+    /* (removed) The old "set mstatus.MPIE=1 so MIE=1 after mret into VS-mode"
+     * is obsolete under S-mode-normal: mstatus is M-level (the raw csrr traps
+     * from S), MPIE is a return-path bit the tsbi_csr_ guard refuses to proxy, and
+     * every framework excursion re-enters VS via mret (MPIE<-1) anyway. It is
+     * also unnecessary -- these tests route an EXCEPTION into VS via
+     * hedeleg+vstvec; exception delivery does not depend on mstatus.MIE (which
+     * only gates interrupts while executing in M-mode). */
 }
 
 /* ------------------------------------------------------------------
@@ -134,11 +135,12 @@ bool hedeleg_default_trap_to_hs(void)
      * means it stays at M-level). */
     hedeleg_write(0x0);
 
-    /* Disable MIE to prevent spurious interrupts from prior test state */
-    uintptr_t mstatus_val;
-    asm volatile ("csrr %0, mstatus" : "=r"(mstatus_val));
-    mstatus_val &= ~(1UL << 3);  /* Clear MIE */
-    asm volatile ("csrw mstatus, %0" :: "r"(mstatus_val) : "memory");
+    /* (removed) The old "clear mstatus.MIE to prevent spurious interrupts" is
+     * obsolete under S-mode-normal: mstatus is M-level (the raw csrr traps from
+     * S) and MIE is a return-path bit the tsbi_csr_ guard refuses to proxy. It is
+     * also unnecessary -- mstatus.MIE only gates interrupts while executing in
+     * M-mode, and the framework controls the interrupt state across the
+     * run_in_vs_mode excursion. */
 
     trap_expect_begin();
     run_in_vs_mode(vs_exec_ecall, 0);
@@ -176,6 +178,26 @@ bool hedeleg_breakpoint_deleg(void)
     HYP_TEST_END();
 }
 
+/* DELEG-07 stimulus: a plain guest ecall, hardware-delegated to VS and
+ * recorded by vs_exc_handler. Deliberately does NOT call tsbi_arm_raw_ecall()
+ * the way the shared vs_exec_ecall does: that arms a consume-once escape flag
+ * cleared only by the M/HS handler's P1 stage, but here the ecall is delegated
+ * straight to the custom VS handler, which never clears it. The stale flag
+ * would then make the M handler treat run_in_vu_mode's own return ecall (the
+ * T-SBI GOTO) as a raw stimulus and skip its dispatch -- a fatal unexpected
+ * trap. The custom VS handler records vscause directly, so no escape arming is
+ * needed here. */
+static uintptr_t deleg_guest_ecall(uintptr_t arg)
+{
+    (void)arg;
+    /* Force a0 to the explicit invalid-opcode sentinel (rather than relying
+     * on an incidental a0 value) before issuing the stimulus ecall. */
+    asm volatile ("li a0, %0\n\t"
+                  "ecall"
+                  :: "i"((uintptr_t)0xFFUL) : "a0", "memory");
+    return 0;
+}
+
 /* ------------------------------------------------------------------
  * DELEG-07: hedeleg delegates ecall-from-VU to VS-mode
  * ------------------------------------------------------------------ */
@@ -186,8 +208,18 @@ bool hedeleg_ecall_vu_deleg(void)
 
     setup_vs_exc_test(1UL << 8);
 
-    /* VU-mode ecall with delegation -> trap routed to VS handler */
-    run_in_vu_mode(vs_exec_ecall, 0);
+    /* Enter VU with the one-way goto_priv() instead of run_in_vu_mode().
+     * run_in_vu_mode() clears hedeleg[8] before mret so that its VU
+     * trampoline's return ecall reaches M -- which would erase the
+     * hedeleg[8]=1 delegation configured above. goto_priv(PRIV_VU) switches
+     * privilege via an ecall-from-S (cause 9 -> M) and never touches
+     * hedeleg, so the delegation stays in effect and the stimulus ecall
+     * below is delegated to VS. The custom VS handler records vscause and
+     * forces vsstatus.SPP=1 so its sret resumes execution in VS-mode; the
+     * follow-up goto_priv(PRIV_S) then returns to HS. */
+    goto_priv(PRIV_VU);
+    deleg_guest_ecall(0);
+    goto_priv(PRIV_S);
 
     TEST_ASSERT("VS trap was triggered", g_vs_exc_triggered);
     TEST_ASSERT_EQ("vscause == 8 (ecall from VU-mode)",

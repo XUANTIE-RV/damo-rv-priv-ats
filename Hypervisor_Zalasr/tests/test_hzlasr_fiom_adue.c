@@ -213,7 +213,7 @@ bool test_hzlasr_33_adue1_hw_update(void)
     hzlasr_store_le32(va, 0x00005678u);
 
     ts2_enable_adue();
-    bool adue_on = ((menvcfg_read() & MENVCFG_ADUE) != 0) &&
+    bool adue_on = ((tsbi_csr_read(CSR_MENVCFG) & MENVCFG_ADUE) != 0) &&
                    ((henvcfg_read() & HENVCFG_ADUE) != 0);
     if (!adue_on) {
         ts2_disable_adue();

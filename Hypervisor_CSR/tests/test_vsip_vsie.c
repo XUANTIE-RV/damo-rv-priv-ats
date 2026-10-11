@@ -62,8 +62,8 @@ bool test_vsie_01(void) {
 
     /* --- Part B: sie reads vsie (enable verification) --- */
     /* Set hie.VSSIE -> aliased to vsie.SSIE when delegated. */
-    asm volatile("csrw " CSR_STR(CSR_HIE) ", zero");
-    asm volatile("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(HIE_VSSIE));
+    CSRW(CSR_HIE, 0);
+    CSRS(CSR_HIE, HIE_VSSIE);
 
     /* VS-mode reads sie -> substituted to vsie in V=1.
      * Same QEMU limitation as Part A applies here. */
@@ -72,7 +72,7 @@ bool test_vsie_01(void) {
                 (sie_val & SIP_SSIP) != 0);
 
     /* Cleanup. */
-    asm volatile("csrw " CSR_STR(CSR_HIE) ", zero");
+    CSRW(CSR_HIE, 0);
     hideleg_write(0);
 
     HYP_TEST_END();
@@ -249,19 +249,19 @@ bool test_vsie_08(void) {
     hideleg_write(HIDELEG_VSEI);
 
     /* Clear hie.VSEIE first. */
-    asm volatile("csrc " CSR_STR(CSR_HIE) ", %0" :: "r"(HIE_VSEIE));
+    CSRC(CSR_HIE, HIE_VSEIE);
 
     /* VS-mode writes sie.SEIE=1 (substituted to vsie, aliased to hie.VSEIE). */
     run_in_vs_mode(vs_write_sie, SIP_SEIP);
 
     /* HS-mode reads hie.VSEIE -> should be set. */
     uintptr_t hie_val;
-    asm volatile("csrr %0, " CSR_STR(CSR_HIE) : "=r"(hie_val));
+    hie_val = CSRR(CSR_HIE);
     TEST_ASSERT("hie.VSEIE=1 after VS writes sie.SEIE=1",
                 (hie_val & HIE_VSEIE) != 0);
 
     /* Cleanup. */
-    asm volatile("csrc " CSR_STR(CSR_HIE) ", %0" :: "r"(HIE_VSEIE));
+    CSRC(CSR_HIE, HIE_VSEIE);
     hideleg_write(0);
 
     HYP_TEST_END();
@@ -278,19 +278,19 @@ bool test_vsie_09(void) {
     hideleg_write(HIDELEG_VSTI);
 
     /* Clear hie.VSTIE first. */
-    asm volatile("csrc " CSR_STR(CSR_HIE) ", %0" :: "r"(HIE_VSTIE));
+    CSRC(CSR_HIE, HIE_VSTIE);
 
     /* VS-mode writes sie.STIE=1. */
     run_in_vs_mode(vs_write_sie, SIP_STIP);
 
     /* HS-mode reads hie.VSTIE -> should be set. */
     uintptr_t hie_val;
-    asm volatile("csrr %0, " CSR_STR(CSR_HIE) : "=r"(hie_val));
+    hie_val = CSRR(CSR_HIE);
     TEST_ASSERT("hie.VSTIE=1 after VS writes sie.STIE=1",
                 (hie_val & HIE_VSTIE) != 0);
 
     /* Cleanup. */
-    asm volatile("csrc " CSR_STR(CSR_HIE) ", %0" :: "r"(HIE_VSTIE));
+    CSRC(CSR_HIE, HIE_VSTIE);
     hideleg_write(0);
 
     HYP_TEST_END();
@@ -307,19 +307,19 @@ bool test_vsie_10(void) {
     hideleg_write(HIDELEG_VSSI);
 
     /* Clear hie.VSSIE first. */
-    asm volatile("csrc " CSR_STR(CSR_HIE) ", %0" :: "r"(HIE_VSSIE));
+    CSRC(CSR_HIE, HIE_VSSIE);
 
     /* VS-mode writes sie.SSIE=1. */
     run_in_vs_mode(vs_write_sie, SIP_SSIP);
 
     /* HS-mode reads hie.VSSIE -> should be set. */
     uintptr_t hie_val;
-    asm volatile("csrr %0, " CSR_STR(CSR_HIE) : "=r"(hie_val));
+    hie_val = CSRR(CSR_HIE);
     TEST_ASSERT("hie.VSSIE=1 after VS writes sie.SSIE=1",
                 (hie_val & HIE_VSSIE) != 0);
 
     /* Cleanup. */
-    asm volatile ("csrc " CSR_STR(CSR_HIE) ", %0" :: "r"(HIE_VSSIE));
+    CSRC(CSR_HIE, HIE_VSSIE);
     hideleg_write(0);
 
     HYP_TEST_END();
@@ -347,31 +347,32 @@ bool test_vsie_10(void) {
 static void neutralize_vs_int_sources(void) {
     /* 1. Clear mideleg for S-level interrupt delegation.
      *    Prevents VSTIP/VSSIP/VSEIP (via hip->mip chain) from being
-     *    forwarded to S-mode when entering VS-mode. */
-    uintptr_t mideleg;
-    asm volatile ("csrr %0, " CSR_STR(CSR_MIDELEG) : "=r"(mideleg));
-    mideleg &= ~((1UL << 5) | (1UL << 9) | (1UL << 1));
-    asm volatile ("csrw " CSR_STR(CSR_MIDELEG) ", %0" :: "r"(mideleg));
+     *    forwarded to S-mode when entering VS-mode. mideleg is M-level
+     *    config; clear the bits via the adaptive wrapper (proxies to M
+     *    from S(HS)-mode). */
+    tsbi_csr_clear(CSR_MIDELEG, (1UL << 5) | (1UL << 9) | (1UL << 1));
 
     /* 2. Clear mie.STIE/SEIE/SSIE — disable M-mode S-level interrupt
      *    enables. Even if mip.STIP remains pending, the interrupt
-     *    cannot fire without mie enable. */
-    uintptr_t mie;
-    asm volatile ("csrr %0, mie" : "=r"(mie));
-    mie &= ~((1UL << 5) | (1UL << 9) | (1UL << 1));
-    asm volatile ("csrw mie, %0" :: "r"(mie));
+     *    cannot fire without mie enable. mie is M-level config. */
+    tsbi_csr_clear(CSR_MIE, (1UL << 5) | (1UL << 9) | (1UL << 1));
 
-    /* 3. Clear mstatus.MPIE so MIE=0 after mret into VS-mode. */
-    uintptr_t mstatus;
-    asm volatile ("csrr %0, mstatus" : "=r"(mstatus));
-    mstatus &= ~(1UL << 7);  /* clear MPIE */
-    asm volatile ("csrw mstatus, %0" :: "r"(mstatus));
+    /* 3. (removed) The old code cleared mstatus.MPIE so that "MIE=0 after
+     *    mret into VS-mode". Under the S-mode-normal + T-SBI model this is
+     *    both unimplementable and unnecessary. Unimplementable: MPIE is a
+     *    return-path bit the tsbi_csr_ guard refuses to proxy, and every framework
+     *    excursion re-enters via mret (which sets MPIE<-1). Unnecessary:
+     *    mstatus.MIE only gates interrupts while executing IN M-mode; in
+     *    VS-mode (privilege < M) M-interrupts are always globally enabled, so
+     *    MIE=0 never quiesced the guest. The real quiescing is steps 1/2/4/5
+     *    (mideleg, mie, hvip, vstimecmp); VS-level delivery is gated by
+     *    vsstatus.SIE, which the guest itself owns. */
 
     /* 4. Clear all hvip bits (removes software-injected pending). */
-    asm volatile ("csrw " CSR_STR(CSR_HVIP) ", zero");
+    CSRW(CSR_HVIP, 0);
 
     /* 5. Set vstimecmp (0x24D) to max to prevent VSTIP from timer. */
-    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"((uintptr_t)-1));
+    CSRW(CSR_VSTIMECMP, (uintptr_t)-1);
 
     /* 6. Verify VSTIP cleared in hip. If still pending (Spike timer
      *    quirk), poll with timeout. The re-write inside the loop
@@ -379,9 +380,9 @@ static void neutralize_vs_int_sources(void) {
     uintptr_t hip_val;
     int retry = 10000;
     do {
-        asm volatile ("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip_val));
+        hip_val = CSRR(CSR_HIP);
         if (!(hip_val & (1UL << 6))) break;
-        asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"((uintptr_t)-1));
+        CSRW(CSR_VSTIMECMP, (uintptr_t)-1);
     } while (--retry > 0);
 }
 
@@ -398,7 +399,7 @@ bool test_vsie_11(void) {
     neutralize_vs_int_sources();
 
     /* Set hie.VSEIE so the backing register has the bit set. */
-    asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(HIE_VSEIE));
+    CSRS(CSR_HIE, HIE_VSEIE);
 
     /* VS-mode reads sie.SEIE (bit 9) -> must be 0. */
     uintptr_t sie_val = run_in_vs_mode(vs_read_sie, 0);
@@ -406,7 +407,7 @@ bool test_vsie_11(void) {
                 (sie_val & SIP_SEIP) == 0);
 
     /* Cleanup. */
-    asm volatile ("csrc " CSR_STR(CSR_HIE) ", %0" :: "r"(HIE_VSEIE));
+    CSRC(CSR_HIE, HIE_VSEIE);
 
     HYP_TEST_END();
 }
@@ -429,7 +430,7 @@ bool test_vsie_12(void) {
     hideleg_write(0);
 
     /* Set hie.VSTIE so the backing register has the bit set. */
-    asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(HIE_VSTIE));
+    CSRS(CSR_HIE, HIE_VSTIE);
 
     /* M-mode reads vsie directly (CSR 0x204).
      * vsie.STIE (bit 5) must be 0 when hideleg[6]=0. */
@@ -438,7 +439,7 @@ bool test_vsie_12(void) {
                 (vsie_val & SIP_STIP) == 0);
 
     /* Cleanup. */
-    asm volatile ("csrc " CSR_STR(CSR_HIE) ", %0" :: "r"(HIE_VSTIE));
+    CSRC(CSR_HIE, HIE_VSTIE);
 
     HYP_TEST_END();
 }
@@ -454,7 +455,7 @@ bool test_vsie_13(void) {
     neutralize_vs_int_sources();
 
     /* Set hie.VSSIE. */
-    asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(HIE_VSSIE));
+    CSRS(CSR_HIE, HIE_VSSIE);
 
     /* VS-mode reads sie.SSIE (bit 1) -> must be 0. */
     uintptr_t sie_val = run_in_vs_mode(vs_read_sie, 0);
@@ -462,7 +463,7 @@ bool test_vsie_13(void) {
                 (sie_val & SIP_SSIP) == 0);
 
     /* Cleanup. */
-    asm volatile ("csrc " CSR_STR(CSR_HIE) ", %0" :: "r"(HIE_VSSIE));
+    CSRC(CSR_HIE, HIE_VSSIE);
 
     HYP_TEST_END();
 }
@@ -480,14 +481,14 @@ bool test_vsie_14(void) {
     neutralize_vs_int_sources();
 
     /* Clear hie first. */
-    asm volatile ("csrw " CSR_STR(CSR_HIE) ", zero");
+    CSRW(CSR_HIE, 0);
 
     /* VS-mode writes sie.SEIE=1 -> should be silently ignored. */
     run_in_vs_mode(vs_write_sie, SIP_SEIP);
 
     /* HS-mode reads hie.VSEIE -> must remain 0. */
     uintptr_t hie_val;
-    asm volatile ("csrr %0, " CSR_STR(CSR_HIE) : "=r"(hie_val));
+    hie_val = CSRR(CSR_HIE);
     TEST_ASSERT("hie.VSEIE=0 after VS write sie.SEIE with hideleg[10]=0",
                 (hie_val & HIE_VSEIE) == 0);
 
@@ -503,12 +504,12 @@ bool test_vsie_15(void) {
 
     hideleg_write(0);
     neutralize_vs_int_sources();
-    asm volatile ("csrw " CSR_STR(CSR_HIE) ", zero");
+    CSRW(CSR_HIE, 0);
 
     run_in_vs_mode(vs_write_sie, SIP_STIP);
 
     uintptr_t hie_val;
-    asm volatile ("csrr %0, " CSR_STR(CSR_HIE) : "=r"(hie_val));
+    hie_val = CSRR(CSR_HIE);
     TEST_ASSERT("hie.VSTIE=0 after VS write sie.STIE with hideleg[6]=0",
                 (hie_val & HIE_VSTIE) == 0);
 
@@ -524,12 +525,12 @@ bool test_vsie_16(void) {
 
     hideleg_write(0);
     neutralize_vs_int_sources();
-    asm volatile ("csrw " CSR_STR(CSR_HIE) ", zero");
+    CSRW(CSR_HIE, 0);
 
     run_in_vs_mode(vs_write_sie, SIP_SSIP);
 
     uintptr_t hie_val;
-    asm volatile ("csrr %0, " CSR_STR(CSR_HIE) : "=r"(hie_val));
+    hie_val = CSRR(CSR_HIE);
     TEST_ASSERT("hie.VSSIE=0 after VS write sie.SSIE with hideleg[2]=0",
                 (hie_val & HIE_VSSIE) == 0);
 

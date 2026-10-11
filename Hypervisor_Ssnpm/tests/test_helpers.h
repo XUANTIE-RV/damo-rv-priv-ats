@@ -21,6 +21,7 @@
 #include "test_framework.h"
 #include "encoding.h"
 #include "hyp/two_stage_helpers.h"
+#include "hyp/hyp_test_helpers.h"
 #include "pm/pm_cfg.h"
 #include "pm/pm_addr.h"
 

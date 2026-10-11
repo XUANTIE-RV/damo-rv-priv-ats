@@ -273,7 +273,7 @@ bool test_hzabha_20_adue_write_pseudo(void)
     ts2_g_override_4k(&ctx, pt_gpa, PTE_V | PTE_R | PTE_U | PTE_A);  /* no W */
 
     ts2_enable_adue();
-    bool adue_on = ((menvcfg_read() & MENVCFG_ADUE) != 0) &&
+    bool adue_on = ((tsbi_csr_read(CSR_MENVCFG) & MENVCFG_ADUE) != 0) &&
                    ((henvcfg_read() & HENVCFG_ADUE) != 0);
     if (!adue_on) {
         ts2_disable_adue();

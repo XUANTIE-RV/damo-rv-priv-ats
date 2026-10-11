@@ -39,7 +39,6 @@ bool test_hcfi_lp_25(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     uint32_t *code = get_cfi_code_buf();
     emit_lpad(code);
@@ -52,7 +51,6 @@ bool test_hcfi_lp_25(void) {
     TEST_ASSERT("legal indirect call to LPAD succeeds",
                 result == 0);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -74,7 +72,6 @@ bool test_hcfi_lp_26(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     uint32_t *code = get_cfi_code_buf();
     emit_nop(code);
@@ -89,7 +86,6 @@ bool test_hcfi_lp_26(void) {
     TEST_ASSERT_EQ("tval = landing pad fault (2)",
                    trap_get_tval(), (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -111,7 +107,6 @@ bool test_hcfi_lp_27(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     uint32_t *code = get_cfi_code_buf();
     emit_lpad(code);
@@ -124,7 +119,6 @@ bool test_hcfi_lp_27(void) {
     TEST_ASSERT("legal indirect jump to LPAD succeeds",
                 result == 0);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -146,7 +140,6 @@ bool test_hcfi_lp_28(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     uint32_t *code = get_cfi_code_buf();
     emit_nop(code);
@@ -161,7 +154,6 @@ bool test_hcfi_lp_28(void) {
     TEST_ASSERT_EQ("tval = landing pad fault (2)",
                    trap_get_tval(), (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -187,7 +179,6 @@ bool test_hcfi_lp_29(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* Jump to an unmapped address. The JALR sets ELP=LP_EXPECTED, but
      * the instruction fetch fault (page/access fault) has higher
@@ -205,7 +196,6 @@ bool test_hcfi_lp_29(void) {
     TEST_ASSERT("instruction access/page fault (not software-check)",
                 result != CAUSE_SOFTWARE_CHECK);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -231,7 +221,6 @@ bool test_hcfi_lp_30(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* Prepare code with an illegal instruction (not LPAD) */
     uint32_t *code = get_cfi_code_buf();
@@ -251,7 +240,6 @@ bool test_hcfi_lp_30(void) {
     TEST_ASSERT_EQ("software-check (not illegal-instruction)",
                    result, (uintptr_t)CAUSE_SOFTWARE_CHECK);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -289,11 +277,10 @@ bool test_hcfi_lp_31(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
     setup_deleg_to_hs(BIT(CAUSE_SOFTWARE_CHECK));
 
     /* Clear mstatus.SPELP */
-    asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_SPELP_BIT) : "memory");
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_SPELP_BIT);
 
     uint32_t *code = get_cfi_code_buf();
     emit_nop(code);
@@ -321,8 +308,7 @@ bool test_hcfi_lp_31(void) {
     TEST_ASSERT("SPELP saved ELP=LP_EXPECTED at trap entry",
                 spelp == 1);
 
-    asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_SPELP_BIT) : "memory");
-    mseccfg_clear(MSECCFG_MLPE);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_SPELP_BIT);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
@@ -348,7 +334,6 @@ bool test_hcfi_lp_32(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     uint32_t *code = get_cfi_code_buf();
     emit_nop(code);
@@ -364,7 +349,6 @@ bool test_hcfi_lp_32(void) {
     TEST_ASSERT_EQ("tval = landing pad fault (2)",
                    trap_get_tval(), (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -389,7 +373,6 @@ bool test_hcfi_lp_33(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     uint32_t *code = get_cfi_code_buf();
     emit_nop(code);
@@ -405,7 +388,6 @@ bool test_hcfi_lp_33(void) {
     TEST_ASSERT_EQ("tval = landing pad fault (2)",
                    trap_get_tval(), (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();

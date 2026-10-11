@@ -53,24 +53,45 @@ extern char  __cfi_test_code_end[];
  * Note: menvcfg_read/write, henvcfg_read/write, hedeleg_read/write,
  * hstatus_read/write are provided by hyp_csr.h. Only define helpers
  * not already in the framework.
+ *
+ * mseccfg is M-level. Under the S-mode-normal (T-SBI) execution model the
+ * test body runs in S(HS)-mode, where a bare csrr/csrw/csrs/csrc mseccfg
+ * raises illegal-instruction, so these go through the tsbi_csr_* proxy. The
+ * same applies to the mstatus ELP bits and to medeleg (see the delegation
+ * helpers at the bottom of this file, which use the M-safe tsbi_deleg_or /
+ * tsbi_deleg_clear primitives).
+ *
+ * mseccfg.MLPE MUST STAY 0 in this suite. MLPE turns on forward-edge CFI for
+ * M-mode itself, and no case here asserts M-mode landing-pad behaviour: the
+ * 44 cases drive VS/VU/HS enforcement through henvcfg.LPE / senvcfg.LPE and
+ * observe ELP via vsstatus.SPELP / mstatus.SPELP / mstatus.MPELP. Under the
+ * S-mode-normal model the M-mode T-SBI monitor sits on the critical path of
+ * every VS/VU excursion (hyp_priv.c's trampoline return path issues
+ * tsbi_csr_* requests), and tsbi_csr_access_dispatch() reaches the injected
+ * instruction through a forward-edge `jalr tsbi_trampoline`. With MLPE=1 that
+ * jump raises a software-check exception inside the monitor; the armed-proxy
+ * recovery then resumes at its csr_done label without the ELP saved in
+ * mstatus.MPELP being cleared, so the same check re-fires forever (observed on
+ * qemu as an unbounded cause=0x12 storm at epc=csr_done). The historical
+ * `mseccfg_set(MSECCFG_MLPE)` presets therefore were removed rather than
+ * proxied: they were never part of any assertion, and keeping them would only
+ * break the monitor.
  * =================================================================== */
 
 static inline uintptr_t mseccfg_read(void) {
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MSECCFG) : "=r"(v));
-    return v;
+    return tsbi_csr_read(CSR_MSECCFG);
 }
 
 static inline void mseccfg_write(uintptr_t val) {
-    asm volatile("csrw " CSR_STR(CSR_MSECCFG) ", %0" :: "r"(val) : "memory");
+    tsbi_csr_write(CSR_MSECCFG, val);
 }
 
 static inline void mseccfg_set(uintptr_t mask) {
-    asm volatile("csrs " CSR_STR(CSR_MSECCFG) ", %0" :: "r"(mask) : "memory");
+    tsbi_csr_set(CSR_MSECCFG, mask);
 }
 
 static inline void mseccfg_clear(uintptr_t mask) {
-    asm volatile("csrc " CSR_STR(CSR_MSECCFG) ", %0" :: "r"(mask) : "memory");
+    tsbi_csr_clear(CSR_MSECCFG, mask);
 }
 
 /* senvcfg_read/write/set_bits/clear_bits are provided by common/hyp/hyp_csr.h. */
@@ -323,16 +344,31 @@ static void flush_cfi_code(void) {
 /* ===================================================================
  * Helper: configure CFI environment for VS-mode tests.
  *
- * Sets menvcfg.LPE, mseccfg.MLPE, and henvcfg.LPE as needed.
+ * Sets menvcfg.LPE and henvcfg.LPE as needed, and clears a stale
+ * vsstatus.SPELP so every VS/VU excursion starts from ELP=NO_LP_EXPECTED.
  * Returns original henvcfg value for restoration.
+ *
+ * Why the SPELP clear is part of the setup: under the S-mode-normal model the
+ * T-SBI medeleg baseline delegates cause 18 (software check) to HS and the
+ * hedeleg baseline leaves it there, so an LP fault raised in VS is delivered to
+ * the HS handler. That handler clears sstatus.SPELP before sret, but per
+ * norm:Zicfilp_pelp_trap_return an xret into privilege mode y restores ELP from
+ * y's own xpelp -- and for sret back into VS that is vsstatus.SPELP, not
+ * sstatus.SPELP. A vsstatus.SPELP=1 left behind by an earlier case therefore
+ * re-arms ELP=LP_EXPECTED on resume and the first instruction after the
+ * trapping one takes a second, unexpected software-check. Cases that drive
+ * SPELP deliberately (HCFI-LP-11..24) write it themselves after this helper
+ * returns, so clearing here does not weaken them.
  * =================================================================== */
 static uintptr_t cfi_setup_vs_lpe(bool henvcfg_lpe, bool menvcfg_lpe) {
     uintptr_t orig_henvcfg = henvcfg_read();
 
+    vsstatus_write(vsstatus_read() & ~VSSTATUS_SPELP_BIT);
+
     if (menvcfg_lpe) {
-        menvcfg_set_bits(MENVCFG_LPE);
+        tsbi_csr_set(CSR_MENVCFG, MENVCFG_LPE);
     } else {
-        menvcfg_clear_bits(MENVCFG_LPE);
+        tsbi_csr_clear(CSR_MENVCFG, MENVCFG_LPE);
     }
 
     if (henvcfg_lpe) {
@@ -587,9 +623,11 @@ static void vs_exc_handler_set_spelp(void)
 /* Configure dual-layer delegation: medeleg + hedeleg for VS delivery,
  * with an explicit VS-mode trap handler. */
 static void setup_deleg_to_vs_ex(uintptr_t exc_mask, uintptr_t handler) {
-    /* Set medeleg to delegate to HS-mode */
-    CSRS(medeleg, exc_mask);
-    /* Set hedeleg to further delegate to VS-mode */
+    /* Delegate to HS-mode: medeleg is M-level, so use the M-safe primitive
+     * (it owns the raise-to-M / drop-back excursion and keeps the
+     * medeleg[9] ecall-from-S invariant of the T-SBI service channel). */
+    tsbi_deleg_or(exc_mask, 0);
+    /* Set hedeleg to further delegate to VS-mode (HS-level, direct). */
     CSRS(CSR_HEDELEG, exc_mask);
     /* Install VS-mode trap handler (Direct mode) */
     g_vs_exc_cause = 0;
@@ -610,13 +648,13 @@ static void setup_deleg_to_vs(uintptr_t exc_mask) {
 
 /* Configure single-layer delegation: medeleg only for HS delivery. */
 static void setup_deleg_to_hs(uintptr_t exc_mask) {
-    CSRS(medeleg, exc_mask);
+    tsbi_deleg_or(exc_mask, 0);
     CSRC(CSR_HEDELEG, exc_mask);
 }
 
 /* Clear all delegation. */
 static void clear_all_deleg(void) {
-    CSRW(medeleg, 0);
+    tsbi_deleg_clear((uintptr_t)-1, (uintptr_t)-1);
     CSRW(CSR_HEDELEG, 0);
 }
 

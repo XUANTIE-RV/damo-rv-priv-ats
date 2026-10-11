@@ -39,7 +39,7 @@ bool test_hcross_svadu_01(void) {
          * should also be writable (norm:Svadu_hypervisor_adue_writable).
          * Must set menvcfg.ADUE=1 first, otherwise henvcfg.ADUE is
          * read-only zero (norm:menvcfg_adue_henvcfg_adue_rdonly0). */
-        uintptr_t old_menvcfg = menvcfg_read();
+        uintptr_t old_menvcfg = tsbi_csr_read(CSR_MENVCFG);
         menvcfg_adue_set(1);
 
         uintptr_t old_henvcfg = henvcfg_read();
@@ -54,7 +54,7 @@ bool test_hcross_svadu_01(void) {
 
         /* Restore original values */
         henvcfg_write(old_henvcfg);
-        menvcfg_write(old_menvcfg);
+        tsbi_csr_write(CSR_MENVCFG, old_menvcfg);
 
         TEST_ASSERT("ADUE=1 writable", readback_1 == 1);
         TEST_ASSERT("ADUE=0 writable", readback_0 == 0);

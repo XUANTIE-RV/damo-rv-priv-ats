@@ -33,17 +33,17 @@ bool test_hzcnt_07(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
-    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t saved_hcen = hcounteren_read();
     uintptr_t saved_scen = scounteren_read();
 
     if (!mcounteren_bit_set_sticky(CNT_BIT_CY)) {
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("mcounteren.CY is read-only zero");
     }
     if (!hcounteren_bit_set_sticky(CNT_BIT_CY)) {
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("hcounteren.CY is read-only zero");
     }
 
@@ -51,7 +51,7 @@ bool test_hzcnt_07(void)
     if (!scounteren_bit_set_sticky(CNT_BIT_CY)) {
         scounteren_write(saved_scen);
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("scounteren.CY is read-only zero");
     }
     trap_expect_begin();
@@ -64,7 +64,7 @@ bool test_hzcnt_07(void)
     if (!scounteren_bit_clear_sticky(CNT_BIT_CY)) {
         scounteren_write(saved_scen);
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("scounteren.CY is not clearable");
     }
     trap_expect_begin();
@@ -82,7 +82,7 @@ bool test_hzcnt_07(void)
 
     scounteren_write(saved_scen);
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }
 
@@ -95,23 +95,23 @@ bool test_hzcnt_08(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
-    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t saved_hcen = hcounteren_read();
     uintptr_t saved_scen = scounteren_read();
 
     if (!mcounteren_bit_set_sticky(CNT_BIT_CY)) {
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("mcounteren.CY is read-only zero");
     }
     if (!hcounteren_bit_clear_sticky(CNT_BIT_CY)) {
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("hcounteren.CY is not clearable");
     }
     if (!scounteren_bit_set_sticky(CNT_BIT_CY)) {
         scounteren_write(saved_scen);
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("scounteren.CY is read-only zero");
     }
 
@@ -130,7 +130,7 @@ bool test_hzcnt_08(void)
 
     scounteren_write(saved_scen);
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }
 
@@ -143,23 +143,23 @@ bool test_hzcnt_09(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
-    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t saved_hcen = hcounteren_read();
     uintptr_t saved_scen = scounteren_read();
 
     if (!mcounteren_bit_set_sticky(CNT_BIT_CY)) {
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("mcounteren.CY is read-only zero");
     }
     if (!hcounteren_bit_set_sticky(CNT_BIT_CY)) {
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("hcounteren.CY is read-only zero");
     }
     if (!scounteren_bit_clear_sticky(CNT_BIT_CY)) {
         scounteren_write(saved_scen);
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("scounteren.CY is not clearable");
     }
 
@@ -172,6 +172,6 @@ bool test_hzcnt_09(void)
 
     scounteren_write(saved_scen);
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }

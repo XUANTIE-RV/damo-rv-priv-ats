@@ -40,7 +40,7 @@ bool hideleg_vssi_deleg(void)
     TEST_BEGIN("DELEG-08: Delegate VSSI to VS (vscause=1, translated)");
 
     setup_vs_int_test(VS_VSSIP);
-    asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSSIP) : "memory");
+    CSRS(CSR_HIE, VS_VSSIP);
     hvip_set_vssi(1);
 
     run_in_vs_mode(vs_nop_fn, 0);
@@ -61,7 +61,7 @@ bool hideleg_vsti_deleg(void)
     TEST_BEGIN("DELEG-09: Delegate VSTI to VS (vscause=5, translated)");
 
     setup_vs_int_test(VS_VSTIP);
-    asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSTIP) : "memory");
+    CSRS(CSR_HIE, VS_VSTIP);
     hvip_set_vsti(1);
 
     run_in_vs_mode(vs_nop_fn, 0);
@@ -82,7 +82,7 @@ bool hideleg_vsei_deleg(void)
     TEST_BEGIN("DELEG-10: Delegate VSEI to VS (vscause=9, translated)");
 
     setup_vs_int_test(VS_VSEIP);
-    asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSEIP) : "memory");
+    CSRS(CSR_HIE, VS_VSEIP);
     hvip_set_vsei(1);
 
     run_in_vs_mode(vs_nop_fn, 0);
@@ -109,7 +109,7 @@ bool hideleg_not_deleg_trap_to_hs(void)
 
     /* Verify VSSIP is pending in hip (HS-visible) */
     uintptr_t hip_val;
-    asm volatile ("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip_val));
+    hip_val = CSRR(CSR_HIP);
     TEST_ASSERT_EQ("hip.VSSIP should be pending (HS-visible)",
                    hip_val & VS_VSSIP, VS_VSSIP);
 
@@ -133,7 +133,7 @@ bool interrupt_translation_vssi(void)
     TEST_BEGIN("DELEG-12: VSSI->SSI translation (vscause=1, not 2)");
 
     setup_vs_int_test(VS_VSSIP);
-    asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSSIP) : "memory");
+    CSRS(CSR_HIE, VS_VSSIP);
     hvip_set_vssi(1);
 
     run_in_vs_mode(vs_nop_fn, 0);
@@ -155,7 +155,7 @@ bool interrupt_translation_vsti(void)
     TEST_BEGIN("DELEG-13: VSTI->STI translation (vscause=5, not 6)");
 
     setup_vs_int_test(VS_VSTIP);
-    asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSTIP) : "memory");
+    CSRS(CSR_HIE, VS_VSTIP);
     hvip_set_vsti(1);
 
     run_in_vs_mode(vs_nop_fn, 0);
@@ -176,7 +176,7 @@ bool interrupt_translation_vsei(void)
     TEST_BEGIN("DELEG-14: VSEI->SEI translation (vscause=9, not 10)");
 
     setup_vs_int_test(VS_VSEIP);
-    asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSEIP) : "memory");
+    CSRS(CSR_HIE, VS_VSEIP);
     hvip_set_vsei(1);
 
     run_in_vs_mode(vs_nop_fn, 0);

@@ -31,7 +31,7 @@ bool htimedelta_basic_rw(void)
     /* Write 0x1000 to htimedelta. */
     htimedelta_set(0x1000);
     uintptr_t val;
-    asm volatile("csrr %0, " CSR_STR(CSR_HTIMEDELTA) : "=r"(val));
+    val = CSRR(CSR_HTIMEDELTA);
 
     /* Verify value is written. */
     TEST_ASSERT_EQ("htimedelta should read back 0x1000", val, 0x1000);
@@ -54,8 +54,8 @@ bool htimedelta_affects_vs_time(void)
 
     /* Allow VS-mode to access time CSR.
      * mcounteren.TM gates S/HS access; hcounteren.TM gates VS access. */
-    uintptr_t saved_mcen = mcounteren_read();
-    mcounteren_set(0x2); /* TM bit */
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
+    tsbi_csr_set(CSR_MCOUNTEREN, 0x2); /* TM bit */
     uintptr_t saved_hcen = hcounteren_read();
     hcounteren_set(0x2); /* TM bit */
 
@@ -65,7 +65,7 @@ bool htimedelta_affects_vs_time(void)
 
     /* Read real time from HS-mode. */
     uintptr_t hs_time;
-    asm volatile("csrr %0, time" : "=r"(hs_time));
+    hs_time = CSRR(CSR_TIME);
 
     /* Read time from VS-mode (should be hs_time + delta). */
     uintptr_t vs_time = run_in_vs_mode(vs_read_time, 0);
@@ -79,7 +79,7 @@ bool htimedelta_affects_vs_time(void)
 
     htimedelta_set(0); /* Restore */
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
 
     HYP_TEST_END();
 }
@@ -101,8 +101,8 @@ bool htimedelta_affects_vu_time(void)
     TEST_BEGIN("HTDLT-03: Verify VU-mode reads time with delta applied");
 
     /* Save and configure counter-enable gates for VU-mode time access. */
-    uintptr_t saved_mcen = mcounteren_read();
-    mcounteren_set(0x2); /* mcounteren.TM */
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
+    tsbi_csr_set(CSR_MCOUNTEREN, 0x2); /* mcounteren.TM */
     uintptr_t saved_hcen = hcounteren_read();
     hcounteren_set(0x2); /* hcounteren.TM */
     uintptr_t saved_scen = scounteren_read();
@@ -114,7 +114,7 @@ bool htimedelta_affects_vu_time(void)
 
     /* Read real time from HS-mode. */
     uintptr_t hs_time;
-    asm volatile("csrr %0, time" : "=r"(hs_time));
+    hs_time = CSRR(CSR_TIME);
 
     /* Read time from VU-mode (should be hs_time + delta). */
     uintptr_t vu_time = run_in_vu_mode(vs_read_time, 0);
@@ -129,7 +129,7 @@ bool htimedelta_affects_vu_time(void)
     htimedelta_set(0); /* Restore */
     scounteren_write(saved_scen);
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
 
     HYP_TEST_END();
 }
@@ -150,8 +150,8 @@ bool htimedelta_large_value_negative_offset(void)
     TEST_BEGIN("HTDLT-04: Verify htimedelta large value causes wrap-around");
 
     /* Allow VS-mode to access time CSR. */
-    uintptr_t saved_mcen = mcounteren_read();
-    mcounteren_set(0x2); /* TM bit */
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
+    tsbi_csr_set(CSR_MCOUNTEREN, 0x2); /* TM bit */
     uintptr_t saved_hcen = hcounteren_read();
     hcounteren_set(0x2); /* TM bit */
 
@@ -161,13 +161,13 @@ bool htimedelta_large_value_negative_offset(void)
 
     /* Verify the large value is stored correctly. */
     uintptr_t readback;
-    asm volatile("csrr %0, " CSR_STR(CSR_HTIMEDELTA) : "=r"(readback));
+    readback = CSRR(CSR_HTIMEDELTA);
     TEST_ASSERT_EQ("htimedelta should hold 0xFFFFFFFFFFFF0000",
                    readback, (uintptr_t)large_delta);
 
     /* Read real time from HS-mode. */
     uintptr_t hs_time;
-    asm volatile("csrr %0, time" : "=r"(hs_time));
+    hs_time = CSRR(CSR_TIME);
 
     /* Read time from VS-mode.
      * With delta = 0xFFFFFFFFFFFF0000 (= -65536 mod 2^64),
@@ -183,7 +183,7 @@ bool htimedelta_large_value_negative_offset(void)
 
     htimedelta_set(0); /* Restore */
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
 
     HYP_TEST_END();
 }
@@ -209,10 +209,10 @@ bool htimedelta_hs_mode_no_delta(void)
     /* Read time twice from HS-mode and also capture a reference
      * VS-mode read to confirm delta is active. */
     uintptr_t hs_time1;
-    asm volatile("csrr %0, time" : "=r"(hs_time1));
+    hs_time1 = CSRR(CSR_TIME);
 
     uintptr_t hs_time2;
-    asm volatile("csrr %0, time" : "=r"(hs_time2));
+    hs_time2 = CSRR(CSR_TIME);
 
     /* HS time must be monotonically non-decreasing. */
     TEST_ASSERT("HS time is monotonically non-decreasing",
@@ -228,13 +228,13 @@ bool htimedelta_hs_mode_no_delta(void)
 
     /* Cross-check: VS-mode should see time shifted by delta,
      * proving the delta IS active and HS-mode is immune. */
-    uintptr_t saved_mcen = mcounteren_read();
-    mcounteren_set(0x2);
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
+    tsbi_csr_set(CSR_MCOUNTEREN, 0x2);
     uintptr_t saved_hcen = hcounteren_read();
     hcounteren_set(0x2);
 
     uintptr_t hs_time3;
-    asm volatile("csrr %0, time" : "=r"(hs_time3));
+    hs_time3 = CSRR(CSR_TIME);
     uintptr_t vs_time = run_in_vs_mode(vs_read_time, 0);
 
     int64_t vs_hs_diff = (int64_t)(vs_time - hs_time3);
@@ -244,7 +244,7 @@ bool htimedelta_hs_mode_no_delta(void)
 
     htimedelta_set(0); /* Restore */
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
 
     HYP_TEST_END();
 }

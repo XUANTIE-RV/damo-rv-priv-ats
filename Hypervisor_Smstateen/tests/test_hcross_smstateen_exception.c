@@ -44,10 +44,10 @@ bool test_hcross_smsta_13(void) {
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
 #ifdef ENABLE_HYP
-    uintptr_t orig = mstateen_read(0);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
 
     /* Set up: mstateen0.SE0=1 temporarily so we can write hstateen0 */
-    mstateen_set_bits(0, MSTATEEN0_SE0);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_SE0);
     hstateen_write(0, 1ULL << 63);
 
     /* Now clear mstateen0 SE0 to block at M-level.
@@ -56,7 +56,7 @@ bool test_hcross_smsta_13(void) {
      * From VS-mode, accessing sstateen0 should trigger
      * virtual-instruction (cause=22) because hstateen would allow
      * but mstateen blocks. */
-    mstateen_clear_bits(0, MSTATEEN0_SE0);
+    tsbi_csr_clear(CSR_MSTATEEN0, MSTATEEN0_SE0);
 
     /* Use run_in_vs_mode to correctly enter VS-mode (V=1, nominal S).
      * The trampoline reads sstateen0 and returns trap_get_cause(). */
@@ -69,7 +69,7 @@ bool test_hcross_smsta_13(void) {
                 cause == CAUSE_VIRTUAL_INSTRUCTION ||
                 cause == CAUSE_ILLEGAL_INST);
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
 #else
     TEST_SKIP("ENABLE_HYP not compiled");
 #endif
@@ -87,14 +87,14 @@ bool test_hcross_smsta_14(void) {
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
 #ifdef ENABLE_HYP
-    uintptr_t orig = mstateen_read(0);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
 
     /* Set hstateen0 bit 63 = 1 via mstateen0.SE0=1 */
-    mstateen_set_bits(0, MSTATEEN0_SE0);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_SE0);
     hstateen_write(0, 1ULL << 63);
 
     /* Block at M-level */
-    mstateen_clear_bits(0, MSTATEEN0_SE0);
+    tsbi_csr_clear(CSR_MSTATEEN0, MSTATEEN0_SE0);
 
     /* Use run_in_vu_mode to correctly enter VU-mode (V=1, nominal U).
      * The trampoline reads sstateen0 and returns trap_get_cause(). */
@@ -105,7 +105,7 @@ bool test_hcross_smsta_14(void) {
                 cause == CAUSE_VIRTUAL_INSTRUCTION ||
                 cause == CAUSE_ILLEGAL_INST);
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
 #else
     TEST_SKIP("ENABLE_HYP not compiled");
 #endif

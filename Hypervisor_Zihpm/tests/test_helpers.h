@@ -84,35 +84,68 @@ static uintptr_t _vs_read_hpm(uintptr_t arg)
 
 /* ===================================================================
  * counteren probe helpers (WARL: individual bits may be read-only)
+ *
+ * One pair of helpers per CSR instead of a single function-pointer generic:
+ * mcounteren is M-level, so under the S-mode-normal (T-SBI) model the test
+ * body in S(HS)-mode must reach it through the tsbi_csr_* proxy (a bare
+ * csrr/csrw mcounteren raises illegal-instruction), while hcounteren and
+ * scounteren are HS/S-level and keep the direct accessors from hyp_csr.h.
+ * Spelling the CSR number at each access keeps the M-level path explicit --
+ * the tsbi_csr_* primitives take the CSR as an argument, so they cannot be
+ * passed as the zero-argument / one-argument function pointers a generic
+ * helper would need, and binding them behind suite-local read/set/clear
+ * adapters would resurrect the named M-level accessor family that was
+ * deliberately removed repo-wide.  Same shape as
+ * Hypervisor_Zicntr/tests/test_helpers.h.
  * =================================================================== */
 
-/* Try to set a counteren bit; returns true iff it stuck. */
-static inline bool counteren_bit_set_sticky(
-    uintptr_t (*rd)(void), void (*set)(uintptr_t), uintptr_t bit)
+/* Try to set an mcounteren bit; returns true iff it stuck. */
+static inline bool mcounteren_bit_set_sticky(uintptr_t bit)
 {
-    set(bit);
-    return (rd() & bit) != 0;
+    tsbi_csr_set(CSR_MCOUNTEREN, bit);
+    return (tsbi_csr_read(CSR_MCOUNTEREN) & bit) != 0;
 }
 
-/* Try to clear a counteren bit; returns true iff it stuck. */
-static inline bool counteren_bit_clear_sticky(
-    uintptr_t (*rd)(void), void (*clr)(uintptr_t), uintptr_t bit)
+/* Try to clear an mcounteren bit; returns true iff it stuck. */
+static inline bool mcounteren_bit_clear_sticky(uintptr_t bit)
 {
-    clr(bit);
-    return (rd() & bit) == 0;
+    tsbi_csr_clear(CSR_MCOUNTEREN, bit);
+    return (tsbi_csr_read(CSR_MCOUNTEREN) & bit) == 0;
 }
 
-#define MCNT_SET_STICK(bit) \
-    counteren_bit_set_sticky(mcounteren_read, mcounteren_set, (bit))
-#define MCNT_CLR_STICK(bit) \
-    counteren_bit_clear_sticky(mcounteren_read, mcounteren_clear, (bit))
-#define HCNT_SET_STICK(bit) \
-    counteren_bit_set_sticky(hcounteren_read, hcounteren_set, (bit))
-#define HCNT_CLR_STICK(bit) \
-    counteren_bit_clear_sticky(hcounteren_read, hcounteren_clear, (bit))
-#define SCNT_SET_STICK(bit) \
-    counteren_bit_set_sticky(scounteren_read, scounteren_set, (bit))
-#define SCNT_CLR_STICK(bit) \
-    counteren_bit_clear_sticky(scounteren_read, scounteren_clear, (bit))
+/* Try to set an hcounteren bit; returns true iff it stuck. */
+static inline bool hcounteren_bit_set_sticky(uintptr_t bit)
+{
+    hcounteren_set(bit);
+    return (hcounteren_read() & bit) != 0;
+}
+
+/* Try to clear an hcounteren bit; returns true iff it stuck. */
+static inline bool hcounteren_bit_clear_sticky(uintptr_t bit)
+{
+    hcounteren_clear(bit);
+    return (hcounteren_read() & bit) == 0;
+}
+
+/* Try to set a scounteren bit; returns true iff it stuck. */
+static inline bool scounteren_bit_set_sticky(uintptr_t bit)
+{
+    scounteren_set(bit);
+    return (scounteren_read() & bit) != 0;
+}
+
+/* Try to clear a scounteren bit; returns true iff it stuck. */
+static inline bool scounteren_bit_clear_sticky(uintptr_t bit)
+{
+    scounteren_clear(bit);
+    return (scounteren_read() & bit) == 0;
+}
+
+#define MCNT_SET_STICK(bit)  mcounteren_bit_set_sticky(bit)
+#define MCNT_CLR_STICK(bit)  mcounteren_bit_clear_sticky(bit)
+#define HCNT_SET_STICK(bit)  hcounteren_bit_set_sticky(bit)
+#define HCNT_CLR_STICK(bit)  hcounteren_bit_clear_sticky(bit)
+#define SCNT_SET_STICK(bit)  scounteren_bit_set_sticky(bit)
+#define SCNT_CLR_STICK(bit)  scounteren_bit_clear_sticky(bit)
 
 #endif /* HYPERVISOR_ZIHPM_TEST_HELPERS_H */

@@ -23,3 +23,13 @@ EXT_OBJS = \
     tests/test_register.o
 
 include ../common/Makefile.common
+
+# Hypervisor x Sm* cross suites manipulate machine-level CSRs directly
+# (mstateen0/hstateen0 gating, pmpcfg) and own their M-mode trap entry, so they
+# keep the historical M-mode boot instead of the T-SBI default drop to S-mode
+# (see common/entry.S: TSBI_BOOT_MODE_M).  Under this macro
+# common/tsbi/tsbi_deleg.c zeroes the delegation baseline, reproducing the
+# pre-T-SBI all-traps-land-in-M model the statistics baseline was recorded
+# against.
+CFLAGS  += -DTSBI_BOOT_MODE_M
+ASFLAGS += -DTSBI_BOOT_MODE_M

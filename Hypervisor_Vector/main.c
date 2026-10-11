@@ -31,14 +31,11 @@ int main(void)
     uart_init();
     reset_state();
 
-    /* Configure PMP: allow S/U/V-mode full access to all memory. */
-    asm volatile(
-        "li t0, -1\n\t"
-        "csrw pmpaddr0, t0\n\t"
-        "li t0, 0x1F\n\t"    /* A=NAPOT | R | W | X */
-        "csrw pmpcfg0, t0\n\t"
-        ::: "t0"
-    );
+    /* PMP is already configured for full S/U/V-mode access by the boot
+     * code (entry.S hoists it before dropping privilege), and
+     * hyp_reset_state() re-opens it below. A raw pmpaddr0/pmpcfg0 write
+     * here would trap in the T-SBI S-mode-normal model, so it is
+     * intentionally omitted. */
 
     test_print_banner("RISC-V Hypervisor x V-vector Cross Test");
 

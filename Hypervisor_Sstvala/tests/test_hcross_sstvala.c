@@ -251,11 +251,12 @@ bool test_hcross_sstvala_04(void) {
     two_stage_setup_identity(&ctx, r_start, r_size,
                              G_FLAGS_RWXU_AD, PT_LEVEL_4K);
 
-    /* Configure dual-layer delegation: M->HS (medeleg) -> VS (hedeleg) */
-    uintptr_t medeleg;
-    asm volatile ("csrr %0, medeleg" : "=r"(medeleg));
+    /* Configure dual-layer delegation: M->HS (medeleg) -> VS (hedeleg).
+     * medeleg is an M-level CSR; from the S(HS)-mode normal state it must be
+     * accessed through the T-SBI proxy rather than a raw csrr/csrw. */
+    uintptr_t medeleg = tsbi_csr_read(CSR_MEDELEG);
     medeleg |= (1UL << CAUSE_INST_PAGE_FAULT);
-    asm volatile ("csrw medeleg, %0" :: "r"(medeleg));
+    tsbi_csr_write(CSR_MEDELEG, medeleg);
 
     uintptr_t saved_hedeleg = hedeleg_read();
     hedeleg_write(saved_hedeleg | (1UL << CAUSE_INST_PAGE_FAULT));
@@ -332,11 +333,12 @@ bool test_hcross_sstvala_05(void) {
     two_stage_setup_identity(&ctx, r_start, r_size,
                              G_FLAGS_RWXU_AD, PT_LEVEL_4K);
 
-    /* Configure dual-layer delegation: M->HS (medeleg) -> VS (hedeleg) */
-    uintptr_t medeleg;
-    asm volatile ("csrr %0, medeleg" : "=r"(medeleg));
+    /* Configure dual-layer delegation: M->HS (medeleg) -> VS (hedeleg).
+     * medeleg is an M-level CSR; from the S(HS)-mode normal state it must be
+     * accessed through the T-SBI proxy rather than a raw csrr/csrw. */
+    uintptr_t medeleg = tsbi_csr_read(CSR_MEDELEG);
     medeleg |= (1UL << CAUSE_LOAD_PAGE_FAULT);
-    asm volatile ("csrw medeleg, %0" :: "r"(medeleg));
+    tsbi_csr_write(CSR_MEDELEG, medeleg);
 
     uintptr_t saved_hedeleg = hedeleg_read();
     hedeleg_write(saved_hedeleg | (1UL << CAUSE_LOAD_PAGE_FAULT));

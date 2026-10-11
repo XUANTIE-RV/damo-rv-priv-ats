@@ -29,19 +29,16 @@ bool priority_virtual_vs_illegal(void) {
 
     /* mstatus.TW=1 causes WFI in VS-mode to raise illegal-inst (cause=2),
      * even though VTW=1 alone would cause virtual-inst (cause=22).
-     * This proves illegal-instruction has higher priority. */
-    uintptr_t ms;
-    asm volatile("csrr %0, mstatus" : "=r"(ms));
-    ms |= (1UL << 21); /* Set TW */
-    asm volatile("csrw mstatus, %0" :: "r"(ms));
+     * This proves illegal-instruction has higher priority.
+     * TW is a config bit: set/clear it via the tsbi_csr_* accessor (this
+     * suite runs in S(HS)-mode, so a raw csrr/csrw mstatus would trap illegal). */
+    tsbi_csr_set(CSR_MSTATUS, 1UL << 21);   /* Set TW */
     hstatus_set_vtw(true);
 
     EXPECT_ILLEGAL_INST(run_in_vs_mode(vs_exec_wfi, 0));
 
     /* Cleanup */
-    asm volatile("csrr %0, mstatus" : "=r"(ms));
-    ms &= ~(1UL << 21);
-    asm volatile("csrw mstatus, %0" :: "r"(ms));
+    tsbi_csr_clear(CSR_MSTATUS, 1UL << 21);
     hstatus_set_vtw(false);
 
     HYP_TEST_END();

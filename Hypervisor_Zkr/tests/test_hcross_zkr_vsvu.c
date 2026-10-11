@@ -305,6 +305,18 @@ bool test_zkr_hyp_18(void)
     HYP_TEST_END();
 }
 
+/* M-excursion callback: read seed in M-mode and report whether it trapped.
+ * ZKR-HYP-11 asserts SSEED=0 does not gate M-mode access, so the csrrw must
+ * execute in M-mode.  Under the T-SBI S-mode-normal model the test body runs
+ * in S(HS)-mode, hence the explicit run_in_priv(PRIV_M) excursion (seed needs
+ * the read-write csrrw form and cannot go through tsbi_csr_read). */
+static uintptr_t _m_seed_read_notrap(uintptr_t arg)
+{
+    (void)arg;
+    M_EXPECT_NO_TRAP((void)seed_read_m());
+    return 0;
+}
+
 TEST_REGISTER(test_zkr_hyp_11);
 bool test_zkr_hyp_11(void)
 {
@@ -315,9 +327,7 @@ bool test_zkr_hyp_11(void)
     uintptr_t orig = mseccfg_read_zkr();
     mseccfg_clear_bits(MSECCFG_SSEED);
 
-    uintptr_t val = 0;
-    M_EXPECT_NO_TRAP(val = seed_read_m());
-    (void)val;
+    run_in_priv(PRIV_M, _m_seed_read_notrap, 0);
 
     mseccfg_write_zkr(orig);
     HYP_TEST_END();

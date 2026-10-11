@@ -22,6 +22,7 @@
 #include "vm/vm.h"
 #include "hyp/hyp_defs.h"
 #include "hyp/hyp_reset.h"
+#include "hyp/hyp_csr.h"
 #include "pm/pm_cfg.h"
 
 extern test_func_t _test_table[];
@@ -30,6 +31,13 @@ extern test_func_t _test_table_end[];
 int main(void) {
     uart_init();
     reset_state();
+
+    /* detect_ssnpm()/detect_ssnpm_hyp() below probe senvcfg.PMM/henvcfg.PMM and
+     * the tests manipulate henvcfg from S(HS)-mode. Under Smstateen those CSRs
+     * are gated by mstateen0.ENVCFG, which spike resets to 0, so open the gate
+     * before any envcfg access. Not done in the shared baseline: the
+     * Smstateen/Ssstateen suites test that gate and set it themselves. */
+    hyp_enable_envcfg_access();
 
     test_print_banner("Hypervisor x Ssnpm Cross Test");
 

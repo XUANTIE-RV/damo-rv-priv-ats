@@ -37,11 +37,11 @@ bool test_vcsr_01(void)
     uintptr_t test_val = VSSTATUS_TEST_VAL;
 
     /* Write test value to vsstatus (CSR 0x200) from M-mode. */
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(test_val));
+    CSRW(CSR_VSSTATUS, test_val);
 
     /* Read back from M-mode to get the actual stored value (WARL). */
     uintptr_t written;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(written));
+    written = CSRR(CSR_VSSTATUS);
 
     /* VS-mode reads sstatus — should return vsstatus value. */
     uintptr_t vs_read = run_in_vs_mode(vs_read_sstatus, 0);
@@ -67,14 +67,14 @@ bool test_vcsr_02(void)
     uintptr_t test_val = VSSTATUS_TEST_VAL;
 
     /* Clear vsstatus before the test. */
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", zero");
+    CSRW(CSR_VSSTATUS, 0);
 
     /* VS-mode writes sstatus (= vsstatus in V=1). */
     run_in_vs_mode(vs_write_sstatus, test_val);
 
     /* Read vsstatus from M-mode and verify. */
     uintptr_t readback;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
+    readback = CSRR(CSR_VSSTATUS);
 
     TEST_ASSERT_EQ("vsstatus contains value written by VS sstatus",
                    readback & VSSTATUS_WRITABLE_MASK,
@@ -96,28 +96,28 @@ bool test_vcsr_03(void)
     TEST_BEGIN("VCSR-03: V=1 HS-level sstatus preserved");
 
     uintptr_t orig_sstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_SSTATUS) : "=r"(orig_sstatus));
+    orig_sstatus = CSRR(CSR_SSTATUS);
 
     /* Set SIE in real HS-level sstatus. */
     uintptr_t hs_val = SSTATUS_SIE_BIT;
-    asm volatile ("csrw " CSR_STR(CSR_SSTATUS) ", %0" :: "r"(orig_sstatus | hs_val));
+    CSRW(CSR_SSTATUS, orig_sstatus | hs_val);
 
     /* Confirm the write took effect. */
     uintptr_t hs_before;
-    asm volatile ("csrr %0, " CSR_STR(CSR_SSTATUS) : "=r"(hs_before));
+    hs_before = CSRR(CSR_SSTATUS);
 
     /* VS-mode clears sstatus (= vsstatus in V=1). */
     run_in_vs_mode(vs_write_sstatus, 0);
 
     /* Read HS-level sstatus again — should still have SIE. */
     uintptr_t hs_after;
-    asm volatile ("csrr %0, " CSR_STR(CSR_SSTATUS) : "=r"(hs_after));
+    hs_after = CSRR(CSR_SSTATUS);
 
     TEST_ASSERT_EQ("HS-level sstatus.SIE preserved after VS write",
                    hs_after & SSTATUS_SIE_BIT, hs_before & SSTATUS_SIE_BIT);
 
     /* Restore original sstatus. */
-    asm volatile ("csrw " CSR_STR(CSR_SSTATUS) ", %0" :: "r"(orig_sstatus));
+    CSRW(CSR_SSTATUS, orig_sstatus);
 
     HYP_TEST_END();
 }
@@ -187,34 +187,34 @@ bool test_vcsr_06(void)
 
     /* vsstatus (0x200). */
     test_val = VSSTATUS_TEST_VAL;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(test_val));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(val));
+    CSRW(CSR_VSSTATUS, test_val);
+    val = CSRR(CSR_VSSTATUS);
     TEST_ASSERT_EQ("vsstatus read/write",
                    val & VSSTATUS_WRITABLE_MASK,
                    test_val & VSSTATUS_WRITABLE_MASK);
 
     /* vsepc (0x241). */
     test_val = 0x1000;
-    asm volatile ("csrw " CSR_STR(CSR_VSEPC) ", %0" :: "r"(test_val));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSEPC) : "=r"(val));
+    CSRW(CSR_VSEPC, test_val);
+    val = CSRR(CSR_VSEPC);
     TEST_ASSERT_EQ("vsepc read/write", val, test_val);
 
     /* vsscratch (0x240). */
     test_val = 0xABCD;
-    asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0" :: "r"(test_val));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSCRATCH) : "=r"(val));
+    CSRW(CSR_VSSCRATCH, test_val);
+    val = CSRR(CSR_VSSCRATCH);
     TEST_ASSERT_EQ("vsscratch read/write", val, test_val);
 
     /* vscause (0x242). */
     test_val = 12;  /* instruction page fault — legal cause value */
-    asm volatile ("csrw " CSR_STR(CSR_VSCAUSE) ", %0" :: "r"(test_val));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSCAUSE) : "=r"(val));
+    CSRW(CSR_VSCAUSE, test_val);
+    val = CSRR(CSR_VSCAUSE);
     TEST_ASSERT_EQ("vscause read/write", val, test_val);
 
     /* vstval (0x243). */
     test_val = 0xDEADBEEF;
-    asm volatile ("csrw " CSR_STR(CSR_VSTVAL) ", %0" :: "r"(test_val));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVAL) : "=r"(val));
+    CSRW(CSR_VSTVAL, test_val);
+    val = CSRR(CSR_VSTVAL);
     TEST_ASSERT_EQ("vstval read/write", val, test_val);
 
     HYP_TEST_END();
@@ -226,9 +226,9 @@ bool test_vcsr_06(void)
  * run_in_priv(PRIV_S) to execute in true HS-mode (V=0). */
 static uintptr_t hs_access_vsstatus(uintptr_t val)
 {
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(val) : "memory");
+    CSRW(CSR_VSSTATUS, val);
     uintptr_t readback;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback) :: "memory");
+    readback = CSRR(CSR_VSSTATUS);
     return readback;
 }
 
@@ -248,9 +248,12 @@ bool test_vcsr_07(void)
 
     uintptr_t val, test_val;
 
-    /* Verify mideleg bits 10/6/2 are read-only 1 (spec requirement). */
-    uintptr_t mideleg;
-    asm volatile ("csrr %0, mideleg" : "=r"(mideleg));
+    /* Verify mideleg bits 10/6/2 are read-only 1 (spec requirement).
+     * mideleg (0x303) is an M-level CSR; this suite runs in S(HS)-mode, so
+     * a raw csrr would trap illegal. Read it through the adaptive tsbi_csr_read()
+     * wrapper, which routes to the T-SBI CSR proxy when the current privilege
+     * cannot access the register directly. The assertion is unchanged. */
+    uintptr_t mideleg = tsbi_csr_read(CSR_MIDELEG);
     TEST_ASSERT("mideleg bits 10/6/2 should be read-only 1",
                 (mideleg & 0x444) == 0x444);
 
@@ -264,8 +267,8 @@ bool test_vcsr_07(void)
     hideleg_write(saved_hideleg | (1UL << 2) | (1UL << 6) | (1UL << 10));
 
     test_val = VSIE_WRITABLE_MASK;
-    asm volatile ("csrw " CSR_STR(CSR_VSIE) ", %0" :: "r"(test_val));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSIE) : "=r"(val));
+    CSRW(CSR_VSIE, test_val);
+    val = CSRR(CSR_VSIE);
     TEST_ASSERT_EQ("vsie read/write from M-mode",
                    val & VSIE_WRITABLE_MASK,
                    test_val & VSIE_WRITABLE_MASK);
@@ -274,14 +277,14 @@ bool test_vcsr_07(void)
 
     /* vstvec (0x205). */
     test_val = 0x2000;
-    asm volatile ("csrw " CSR_STR(CSR_VSTVEC) ", %0" :: "r"(test_val));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVEC) : "=r"(val));
+    CSRW(CSR_VSTVEC, test_val);
+    val = CSRR(CSR_VSTVEC);
     TEST_ASSERT_EQ("vstvec read/write", val, test_val);
 
     /* vsatp (0x280). */
     test_val = 0x5678;
-    asm volatile ("csrw " CSR_STR(CSR_VSATP) ", %0" :: "r"(test_val));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSATP) : "=r"(val));
+    CSRW(CSR_VSATP, test_val);
+    val = CSRR(CSR_VSATP);
     TEST_ASSERT_EQ("vsatp read/write", val, test_val);
 
     /* --- Part B: HS-mode (V=0, S-mode) direct VS CSR access ---
@@ -319,37 +322,37 @@ bool test_vcsr_08(void)
     TEST_BEGIN("VCSR-08: V=0 VS CSR does not affect behavior");
 
     uintptr_t orig_sstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_SSTATUS) : "=r"(orig_sstatus));
+    orig_sstatus = CSRR(CSR_SSTATUS);
 
     /* Set HS-level sstatus.SIE = 1. */
-    asm volatile ("csrw " CSR_STR(CSR_SSTATUS) ", %0" :: "r"(orig_sstatus | SSTATUS_SIE_BIT));
+    CSRW(CSR_SSTATUS, orig_sstatus | SSTATUS_SIE_BIT);
 
     /* Write vsstatus.SIE = 0. */
     uintptr_t vsstatus_val;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus_val));
+    vsstatus_val = CSRR(CSR_VSSTATUS);
     vsstatus_val &= ~SSTATUS_SIE_BIT;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus_val));
+    CSRW(CSR_VSSTATUS, vsstatus_val);
 
     /* Read HS-level sstatus — SIE should still be 1. */
     uintptr_t hs_read;
-    asm volatile ("csrr %0, " CSR_STR(CSR_SSTATUS) : "=r"(hs_read));
+    hs_read = CSRR(CSR_SSTATUS);
 
     TEST_ASSERT_EQ("HS sstatus.SIE unaffected by vsstatus.SIE=0",
                    hs_read & SSTATUS_SIE_BIT, SSTATUS_SIE_BIT);
 
     /* Write vsstatus.SIE = 1. */
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus_val));
+    vsstatus_val = CSRR(CSR_VSSTATUS);
     vsstatus_val |= SSTATUS_SIE_BIT;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus_val));
+    CSRW(CSR_VSSTATUS, vsstatus_val);
 
     /* Read HS-level sstatus — SIE should still be 1 (unchanged). */
-    asm volatile ("csrr %0, " CSR_STR(CSR_SSTATUS) : "=r"(hs_read));
+    hs_read = CSRR(CSR_SSTATUS);
 
     TEST_ASSERT_EQ("HS sstatus.SIE unaffected by vsstatus.SIE=1",
                    hs_read & SSTATUS_SIE_BIT, SSTATUS_SIE_BIT);
 
     /* Restore original sstatus. */
-    asm volatile ("csrw " CSR_STR(CSR_SSTATUS) ", %0" :: "r"(orig_sstatus));
+    CSRW(CSR_SSTATUS, orig_sstatus);
 
     HYP_TEST_END();
 }
@@ -369,11 +372,11 @@ bool test_vcsr_09(void)
     uintptr_t test_val = 0xDEAD;
 
     /* Write to vsepc (CSR 0x241). */
-    asm volatile ("csrw " CSR_STR(CSR_VSEPC) ", %0" :: "r"(test_val));
+    CSRW(CSR_VSEPC, test_val);
 
     /* Read back from M-mode to get WARL-adjusted value. */
     uintptr_t expected;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSEPC) : "=r"(expected));
+    expected = CSRR(CSR_VSEPC);
 
     /* VS-mode reads sepc (= vsepc in V=1). */
     uintptr_t vs_read = run_in_vs_mode(vs_read_sepc, 0);
@@ -384,10 +387,10 @@ bool test_vcsr_09(void)
      * vsepc[0] is always zero (WARL per spec: sepc[0] is always zero),
      * so use an even-aligned value to avoid WARL masking. */
     test_val = 0xBEEE;
-    asm volatile ("csrw " CSR_STR(CSR_VSEPC) ", zero" ::: "memory");  /* clear vsepc */
+    CSRW(CSR_VSEPC, 0);  /* clear vsepc */
     run_in_vs_mode(vs_write_sepc, test_val);
     uintptr_t wval;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSEPC) : "=r"(wval) :: "memory");
+    wval = CSRR(CSR_VSEPC);
     TEST_ASSERT_EQ("vsepc contains value written by VS sepc",
                    wval, test_val);
 
@@ -405,11 +408,11 @@ bool test_vcsr_10(void)
     uintptr_t test_val = 0x1234;
 
     /* Write to vscause (CSR 0x242). */
-    asm volatile ("csrw " CSR_STR(CSR_VSCAUSE) ", %0" :: "r"(test_val));
+    CSRW(CSR_VSCAUSE, test_val);
 
     /* Read back for WARL-adjusted value. */
     uintptr_t expected;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSCAUSE) : "=r"(expected));
+    expected = CSRR(CSR_VSCAUSE);
 
     /* VS-mode reads scause (= vscause in V=1). */
     uintptr_t vs_read = run_in_vs_mode(vs_read_scause, 0);
@@ -418,10 +421,10 @@ bool test_vcsr_10(void)
 
     /* --- Part B: VS-mode writes scause -> writes vscause --- */
     test_val = 13;  /* load page fault — legal cause value */
-    asm volatile ("csrw " CSR_STR(CSR_VSCAUSE) ", zero" ::: "memory");  /* clear vscause */
+    CSRW(CSR_VSCAUSE, 0);  /* clear vscause */
     run_in_vs_mode(vs_write_scause, test_val);
     uintptr_t wval;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSCAUSE) : "=r"(wval) :: "memory");
+    wval = CSRR(CSR_VSCAUSE);
     TEST_ASSERT_EQ("vscause contains value written by VS scause",
                    wval, test_val);
 
@@ -439,11 +442,11 @@ bool test_vcsr_11(void)
     uintptr_t test_val = 0x12345678;
 
     /* Write to vstval (CSR 0x243). */
-    asm volatile ("csrw " CSR_STR(CSR_VSTVAL) ", %0" :: "r"(test_val));
+    CSRW(CSR_VSTVAL, test_val);
 
     /* Read back for WARL-adjusted value. */
     uintptr_t expected;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVAL) : "=r"(expected));
+    expected = CSRR(CSR_VSTVAL);
 
     /* VS-mode reads stval (= vstval in V=1). */
     uintptr_t vs_read = run_in_vs_mode(vs_read_stval, 0);
@@ -452,10 +455,10 @@ bool test_vcsr_11(void)
 
     /* --- Part B: VS-mode writes stval -> writes vstval --- */
     test_val = 0xCAFEBABE;
-    asm volatile ("csrw " CSR_STR(CSR_VSTVAL) ", zero" ::: "memory");  /* clear vstval */
+    CSRW(CSR_VSTVAL, 0);  /* clear vstval */
     run_in_vs_mode(vs_write_stval, test_val);
     uintptr_t wval;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVAL) : "=r"(wval) :: "memory");
+    wval = CSRR(CSR_VSTVAL);
     TEST_ASSERT_EQ("vstval contains value written by VS stval",
                    wval, test_val);
 
@@ -473,11 +476,11 @@ bool test_vcsr_12(void)
     uintptr_t test_val = 0x2000;
 
     /* Write to vstvec (CSR 0x205). */
-    asm volatile ("csrw " CSR_STR(CSR_VSTVEC) ", %0" :: "r"(test_val));
+    CSRW(CSR_VSTVEC, test_val);
 
     /* Read back. */
     uintptr_t expected;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVEC) : "=r"(expected));
+    expected = CSRR(CSR_VSTVEC);
 
     /* VS-mode reads stvec (= vstvec in V=1). */
     uintptr_t vs_read = run_in_vs_mode(vs_read_stvec, 0);
@@ -486,10 +489,10 @@ bool test_vcsr_12(void)
 
     /* --- Part B: VS-mode writes stvec -> writes vstvec --- */
     test_val = 0x3000;
-    asm volatile ("csrw " CSR_STR(CSR_VSTVEC) ", zero" ::: "memory");  /* clear vstvec */
+    CSRW(CSR_VSTVEC, 0);  /* clear vstvec */
     run_in_vs_mode(vs_write_stvec, test_val);
     uintptr_t wval;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVEC) : "=r"(wval) :: "memory");
+    wval = CSRR(CSR_VSTVEC);
     TEST_ASSERT_EQ("vstvec contains value written by VS stvec",
                    wval, test_val);
 
@@ -507,11 +510,11 @@ bool test_vcsr_13(void)
     uintptr_t test_val = 0xABCD;
 
     /* Write to vsscratch (CSR 0x240). */
-    asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0" :: "r"(test_val));
+    CSRW(CSR_VSSCRATCH, test_val);
 
     /* Read back. */
     uintptr_t expected;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSCRATCH) : "=r"(expected));
+    expected = CSRR(CSR_VSSCRATCH);
 
     /* VS-mode reads sscratch (= vsscratch in V=1). */
     uintptr_t vs_read = run_in_vs_mode(vs_read_sscratch, 0);
@@ -521,10 +524,10 @@ bool test_vcsr_13(void)
 
     /* --- Part B: VS-mode writes sscratch -> writes vsscratch --- */
     test_val = 0xFEED;
-    asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", zero" ::: "memory");  /* clear vsscratch */
+    CSRW(CSR_VSSCRATCH, 0);  /* clear vsscratch */
     run_in_vs_mode(vs_write_sscratch, test_val);
     uintptr_t wval;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSCRATCH) : "=r"(wval) :: "memory");
+    wval = CSRR(CSR_VSSCRATCH);
     TEST_ASSERT_EQ("vsscratch contains value written by VS sscratch",
                    wval, test_val);
 
@@ -546,28 +549,28 @@ bool test_vcsr_14(void)
     /* Enable dual-layer delegation for VSSI:
      * mideleg[2]=1 (M→HS) + hideleg[2]=1 (HS→VS).
      * This is required for the sie↔vsie↔hie alias chain. */
-    uintptr_t mideleg;
-    asm volatile ("csrr %0, mideleg" : "=r"(mideleg));
+    /* mideleg is M-level; proxy via tsbi_csr_* (suite runs in S(HS)-mode). */
+    uintptr_t mideleg = tsbi_csr_read(CSR_MIDELEG);
     mideleg |= (1UL << 2);
-    asm volatile ("csrw mideleg, %0" :: "r"(mideleg));
+    tsbi_csr_write(CSR_MIDELEG, mideleg);
     hideleg_write(1UL << 2);
 
     /* --- Part A: sie ↔ hie alias (write from VS, verify from M) ---
      *
      * When hideleg[2]=1, VS-mode writing sie.SSIE (bit 1) should
      * be reflected in hie.VSSIE (bit 2 in VS-level numbering). */
-    asm volatile ("csrw " CSR_STR(CSR_HIE) ", zero");  /* hie = 0 */
+    CSRW(CSR_HIE, 0);  /* hie = 0 */
 
     run_in_vs_mode(vs_write_sie, 1UL << 1);  /* sie.SSIE = 1 */
 
     uintptr_t hie_val;
-    asm volatile ("csrr %0, " CSR_STR(CSR_HIE) : "=r"(hie_val));
+    hie_val = CSRR(CSR_HIE);
     TEST_ASSERT("sie.SSIE write -> hie.VSSIE (bit 2)",
                 (hie_val & (1UL << 2)) != 0);
 
     /* Verify vsie also reflects the write (from M-mode). */
     uintptr_t vsie_val;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSIE) : "=r"(vsie_val));
+    vsie_val = CSRR(CSR_VSIE);
     TEST_ASSERT("vsie.VSSIE set after VS sie write",
                 (vsie_val & (1UL << 1)) != 0);
 
@@ -579,7 +582,7 @@ bool test_vcsr_14(void)
 
     (void)hvip_read();
     uintptr_t hip_val;
-    asm volatile ("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip_val));
+    hip_val = CSRR(CSR_HIP);
 
     /* hip.VSSIP (bit 2) should reflect hvip.VSSIP. */
     TEST_ASSERT("hip.VSSIP reflects hvip.VSSIP",
@@ -587,7 +590,7 @@ bool test_vcsr_14(void)
 
     /* vsip.SSIP (bit 1) from M-mode should reflect hvip.VSSIP. */
     uintptr_t vsip_val;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSIP) : "=r"(vsip_val));
+    vsip_val = CSRR(CSR_VSIP);
     TEST_ASSERT("vsip.SSIP reflects hvip.VSSIP (M-mode read)",
                 (vsip_val & (1UL << 1)) != 0);
 
@@ -601,7 +604,7 @@ bool test_vcsr_14(void)
 
     /* Cleanup. */
     hvip_set_vssi(0);
-    asm volatile ("csrw " CSR_STR(CSR_HIE) ", zero");  /* hie = 0 */
+    CSRW(CSR_HIE, 0);  /* hie = 0 */
     hideleg_write(0);
 
     HYP_TEST_END();
@@ -624,11 +627,11 @@ bool test_vcsr_15(void)
     uintptr_t test_val = 0x5678;
 
     /* Write to vsatp (CSR 0x280). */
-    asm volatile ("csrw " CSR_STR(CSR_VSATP) ", %0" :: "r"(test_val));
+    CSRW(CSR_VSATP, test_val);
 
     /* Read back for actual stored value. */
     uintptr_t expected;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSATP) : "=r"(expected));
+    expected = CSRR(CSR_VSATP);
 
     /* VS-mode reads satp (= vsatp in V=1). */
     uintptr_t vs_read = run_in_vs_mode(vs_read_satp, 0);
@@ -661,49 +664,67 @@ bool test_vcsr_15(void)
  * testing VS-mode access so that norm:H_scsrs_nomatch behavior is
  * properly exercised.
  * =================================================================== */
+/* VCSR-16 M-mode excursion context and helpers.
+ *
+ * mstateen0 (0x30C, M-level) and hstateen0 (0x60C, HS-level) carry the ENVCFG
+ * gate that controls senvcfg access from HS/VS-mode. Enabling them needs M-mode
+ * authority, so this runs inside run_in_priv(PRIV_M, ...).
+ *
+ * Whether Smstateen exists is a COMPILE-TIME platform declaration
+ * (SMSTATEEN_AVAILABLE, normalized by capabilities.h from the config's
+ * SMSTATEEN_SUPPORTED) -- NOT a runtime probe. This follows the framework rule
+ * that capability support is declaration-driven, never probed: a part that
+ * declares Smstateen yet traps on mstateen0 is non-conforming and must fail
+ * loudly, not be papered over by a trap probe. */
+struct vcsr16_stateen_ctx {
+    uintptr_t orig_mstateen0;
+    uintptr_t orig_hstateen0;
+};
+
+static uintptr_t m_setup_stateen(uintptr_t arg)
+{
+#if SMSTATEEN_AVAILABLE
+    struct vcsr16_stateen_ctx *ctx = (struct vcsr16_stateen_ctx *)arg;
+
+    /* Enable ENVCFG (HS-mode senvcfg access) + SE0 (hstateen0 access) in
+     * mstateen0, and ENVCFG in hstateen0 (VS-mode senvcfg access). Save the
+     * originals so m_restore_stateen() can put them back. */
+    ctx->orig_mstateen0 = CSRR(CSR_MSTATEEN0);
+    CSRS(CSR_MSTATEEN0, STATEEN0_ENVCFG | STATEEN0_SE0);
+    ctx->orig_hstateen0 = CSRR(CSR_HSTATEEN0);
+    CSRS(CSR_HSTATEEN0, STATEEN0_ENVCFG);
+#else
+    (void)arg;   /* Smstateen not declared: no ENVCFG gate to open */
+#endif
+    return 0;
+}
+
+static uintptr_t m_restore_stateen(uintptr_t arg)
+{
+#if SMSTATEEN_AVAILABLE
+    struct vcsr16_stateen_ctx *ctx = (struct vcsr16_stateen_ctx *)arg;
+
+    CSRW(CSR_HSTATEEN0, ctx->orig_hstateen0);
+    CSRW(CSR_MSTATEEN0, ctx->orig_mstateen0);
+#else
+    (void)arg;
+#endif
+    return 0;
+}
+
 TEST_REGISTER(test_vcsr_16);
 bool test_vcsr_16(void)
 {
     TEST_BEGIN("VCSR-16: senvcfg in V=1 (no VS counterpart)");
 
-    /* Save original senvcfg. */
+    /* Probe + enable the Smstateen ENVCFG gate in an M-mode excursion FIRST,
+     * so the HS-mode senvcfg accesses below are not gated (see helper). */
+    struct vcsr16_stateen_ctx ctx;
+    run_in_priv(PRIV_M, m_setup_stateen, (uintptr_t)&ctx);
+
+    /* Save original senvcfg (reachable from HS-mode now the gate is open). */
     uintptr_t orig_senvcfg;
-    asm volatile ("csrr %0, " CSR_STR(CSR_SENVCFG) : "=r"(orig_senvcfg));
-
-    /* --- Smstateen handling ---
-     * If Smstateen is implemented, mstateen0.ENVCFG and
-     * hstateen0.ENVCFG must be set to allow senvcfg access from
-     * HS-mode and VS-mode. Without this, VS-mode senvcfg access
-     * traps as a virtual-instruction exception, which is
-     * SPEC-compliant but prevents testing norm:H_scsrs_nomatch. */
-    uintptr_t orig_mstateen0 = 0;
-    uintptr_t orig_hstateen0 = 0;
-    bool smstateen_present = false;
-    bool hstateen0_saved = false;
-
-    /* Detect Smstateen by probing mstateen0 (CSR 0x30C). */
-    trap_expect_begin();
-    asm volatile ("csrr %0, " CSR_STR(CSR_MSTATEEN0) : "=r"(orig_mstateen0) :: "memory");
-    bool mstateen_trapped = trap_was_triggered();
-    trap_expect_end();
-
-    if (!mstateen_trapped) {
-        smstateen_present = true;
-        /* Enable ENVCFG (for HS-mode senvcfg access) and SE0
-         * (for hstateen0 access) in mstateen0. */
-        asm volatile ("csrs " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(STATEEN0_ENVCFG | STATEEN0_SE0) : "memory");
-
-        /* Enable ENVCFG in hstateen0 for VS-mode senvcfg access. */
-        trap_expect_begin();
-        asm volatile ("csrr %0, " CSR_STR(CSR_HSTATEEN0) : "=r"(orig_hstateen0) :: "memory");
-        bool hstateen_trapped = trap_was_triggered();
-        trap_expect_end();
-
-        if (!hstateen_trapped) {
-            hstateen0_saved = true;
-            asm volatile ("csrs " CSR_STR(CSR_HSTATEEN0) ", %0" :: "r"(STATEEN0_ENVCFG) : "memory");
-        }
-    }
+    orig_senvcfg = CSRR(CSR_SENVCFG);
 
     /* Probe for a writable field in senvcfg.
      * FIOM (bit 0) may be read-only zero per norm:menvcfg_fiom_rdonly0_ok
@@ -727,10 +748,10 @@ bool test_vcsr_16(void)
 
     for (int i = 0; i < 4; i++) {
         /* Clear senvcfg first, then write the probe value. */
-        asm volatile ("csrw " CSR_STR(CSR_SENVCFG) ", zero");
-        asm volatile ("csrw " CSR_STR(CSR_SENVCFG) ", %0" :: "r"(probe_fields[i].val));
+        CSRW(CSR_SENVCFG, 0);
+        CSRW(CSR_SENVCFG, probe_fields[i].val);
         uintptr_t rd;
-        asm volatile ("csrr %0, " CSR_STR(CSR_SENVCFG) : "=r"(rd));
+        rd = CSRR(CSR_SENVCFG);
         if ((rd & probe_fields[i].mask) ==
             (probe_fields[i].val & probe_fields[i].mask)) {
             test_val = probe_fields[i].val;
@@ -745,9 +766,9 @@ bool test_vcsr_16(void)
      * If no writable field (all read-only zero), skip the assertion
      * but continue to Part B (VS-mode access test). */
     if (found_writable) {
-        asm volatile ("csrw " CSR_STR(CSR_SENVCFG) ", %0" :: "r"(test_val));
+        CSRW(CSR_SENVCFG, test_val);
         uintptr_t m_read;
-        asm volatile ("csrr %0, " CSR_STR(CSR_SENVCFG) : "=r"(m_read));
+        m_read = CSRR(CSR_SENVCFG);
         TEST_ASSERT_EQ("M-mode senvcfg read/write",
                        m_read & test_mask, test_val & test_mask);
     } else {
@@ -773,7 +794,7 @@ bool test_vcsr_16(void)
      * the write landed on the real HS-level senvcfg. */
     if (senvcfg_readable && found_writable) {
         /* Clear senvcfg to zero from M-mode. */
-        asm volatile ("csrw " CSR_STR(CSR_SENVCFG) ", zero");
+        CSRW(CSR_SENVCFG, 0);
 
         trap_expect_begin();
         run_in_vs_mode(vs_write_senvcfg, test_val);
@@ -782,22 +803,17 @@ bool test_vcsr_16(void)
         TEST_ASSERT("VS-mode senvcfg write (no trap)", senvcfg_writable);
         if (senvcfg_writable) {
             uintptr_t m_read;
-            asm volatile ("csrr %0, " CSR_STR(CSR_SENVCFG) : "=r"(m_read));
+            m_read = CSRR(CSR_SENVCFG);
             TEST_ASSERT_EQ("VS-mode senvcfg write reflected in M-mode read",
                            m_read & test_mask, test_val & test_mask);
         }
     }
 
     /* Restore original senvcfg. */
-    asm volatile ("csrw " CSR_STR(CSR_SENVCFG) ", %0" :: "r"(orig_senvcfg));
+    CSRW(CSR_SENVCFG, orig_senvcfg);
 
-    /* Restore mstateen0/hstateen0 if modified. */
-    if (smstateen_present) {
-        if (hstateen0_saved) {
-            asm volatile ("csrw " CSR_STR(CSR_HSTATEEN0) ", %0" :: "r"(orig_hstateen0) : "memory");
-        }
-        asm volatile ("csrw " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(orig_mstateen0) : "memory");
-    }
+    /* Restore mstateen0/hstateen0 in an M-mode excursion. */
+    run_in_priv(PRIV_M, m_restore_stateen, (uintptr_t)&ctx);
 
     HYP_TEST_END();
 }
@@ -815,14 +831,18 @@ bool test_vcsr_17(void)
 {
     TEST_BEGIN("VCSR-17: scounteren in V=1 (no VS counterpart)");
 
-    /* Save original values. */
-    uintptr_t orig_mcounteren = mcounteren_read();
+    /* Save original values.
+     * mcounteren (0x306) is M-level; the suite runs in S(HS)-mode, so use
+     * the tsbi_csr_* wrapper (routes through the T-SBI CSR proxy when
+     * the current privilege cannot reach the register). scounteren (S-level)
+     * and hcounteren (HS-level) are directly reachable from HS-mode. */
+    uintptr_t orig_mcounteren = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t orig_scounteren;
-    asm volatile ("csrr %0, " CSR_STR(CSR_SCOUNTEREN) : "=r"(orig_scounteren));
+    orig_scounteren = CSRR(CSR_SCOUNTEREN);
     uintptr_t orig_hcounteren = hcounteren_read();
 
     /* Enable cycle counter access at all levels. */
-    mcounteren_set(1UL << 0);     /* mcounteren.CY = 1 */
+    tsbi_csr_set(CSR_MCOUNTEREN, 1UL << 0);   /* mcounteren.CY = 1 */
     hcounteren_set(1UL << 0);     /* hcounteren.CY = 1 */
     scounteren_set(1UL << 0);     /* scounteren.CY = 1 */
 
@@ -859,8 +879,8 @@ bool test_vcsr_17(void)
     }
 
     /* Restore original values. */
-    mcounteren_write(orig_mcounteren);
-    asm volatile ("csrw " CSR_STR(CSR_SCOUNTEREN) ", %0" :: "r"(orig_scounteren));
+    tsbi_csr_write(CSR_MCOUNTEREN, orig_mcounteren);
+    CSRW(CSR_SCOUNTEREN, orig_scounteren);
     hcounteren_write(orig_hcounteren);
 
     HYP_TEST_END();
@@ -881,21 +901,18 @@ bool test_vcsr_18(void)
 {
     TEST_BEGIN("VCSR-18: mtval is not read-only zero (H ext)");
 
-    uintptr_t orig = CSRR(mtval);
-
-    /* Pattern round-trip: mtval must be writable. */
-    CSRW(mtval, 0xDEADBEEFUL);
-    uintptr_t rb1 = CSRR(mtval);
+    /* mtval is a trap-state CSR. mcsr_write_readback() performs the write and
+     * the read-back inside a single M-mode excursion, so no intervening trap
+     * clobbers it -- the only correct way to check writability from S-mode.
+     * (tsbi_csr_read(CSR_MTVAL) is refused by the trap-state guard; see tsbi.h.) */
+    uintptr_t rb1 = mcsr_write_readback(CSR_MTVAL, 0xDEADBEEFUL);
     TEST_ASSERT_EQ("mtval must be writable (norm:H_mtval_nrz)",
                    rb1, 0xDEADBEEFUL);
 
     /* Address-valued round-trip: mtval must hold faulting addresses. */
     uintptr_t addr = (uintptr_t)test_vcsr_18;
-    CSRW(mtval, addr);
-    uintptr_t rb2 = CSRR(mtval);
+    uintptr_t rb2 = mcsr_write_readback(CSR_MTVAL, addr);
     TEST_ASSERT_EQ("mtval must hold an address value", rb2, addr);
-
-    CSRW(mtval, orig);
 
     HYP_TEST_END();
 }

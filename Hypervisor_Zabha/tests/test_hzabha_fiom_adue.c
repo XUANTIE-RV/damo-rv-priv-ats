@@ -183,7 +183,7 @@ bool test_hzabha_31_adue1_hw_update(void)
     *(volatile uint64_t *)va = 0x0011223344556677ULL;
 
     ts2_enable_adue();
-    bool adue_on = ((menvcfg_read() & MENVCFG_ADUE) != 0) &&
+    bool adue_on = ((tsbi_csr_read(CSR_MENVCFG) & MENVCFG_ADUE) != 0) &&
                    ((henvcfg_read() & HENVCFG_ADUE) != 0);
     if (!adue_on) {
         ts2_disable_adue();

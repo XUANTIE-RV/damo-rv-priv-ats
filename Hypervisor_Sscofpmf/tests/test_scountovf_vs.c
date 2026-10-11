@@ -13,6 +13,10 @@
  *   In VS-mode, scountovf bit X is readable when both mcounteren
  *   bit X and hcounteren bit X are set, otherwise reads as zero.
  *
+ * mcounteren is an M-level CSR: from the S(HS)-mode normal state it is
+ * reached through the tsbi_csr_* proxy. hcounteren is HS-level and stays a
+ * direct CSRR/CSRW.
+ *
  * See DOCS/testplan/Hypervisor_Ss_test_plan.md Group 10.
  */
 
@@ -29,15 +33,14 @@ static uintptr_t _vs_read_scountovf(uintptr_t arg)
 TEST_REGISTER(test_hcross_sscofpmf_01_vs_both_allow);
 bool test_hcross_sscofpmf_01_vs_both_allow(void) {
     TEST_BEGIN("HCROSS-SSCOFPMF-01: VS-mode scountovf both gates allow");
+    if (!SSCOFPMF_AVAILABLE) TEST_SKIP("Sscofpmf not supported");
     if (!H_AVAILABLE) TEST_SKIP("H extension not supported");
-    unsigned n = find_first_counter();
-    if (!n) TEST_SKIP("no hpmcounter implemented");
-    if (!is_scountovf_functional(n)) TEST_SKIP("scountovf not functional on this platform");
+    unsigned n = COFPMF_TEST_COUNTER;
 
     /* Set both mcounteren and hcounteren bits */
-    uintptr_t mc_orig = CSRR(mcounteren);
+    uintptr_t mc_orig = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t hc_orig = CSRR(hcounteren);
-    CSRW(mcounteren, mc_orig | (1UL << n));
+    tsbi_csr_write(CSR_MCOUNTEREN, mc_orig | (1UL << n));
     CSRW(hcounteren, hc_orig | (1UL << n));
 
     /* Set OF=1 */
@@ -52,7 +55,7 @@ bool test_hcross_sscofpmf_01_vs_both_allow(void) {
 
     /* Restore before asserting (so cleanup always runs) */
     cofpmf_write_event(n, orig);
-    CSRW(mcounteren, mc_orig);
+    tsbi_csr_write(CSR_MCOUNTEREN, mc_orig);
     CSRW(hcounteren, hc_orig);
 
     TEST_ASSERT("VS-mode scountovf read no trap", !trapped);
@@ -67,15 +70,14 @@ bool test_hcross_sscofpmf_01_vs_both_allow(void) {
 TEST_REGISTER(test_hcross_sscofpmf_02_vs_mc0);
 bool test_hcross_sscofpmf_02_vs_mc0(void) {
     TEST_BEGIN("HCROSS-SSCOFPMF-02: VS-mode scountovf mcounteren=0");
+    if (!SSCOFPMF_AVAILABLE) TEST_SKIP("Sscofpmf not supported");
     if (!H_AVAILABLE) TEST_SKIP("H extension not supported");
-    unsigned n = find_first_counter();
-    if (!n) TEST_SKIP("no hpmcounter implemented");
-    if (!is_scountovf_functional(n)) TEST_SKIP("scountovf not functional on this platform");
+    unsigned n = COFPMF_TEST_COUNTER;
 
     /* Clear mcounteren bit (hcounteren doesn't matter), set OF=1 */
-    uintptr_t mc_orig = CSRR(mcounteren);
+    uintptr_t mc_orig = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t hc_orig = CSRR(hcounteren);
-    CSRW(mcounteren, mc_orig & ~(1UL << n));
+    tsbi_csr_write(CSR_MCOUNTEREN, mc_orig & ~(1UL << n));
     CSRW(hcounteren, hc_orig | (1UL << n));
 
     uint64_t orig = cofpmf_read_event(n);
@@ -88,7 +90,7 @@ bool test_hcross_sscofpmf_02_vs_mc0(void) {
     trap_expect_end();
 
     cofpmf_write_event(n, orig);
-    CSRW(mcounteren, mc_orig);
+    tsbi_csr_write(CSR_MCOUNTEREN, mc_orig);
     CSRW(hcounteren, hc_orig);
 
     TEST_ASSERT("VS-mode scountovf read no trap", !trapped);
@@ -104,15 +106,14 @@ bool test_hcross_sscofpmf_02_vs_mc0(void) {
 TEST_REGISTER(test_hcross_sscofpmf_03_vs_hc0);
 bool test_hcross_sscofpmf_03_vs_hc0(void) {
     TEST_BEGIN("HCROSS-SSCOFPMF-03: VS-mode scountovf hcounteren=0");
+    if (!SSCOFPMF_AVAILABLE) TEST_SKIP("Sscofpmf not supported");
     if (!H_AVAILABLE) TEST_SKIP("H extension not supported");
-    unsigned n = find_first_counter();
-    if (!n) TEST_SKIP("no hpmcounter implemented");
-    if (!is_scountovf_functional(n)) TEST_SKIP("scountovf not functional on this platform");
+    unsigned n = COFPMF_TEST_COUNTER;
 
     /* Set mcounteren=1, clear hcounteren, set OF=1 */
-    uintptr_t mc_orig = CSRR(mcounteren);
+    uintptr_t mc_orig = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t hc_orig = CSRR(hcounteren);
-    CSRW(mcounteren, mc_orig | (1UL << n));
+    tsbi_csr_write(CSR_MCOUNTEREN, mc_orig | (1UL << n));
     CSRW(hcounteren, hc_orig & ~(1UL << n));
 
     uint64_t orig = cofpmf_read_event(n);
@@ -125,7 +126,7 @@ bool test_hcross_sscofpmf_03_vs_hc0(void) {
     trap_expect_end();
 
     cofpmf_write_event(n, orig);
-    CSRW(mcounteren, mc_orig);
+    tsbi_csr_write(CSR_MCOUNTEREN, mc_orig);
     CSRW(hcounteren, hc_orig);
 
     TEST_ASSERT("VS-mode scountovf read no trap", !trapped);

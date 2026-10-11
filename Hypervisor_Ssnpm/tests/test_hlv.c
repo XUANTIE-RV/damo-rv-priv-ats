@@ -321,6 +321,20 @@ bool test_hzpm_hlv_09(void) {
 }
 
 /* ----- HZPM-HLV-10: MPRV does not change HLV PM selection ----- */
+
+/* Open an MPRV=1/MPV=0/MPP=U window in M-mode and run HLV.D inside it.
+ * MPRV/MPV/MPP are mstatus return-path bits that the T-SBI proxy refuses and
+ * HS-mode cannot reach, so the window is set up in an M-excursion. MPRV only
+ * redirects M-mode ordinary accesses; HLV.D ignores it and still uses
+ * hstatus.SPVP. The window wraps just the single HLV.D. Returns the load. */
+static uintptr_t _hlv10_mprv_hlv_d(uintptr_t arg)
+{
+    ts2_set_mprv_mpv(/*mpv=*/0, PRIV_U);
+    uint64_t val = hlv_d(arg);
+    ts2_clear_mprv();
+    return (uintptr_t)val;
+}
+
 TEST_REGISTER(test_hzpm_hlv_10);
 bool test_hzpm_hlv_10(void) {
     TEST_BEGIN("HZPM-HLV-10: MPRV does not affect HLV PM selection");
@@ -343,9 +357,7 @@ bool test_hzpm_hlv_10(void) {
      * U-mode PM for ordinary loads) -- HLV must still use
      * henvcfg.PMM via SPVP=1. */
     hstatus_set_spvp(PRIV_S);
-    ts2_set_mprv_mpv(/*mpv=*/0, PRIV_U);
-    uint64_t val = hlv_d(tagged);
-    ts2_clear_mprv();
+    uint64_t val = run_in_priv(PRIV_M, _hlv10_mprv_hlv_d, tagged);
 
     TEST_ASSERT_EQ("HLV.D uses SPVP/henvcfg.PMM despite MPRV",
                    val, HZPM_MAGIC3);

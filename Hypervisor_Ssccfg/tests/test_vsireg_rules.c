@@ -193,14 +193,14 @@ bool test_hcross_ssccfg_20_vs_sireg_cde0(void) {
     if (!cde_settable()) TEST_SKIP("menvcfg.CDE not writable");
 
     stateen_allow_csrind();
-    uintptr_t orig_cde = menvcfg_read();
-    menvcfg_write(orig_cde & ~MENVCFG_CDE);
+    uintptr_t orig_cde = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde & ~MENVCFG_CDE);
 
     TEST_VS_MODE_TRAP("VS sireg (CDE=0) illegal-inst",
                       _vs_read_sireg_deleg, SISELECT_DELEG_BASE,
                       CAUSE_ILLEGAL_INST);
 
-    menvcfg_write(orig_cde);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde);
     HYP_TEST_END();
 }
 
@@ -215,14 +215,14 @@ bool test_hcross_ssccfg_21_vs_sireg_cde1(void) {
     if (!cde_settable()) TEST_SKIP("menvcfg.CDE not writable");
 
     stateen_allow_csrind();
-    uintptr_t orig_cde = menvcfg_read();
-    menvcfg_write(orig_cde | MENVCFG_CDE);
+    uintptr_t orig_cde = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde | MENVCFG_CDE);
 
     TEST_VS_MODE_TRAP("VS sireg (CDE=1) virtual-inst",
                       _vs_read_sireg_deleg, SISELECT_DELEG_BASE,
                       CAUSE_VIRTUAL_INSTRUCTION);
 
-    menvcfg_write(orig_cde);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde);
     HYP_TEST_END();
 }
 

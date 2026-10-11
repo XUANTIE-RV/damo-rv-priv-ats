@@ -97,17 +97,17 @@ static inline bool check_ssdbltrp_extension(void)
     clear_mdt();
 
     /* Save original state */
-    uintptr_t menvcfg_orig = menvcfg_read();
+    uintptr_t menvcfg_orig = tsbi_csr_read(CSR_MENVCFG);
     uintptr_t henvcfg_orig = henvcfg_read();
     uintptr_t vsstatus_orig = vsstatus_read();
 
     /* Enable DTE at M-level */
-    menvcfg_set_bits(MENVCFG_DTE);
-    uintptr_t menvcfg_val = menvcfg_read();
+    tsbi_csr_set(CSR_MENVCFG, MENVCFG_DTE);
+    uintptr_t menvcfg_val = tsbi_csr_read(CSR_MENVCFG);
     if ((menvcfg_val & MENVCFG_DTE) == 0) {
         /* menvcfg.DTE is read-only zero - Ssdbltrp not implemented at M-level
          * This is expected on QEMU which doesn't support Ssdbltrp */
-        menvcfg_write(menvcfg_orig);
+        tsbi_csr_write(CSR_MENVCFG, menvcfg_orig);
         return false;
     }
 
@@ -117,7 +117,7 @@ static inline bool check_ssdbltrp_extension(void)
     if ((henvcfg_val & HENVCFG_DTE) == 0) {
         /* henvcfg.DTE is read-only zero - Ssdbltrp not implemented at H-level */
         henvcfg_write(henvcfg_orig);
-        menvcfg_write(menvcfg_orig);
+        tsbi_csr_write(CSR_MENVCFG, menvcfg_orig);
         return false;
     }
 
@@ -130,7 +130,7 @@ static inline bool check_ssdbltrp_extension(void)
     vsstatus_clear_bits(VSSTATUS_SDT);
     vsstatus_write(vsstatus_orig & ~VSSTATUS_SDT);
     henvcfg_write(henvcfg_orig);
-    menvcfg_write(menvcfg_orig);
+    tsbi_csr_write(CSR_MENVCFG, menvcfg_orig);
 
     return sdt_writable;
 }

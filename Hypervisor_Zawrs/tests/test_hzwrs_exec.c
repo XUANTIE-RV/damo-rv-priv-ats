@@ -38,7 +38,9 @@ bool test_hzwrs_01(void)
      * illegal-instruction trap would mean the DUT does NOT implement
      * Zawrs despite the config declaring it. No other case probes. */
     uintptr_t saved_mideleg = hz_set_m_soft_pending();
-    M_TRAP_EXPECT_BEGIN();
+    /* T-SBI S-mode-normal: probe runs in HS-mode where mstatus.MDT
+     * (M-mode double-trap guard) is void, so plain trap arming is used. */
+    trap_expect_begin();
     EXEC_WRS_STO();
     bool probe_trapped = trap_was_triggered();
     uintptr_t probe_cause = trap_get_cause();
@@ -48,7 +50,7 @@ bool test_hzwrs_01(void)
                 !(probe_trapped && probe_cause == CAUSE_ILLEGAL_INST));
 
     hstatus_set_vtw(false);
-    CSRC(mstatus, MSTATUS_TW_BIT);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TW_BIT);
     (void)hz_reserve();
 
     /* A pending locally enabled SSIP, delegated to S-level with
@@ -60,14 +62,14 @@ bool test_hzwrs_01(void)
     hz_suppress_globals();
     saved_mideleg = hz_set_m_soft_pending();
 
-    goto_priv(PRIV_S);
+    /* S-mode-normal: run the stimulus natively in HS-mode. The former
+     * goto_priv(PRIV_S)/goto_priv(PRIV_M) M-native scaffolding is removed:
+     * goto_priv(PRIV_S) is a no-op here and goto_priv(PRIV_M) would strand
+     * execution in M (see the Hypervisor_Interrupts migration). */
     PRIV_DO(EXEC_WRS_NTO());
-    goto_priv(PRIV_M);
     CHECK_NO_TRAP("HS-mode wrs.nto");
 
-    goto_priv(PRIV_S);
     PRIV_DO(EXEC_WRS_STO());
-    goto_priv(PRIV_M);
     /* Clear before the assertion: the framework's TEST_ASSERT only
      * records a failure (execution continues), but ordering the
      * cleanup ahead of the check keeps the wake source teardown on
@@ -88,7 +90,7 @@ bool test_hzwrs_02(void)
     if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     hstatus_set_vtw(false);
-    CSRC(mstatus, MSTATUS_TW_BIT);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TW_BIT);
     (void)hz_reserve();
 
     /* A pending locally enabled VS-software interrupt (hvip.VSSIP
@@ -121,7 +123,7 @@ bool test_hzwrs_03(void)
     if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     hstatus_set_vtw(false);
-    CSRC(mstatus, MSTATUS_TW_BIT);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TW_BIT);
     (void)hz_reserve();
 
     /* A pending locally enabled interrupt always targets VS or

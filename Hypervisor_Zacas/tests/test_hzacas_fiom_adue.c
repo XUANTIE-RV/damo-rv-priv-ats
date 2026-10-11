@@ -195,7 +195,7 @@ bool test_hzacas_31_adue1_hw_update(void)
     hz_cas_swap = 0x00002000u;
 
     ts2_enable_adue();
-    bool adue_on = ((menvcfg_read() & MENVCFG_ADUE) != 0) &&
+    bool adue_on = ((tsbi_csr_read(CSR_MENVCFG) & MENVCFG_ADUE) != 0) &&
                    ((henvcfg_read() & HENVCFG_ADUE) != 0);
     if (!adue_on) {
         ts2_disable_adue();
@@ -252,7 +252,7 @@ bool test_hzacas_32_failed_cas_d_side_effect(void)
     hz_cas_swap = 0x00002000u;
 
     ts2_enable_adue();
-    bool adue_on = ((menvcfg_read() & MENVCFG_ADUE) != 0) &&
+    bool adue_on = ((tsbi_csr_read(CSR_MENVCFG) & MENVCFG_ADUE) != 0) &&
                    ((henvcfg_read() & HENVCFG_ADUE) != 0);
     if (!adue_on) {
         ts2_disable_adue();
@@ -309,7 +309,7 @@ bool test_hzacas_33_failed_cas_gstage_d_side_effect(void)
     hz_cas_swap = 0x00002000u;
 
     ts2_enable_adue();
-    bool adue_on = ((menvcfg_read() & MENVCFG_ADUE) != 0) &&
+    bool adue_on = ((tsbi_csr_read(CSR_MENVCFG) & MENVCFG_ADUE) != 0) &&
                    ((henvcfg_read() & HENVCFG_ADUE) != 0);
     if (!adue_on) {
         ts2_disable_adue();

@@ -20,8 +20,8 @@ bool test_hcross_smsta_01(void) {
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
     /* Set mstateen0.SE0 to allow hstateen0 access, plus some bits */
-    uintptr_t orig = mstateen_read(0);
-    mstateen_write(0, MSTATEEN0_SE0 | MSTATEEN0_C);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, MSTATEEN0_SE0 | MSTATEEN0_C);
 
     /* Write zero to hstateen0 */
     trap_expect_begin();
@@ -36,6 +36,6 @@ bool test_hcross_smsta_01(void) {
     uintptr_t val = hstateen_read(0);
     TEST_ASSERT_EQ("hstateen0 reads zero", val, 0);
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     TEST_END();
 }

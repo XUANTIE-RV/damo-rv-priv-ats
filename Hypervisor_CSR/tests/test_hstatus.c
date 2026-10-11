@@ -24,10 +24,10 @@ bool test_hstat_01(void) {
     uintptr_t read_val;
 
     /* Write hstatus via CSR 0x600 */
-    asm volatile ("csrw " CSR_STR(CSR_HSTATUS) ", %0" :: "r"(test_val));
+    CSRW(CSR_HSTATUS, test_val);
 
     /* Read hstatus via CSR 0x600 */
-    asm volatile ("csrr %0, " CSR_STR(CSR_HSTATUS) : "=r"(read_val));
+    read_val = CSRR(CSR_HSTATUS);
 
     /* hstatus contains WARL fields (VSBE, VSXL) and reserved bits
      * that may not retain written values. Compare only reliably
@@ -110,7 +110,7 @@ bool test_hstat_05(void) {
     hstatus_set_vtw(0);
 
     /* Ensure mstatus.TW=0 so WFI is not trapped for that reason. */
-    asm volatile ("csrc mstatus, %0" :: "r"(1UL << 21));
+    CSRC(CSR_MSTATUS, 1UL << 21);
 
     /* Both QEMU and real hardware implement WFI as a true halt when
      * VTW=0 and TW=0, so the hart stalls until an interrupt arrives.
@@ -123,17 +123,17 @@ bool test_hstat_05(void) {
      * logic to generate STIP. QEMU may default STCE=1 at reset, but
      * real hardware typically resets with STCE=0. */
     uintptr_t saved_menvcfg;
-    asm volatile ("csrr %0, " CSR_STR(CSR_MENVCFG) : "=r"(saved_menvcfg));
-    asm volatile ("csrs " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(1UL << 63));
+    saved_menvcfg = CSRR(CSR_MENVCFG);
+    CSRS(CSR_MENVCFG, 1UL << 63);
 
     uintptr_t time_now;
-    asm volatile ("csrr %0, time" : "=r"(time_now));
-    asm volatile ("csrw " CSR_STR(CSR_STIMECMP) ", %0" :: "r"(time_now + 100000));
+    time_now = CSRR(CSR_TIME);
+    CSRW(CSR_STIMECMP, time_now + 100000);
 
     /* Enable S-mode timer interrupt in mie so it fires in M-mode. */
     uintptr_t saved_mie;
-    asm volatile ("csrr %0, mie" : "=r"(saved_mie));
-    asm volatile ("csrs mie, %0" :: "r"(1UL << 5));
+    saved_mie = CSRR(CSR_MIE);
+    CSRS(CSR_MIE, 1UL << 5);
 
     /* Run WFI in VS-mode. Do NOT arm trap_record: the timer interrupt
      * is expected and is handled transparently by M-mode. If VTW=0
@@ -145,9 +145,9 @@ bool test_hstat_05(void) {
     TEST_ASSERT("VTW=0: WFI completed without virtual-inst trap", true);
 
     /* Restore mie, menvcfg, and clear stimecmp. */
-    asm volatile ("csrw mie, %0" :: "r"(saved_mie));
-    asm volatile ("csrw " CSR_STR(CSR_STIMECMP) ", %0" :: "r"((uintptr_t)-1));
-    asm volatile ("csrw " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(saved_menvcfg));
+    CSRW(CSR_MIE, saved_mie);
+    CSRW(CSR_STIMECMP, (uintptr_t)-1);
+    CSRW(CSR_MENVCFG, saved_menvcfg);
 
     HYP_TEST_END();
 }
@@ -159,21 +159,22 @@ TEST_REGISTER(test_hstat_06);
 bool test_hstat_06(void) {
     TEST_BEGIN("HSTAT-06: mstatus.TW=1 overrides VTW (cause=2)");
 
-    uintptr_t mstatus;
-    uintptr_t orig_mstatus;
-
-    /* Save original mstatus */
-    asm volatile ("csrr %0, mstatus" : "=r"(orig_mstatus));
-
-    /* Set mstatus.TW (bit 21) */
-    asm volatile ("csrr %0, mstatus" : "=r"(mstatus));
-    mstatus |= (1UL << 21);
-    asm volatile ("csrw mstatus, %0" :: "r"(mstatus));
+    /* mstatus is M-level and a trap-state CSR. Set/clear only the TW bit
+     * (bit 21) via tsbi_csr_set/tsbi_csr_clear: they proxy a csrs/csrc that leaves
+     * MPP intact and is not undone by the proxy's mret (unlike MIE/MPIE).
+     * A full csrw mstatus through the proxy would clobber MPP and corrupt
+     * the return path. The suite runs in S(HS)-mode. */
+    tsbi_csr_set(CSR_MSTATUS, 1UL << 21);      /* mstatus.TW = 1 */
 
     /* Clear VTW to ensure mstatus.TW is the only factor */
     hstatus_set_vtw(0);
 
-    /* Expect illegal instruction exception */
+    /* Expect illegal instruction exception. mstatus.TW=1 makes WFI in VS-mode
+     * raise illegal-instruction (cause 2). The delegation-first baseline routes
+     * cause 2 down to the VS handler; its record is merged into the generic
+     * trap_was_triggered()/trap_get_cause(), and the VS handler now steps over
+     * an illegal instruction (rather than resuming at the frame ra), so
+     * EXPECT_TRAP observes it without rerouting the delegation. */
     EXPECT_TRAP(2, {
         run_in_vs_mode(vs_exec_wfi, 0);
     });
@@ -182,8 +183,8 @@ bool test_hstat_06(void) {
     TEST_ASSERT_EQ("trap cause == illegal-inst (2)",
                    trap_get_cause(), 2UL);
 
-    /* Restore original mstatus */
-    asm volatile ("csrw mstatus, %0" :: "r"(orig_mstatus));
+    /* Restore: clear mstatus.TW */
+    tsbi_csr_clear(CSR_MSTATUS, 1UL << 21);
 
     HYP_TEST_END();
 }
@@ -321,8 +322,8 @@ bool test_hstat_13(void) {
      * mstatus.MPV, not hstatus.SPV. */
     setup_deleg_to_hs(1UL << CAUSE_VIRTUAL_INSTRUCTION);
     uintptr_t saved_stvec;
-    asm volatile ("csrr %0, stvec" : "=r"(saved_stvec));
-    asm volatile ("csrw stvec, %0" :: "r"((uintptr_t)&_hs_trap_entry));
+    saved_stvec = CSRR(CSR_STVEC);
+    CSRW(CSR_STVEC, (uintptr_t)&_hs_trap_entry);
 
     /* HLV.W in VS-mode triggers cause=22; trap enters HS-mode where
      * hardware writes hstatus.SPV = 1.  HS handler captures SPV via
@@ -333,7 +334,7 @@ bool test_hstat_13(void) {
      * trap_get_spv() which was captured at HS-mode trap entry. */
     TEST_ASSERT("SPV set after VS trap", trap_get_spv());
 
-    asm volatile ("csrw stvec, %0" :: "r"(saved_stvec));
+    CSRW(CSR_STVEC, saved_stvec);
     clear_all_deleg();
 
     HYP_TEST_END();
@@ -354,8 +355,8 @@ bool test_hstat_14(void) {
      * sets hstatus.SPV on trap entry. */
     setup_deleg_to_hs(1UL << CAUSE_VIRTUAL_INSTRUCTION);
     uintptr_t saved_stvec;
-    asm volatile ("csrr %0, stvec" : "=r"(saved_stvec));
-    asm volatile ("csrw stvec, %0" :: "r"((uintptr_t)&_hs_trap_entry));
+    saved_stvec = CSRR(CSR_STVEC);
+    CSRW(CSR_STVEC, (uintptr_t)&_hs_trap_entry);
 
     /* HLV.W in VU-mode triggers cause=22; trap enters HS-mode where
      * hardware writes hstatus.SPV = 1 (trap from V=1).
@@ -365,7 +366,7 @@ bool test_hstat_14(void) {
     /* Verify SPV was set on trap entry to HS-mode */
     TEST_ASSERT("SPV set after VU trap", trap_get_spv());
 
-    asm volatile ("csrw stvec, %0" :: "r"(saved_stvec));
+    CSRW(CSR_STVEC, saved_stvec);
     clear_all_deleg();
 
     HYP_TEST_END();
@@ -410,8 +411,8 @@ bool test_hstat_16(void) {
      * hstatus.SPVP. */
     setup_deleg_to_hs(1UL << CAUSE_VIRTUAL_INSTRUCTION);
     uintptr_t saved_stvec;
-    asm volatile ("csrr %0, stvec" : "=r"(saved_stvec));
-    asm volatile ("csrw stvec, %0" :: "r"((uintptr_t)&_hs_trap_entry));
+    saved_stvec = CSRR(CSR_STVEC);
+    CSRW(CSR_STVEC, (uintptr_t)&_hs_trap_entry);
 
     /* HLV.W in VS-mode triggers cause=22; trap enters HS-mode where
      * hardware sets SPVP = 1 (previous privilege was S within V=1). */
@@ -421,7 +422,7 @@ bool test_hstat_16(void) {
     hstatus_val = hstatus_read();
     TEST_ASSERT("SPVP set after VS trap", (hstatus_val & HSTATUS_SPVP) != 0);
 
-    asm volatile ("csrw stvec, %0" :: "r"(saved_stvec));
+    CSRW(CSR_STVEC, saved_stvec);
     clear_all_deleg();
 
     HYP_TEST_END();
@@ -442,8 +443,8 @@ bool test_hstat_17(void) {
      * sets hstatus.SPVP on trap entry. */
     setup_deleg_to_hs(1UL << CAUSE_VIRTUAL_INSTRUCTION);
     uintptr_t saved_stvec;
-    asm volatile ("csrr %0, stvec" : "=r"(saved_stvec));
-    asm volatile ("csrw stvec, %0" :: "r"((uintptr_t)&_hs_trap_entry));
+    saved_stvec = CSRR(CSR_STVEC);
+    CSRW(CSR_STVEC, (uintptr_t)&_hs_trap_entry);
 
     /* HLV.W in VU-mode triggers cause=22; trap enters HS-mode where
      * hardware sets SPVP = 0 (previous privilege was U within V=1). */
@@ -453,7 +454,7 @@ bool test_hstat_17(void) {
     hstatus_val = hstatus_read();
     TEST_ASSERT("SPVP cleared after VU trap", (hstatus_val & HSTATUS_SPVP) == 0);
 
-    asm volatile ("csrw stvec, %0" :: "r"(saved_stvec));
+    CSRW(CSR_STVEC, saved_stvec);
     clear_all_deleg();
 
     HYP_TEST_END();

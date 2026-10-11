@@ -234,10 +234,23 @@ uintptr_t test_vs_jump_delegated(uintptr_t arg) {
 
 uintptr_t test_vs_load_delegated(uintptr_t arg) {
     /* Load from arg. VS-stage unmapped -> load page-fault (cause=13)
-     * delegated to VS-mode handler. Handler advances sepc
-     * past the faulting instruction, so we continue here. */
-    volatile uint64_t dummy;
-    dummy = *(volatile uint64_t *)arg;
+     * delegated to VS-mode handler. The handler advances sepc past the
+     * faulting instruction by a fixed +4, so the load MUST be a 4-byte
+     * (non-compressed) instruction: a compressed c.ld would make sepc+4
+     * land mid-way into the following instruction and execute garbage
+     * (observed: a spurious store page-fault overwrote the record).
+     * .option norvc forces the 4-byte encoding, matching
+     * test_vs_jump_delegated above. */
+    uintptr_t dummy;
+    asm volatile (
+        ".option push\n\t"
+        ".option norvc\n\t"
+        "ld     %0, 0(%1)\n\t"
+        ".option pop\n\t"
+        : "=r"(dummy)
+        : "r"(arg)
+        : "memory"
+    );
     (void)dummy;
     return 0;
 }

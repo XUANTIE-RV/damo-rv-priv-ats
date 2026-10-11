@@ -32,14 +32,14 @@ bool test_hzwrs_08(void)
 
     uintptr_t saved_mie = hz_quiet_interrupts();
     hstatus_set_vtw(true);
-    CSRS(mstatus, MSTATUS_TW_BIT);
+    tsbi_csr_set(CSR_MSTATUS, MSTATUS_TW_BIT);
     (void)hz_reserve();
 
     hz_vs_expect(_vs_wrs_nto, true, CAUSE_ILLEGAL_INST);
 
-    CSRC(mstatus, MSTATUS_TW_BIT);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TW_BIT);
     hstatus_set_vtw(false);
-    CSRW(mie, saved_mie);
+    tsbi_csr_write(CSR_MIE, saved_mie);
 
     HYP_TEST_END();
 }
@@ -55,14 +55,14 @@ bool test_hzwrs_09(void)
 
     uintptr_t saved_mie = hz_quiet_interrupts();
     hstatus_set_vtw(true);
-    CSRS(mstatus, MSTATUS_TW_BIT);
+    tsbi_csr_set(CSR_MSTATUS, MSTATUS_TW_BIT);
     (void)hz_reserve();
 
     hz_vu_expect(_vu_wrs_nto, true, CAUSE_ILLEGAL_INST);
 
-    CSRC(mstatus, MSTATUS_TW_BIT);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TW_BIT);
     hstatus_set_vtw(false);
-    CSRW(mie, saved_mie);
+    tsbi_csr_write(CSR_MIE, saved_mie);
 
     HYP_TEST_END();
 }
@@ -81,14 +81,14 @@ bool test_hzwrs_10(void)
      * source: the reference simulators complete wrs.sto without
      * stalling, and a pending interrupt risks being taken mid-test. */
     uintptr_t saved_mie = hz_quiet_interrupts();
-    CSRC(mstatus, MSTATUS_TW_BIT);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TW_BIT);
     hstatus_set_vtw(true);
     (void)hz_reserve();
 
     hz_vs_expect(_vs_wrs_sto, false, 0);
 
     hstatus_set_vtw(false);
-    CSRW(mie, saved_mie);
+    tsbi_csr_write(CSR_MIE, saved_mie);
 
     HYP_TEST_END();
 }
@@ -103,15 +103,15 @@ bool test_hzwrs_11(void)
     if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     /* VTW gates only V=1 execution; HS-mode (V=0) is unaffected. */
-    CSRC(mstatus, MSTATUS_TW_BIT);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TW_BIT);
     hstatus_set_vtw(true);
     (void)hz_reserve();
     hz_suppress_globals();
     uintptr_t saved_mideleg = hz_set_m_soft_pending();
 
-    goto_priv(PRIV_S);
+    /* S-mode-normal: run natively in HS-mode (the M-native goto_priv
+     * scaffolding is removed -- see the Hypervisor_Interrupts migration). */
     PRIV_DO(EXEC_WRS_NTO());
-    goto_priv(PRIV_M);
     /* Clear before the assertion so the wake-source teardown stays on
      * the unconditional path regardless of the record content. */
     hz_clear_m_soft_pending(saved_mideleg);
@@ -135,13 +135,13 @@ bool test_hzwrs_12(void)
      * alone intercepts wrs.nto in VS-mode with illegal-instruction. */
     uintptr_t saved_mie = hz_quiet_interrupts();
     hstatus_set_vtw(false);
-    CSRS(mstatus, MSTATUS_TW_BIT);
+    tsbi_csr_set(CSR_MSTATUS, MSTATUS_TW_BIT);
     (void)hz_reserve();
 
     hz_vs_expect(_vs_wrs_nto, true, CAUSE_ILLEGAL_INST);
 
-    CSRC(mstatus, MSTATUS_TW_BIT);
-    CSRW(mie, saved_mie);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TW_BIT);
+    tsbi_csr_write(CSR_MIE, saved_mie);
 
     HYP_TEST_END();
 }

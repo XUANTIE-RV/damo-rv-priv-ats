@@ -210,6 +210,18 @@ bool test_hzpm_vs_07(void) {
 }
 
 /* ----- HZPM-VS-08: VS PM independent of HS PM (menvcfg.PMM) ----- */
+
+/* menvcfg is an M-level CSR and detect_smnpm/pm_set_smode/pm_get_smode touch it
+ * with raw CSRR/CSRW, so disable + read back S-mode PM inside an M-excursion.
+ * menvcfg.PMM is a config field that persists after returning to S(HS)-mode. */
+static uintptr_t _hzpm_vs08_disable_smnpm(uintptr_t arg)
+{
+    (void)arg;
+    if (detect_smnpm())
+        pm_set_smode(PMM_DISABLED);
+    return (uintptr_t)pm_get_smode();
+}
+
 TEST_REGISTER(test_hzpm_vs_08);
 bool test_hzpm_vs_08(void) {
     TEST_BEGIN("HZPM-VS-08: VS PM independent of menvcfg.PMM");
@@ -220,10 +232,10 @@ bool test_hzpm_vs_08(void) {
         TEST_SKIP("PMLEN=7 not supported for VS-mode");
 
     /* norm:pm_per_mode_control / norm:pm_mode_only_dependency:
-     * VS-mode PM depends only on henvcfg.PMM, not on menvcfg.PMM. */
-    if (detect_smnpm())
-        pm_set_smode(PMM_DISABLED);
-    TEST_ASSERT_EQ("menvcfg.PMM disabled", pm_get_smode(), PMM_DISABLED);
+     * VS-mode PM depends only on henvcfg.PMM, not on menvcfg.PMM. menvcfg is
+     * M-level, so the S-mode PM disable/readback runs in an M-excursion. */
+    uintptr_t smode_pmm = run_in_priv(PRIV_M, _hzpm_vs08_disable_smnpm, 0);
+    TEST_ASSERT_EQ("menvcfg.PMM disabled", smode_pmm, PMM_DISABLED);
 
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE);

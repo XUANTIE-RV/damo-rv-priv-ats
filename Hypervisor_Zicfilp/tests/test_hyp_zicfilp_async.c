@@ -46,11 +46,10 @@ bool test_hcfi_lp_42(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
     setup_deleg_to_hs(BIT(CAUSE_SOFTWARE_CHECK));
 
     /* Clear mstatus.SPELP */
-    asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_SPELP_BIT) : "memory");
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_SPELP_BIT);
 
     uint32_t *code = get_cfi_code_buf();
     emit_nop(code);
@@ -81,8 +80,7 @@ bool test_hcfi_lp_42(void) {
     TEST_ASSERT("SPELP captured LP_EXPECTED",
                 spelp == 1);
 
-    asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_SPELP_BIT) : "memory");
-    mseccfg_clear(MSECCFG_MLPE);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_SPELP_BIT);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
@@ -118,7 +116,6 @@ bool test_hcfi_lp_43(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
     setup_deleg_to_hs(BIT(CAUSE_SOFTWARE_CHECK));
 
     uint32_t *code = get_cfi_code_buf();
@@ -146,7 +143,6 @@ bool test_hcfi_lp_43(void) {
      * handles this by returning to the trampoline's recovery path. */
     LOG_I("ELP restoration mechanism verified\n");
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
@@ -177,11 +173,20 @@ bool test_hcfi_lp_44(void) {
                              VS_FLAGS_RW_S_AD);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
     setup_deleg_to_hs(BIT(CAUSE_SOFTWARE_CHECK));
 
     /* Clear mstatus.MPELP */
-    asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_MPELP_BIT) : "memory");
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_MPELP_BIT);
+
+    /* The T-SBI delegation baseline routes a guest's ordinary stimulus -- the
+     * instruction fetch faults included -- down to VS. This case observes the
+     * previous-ELP save performed by a trap taken into M-mode
+     * (mstatus.MPELP, norm:cfi_mstatus_mpelp_op), so undelegate the
+     * instruction-fetch faults at both levels and keep that routing explicit
+     * instead of relying on the framework default. HYP_TEST_END restores the
+     * baseline. */
+    tsbi_deleg_clear(BIT(CAUSE_INST_PAGE_FAULT) | BIT(CAUSE_INST_ACCESS_FAULT), 0);
+    CSRC(CSR_HEDELEG, BIT(CAUSE_INST_PAGE_FAULT) | BIT(CAUSE_INST_ACCESS_FAULT));
 
     /* Jump to test_exec_target which has X=0 (non-executable).
      * This should trigger instruction page-fault (cause=12) which
@@ -215,8 +220,7 @@ bool test_hcfi_lp_44(void) {
     TEST_ASSERT("MPELP saved ELP=LP_EXPECTED at trap entry",
                 mpelp == 1);
 
-    asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_MPELP_BIT) : "memory");
-    mseccfg_clear(MSECCFG_MLPE);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_MPELP_BIT);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);

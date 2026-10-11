@@ -14,8 +14,9 @@
  *       SSEED=1: read-write access allowed; other accesses raise
  *       illegal-instruction.
  *
- * With H ext present and V=0, S-mode is HS-mode. We use goto_priv(PRIV_S)
- * to enter HS-mode and PRIV_DO + CHECK_* to assert trap behavior.
+ * With H ext present and V=0, S-mode is HS-mode. Under the T-SBI S-mode-normal
+ * model the test body already runs in HS-mode, so the seed stimulus is issued
+ * natively via PRIV_DO and asserted with CHECK_* (no goto_priv scaffolding).
  * =================================================================== */
 
 /* ---- ZKR-HYP-01: SSEED=1 HS-mode csrrw access OK ---- */
@@ -31,9 +32,7 @@ bool test_zkr_hyp_01(void)
     uintptr_t orig = mseccfg_read_zkr();
     mseccfg_set_bits(MSECCFG_SSEED);
 
-    goto_priv(PRIV_S);
     PRIV_DO(HS_SEED_CSRRW_CAPTURE());
-    goto_priv(PRIV_M);
     CHECK_NO_TRAP("HS-mode csrrw with SSEED=1");
 
     /* Validate the returned value has valid OPST */
@@ -60,9 +59,7 @@ bool test_zkr_hyp_13(void)
     mseccfg_set_bits(MSECCFG_SSEED);
 
     /* Even with SSEED=1, read-only access traps in HS-mode */
-    goto_priv(PRIV_S);
     PRIV_DO(HS_SEED_CSRRS_RO());
-    goto_priv(PRIV_M);
     CHECK_TRAP("HS-mode csrrs x0 with SSEED=1", CAUSE_ILLEGAL_INST);
 
     mseccfg_write_zkr(orig);
@@ -80,9 +77,7 @@ bool test_zkr_hyp_02(void)
     uintptr_t orig = mseccfg_read_zkr();
     mseccfg_clear_bits(MSECCFG_SSEED);
 
-    goto_priv(PRIV_S);
     PRIV_DO(HS_SEED_CSRRW());
-    goto_priv(PRIV_M);
     CHECK_TRAP("HS-mode csrrw with SSEED=0", CAUSE_ILLEGAL_INST);
 
     mseccfg_write_zkr(orig);

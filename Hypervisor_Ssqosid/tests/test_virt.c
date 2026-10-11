@@ -50,7 +50,7 @@ bool test_srmcfg_19(void) {
 #ifdef ENABLE_HYP
     /* Ensure mstateen0[55]=1 if Smstateen is present */
     if (SMSTATEEN_AVAILABLE) {
-        mstateen_set_bits(0, MSTATEEN0_BIT55);
+        tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_BIT55);
     }
 
     EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_read_srmcfg, 0));
@@ -74,7 +74,7 @@ bool test_srmcfg_20(void) {
 #ifdef ENABLE_HYP
     /* Ensure mstateen0[55]=1 if Smstateen is present */
     if (SMSTATEEN_AVAILABLE) {
-        mstateen_set_bits(0, MSTATEEN0_BIT55);
+        tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_BIT55);
     }
 
     EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_write_srmcfg, 0));
@@ -98,7 +98,7 @@ bool test_srmcfg_21(void) {
 #ifdef ENABLE_HYP
     /* Ensure mstateen0[55]=1 if Smstateen is present */
     if (SMSTATEEN_AVAILABLE) {
-        mstateen_set_bits(0, MSTATEEN0_BIT55);
+        tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_BIT55);
     }
 
     /* VU-mode access to srmcfg (S-level CSR, address 0x181).
@@ -136,7 +136,7 @@ bool test_srmcfg_22(void) {
 #ifdef ENABLE_HYP
     /* Ensure mstateen0[55]=1 if Smstateen is present */
     if (SMSTATEEN_AVAILABLE) {
-        mstateen_set_bits(0, MSTATEEN0_BIT55);
+        tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_BIT55);
     }
 
     /* V=0, HS-mode (S-mode in framework) should access normally */
@@ -163,10 +163,10 @@ bool test_srmcfg_23(void) {
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not implemented");
 
 #ifdef ENABLE_HYP
-    uintptr_t orig = mstateen_read(0);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
 
     /* Clear bit 55: mstateen0 gating takes priority over V=1 rule */
-    mstateen_clear_bits(0, MSTATEEN0_BIT55);
+    tsbi_csr_clear(CSR_MSTATEEN0, MSTATEEN0_BIT55);
 
     /* VS-mode access should trigger illegal-instruction (cause=2)
      * because mstateen0[55]=0 blocks before V=1 rule applies */
@@ -180,7 +180,7 @@ bool test_srmcfg_23(void) {
     }
     trap_expect_end();
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     HYP_TEST_END();
 #else
     TEST_SKIP("ENABLE_HYP not compiled");
@@ -200,7 +200,7 @@ bool test_srmcfg_24(void) {
 #ifdef ENABLE_HYP
     /* Ensure mstateen0[55]=1 if Smstateen is present */
     if (SMSTATEEN_AVAILABLE) {
-        mstateen_set_bits(0, MSTATEEN0_BIT55);
+        tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_BIT55);
     }
 
     /* Trigger virtual-instruction from VS-mode */

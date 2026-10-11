@@ -75,7 +75,6 @@ bool test_hcfi_lp_35(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* Delegate software-check to VS */
     setup_deleg_to_vs(BIT(CAUSE_SOFTWARE_CHECK));
@@ -102,7 +101,6 @@ bool test_hcfi_lp_35(void) {
     TEST_ASSERT_EQ("vstval = landing pad fault (2)",
                    g_vs_exc_tval, (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
@@ -128,7 +126,6 @@ bool test_hcfi_lp_36(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* Delegate to HS only */
     setup_deleg_to_hs(BIT(CAUSE_SOFTWARE_CHECK));
@@ -156,7 +153,6 @@ bool test_hcfi_lp_36(void) {
     TEST_ASSERT("hstatus.SPV=1 (trap from VS-mode)",
                 trap_get_spv());
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
@@ -182,7 +178,6 @@ bool test_hcfi_lp_37(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* No delegation - trap to M-mode */
     clear_all_deleg();
@@ -200,7 +195,6 @@ bool test_hcfi_lp_37(void) {
     TEST_ASSERT_EQ("mtval = landing pad fault (2)",
                    trap_get_tval(), (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -225,7 +219,6 @@ bool test_hcfi_lp_38(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
     setup_deleg_to_vs(BIT(CAUSE_SOFTWARE_CHECK));
 
     uint32_t *code = get_cfi_code_buf();
@@ -248,7 +241,6 @@ bool test_hcfi_lp_38(void) {
     TEST_ASSERT("vsepc = target instruction address",
                 g_vs_exc_epc == (uintptr_t)code);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
@@ -274,7 +266,6 @@ bool test_hcfi_lp_39(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
     setup_deleg_to_hs(BIT(CAUSE_SOFTWARE_CHECK));
 
     uint32_t *code = get_cfi_code_buf();
@@ -299,7 +290,6 @@ bool test_hcfi_lp_39(void) {
     TEST_ASSERT("hstatus.GVA=0 (non-translation exception)",
                 !gva);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
@@ -325,7 +315,6 @@ bool test_hcfi_lp_40(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
     setup_deleg_to_hs(BIT(CAUSE_SOFTWARE_CHECK));
 
     uint32_t *code = get_cfi_code_buf();
@@ -356,7 +345,6 @@ bool test_hcfi_lp_40(void) {
     TEST_ASSERT("hstatus.SPV=1 (trap from VS-mode)",
                 trap_get_spv());
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
@@ -382,7 +370,6 @@ bool test_hcfi_lp_41(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
     clear_all_deleg();
 
     uint32_t *code = get_cfi_code_buf();
@@ -405,10 +392,10 @@ bool test_hcfi_lp_41(void) {
     TEST_ASSERT("mstatus.MPV=1 (trap from VS-mode)", mpv);
     TEST_ASSERT("mstatus.MPP=1 (S-mode)", mpp == 1);
 
-    /* Clear MPV */
-    CSRC(mstatus, MSTATUS_MPV);
+    /* No explicit MPV cleanup: MPV is a return-path bit that the MRET back to
+     * HS already cleared, and the T-SBI CSR proxy deliberately refuses to
+     * write return-path bits (see tsbi_csr_proxy_unsafe()). */
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();

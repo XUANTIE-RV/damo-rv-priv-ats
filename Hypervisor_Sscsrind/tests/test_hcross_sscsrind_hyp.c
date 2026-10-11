@@ -24,18 +24,18 @@ bool test_hcross_sscsrind_28(void)
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    uintptr_t orig_m = mstateen_read(0);
+    uintptr_t orig_m = tsbi_csr_read(CSR_MSTATEEN0);
     uintptr_t orig_h = hstateen_read(0);
     uintptr_t orig_sel;
     if (!vsiselect_read_safe(&orig_sel))
     {
-        mstateen_write(0, orig_m);
+        tsbi_csr_write(CSR_MSTATEEN0, orig_m);
         hstateen_write(0, orig_h);
         TEST_SKIP("vsiselect not accessible from M-mode");
     }
 
     /* Enable access */
-    mstateen_set_bits(0, MSTATEEN0_CSRIND);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_CSRIND);
     hstateen_set_bits(0, HSTATEEN0_CSRIND);
 
     /*
@@ -49,7 +49,7 @@ bool test_hcross_sscsrind_28(void)
     if (!vsiselect_write_safe(0x30))
     {
         vsiselect_write_safe(orig_sel);
-        mstateen_write(0, orig_m);
+        tsbi_csr_write(CSR_MSTATEEN0, orig_m);
         hstateen_write(0, orig_h);
         TEST_SKIP("vsiselect write 0x30 trapped");
     }
@@ -58,7 +58,7 @@ bool test_hcross_sscsrind_28(void)
     if (!vsiselect_read_safe(&readback) || readback != 0x30)
     {
         vsiselect_write_safe(orig_sel);
-        mstateen_write(0, orig_m);
+        tsbi_csr_write(CSR_MSTATEEN0, orig_m);
         hstateen_write(0, orig_h);
         TEST_SKIP("Platform doesn't support vsiselect=0x30");
     }
@@ -68,7 +68,7 @@ bool test_hcross_sscsrind_28(void)
     if (!vsireg_write_safe(test_val))
     {
         vsiselect_write_safe(orig_sel);
-        mstateen_write(0, orig_m);
+        tsbi_csr_write(CSR_MSTATEEN0, orig_m);
         hstateen_write(0, orig_h);
         TEST_SKIP("vsireg write trapped (not implemented)");
     }
@@ -92,7 +92,7 @@ bool test_hcross_sscsrind_28(void)
     }
 
     vsiselect_write_safe(orig_sel);
-    mstateen_write(0, orig_m);
+    tsbi_csr_write(CSR_MSTATEEN0, orig_m);
     hstateen_write(0, orig_h);
     HYP_TEST_END();
 }
@@ -109,18 +109,18 @@ bool test_hcross_sscsrind_29(void)
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    uintptr_t orig_m = mstateen_read(0);
+    uintptr_t orig_m = tsbi_csr_read(CSR_MSTATEEN0);
     uintptr_t orig_h = hstateen_read(0);
     uintptr_t orig_sel;
     if (!vsiselect_read_safe(&orig_sel))
     {
-        mstateen_write(0, orig_m);
+        tsbi_csr_write(CSR_MSTATEEN0, orig_m);
         hstateen_write(0, orig_h);
         TEST_SKIP("vsiselect not accessible from M-mode");
     }
 
     /* Enable access */
-    mstateen_set_bits(0, MSTATEEN0_CSRIND);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_CSRIND);
     hstateen_set_bits(0, HSTATEEN0_CSRIND);
 
     /*
@@ -133,7 +133,7 @@ bool test_hcross_sscsrind_29(void)
     if (!vsiselect_write_safe(0x100))
     {
         vsiselect_write_safe(orig_sel);
-        mstateen_write(0, orig_m);
+        tsbi_csr_write(CSR_MSTATEEN0, orig_m);
         hstateen_write(0, orig_h);
         TEST_SKIP("vsiselect write 0x100 trapped");
     }
@@ -155,7 +155,7 @@ bool test_hcross_sscsrind_29(void)
     }
 
     vsiselect_write_safe(orig_sel);
-    mstateen_write(0, orig_m);
+    tsbi_csr_write(CSR_MSTATEEN0, orig_m);
     hstateen_write(0, orig_h);
     HYP_TEST_END();
 }
@@ -280,18 +280,18 @@ bool test_hcross_sscsrind_32(void)
     if (!SMSTATEEN_AVAILABLE) TEST_SKIP("Smstateen not available");
     if (!SSCSRIND_AVAILABLE) TEST_SKIP("Sscsrind not implemented");
 
-    uintptr_t orig_m = mstateen_read(0);
+    uintptr_t orig_m = tsbi_csr_read(CSR_MSTATEEN0);
     uintptr_t orig_h = hstateen_read(0);
     uintptr_t orig_sel;
     if (!vsiselect_read_safe(&orig_sel))
     {
-        mstateen_write(0, orig_m);
+        tsbi_csr_write(CSR_MSTATEEN0, orig_m);
         hstateen_write(0, orig_h);
         TEST_SKIP("vsiselect not accessible from M-mode");
     }
 
     /* Enable access */
-    mstateen_set_bits(0, MSTATEEN0_CSRIND);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_CSRIND);
     hstateen_set_bits(0, HSTATEEN0_CSRIND);
 
     /*
@@ -309,7 +309,7 @@ bool test_hcross_sscsrind_32(void)
     if (!vsiselect_write_safe(0x100))
     {
         vsiselect_write_safe(orig_sel);
-        mstateen_write(0, orig_m);
+        tsbi_csr_write(CSR_MSTATEEN0, orig_m);
         hstateen_write(0, orig_h);
         TEST_SKIP("vsiselect write 0x100 trapped");
     }
@@ -323,7 +323,7 @@ bool test_hcross_sscsrind_32(void)
     if (trapped1)
     {
         vsiselect_write_safe(orig_sel);
-        mstateen_write(0, orig_m);
+        tsbi_csr_write(CSR_MSTATEEN0, orig_m);
         hstateen_write(0, orig_h);
         TEST_SKIP("VS-mode siselect read trapped");
     }
@@ -358,7 +358,7 @@ bool test_hcross_sscsrind_32(void)
     }
 
     vsiselect_write_safe(orig_sel);
-    mstateen_write(0, orig_m);
+    tsbi_csr_write(CSR_MSTATEEN0, orig_m);
     hstateen_write(0, orig_h);
     HYP_TEST_END();
 }
@@ -366,6 +366,22 @@ bool test_hcross_sscsrind_32(void)
 /* ===================================================================
  * HCROSS-SSCSRIND-33: M-mode and S-mode select space alias
  * =================================================================== */
+
+/* Write mireg (M-level) with the current miselect inside an M-excursion. The
+ * write may raise illegal-instruction when the selected register is not
+ * implemented; a raw csrw mireg under trap_expect in M-mode is caught and
+ * stepped over by the framework M-handler. Routing it through the T-SBI proxy
+ * instead would nest an M-mode trap inside the proxy handler and hang.
+ * Returns 1 if the write trapped. */
+static uintptr_t _t33_mireg_write_probe(uintptr_t arg)
+{
+    trap_expect_begin();
+    mireg_write(arg);
+    uintptr_t trapped = trap_was_triggered() ? 1 : 0;
+    trap_expect_end();
+    return trapped;
+}
+
 TEST_REGISTER(test_hcross_sscsrind_33);
 bool test_hcross_sscsrind_33(void)
 {
@@ -394,22 +410,26 @@ bool test_hcross_sscsrind_33(void)
      */
     if (!SMCSRIND_AVAILABLE) TEST_SKIP("Smcsrind not available");
 
-    uintptr_t orig_mstateen = mstateen_read(0);
-    uintptr_t orig_misel = miselect_read();
+    uintptr_t orig_mstateen = tsbi_csr_read(CSR_MSTATEEN0);
+    /* miselect/mireg are M-level indirect CSRs (Smcsrind); from the S(HS)-mode
+     * normal state miselect is reached through the T-SBI proxy, and mireg is
+     * written in an M-excursion below (see _t33_mireg_write_probe). siselect/
+     * sireg are S-level and stay direct. */
+    uintptr_t orig_misel = tsbi_csr_read(CSR_MISELECT);
     uintptr_t orig_sisel = siselect_read();
 
     /* Enable S-mode access */
-    mstateen_set_bits(0, MSTATEEN0_CSRIND);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_CSRIND);
 
     /* Try Ssaia alias range: select=0x30 */
-    miselect_write(0x30);
-    uintptr_t m_readback = miselect_read();
+    tsbi_csr_write(CSR_MISELECT, 0x30);
+    uintptr_t m_readback = tsbi_csr_read(CSR_MISELECT);
 
     if (m_readback != 0x30)
     {
-        miselect_write(orig_misel);
+        tsbi_csr_write(CSR_MISELECT, orig_misel);
         siselect_write(orig_sisel);
-        mstateen_write(0, orig_mstateen);
+        tsbi_csr_write(CSR_MSTATEEN0, orig_mstateen);
         TEST_SKIP("Platform doesn't support miselect=0x30");
     }
 
@@ -418,9 +438,9 @@ bool test_hcross_sscsrind_33(void)
 
     if (s_readback != 0x30)
     {
-        miselect_write(orig_misel);
+        tsbi_csr_write(CSR_MISELECT, orig_misel);
         siselect_write(orig_sisel);
-        mstateen_write(0, orig_mstateen);
+        tsbi_csr_write(CSR_MSTATEEN0, orig_mstateen);
         TEST_SKIP("Platform doesn't support siselect=0x30");
     }
 
@@ -433,24 +453,26 @@ bool test_hcross_sscsrind_33(void)
 
     uintptr_t test_val = 0xCAFEBABE;
 
-    trap_expect_begin();
-    mireg_write(test_val);
-    bool trapped_m = trap_was_triggered();
-    trap_expect_end();
+    /* Write mireg in an M-excursion (see _t33_mireg_write_probe): a faulting
+     * csrw mireg is caught and stepped over by the M-handler under trap_expect,
+     * whereas the T-SBI proxy would nest an M-mode trap inside the proxy
+     * handler and hang. */
+    bool trapped_m = run_in_priv(PRIV_M, _t33_mireg_write_probe, test_val) != 0;
 
     if (trapped_m)
     {
-        miselect_write(orig_misel);
+        tsbi_csr_write(CSR_MISELECT, orig_misel);
         siselect_write(orig_sisel);
-        mstateen_write(0, orig_mstateen);
+        tsbi_csr_write(CSR_MSTATEEN0, orig_mstateen);
         TEST_SKIP("mireg write trapped");
     }
 
-    /* S-mode reads sireg */
+    /* S-mode reads sireg. Under T-SBI the suite already runs in S(HS)-mode
+     * (the S-mode normal state), so sireg is read directly here; the original
+     * goto_priv(PRIV_S)/goto_priv(PRIV_M) dance is dropped because
+     * goto_priv(PRIV_M) is one-way and would strand execution in M-mode. */
     trap_expect_begin();
-    goto_priv(PRIV_S);
     uintptr_t s_val = sireg_read();
-    goto_priv(PRIV_M);
     bool trapped_s = trap_was_triggered();
     trap_expect_end();
 
@@ -476,8 +498,8 @@ bool test_hcross_sscsrind_33(void)
         }
     }
 
-    miselect_write(orig_misel);
+    tsbi_csr_write(CSR_MISELECT, orig_misel);
     siselect_write(orig_sisel);
-    mstateen_write(0, orig_mstateen);
+    tsbi_csr_write(CSR_MSTATEEN0, orig_mstateen);
     HYP_TEST_END();
 }

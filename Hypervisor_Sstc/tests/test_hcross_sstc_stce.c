@@ -22,11 +22,11 @@ bool test_hcross_sstc_01(void)
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t orig_m = menvcfg_read();
+    uintptr_t orig_m = tsbi_csr_read(CSR_MENVCFG);
     uintptr_t orig_h = henvcfg_read();
 
     /* menvcfg.STCE must be 1 for henvcfg.STCE to be writable */
-    menvcfg_set_bits(MENVCFG_STCE);
+    tsbi_csr_set(CSR_MENVCFG, MENVCFG_STCE);
 
     /* Write henvcfg.STCE=1 */
     henvcfg_set_bits(HENVCFG_STCE);
@@ -40,7 +40,7 @@ bool test_hcross_sstc_01(void)
 
     /* Restore */
     henvcfg_write(orig_h);
-    menvcfg_write(orig_m);
+    tsbi_csr_write(CSR_MENVCFG, orig_m);
     TEST_END();
 }
 
@@ -54,11 +54,11 @@ bool test_hcross_sstc_02(void)
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t orig_m = menvcfg_read();
+    uintptr_t orig_m = tsbi_csr_read(CSR_MENVCFG);
     uintptr_t orig_h = henvcfg_read();
 
     /* Ensure menvcfg.STCE=0 */
-    menvcfg_clear_bits(MENVCFG_STCE);
+    tsbi_csr_clear(CSR_MENVCFG, MENVCFG_STCE);
 
     /* Try to set henvcfg.STCE=1 -- should be ignored */
     henvcfg_set_bits(HENVCFG_STCE);
@@ -68,6 +68,6 @@ bool test_hcross_sstc_02(void)
 
     /* Restore */
     henvcfg_write(orig_h);
-    menvcfg_write(orig_m);
+    tsbi_csr_write(CSR_MENVCFG, orig_m);
     TEST_END();
 }

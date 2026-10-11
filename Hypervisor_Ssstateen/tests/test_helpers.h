@@ -39,10 +39,10 @@ static inline bool hstateen0_bit_writable(uintptr_t bit)
 
 static inline bool mstateen0_bit_writable(uintptr_t bit)
 {
-    uintptr_t saved = mstateen_read(0);
-    mstateen_set_bits(0, bit);
-    uintptr_t rb = mstateen_read(0);
-    mstateen_write(0, saved);
+    uintptr_t saved = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_set(CSR_MSTATEEN0, bit);
+    uintptr_t rb = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved);
     return (rb & bit) != 0;
 }
 

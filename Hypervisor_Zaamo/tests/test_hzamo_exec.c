@@ -66,7 +66,11 @@ bool test_hzamo_01_hs_exec(void)
         static volatile uint64_t hzamo_probe_slot;
         uintptr_t paddr = (uintptr_t)&hzamo_probe_slot;
         uintptr_t pold;
-        M_TRAP_EXPECT_BEGIN();
+        /* T-SBI S-mode-normal: this probe runs in HS-mode, where
+         * mstatus.MDT (the M-mode double-trap guard cleared by
+         * M_TRAP_EXPECT_BEGIN) is void and already cleared by the mret
+         * that dropped to S, so plain trap arming is used. */
+        trap_expect_begin();
         asm volatile(
             ".option push\n\t.option norvc\n\t"
             "amoadd.w %0, %2, (%1)\n\t"

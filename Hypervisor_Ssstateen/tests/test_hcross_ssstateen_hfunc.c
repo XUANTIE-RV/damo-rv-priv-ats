@@ -35,7 +35,7 @@ bool test_hcross_sssta_21(void)
     TEST_BEGIN("HCROSS-SSSTA-21: hstateen0.SE0=0 blocks VS read sstateen0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
     mstateen_set_bit63(0, true);
     uintptr_t saved_h = hstateen_read(0);
 
@@ -44,7 +44,7 @@ bool test_hcross_sssta_21(void)
     EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_read_sstateen0, 0));
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -55,7 +55,7 @@ bool test_hcross_sssta_22(void)
     TEST_BEGIN("HCROSS-SSSTA-22: hstateen0.SE0=0 blocks VS write sstateen0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
     mstateen_set_bit63(0, true);
     uintptr_t saved_h = hstateen_read(0);
 
@@ -64,7 +64,7 @@ bool test_hcross_sssta_22(void)
     EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_write_sstateen0, 0));
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -75,7 +75,7 @@ bool test_hcross_sssta_23(void)
     TEST_BEGIN("HCROSS-SSSTA-23: hstateen0.SE0=1 allows VS sstateen0 access");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
     mstateen_set_bit63(0, true);
     uintptr_t saved_h = hstateen_read(0);
 
@@ -84,7 +84,7 @@ bool test_hcross_sssta_23(void)
     VS_EXPECT_NO_TRAP(run_in_vs_mode(_vs_read_sstateen0, 0));
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -97,8 +97,8 @@ bool test_hcross_sssta_24(void)
     TEST_BEGIN("HCROSS-SSSTA-24: hstateen0.ENVCFG=0 blocks VS read senvcfg");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_ENVCFG);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m | STATEEN0_SE0 | STATEEN0_ENVCFG);
 
     uintptr_t saved_h = hstateen_read(0);
 
@@ -107,7 +107,7 @@ bool test_hcross_sssta_24(void)
     if (!(hstateen_read(0) & STATEEN0_ENVCFG))
     {
         hstateen_write(0, saved_h);
-        mstateen_write(0, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_m);
         TEST_SKIP("hstateen0.ENVCFG not writable");
     }
 
@@ -117,7 +117,7 @@ bool test_hcross_sssta_24(void)
     EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_read_senvcfg, 0));
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -128,8 +128,8 @@ bool test_hcross_sssta_25(void)
     TEST_BEGIN("HCROSS-SSSTA-25: hstateen0.ENVCFG=0 blocks VS write senvcfg");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_ENVCFG);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m | STATEEN0_SE0 | STATEEN0_ENVCFG);
 
     uintptr_t saved_h = hstateen_read(0);
     hstateen_set_bits(0, STATEEN_BIT63);
@@ -137,7 +137,7 @@ bool test_hcross_sssta_25(void)
     if (!hstateen0_bit_writable(STATEEN0_ENVCFG))
     {
         hstateen_write(0, saved_h);
-        mstateen_write(0, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_m);
         TEST_SKIP("hstateen0.ENVCFG not writable");
     }
 
@@ -146,7 +146,7 @@ bool test_hcross_sssta_25(void)
     EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_write_senvcfg, 0));
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -157,8 +157,8 @@ bool test_hcross_sssta_26(void)
     TEST_BEGIN("HCROSS-SSSTA-26: hstateen0.ENVCFG=1 allows VS senvcfg");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_ENVCFG);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m | STATEEN0_SE0 | STATEEN0_ENVCFG);
 
     uintptr_t saved_h = hstateen_read(0);
     hstateen_set_bits(0, STATEEN_BIT63 | STATEEN0_ENVCFG);
@@ -166,14 +166,14 @@ bool test_hcross_sssta_26(void)
     if (!(hstateen_read(0) & STATEEN0_ENVCFG))
     {
         hstateen_write(0, saved_h);
-        mstateen_write(0, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_m);
         TEST_SKIP("hstateen0.ENVCFG not writable");
     }
 
     VS_EXPECT_NO_TRAP(run_in_vs_mode(_vs_read_senvcfg, 0));
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -186,8 +186,8 @@ bool test_hcross_sssta_27(void)
     TEST_BEGIN("HCROSS-SSSTA-27: hstateen0.CSRIND=0 blocks VS read siselect");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_CSRIND);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m | STATEEN0_SE0 | STATEEN0_CSRIND);
 
     uintptr_t saved_h = hstateen_read(0);
     hstateen_set_bits(0, STATEEN_BIT63);
@@ -195,7 +195,7 @@ bool test_hcross_sssta_27(void)
     if (!hstateen0_bit_writable(STATEEN0_CSRIND))
     {
         hstateen_write(0, saved_h);
-        mstateen_write(0, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_m);
         TEST_SKIP("hstateen0.CSRIND not writable (Sscsrind not implemented)");
     }
 
@@ -204,7 +204,7 @@ bool test_hcross_sssta_27(void)
     EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_read_siselect, 0));
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -215,8 +215,8 @@ bool test_hcross_sssta_28(void)
     TEST_BEGIN("HCROSS-SSSTA-28: hstateen0.CSRIND=0 blocks VS read sireg");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_CSRIND);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m | STATEEN0_SE0 | STATEEN0_CSRIND);
 
     uintptr_t saved_h = hstateen_read(0);
     hstateen_set_bits(0, STATEEN_BIT63);
@@ -224,7 +224,7 @@ bool test_hcross_sssta_28(void)
     if (!hstateen0_bit_writable(STATEEN0_CSRIND))
     {
         hstateen_write(0, saved_h);
-        mstateen_write(0, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_m);
         TEST_SKIP("hstateen0.CSRIND not writable");
     }
 
@@ -234,7 +234,7 @@ bool test_hcross_sssta_28(void)
     EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_read_sireg, 0));
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -245,8 +245,8 @@ bool test_hcross_sssta_29(void)
     TEST_BEGIN("HCROSS-SSSTA-29: hstateen0.CSRIND=1 allows VS siselect/sireg");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_CSRIND);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m | STATEEN0_SE0 | STATEEN0_CSRIND);
 
     uintptr_t saved_h = hstateen_read(0);
     hstateen_set_bits(0, STATEEN_BIT63 | STATEEN0_CSRIND);
@@ -254,14 +254,14 @@ bool test_hcross_sssta_29(void)
     if (!(hstateen_read(0) & STATEEN0_CSRIND))
     {
         hstateen_write(0, saved_h);
-        mstateen_write(0, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_m);
         TEST_SKIP("hstateen0.CSRIND not writable");
     }
 
     VS_EXPECT_NO_TRAP(run_in_vs_mode(_vs_read_siselect, 0));
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -274,8 +274,8 @@ bool test_hcross_sssta_30(void)
     TEST_BEGIN("HCROSS-SSSTA-30: hstateen0.IMSIC=0 blocks VS IMSIC access");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_IMSIC);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m | STATEEN0_SE0 | STATEEN0_IMSIC);
 
     uintptr_t saved_h = hstateen_read(0);
     hstateen_set_bits(0, STATEEN_BIT63);
@@ -283,7 +283,7 @@ bool test_hcross_sssta_30(void)
     if (!hstateen0_bit_writable(STATEEN0_IMSIC))
     {
         hstateen_write(0, saved_h);
-        mstateen_write(0, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_m);
         TEST_SKIP("hstateen0.IMSIC not writable (Ssaia/IMSIC not implemented)");
     }
 
@@ -292,7 +292,7 @@ bool test_hcross_sssta_30(void)
     EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_read_stopei, 0));
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -303,8 +303,8 @@ bool test_hcross_sssta_31(void)
     TEST_BEGIN("HCROSS-SSSTA-31: hstateen0.IMSIC=1 allows VS IMSIC access");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_IMSIC);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m | STATEEN0_SE0 | STATEEN0_IMSIC);
 
     uintptr_t saved_h = hstateen_read(0);
     hstateen_set_bits(0, STATEEN_BIT63 | STATEEN0_IMSIC);
@@ -312,7 +312,7 @@ bool test_hcross_sssta_31(void)
     if (!(hstateen_read(0) & STATEEN0_IMSIC))
     {
         hstateen_write(0, saved_h);
-        mstateen_write(0, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_m);
         TEST_SKIP("hstateen0.IMSIC not writable");
     }
 
@@ -328,7 +328,7 @@ bool test_hcross_sssta_31(void)
     if (!geilen_nonzero())
     {
         hstateen_write(0, saved_h);
-        mstateen_write(0, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_m);
         TEST_SKIP("No guest interrupt files (GEILEN=0), "
                   "cannot test stopei access");
     }
@@ -348,7 +348,7 @@ bool test_hcross_sssta_31(void)
 
     asm volatile("csrw " CSR_STR(CSR_HSTATUS) ", %0" :: "r"(saved_hstatus));
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -359,8 +359,8 @@ bool test_hcross_sssta_32(void)
     TEST_BEGIN("HCROSS-SSSTA-32: hstateen0.IMSIC=0 equivalent to VGEIN=0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_IMSIC);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m | STATEEN0_SE0 | STATEEN0_IMSIC);
 
     uintptr_t saved_h = hstateen_read(0);
     hstateen_set_bits(0, STATEEN_BIT63);
@@ -368,7 +368,7 @@ bool test_hcross_sssta_32(void)
     if (!hstateen0_bit_writable(STATEEN0_IMSIC))
     {
         hstateen_write(0, saved_h);
-        mstateen_write(0, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_m);
         TEST_SKIP("hstateen0.IMSIC not writable");
     }
 
@@ -384,7 +384,7 @@ bool test_hcross_sssta_32(void)
     EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_read_stopei, 0));
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -397,8 +397,8 @@ bool test_hcross_sssta_33(void)
     TEST_BEGIN("HCROSS-SSSTA-33: hstateen0.AIA=0 blocks VS Ssaia state");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_AIA);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m | STATEEN0_SE0 | STATEEN0_AIA);
 
     uintptr_t saved_h = hstateen_read(0);
     hstateen_set_bits(0, STATEEN_BIT63);
@@ -406,7 +406,7 @@ bool test_hcross_sssta_33(void)
     if (!hstateen0_bit_writable(STATEEN0_AIA))
     {
         hstateen_write(0, saved_h);
-        mstateen_write(0, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_m);
         TEST_SKIP("hstateen0.AIA not writable (Ssaia not implemented)");
     }
 
@@ -427,7 +427,7 @@ bool test_hcross_sssta_33(void)
 #endif
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -438,8 +438,8 @@ bool test_hcross_sssta_34(void)
     TEST_BEGIN("HCROSS-SSSTA-34: hstateen0.AIA=1 allows VS Ssaia state");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_AIA);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m | STATEEN0_SE0 | STATEEN0_AIA);
 
     uintptr_t saved_h = hstateen_read(0);
     hstateen_set_bits(0, STATEEN_BIT63 | STATEEN0_AIA);
@@ -447,7 +447,7 @@ bool test_hcross_sssta_34(void)
     if (!(hstateen_read(0) & STATEEN0_AIA))
     {
         hstateen_write(0, saved_h);
-        mstateen_write(0, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_m);
         TEST_SKIP("hstateen0.AIA not writable");
     }
 
@@ -464,7 +464,7 @@ bool test_hcross_sssta_34(void)
 #endif
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -475,8 +475,8 @@ bool test_hcross_sssta_35(void)
     TEST_BEGIN("HCROSS-SSSTA-35: AIA=0 does not affect CSRIND/IMSIC gates");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_AIA |
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m | STATEEN0_SE0 | STATEEN0_AIA |
                    STATEEN0_CSRIND | STATEEN0_IMSIC);
 
     uintptr_t saved_h = hstateen_read(0);
@@ -491,7 +491,7 @@ bool test_hcross_sssta_35(void)
     if (!csrind_set && !imsic_set)
     {
         hstateen_write(0, saved_h);
-        mstateen_write(0, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_m);
         TEST_SKIP("Neither CSRIND nor IMSIC writable");
     }
 
@@ -539,7 +539,7 @@ bool test_hcross_sssta_35(void)
     }
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -552,8 +552,8 @@ bool test_hcross_sssta_36(void)
     TEST_BEGIN("HCROSS-SSSTA-36: hstateen0.CONTEXT=0 blocks VS read scontext");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_CONTEXT);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m | STATEEN0_SE0 | STATEEN0_CONTEXT);
 
     uintptr_t saved_h = hstateen_read(0);
     hstateen_set_bits(0, STATEEN_BIT63);
@@ -561,7 +561,7 @@ bool test_hcross_sssta_36(void)
     if (!hstateen0_bit_writable(STATEEN0_CONTEXT))
     {
         hstateen_write(0, saved_h);
-        mstateen_write(0, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_m);
         TEST_SKIP("hstateen0.CONTEXT not writable (Sdtrig not implemented)");
     }
 
@@ -570,7 +570,7 @@ bool test_hcross_sssta_36(void)
     EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_read_scontext, 0));
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -581,8 +581,8 @@ bool test_hcross_sssta_37(void)
     TEST_BEGIN("HCROSS-SSSTA-37: hstateen0.CONTEXT=0 blocks VS write scontext");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_CONTEXT);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m | STATEEN0_SE0 | STATEEN0_CONTEXT);
 
     uintptr_t saved_h = hstateen_read(0);
     hstateen_set_bits(0, STATEEN_BIT63);
@@ -590,7 +590,7 @@ bool test_hcross_sssta_37(void)
     if (!hstateen0_bit_writable(STATEEN0_CONTEXT))
     {
         hstateen_write(0, saved_h);
-        mstateen_write(0, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_m);
         TEST_SKIP("hstateen0.CONTEXT not writable");
     }
 
@@ -599,7 +599,7 @@ bool test_hcross_sssta_37(void)
     EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_write_scontext, 0));
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -610,8 +610,8 @@ bool test_hcross_sssta_38(void)
     TEST_BEGIN("HCROSS-SSSTA-38: hstateen0.CONTEXT=1 allows VS scontext");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, saved_m | STATEEN0_SE0 | STATEEN0_CONTEXT);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m | STATEEN0_SE0 | STATEEN0_CONTEXT);
 
     uintptr_t saved_h = hstateen_read(0);
     hstateen_set_bits(0, STATEEN_BIT63 | STATEEN0_CONTEXT);
@@ -619,13 +619,13 @@ bool test_hcross_sssta_38(void)
     if (!(hstateen_read(0) & STATEEN0_CONTEXT))
     {
         hstateen_write(0, saved_h);
-        mstateen_write(0, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_m);
         TEST_SKIP("hstateen0.CONTEXT not writable");
     }
 
     VS_EXPECT_NO_TRAP(run_in_vs_mode(_vs_read_scontext, 0));
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }

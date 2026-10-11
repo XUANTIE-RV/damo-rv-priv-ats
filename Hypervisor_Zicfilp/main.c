@@ -21,6 +21,7 @@
 #include "vm/vm.h"
 #include "hyp/hyp_defs.h"
 #include "hyp/hyp_reset.h"
+#include "hyp/hyp_csr.h"
 
 extern test_func_t _test_table[];
 extern test_func_t _test_table_end[];
@@ -29,14 +30,10 @@ int main(void) {
     uart_init();
     reset_state();
 
-    /* Configure PMP: allow S/U-mode full access to all memory. */
-    asm volatile(
-        "li t0, -1\n\t"
-        "csrw pmpaddr0, t0\n\t"
-        "li t0, 0x1F\n\t"
-        "csrw pmpcfg0, t0\n\t"
-        ::: "t0"
-    );
+    /* PMP is opened for S/U by the boot path (common/entry.S) before it drops
+     * privilege, and again by hyp_reset_state(); pmpaddr0/pmpcfg0 are M-level,
+     * so writing them from here (S-mode under the T-SBI model) would raise an
+     * illegal-instruction. */
 
     test_print_banner("Hypervisor x Zicfilp Cross Test");
 
@@ -47,6 +44,15 @@ int main(void) {
 
     /* Clean H-ext baseline before the first test. */
     hyp_reset_state();
+
+    /* This suite drives menvcfg.LPE and henvcfg/senvcfg from S(HS)-mode and
+     * from VS/VU. Under Smstateen the HS-level henvcfg/senvcfg accesses are
+     * gated by mstateen0.ENVCFG and the VS/VU ones by hstateen0.ENVCFG, both
+     * reset to 0, so open the gates once here (hyp_reset_state clears neither
+     * mstateen0 nor hstateen0, so they persist across tests). Not done in the
+     * shared baseline: the Smstateen/Ssstateen suites test that gate and set
+     * it themselves. */
+    hyp_enable_envcfg_access();
 
     for (unsigned int i = 0; i < test_count; i++) {
         _test_table[i]();

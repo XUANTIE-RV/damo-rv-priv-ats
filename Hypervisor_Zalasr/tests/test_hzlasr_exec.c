@@ -50,7 +50,9 @@ bool test_hzlasr_01_hs_exec(void)
         uintptr_t paddr = (uintptr_t)&hzlasr_probe_slot;
         uintptr_t pr = 0;
         hzlasr_store_le32(paddr, 0x00005678u);
-        M_TRAP_EXPECT_BEGIN();
+        /* T-SBI S-mode-normal: probe runs in HS-mode where mstatus.MDT
+         * (M-mode double-trap guard) is void, so plain trap arming is used. */
+        trap_expect_begin();
         ZALASR_LOAD(ZALASR_F3_W, ZALASR_F7_LD_AQ, pr, paddr);
         bool ptrapped = trap_was_triggered();
         uintptr_t pcause = ptrapped ? trap_get_cause() : 0;

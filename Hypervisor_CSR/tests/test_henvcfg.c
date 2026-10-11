@@ -46,10 +46,10 @@
  * Restores original menvcfg value afterwards.
  */
 static bool probe_menvcfg_bit(uintptr_t bit) {
-    uintptr_t orig = menvcfg_read();
-    menvcfg_write(orig | bit);
-    uintptr_t readback = menvcfg_read();
-    menvcfg_write(orig);
+    uintptr_t orig = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, orig | bit);
+    uintptr_t readback = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, orig);
     return (readback & bit) != 0;
 }
 
@@ -59,7 +59,7 @@ static bool probe_menvcfg_bit(uintptr_t bit) {
  * menvcfg constrains henvcfg: the menvcfg bit must be set first.
  */
 static void enable_envcfg_bit(uintptr_t bit) {
-    menvcfg_write(menvcfg_read() | bit);
+    tsbi_csr_write(CSR_MENVCFG, tsbi_csr_read(CSR_MENVCFG) | bit);
     henvcfg_write(henvcfg_read() | bit);
 }
 
@@ -121,7 +121,7 @@ static uintptr_t vs_exec_cbo_flush(uintptr_t addr) {
 static uintptr_t vs_read_stimecmp(uintptr_t arg) {
     (void)arg;
     uintptr_t v;
-    asm volatile ("csrr %0, " CSR_STR(CSR_STIMECMP) : "=r"(v));
+    v = CSRR(CSR_STIMECMP);
     return v;
 }
 
@@ -178,9 +178,9 @@ static void setup_vs_two_stage(two_stage_ctx_t *ctx) {
 
     /* Allow VS-mode to access U-flagged pages (load/store only). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
+    vsstatus = CSRR(CSR_VSSTATUS);
     vsstatus |= SSTATUS_SUM_BIT;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
+    CSRW(CSR_VSSTATUS, vsstatus);
 }
 
 /* ===================================================================
@@ -192,7 +192,7 @@ bool henvcfg_01_basic_rw(void) {
     TEST_BEGIN("HENV-01: henvcfg basic read/write");
 
     /* Enable all menvcfg bits so henvcfg is unconstrained. */
-    menvcfg_write(~0ULL);
+    tsbi_csr_write(CSR_MENVCFG, ~0ULL);
 
     /* Write all-ones and read back to discover implemented fields. */
     henvcfg_write(~0ULL);
@@ -271,7 +271,7 @@ bool henvcfg_03_fiom_disabled(void) {
         TEST_SKIP("FIOM not implemented in menvcfg");
 
     /* Enable FIOM in menvcfg (so henvcfg.FIOM is writable), then clear. */
-    menvcfg_write(menvcfg_read() | ENVCFG_FIOM);
+    tsbi_csr_write(CSR_MENVCFG, tsbi_csr_read(CSR_MENVCFG) | ENVCFG_FIOM);
     disable_henvcfg_bit(ENVCFG_FIOM);
     TEST_ASSERT_EQ("henvcfg.FIOM=0",
                    henvcfg_read() & ENVCFG_FIOM, 0UL);
@@ -338,7 +338,7 @@ bool henvcfg_05_pbmte_disabled(void) {
         TEST_SKIP("Svpbmt not implemented (menvcfg.PBMTE not writable)");
 
     /* Enable menvcfg.PBMTE so henvcfg.PBMTE is writable, then clear it. */
-    menvcfg_write(menvcfg_read() | ENVCFG_PBMTE);
+    tsbi_csr_write(CSR_MENVCFG, tsbi_csr_read(CSR_MENVCFG) | ENVCFG_PBMTE);
     disable_henvcfg_bit(ENVCFG_PBMTE);
     TEST_ASSERT_EQ("henvcfg.PBMTE=0",
                    henvcfg_read() & ENVCFG_PBMTE, 0UL);
@@ -424,7 +424,7 @@ bool henvcfg_07_adue_disabled(void) {
         TEST_SKIP("Svadu not implemented (menvcfg.ADUE not writable)");
 
     /* Enable menvcfg.ADUE so henvcfg.ADUE is writable, then clear it. */
-    menvcfg_write(menvcfg_read() | MENVCFG_ADUE);
+    tsbi_csr_write(CSR_MENVCFG, tsbi_csr_read(CSR_MENVCFG) | MENVCFG_ADUE);
     disable_henvcfg_bit(MENVCFG_ADUE);
     TEST_ASSERT_EQ("henvcfg.ADUE=0",
                    henvcfg_read() & MENVCFG_ADUE, 0UL);
@@ -473,7 +473,7 @@ bool henvcfg_08_stce_enabled(void) {
 
     /* Ensure mcounteren.TM=1 and hcounteren.TM=1 so VS-mode can access
      * stimecmp/vstimecmp. Both are required by the spec. */
-    mcounteren_set(1U << 1);
+    tsbi_csr_set(CSR_MCOUNTEREN, 1U << 1);
     hcounteren_set(1U << 1);
 
     /* VS-mode read of stimecmp (=vstimecmp) should succeed. */
@@ -497,14 +497,14 @@ bool henvcfg_09_stce_disabled(void) {
         TEST_SKIP("Sstc not implemented (menvcfg.STCE not writable)");
 
     /* Enable menvcfg.STCE so henvcfg.STCE is writable, then clear it. */
-    menvcfg_write(menvcfg_read() | ENVCFG_STCE);
+    tsbi_csr_write(CSR_MENVCFG, tsbi_csr_read(CSR_MENVCFG) | ENVCFG_STCE);
     disable_henvcfg_bit(ENVCFG_STCE);
     TEST_ASSERT_EQ("henvcfg.STCE=0",
                    henvcfg_read() & ENVCFG_STCE, 0UL);
 
     /* Ensure mcounteren.TM=1 and hcounteren.TM=1 so the trap is due to STCE,
      * not counteren. Both are required by the spec. */
-    mcounteren_set(1U << 1);
+    tsbi_csr_set(CSR_MCOUNTEREN, 1U << 1);
     hcounteren_set(1U << 1);
 
     /* VS-mode read of stimecmp should trap with cause=22. */
@@ -552,7 +552,7 @@ bool henvcfg_11_cbze_disabled(void) {
         TEST_SKIP("Zicboz not implemented (menvcfg.CBZE not writable)");
 
     /* Enable menvcfg.CBZE so henvcfg bit is writable, then clear it. */
-    menvcfg_write(menvcfg_read() | ENVCFG_CBZE);
+    tsbi_csr_write(CSR_MENVCFG, tsbi_csr_read(CSR_MENVCFG) | ENVCFG_CBZE);
     disable_henvcfg_bit(ENVCFG_CBZE);
     TEST_ASSERT_EQ("henvcfg.CBZE=0",
                    henvcfg_read() & ENVCFG_CBZE, 0UL);
@@ -603,7 +603,7 @@ bool henvcfg_13_cbcfe_disabled(void) {
     if (!probe_menvcfg_bit(ENVCFG_CBCFE))
         TEST_SKIP("Zicbom not implemented (menvcfg.CBCFE not writable)");
 
-    menvcfg_write(menvcfg_read() | ENVCFG_CBCFE);
+    tsbi_csr_write(CSR_MENVCFG, tsbi_csr_read(CSR_MENVCFG) | ENVCFG_CBCFE);
     disable_henvcfg_bit(ENVCFG_CBCFE);
     TEST_ASSERT_EQ("henvcfg.CBCFE=0",
                    henvcfg_read() & ENVCFG_CBCFE, 0UL);
@@ -635,9 +635,9 @@ bool henvcfg_14_cbie_flush(void) {
         TEST_SKIP("Zicbom not implemented (menvcfg.CBCFE not writable)");
 
     /* Enable menvcfg CBIE field writable. */
-    uintptr_t mcfg = menvcfg_read();
+    uintptr_t mcfg = tsbi_csr_read(CSR_MENVCFG);
     mcfg |= ENVCFG_CBIE_MASK | ENVCFG_CBCFE;
-    menvcfg_write(mcfg);
+    tsbi_csr_write(CSR_MENVCFG, mcfg);
 
     /* Set henvcfg.CBIE=01 (flush). */
     set_henvcfg_cbie(CBIE_FLUSH);
@@ -667,9 +667,9 @@ bool henvcfg_15_cbie_illegal(void) {
         TEST_SKIP("Zicbom not implemented (menvcfg.CBCFE not writable)");
 
     /* Enable menvcfg CBIE field. */
-    uintptr_t mcfg = menvcfg_read();
+    uintptr_t mcfg = tsbi_csr_read(CSR_MENVCFG);
     mcfg |= ENVCFG_CBIE_MASK | ENVCFG_CBCFE;
-    menvcfg_write(mcfg);
+    tsbi_csr_write(CSR_MENVCFG, mcfg);
 
     /* Set henvcfg.CBIE=00 (illegal). */
     set_henvcfg_cbie(CBIE_DISABLE);
@@ -697,19 +697,19 @@ bool henvcfg_16_dte_disabled(void) {
         TEST_SKIP("Ssdbltrp not implemented (menvcfg.DTE not writable)");
 
     /* Enable menvcfg.DTE so henvcfg.DTE is writable, then clear it. */
-    menvcfg_write(menvcfg_read() | ENVCFG_DTE);
+    tsbi_csr_write(CSR_MENVCFG, tsbi_csr_read(CSR_MENVCFG) | ENVCFG_DTE);
     disable_henvcfg_bit(ENVCFG_DTE);
     TEST_ASSERT_EQ("henvcfg.DTE=0",
                    henvcfg_read() & ENVCFG_DTE, 0UL);
 
     /* Try to set vsstatus.SDT=1 via direct CSR write (CSR 0x200). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus | VSSTATUS_SDT));
+    vsstatus = CSRR(CSR_VSSTATUS);
+    CSRW(CSR_VSSTATUS, vsstatus | VSSTATUS_SDT);
 
     /* Read back — SDT should be zero. */
     uintptr_t readback;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
+    readback = CSRR(CSR_VSSTATUS);
     TEST_ASSERT_EQ("vsstatus.SDT reads zero when DTE=0",
                    readback & VSSTATUS_SDT, 0UL);
 
@@ -736,16 +736,16 @@ bool henvcfg_17_dte_enabled(void) {
 
     /* Write vsstatus.SDT=1 and read back. */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus | VSSTATUS_SDT));
+    vsstatus = CSRR(CSR_VSSTATUS);
+    CSRW(CSR_VSSTATUS, vsstatus | VSSTATUS_SDT);
 
     uintptr_t readback;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
+    readback = CSRR(CSR_VSSTATUS);
     TEST_ASSERT_EQ("vsstatus.SDT=1 when DTE=1",
                    readback & VSSTATUS_SDT, VSSTATUS_SDT);
 
     /* Clear SDT to avoid side effects. */
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(readback & ~VSSTATUS_SDT));
+    CSRW(CSR_VSSTATUS, readback & ~VSSTATUS_SDT);
 
     HYP_TEST_END();
 }
@@ -810,9 +810,9 @@ bool henvcfg_20_cbie_inval(void) {
         TEST_SKIP("Zicbom not implemented (menvcfg.CBCFE not writable)");
 
     /* Enable menvcfg CBIE field. */
-    uintptr_t mcfg = menvcfg_read();
+    uintptr_t mcfg = tsbi_csr_read(CSR_MENVCFG);
     mcfg |= ENVCFG_CBIE_MASK | ENVCFG_CBCFE;
-    menvcfg_write(mcfg);
+    tsbi_csr_write(CSR_MENVCFG, mcfg);
 
     /* Set henvcfg.CBIE=11 (invalidate). */
     set_henvcfg_cbie(CBIE_INVAL);
@@ -843,15 +843,15 @@ bool henvcfg_21_cbie_reserved(void) {
         TEST_SKIP("Zicbom not implemented (menvcfg.CBCFE not writable)");
 
     /* Enable menvcfg CBIE field. */
-    uintptr_t mcfg = menvcfg_read();
+    uintptr_t mcfg = tsbi_csr_read(CSR_MENVCFG);
     mcfg |= ENVCFG_CBIE_MASK | ENVCFG_CBCFE;
-    menvcfg_write(mcfg);
+    tsbi_csr_write(CSR_MENVCFG, mcfg);
 
     /* Also enable menvcfg.CBIE=11 so henvcfg.CBIE is not constrained. */
-    mcfg = menvcfg_read();
+    mcfg = tsbi_csr_read(CSR_MENVCFG);
     mcfg &= ~ENVCFG_CBIE_MASK;
     mcfg |= (CBIE_INVAL << ENVCFG_CBIE_SHIFT) & ENVCFG_CBIE_MASK;
-    menvcfg_write(mcfg);
+    tsbi_csr_write(CSR_MENVCFG, mcfg);
 
     /* Write reserved encoding 10b to henvcfg.CBIE. */
     set_henvcfg_cbie(2ULL);
@@ -877,16 +877,16 @@ bool henvcfg_22_pmm_rw(void) {
     TEST_BEGIN("HENV-22: PMM field read/write (Ssnpm)");
 
     /* Probe: enable menvcfg.PMM and check if writable. */
-    uintptr_t orig_m = menvcfg_read();
+    uintptr_t orig_m = tsbi_csr_read(CSR_MENVCFG);
     uintptr_t pmm_en = 3ULL << ENVCFG_PMM_OFF;  /* PMM=11 */
-    menvcfg_write(orig_m | pmm_en);
-    uintptr_t m_rb = menvcfg_read();
-    menvcfg_write(orig_m);
+    tsbi_csr_write(CSR_MENVCFG, orig_m | pmm_en);
+    uintptr_t m_rb = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, orig_m);
     if ((m_rb & ENVCFG_PMM_MASK) == 0)
         TEST_SKIP("Ssnpm not implemented (menvcfg.PMM not writable)");
 
     /* Enable PMM=11 in menvcfg so henvcfg.PMM is unconstrained. */
-    menvcfg_write(menvcfg_read() | pmm_en);
+    tsbi_csr_write(CSR_MENVCFG, tsbi_csr_read(CSR_MENVCFG) | pmm_en);
 
     /* Test PMM=00 (disable). */
     uintptr_t cfg = henvcfg_read() & ~ENVCFG_PMM_MASK;
@@ -911,7 +911,7 @@ bool henvcfg_22_pmm_rw(void) {
 
     /* Restore PMM=00. */
     henvcfg_write(cfg);
-    menvcfg_write(orig_m);
+    tsbi_csr_write(CSR_MENVCFG, orig_m);
 
     HYP_TEST_END();
 }
@@ -974,11 +974,11 @@ bool henvcfg_24_pmm_unimplemented(void) {
     TEST_BEGIN("HENV-24: PMM reads zero when Ssnpm not implemented");
 
     /* Probe menvcfg.PMM. */
-    uintptr_t orig_m = menvcfg_read();
+    uintptr_t orig_m = tsbi_csr_read(CSR_MENVCFG);
     uintptr_t pmm_en = 3ULL << ENVCFG_PMM_OFF;
-    menvcfg_write(orig_m | pmm_en);
-    uintptr_t m_rb = menvcfg_read();
-    menvcfg_write(orig_m);
+    tsbi_csr_write(CSR_MENVCFG, orig_m | pmm_en);
+    uintptr_t m_rb = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, orig_m);
     if ((m_rb & ENVCFG_PMM_MASK) != 0)
         TEST_SKIP("Ssnpm IS implemented -- test only for non-impl case");
 

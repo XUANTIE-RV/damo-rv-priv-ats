@@ -48,12 +48,12 @@ bool htinst_interrupt_zero(void) {
     CSRW(CSR_HVIP, 0);
 
     uintptr_t saved_hie;
-    asm volatile ("csrr %0, " CSR_STR(CSR_HIE) : "=r"(saved_hie));
+    saved_hie = CSRR(CSR_HIE);
 
     /* Save stvec and install HS-mode trap handler. */
     uintptr_t saved_stvec;
-    asm volatile ("csrr %0, stvec" : "=r"(saved_stvec));
-    asm volatile ("csrw stvec, %0" :: "r"((uintptr_t)&_hs_trap_entry));
+    saved_stvec = CSRR(CSR_STVEC);
+    CSRW(CSR_STVEC, (uintptr_t)&_hs_trap_entry);
 
     /* Reset the HS-mode trap record. */
     hs_trap_record_reset();
@@ -63,13 +63,17 @@ bool htinst_interrupt_zero(void) {
 
     /* Ensure vsstatus.SIE=1 so the interrupt fires when V=1. */
     uintptr_t saved_vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(saved_vsstatus));
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(saved_vsstatus | 0x2));
+    saved_vsstatus = CSRR(CSR_VSSTATUS);
+    CSRW(CSR_VSSTATUS, saved_vsstatus | 0x2);
 
-    /* Set mstatus.MPIE=1 so that after mret to VS-mode, SIE=1. */
-    uintptr_t saved_mstatus;
-    asm volatile ("csrr %0, mstatus" : "=r"(saved_mstatus));
-    asm volatile ("csrs mstatus, %0" :: "r"((1UL << 7)));  /* MPIE */
+    /* (removed) The old "set mstatus.MPIE=1 so SIE=1 after mret into VS-mode"
+     * is obsolete under S-mode-normal: mstatus is M-level (the raw csrr/csrs
+     * trap from S(HS)-mode -- here they were silently skipped by the installed
+     * HS handler, leaving saved_mstatus uninitialized), MPIE is a return-path
+     * bit, and every framework excursion re-enters VS via mret (MPIE<-1). It is
+     * also unnecessary: VS-level interrupt delivery is gated by vsstatus.SIE
+     * (set above) + hie + hvip.VSSIP, not by mstatus.MIE/MPIE (which only gate
+     * interrupts while executing in M-mode). */
 
     /* Inject VSSIP; it fires during VS-mode execution. */
     CSRS(CSR_HVIP, VS_SOFT_INT_BIT);
@@ -83,9 +87,8 @@ bool htinst_interrupt_zero(void) {
     /* Restore state. */
     CSRW(CSR_HVIP, 0);
     CSRW(CSR_HIE, saved_hie);
-    asm volatile ("csrw stvec, %0" :: "r"(saved_stvec));
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(saved_vsstatus));
-    asm volatile ("csrw mstatus, %0" :: "r"(saved_mstatus));
+    CSRW(CSR_STVEC, saved_stvec);
+    CSRW(CSR_VSSTATUS, saved_vsstatus);
     hideleg_write(hideleg);
 
     TEST_ASSERT("interrupt trap fired", hs_trap_was_triggered());

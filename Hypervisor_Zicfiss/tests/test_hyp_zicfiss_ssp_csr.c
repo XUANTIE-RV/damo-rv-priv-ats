@@ -156,6 +156,16 @@ bool test_hcfi_ss_21(void) {
     ts2_setup_full_u(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     uintptr_t orig_h = cfi_setup_vs_sse(true, false);
 
+    /* Route the expected illegal-instruction back to HS. The T-SBI hedeleg
+     * baseline delegates cause 2 to VS, but ts2_setup_full_u maps the kernel
+     * text -- which holds the standing VS handler _vs_trap_entry -- as U=1, and
+     * an S-level instruction fetch from a U=1 page always faults (sstatus.SUM
+     * covers data accesses only). Left delegated, the handler's own fetch fault
+     * is delegated back to VS and the suite dies in a self-trap storm. HS runs
+     * with satp=Bare, so the fault is always fetchable and observable there.
+     * HYP_TEST_END restores the delegation baseline. */
+    setup_deleg_to_hs(BIT(CAUSE_ILLEGAL_INST));
+
     uintptr_t r = two_stage_run_in_vu(&ctx, vu_read_ssp, 0);
     TEST_ASSERT_EQ("illegal-instruction exception", r, (uintptr_t)CAUSE_ILLEGAL_INST);
 

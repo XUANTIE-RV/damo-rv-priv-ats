@@ -35,8 +35,8 @@ static bool hstateen_preconditions(const char **skip_reason)
     }
 
     /* mstateen0[60] must be settable (grant HS-mode access) */
-    mstateen_set_bits(0, STATEEN0_CSRIND);
-    if ((mstateen_read(0) & STATEEN0_CSRIND) == 0) {
+    tsbi_csr_set(CSR_MSTATEEN0, STATEEN0_CSRIND);
+    if ((tsbi_csr_read(CSR_MSTATEEN0) & STATEEN0_CSRIND) == 0) {
         *skip_reason = "mstateen0 bit 60 not writable";
         return false;
     }
@@ -107,8 +107,8 @@ bool test_hcross_ssccfg_24_hsta1_allow(void) {
 
     /* Disable CDE and use a non-delegated select value so that the
      * access is gated by hstateen0 alone (no CDE interference). */
-    uintptr_t orig_cde = menvcfg_read();
-    menvcfg_write(orig_cde & ~MENVCFG_CDE);
+    uintptr_t orig_cde = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde & ~MENVCFG_CDE);
     uintptr_t orig_hsta = hstateen_read(0);
     hstateen_set_bits(0, STATEEN0_CSRIND);
 
@@ -125,7 +125,7 @@ bool test_hcross_ssccfg_24_hsta1_allow(void) {
     (void)rb;
 
     hstateen_write(0, orig_hsta);
-    menvcfg_write(orig_cde);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde);
     HYP_TEST_END();
 }
 
