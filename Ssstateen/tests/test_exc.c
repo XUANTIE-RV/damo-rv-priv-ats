@@ -20,8 +20,8 @@ TEST_REGISTER(test_ss_exc_smode_not_gated);
 bool test_ss_exc_smode_not_gated(void) {
     TEST_BEGIN("SS-EXC-01: sstateen does NOT control S-mode itself");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_set_bits(0, STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_set(CSR_MSTATEEN0, STATEEN0_SE0);
 
     /* Clear all functional bits in sstateen0 */
     uintptr_t saved_sstateen0 = sstateen_read(0);
@@ -36,7 +36,7 @@ bool test_ss_exc_smode_not_gated(void) {
                           sstateen0_write(0));
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -46,8 +46,8 @@ TEST_REGISTER(test_ss_exc_umode_read_illegal);
 bool test_ss_exc_umode_read_illegal(void) {
     TEST_BEGIN("SS-EXC-02: U-mode blocked read => illegal-inst (cause=2)");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -58,7 +58,7 @@ bool test_ss_exc_umode_read_illegal(void) {
 
     if (!(probe & STATEEN0_JVT)) {
         sstateen_write(0, saved_sstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.JVT not writable");
     }
 
@@ -78,7 +78,7 @@ bool test_ss_exc_umode_read_illegal(void) {
     }
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -88,8 +88,8 @@ TEST_REGISTER(test_ss_exc_umode_write_illegal);
 bool test_ss_exc_umode_write_illegal(void) {
     TEST_BEGIN("SS-EXC-03: U-mode blocked write => illegal-inst (cause=2)");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -99,7 +99,7 @@ bool test_ss_exc_umode_write_illegal(void) {
 
     if (!(probe & STATEEN0_JVT)) {
         sstateen_write(0, saved_sstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.JVT not writable");
     }
 
@@ -117,7 +117,7 @@ bool test_ss_exc_umode_write_illegal(void) {
     }
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -128,8 +128,8 @@ bool test_ss_exc_vumode_virtual_inst(void) {
     TEST_BEGIN("SS-EXC-04: VU-mode blocked access => virtual-inst (cause=22)");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_SE0 | STATEEN0_JVT);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_SE0 | STATEEN0_JVT);
 
     uintptr_t saved_hstateen0 = hstateen_read(0);
     hstateen_set_bits(0, STATEEN_BIT63 | STATEEN0_JVT);
@@ -144,7 +144,7 @@ bool test_ss_exc_vumode_virtual_inst(void) {
     if (!(probe & STATEEN0_JVT)) {
         sstateen_write(0, saved_sstateen0);
         hstateen_write(0, saved_hstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.JVT not writable");
     }
 
@@ -164,7 +164,7 @@ bool test_ss_exc_vumode_virtual_inst(void) {
 
     sstateen_write(0, saved_sstateen0);
     hstateen_write(0, saved_hstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     HYP_TEST_END();
 }
 
@@ -186,8 +186,8 @@ bool test_ss_exc_implicit_update(void) {
           "instructions interact with stateen-controlled state.\n");
 
     /* Verify the basic principle: sstateen gates lower-priv access */
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_set_bits(0, STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_set(CSR_MSTATEEN0, STATEEN0_SE0);
     uintptr_t saved_sstateen0 = sstateen_read(0);
     sstateen_write(0, 0);
 
@@ -196,6 +196,6 @@ bool test_ss_exc_implicit_update(void) {
                           sstateen0_read());
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }

@@ -128,23 +128,50 @@ static inline void g25_mprv_sd_d(uintptr_t addr, uint64_t val)
         : "memory");
 }
 
-/* Pre-program mstatus.MPV / MPP outside the MPRV window. */
+/* Pre-program mstatus.MPV / MPP outside the MPRV window. M-mode
+ * only: MPV/MPP are xret return-path bits, unreachable from below M
+ * and refused by the tsbi_csr_* proxy guard. */
 static inline void g25_set_mpv_mpp(int mpv, unsigned mpp)
 {
-    asm volatile ("csrc mstatus, %0" :: "r"((uintptr_t)MSTATUS_MPP_MASK));
+    CSRC(CSR_MSTATUS, (uintptr_t)MSTATUS_MPP_MASK);
     if (mpv) {
-        asm volatile ("csrs mstatus, %0" :: "r"((uintptr_t)MSTATUS_MPV));
+        CSRS(CSR_MSTATUS, (uintptr_t)MSTATUS_MPV);
     } else {
-        asm volatile ("csrc mstatus, %0" :: "r"((uintptr_t)MSTATUS_MPV));
+        CSRC(CSR_MSTATUS, (uintptr_t)MSTATUS_MPV);
     }
-    asm volatile ("csrs mstatus, %0"
-                  :: "r"(((uintptr_t)mpp) << MSTATUS_MPP_OFF));
+    CSRS(CSR_MSTATUS, ((uintptr_t)mpp) << MSTATUS_MPP_OFF);
 }
 
 static inline void g25_clear_mpv_mpp(void)
 {
-    asm volatile ("csrc mstatus, %0"
-                  :: "r"((uintptr_t)(MSTATUS_MPV | MSTATUS_MPP_MASK)));
+    CSRC(CSR_MSTATUS, (uintptr_t)(MSTATUS_MPV | MSTATUS_MPP_MASK));
+}
+
+/* The suite now runs in HS-mode, but MPRV only redirects M-mode
+ * accesses and MPRV/MPV/MPP are mstatus return-path bits (not
+ * proxyable from below M). The ld/sd-inside-MPRV-window sequences
+ * therefore run as M-mode excursions via run_in_priv(PRIV_M). The
+ * target address is handed over through g25_mprv_addr; the store
+ * value rides on the callback argument. Each callback restores
+ * MPV=0/MPP=0 before returning so the excursion return path sees a
+ * clean mstatus. */
+static volatile uintptr_t g25_mprv_addr;
+
+static uintptr_t g25_m_mprv_ld(uintptr_t arg)
+{
+    (void)arg;
+    g25_set_mpv_mpp(/*mpv*/1, /*mpp*/PRIV_S);
+    uint64_t v = g25_mprv_ld_d(g25_mprv_addr);
+    g25_clear_mpv_mpp();
+    return (uintptr_t)v;
+}
+
+static uintptr_t g25_m_mprv_sd(uintptr_t arg)
+{
+    g25_set_mpv_mpp(/*mpv*/1, /*mpp*/PRIV_S);
+    g25_mprv_sd_d(g25_mprv_addr, (uint64_t)arg);
+    g25_clear_mpv_mpp();
+    return 0;
 }
 
 TEST_REGISTER(test_ts_bare_03_mprv_mpv);
@@ -159,15 +186,17 @@ bool test_ts_bare_03_mprv_mpv(void) {
     *(volatile uint64_t *)addr = 0xA5A5A5A5A5A5A5A5ULL;
 
     /* MPV=1 + MPP=VS, then load inside an MPRV=1 window: the access
-     * is translated as V=1 VS-level -> trivial under dual Bare. */
-    g25_set_mpv_mpp(/*mpv*/1, /*mpp*/PRIV_S);
-    uint64_t v = g25_mprv_ld_d(addr);
+     * is translated as V=1 VS-level -> trivial under dual Bare. The
+     * mstatus programming and the windowed ld/sd run in M-mode
+     * (MPRV semantics only exist there); see the excursion helpers. */
+    g25_mprv_addr = addr;
+    uint64_t v = (uint64_t)run_in_priv(PRIV_M, g25_m_mprv_ld, 0);
     TEST_ASSERT_EQ("MPRV load passes through (GPA==SPA)",
                    v, 0xA5A5A5A5A5A5A5A5ULL);
 
-    /* Store inside an MPRV=1 window, verify from M-mode. */
-    g25_mprv_sd_d(addr, 0x5A5A5A5A5A5A5A5AULL);
-    g25_clear_mpv_mpp();
+    /* Store inside an MPRV=1 window, verify afterwards from HS-mode. */
+    (void)run_in_priv(PRIV_M, g25_m_mprv_sd,
+                      (uintptr_t)0x5A5A5A5A5A5A5A5AULL);
 
     ts2_finish(&ctx);
     TEST_ASSERT_EQ("MPRV store passes through (GPA==SPA)",
@@ -275,7 +304,7 @@ bool test_ts_bare_06_sum_mxr_noop(void) {
 
     /* vsstatus.SUM=1 + vsstatus.MXR=1 (CSR 0x200). */
     uintptr_t bits = MSTATUS_SUM_BIT | MSTATUS_MXR_BIT;
-    asm volatile ("csrs " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(bits));
+    CSRS(CSR_VSSTATUS, bits);
 
     uintptr_t target = (uintptr_t)test_data_area;
     trap_expect_begin();
@@ -283,7 +312,7 @@ bool test_ts_bare_06_sum_mxr_noop(void) {
     bool fired = trap_was_triggered();
     trap_expect_end();
 
-    asm volatile ("csrc " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(bits));
+    CSRC(CSR_VSSTATUS, bits);
     ts2_finish(&ctx);
     TEST_ASSERT("no trap with SUM/MXR set under dual Bare", !fired);
     TEST_ASSERT_EQ("access behaves identically to SUM/MXR=0", r, 0UL);

@@ -64,18 +64,19 @@ extern uintptr_t g_menvcfg_reset_value;
 /* ===================================================================
  * menvcfg CSR (0x30A) access helpers
  *
- * Inline asm uses the literal 0x30A because csrr/csrs/csrc require
- * the CSR number to be an immediate (not a macro that expands to one
- * at a different stage). common/encoding.h also defines:
+ * menvcfg is an M-level CSR and the suite runs in S-mode under the
+ * T-SBI S-mode-normal model, so the set/clear go through the T-SBI CSR
+ * proxy: a bare csrs/csrc from S-mode raises illegal-instruction.
+ * common/encoding.h also defines:
  *   #define CSR_MENVCFG  0x30A
  *   #define MENVCFG_ADUE (1ULL << 61)
  * =================================================================== */
 static inline void menvcfg_set(uintptr_t mask) {
-    asm volatile ("csrs " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(mask) : "memory");
+    tsbi_csr_set(CSR_MENVCFG, mask);
 }
 
 static inline void menvcfg_clear(uintptr_t mask) {
-    asm volatile ("csrc " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(mask) : "memory");
+    tsbi_csr_clear(CSR_MENVCFG, mask);
 }
 
 /* Set or clear menvcfg.ADUE and issue the required SFENCE.VMA
@@ -88,7 +89,7 @@ static inline void set_menvcfg_adue(int enable) {
 }
 
 static inline int get_menvcfg_adue(void) {
-    return (menvcfg_read() & MENVCFG_ADUE) ? 1 : 0;
+    return (tsbi_csr_read(CSR_MENVCFG) & MENVCFG_ADUE) ? 1 : 0;
 }
 
 /* ===================================================================

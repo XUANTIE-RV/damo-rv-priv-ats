@@ -13,6 +13,15 @@
  *   PRIV-04: M-mode SINVAL.VMA succeeds
  *
  * Verifies SINVAL.VMA privilege level access control.
+ *
+ * T-SBI S-mode-normal model: the test bodies run in S-mode, so the
+ * mstatus.TVM configuration bit is programmed through the T-SBI CSR
+ * proxy (TVM is a configuration bit, not an xret return-path bit, so
+ * the proxy accepts it) and the M-mode case raises explicitly.  The
+ * per-test "PMP entry 15 allows execution" setup the M-mode-entry
+ * version of this file carried is gone: entry.S hoists a full-address-
+ * space NAPOT RWX entry 0 ahead of the drop to S-mode, and a lower-
+ * numbered match always wins, so entry 15 was never consulted.
  */
 
 /* ===================================================================
@@ -21,10 +30,6 @@
 TEST_REGISTER(test_sinval_umode_illegal);
 bool test_sinval_umode_illegal(void) {
     TEST_BEGIN("PRIV-01: SINVAL.VMA in U-mode triggers illegal instruction");
-
-    /* Configure PMP entry 15 to allow U-mode code execution */
-    pmp_entry_t fw = PMP_ENTRY_NAPOT(PLATFORM_MEM_BASE, 0x4000000, PMP_RWX);
-    pmp_set_entry(15, &fw);
 
     goto_priv(PRIV_U);
 
@@ -46,11 +51,7 @@ bool test_sinval_smode_tvm0(void) {
     TEST_BEGIN("PRIV-02: SINVAL.VMA in S-mode with TVM=0 succeeds");
 
     /* Ensure TVM=0 */
-    CSRC(mstatus, MSTATUS_TVM_BIT);
-
-    /* Configure PMP entry 15 to allow S-mode code execution */
-    pmp_entry_t fw = PMP_ENTRY_NAPOT(PLATFORM_MEM_BASE, 0x4000000, PMP_RWX);
-    pmp_set_entry(15, &fw);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TVM_BIT);
 
     goto_priv(PRIV_S);
 
@@ -71,11 +72,7 @@ bool test_sinval_smode_tvm1(void) {
     TEST_BEGIN("PRIV-03: SINVAL.VMA in S-mode with TVM=1 triggers illegal instruction");
 
     /* Set mstatus.TVM=1 */
-    CSRS(mstatus, MSTATUS_TVM_BIT);
-
-    /* Configure PMP entry 15 to allow S-mode code execution */
-    pmp_entry_t fw = PMP_ENTRY_NAPOT(PLATFORM_MEM_BASE, 0x4000000, PMP_RWX);
-    pmp_set_entry(15, &fw);
+    tsbi_csr_set(CSR_MSTATUS, MSTATUS_TVM_BIT);
 
     goto_priv(PRIV_S);
 
@@ -98,6 +95,12 @@ bool test_sinval_smode_tvm1(void) {
 TEST_REGISTER(test_sinval_mmode);
 bool test_sinval_mmode(void) {
     TEST_BEGIN("PRIV-04: SINVAL.VMA in M-mode succeeds");
+
+    /* The subject of this case is M-mode, which is no longer where a test
+     * body starts: raise explicitly, otherwise the stimulus would silently
+     * be issued from S-mode and the case would stop testing what its ID
+     * claims. */
+    goto_priv(PRIV_M);
 
     /* M-mode: SINVAL.VMA should always succeed */
     EXPECT_NO_TRAP(SINVAL_VMA(0, 0));

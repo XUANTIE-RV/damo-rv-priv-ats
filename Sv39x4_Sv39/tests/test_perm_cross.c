@@ -264,6 +264,20 @@ bool test_ts_perm_10_vs_no_u_vu(void) {
                       G7_VS_RWX, PT_LEVEL_4K);
     hfence_vvma_all();
 
+    /* Route the expected page fault to HS, not VS. ts2_setup_full_u
+     * maps the whole low-memory 2M superpages (holding ALL kernel
+     * text) with U=1 so the VU-mode payload can execute; an S-level
+     * VS trap handler can never fetch from U=1 pages (SUM gates data
+     * only, never instruction fetch), so a fault delegated down to
+     * the standing VS entry would make its very first fetch fault
+     * again and re-delegate forever. Keep the cause at HS instead:
+     * the HS handler runs on the bare HS satp and records into
+     * trap_record, which the standard trap API observes below.
+     * medeleg[13] stays set, so the VU fault still surfaces as a
+     * genuine load-page-fault; only the serving level changes.
+     * HYP_TEST_END restores the delegation baseline. */
+    setup_deleg_to_hs(1UL << CAUSE_LOAD_PAGE_FAULT);
+
     trap_expect_begin();
     (void)two_stage_run_in_vu(&ctx, test_vs_load_expect_fault, va);
     bool fired = trap_was_triggered();

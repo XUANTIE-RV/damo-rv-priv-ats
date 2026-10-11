@@ -162,7 +162,7 @@ bool test_ts_impl_03_pt_readonly_store(void) {
      * platform actually implements it: the ADUE bits stick only when
      * Svadu is present (norm:menvcfg_adue_op / henvcfg_adue_op). */
     ts2_enable_adue();
-    bool adue_on = ((menvcfg_read() & MENVCFG_ADUE) != 0) &&
+    bool adue_on = ((tsbi_csr_read(CSR_MENVCFG) & MENVCFG_ADUE) != 0) &&
                    ((henvcfg_read() & HENVCFG_ADUE) != 0);
 
     trap_expect_begin();

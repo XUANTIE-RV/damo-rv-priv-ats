@@ -343,7 +343,11 @@ after_mret:
     LOAD    t0, 0(t0)
     STORE   t0, 26*REGSIZE(sp)
 
-    /* Call the C trap handler (defined in common/trap.c) */
+    /* Call the C trap handler (defined in common/trap.c)
+     * The handler takes the trap frame as its first argument (T-SBI
+     * register convention: it reads the trapped a0/a1 from frame[9]/[10]
+     * and writes service results back there).  sp points at the frame. */
+    mv      a0, sp
     jal     ra, m_trap_handler
 
     /* Restore mcause and mtval from stack (C handler may have modified) */
@@ -386,7 +390,9 @@ ssdbltrp_s_trap_entry:
      * not expose it below M-mode.  The S-mode delivery observation is
      * done at the probe continuation point instead. */
 
-    /* Call the C trap handler (defined in common/trap.c) */
+    /* Call the C trap handler (defined in common/trap.c)
+     * Frame pointer in a0, as for the M-side entry above. */
+    mv      a0, sp
     jal     ra, s_trap_handler
 
     /* Honor the handler return value like common _trap_return:

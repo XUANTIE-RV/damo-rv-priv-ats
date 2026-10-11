@@ -208,7 +208,7 @@ bool test_ghcsr_07_vmidlen(void) {
 static uintptr_t _hs_csrr_hgatp(uintptr_t arg) {
     (void)arg;
     uintptr_t v;
-    asm volatile ("csrr %0, " CSR_STR(CSR_HGATP) : "=r"(v) :: "memory");
+    v = CSRR(CSR_HGATP);
     return v;
 }
 
@@ -216,10 +216,10 @@ TEST_REGISTER(test_ghcsr_08_tvm);
 bool test_ghcsr_08_tvm(void) {
     TEST_BEGIN("GHCSR-08: TVM=1 traps HS-mode hgatp access");
 
-    /* Set mstatus.TVM = 1. */
-    uintptr_t ms = CSRR(mstatus);
-    ms |= MSTATUS_TVM;
-    CSRW(mstatus, ms);
+    /* Set mstatus.TVM = 1. TVM is a configuration bit (not an xret
+     * return-path bit), so the adaptive accessor proxies it safely from
+     * S(HS)-mode via T-SBI. */
+    tsbi_csr_set(CSR_MSTATUS, MSTATUS_TVM);
 
     /* From HS-mode, csrr hgatp -> illegal-instruction. */
     trap_expect_begin();
@@ -233,9 +233,7 @@ bool test_ghcsr_08_tvm(void) {
     trap_expect_end();
 
     /* Clear TVM. */
-    ms = CSRR(mstatus);
-    ms &= ~MSTATUS_TVM;
-    CSRW(mstatus, ms);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TVM);
 
     /* M-mode access still works. */
     EXPECT_NO_TRAP((void)hgatp_read());

@@ -64,20 +64,20 @@ bool test_svadu_csr03(void) {
 
     /* Baseline: ensure ADUE=0 and snapshot the rest of the register. */
     set_menvcfg_adue(0);
-    if (menvcfg_read() & ADUE_MASK) {
+    if (tsbi_csr_read(CSR_MENVCFG) & ADUE_MASK) {
         TEST_SKIP("Cannot clear ADUE (unexpected); skip");
     }
-    uintptr_t baseline = menvcfg_read() & ~ADUE_MASK;
+    uintptr_t baseline = tsbi_csr_read(CSR_MENVCFG) & ~ADUE_MASK;
 
     /* Toggle ADUE to 1 */
     set_menvcfg_adue(1);
-    uintptr_t after_set = menvcfg_read() & ~ADUE_MASK;
+    uintptr_t after_set = tsbi_csr_read(CSR_MENVCFG) & ~ADUE_MASK;
     TEST_ASSERT("other menvcfg bits unchanged after ADUE 0->1",
                 after_set == baseline);
 
     /* Toggle back to 0 */
     set_menvcfg_adue(0);
-    uintptr_t after_clear = menvcfg_read() & ~ADUE_MASK;
+    uintptr_t after_clear = tsbi_csr_read(CSR_MENVCFG) & ~ADUE_MASK;
     TEST_ASSERT("other menvcfg bits unchanged after ADUE 1->0",
                 after_clear == baseline);
 

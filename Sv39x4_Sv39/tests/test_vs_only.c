@@ -277,16 +277,16 @@ bool test_ts_vs_09_mxr_xonly_ok(void)
      * Per norm:vsstatus_mxr_vm, vsstatus.MXR overrides VS-stage
      * execute-only. This exactly mirrors the TS-MXR-02 pattern
      * which is known to pass. */
-    asm volatile ("csrc sstatus, %0" :: "r"((uintptr_t)SSTATUS_MXR_BIT));
-    asm volatile ("csrs " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"((uintptr_t)SSTATUS_MXR_BIT));
+    CSRC(CSR_SSTATUS, (uintptr_t)SSTATUS_MXR_BIT);
+    CSRS(CSR_VSSTATUS, (uintptr_t)SSTATUS_MXR_BIT);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, g1_vs_simple_load, va);
     bool fired = trap_was_triggered();
     trap_expect_end();
 
-    asm volatile ("csrc sstatus, %0" :: "r"((uintptr_t)SSTATUS_MXR_BIT));
-    asm volatile ("csrc " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"((uintptr_t)SSTATUS_MXR_BIT));
+    CSRC(CSR_SSTATUS, (uintptr_t)SSTATUS_MXR_BIT);
+    CSRC(CSR_VSSTATUS, (uintptr_t)SSTATUS_MXR_BIT);
     ts2_finish(&ctx);
     TEST_ASSERT("vsstatus.MXR=1 makes VS X-only readable", !fired);
     HYP_TEST_END();

@@ -21,21 +21,39 @@
  * =================================================================== */
 
 #include "pmp/pmp_cfg.h"
+#include "hyp/hyp_test_helpers.h"  /* setup_deleg_to_hs */
 
 #define G14_BARE_VS  SATP_MODE_BARE
 #define G14_BARE_G   HGATP_MODE_BARE
 
-/* PMP deny-window helpers from common/pmp/pmp_cfg.h. */
+/* PMP deny-window helpers from common/pmp/pmp_cfg.h.
+ *
+ * pmpcfg and pmpaddr are M-level CSRs. Under the S(HS)-mode-normal boot
+ * the test body runs in S-mode, where a direct pmpcfg/pmpaddr access
+ * raises an illegal-instruction exception. Configure the deny window
+ * inside an M-mode excursion; the PMP entries persist after we drop
+ * back to the original privilege, so the subsequent VS-mode access
+ * still hits the denial. */
 typedef pmp_save_t g14_pmp_save_t;
 
 static void g14_pmp_deny_page(uintptr_t pa, g14_pmp_save_t *save)
 {
+    unsigned saved = get_current_priv();
+    if (saved != PRIV_M)
+        goto_priv(PRIV_M);
     pmp_deny_page_4k(pa, save);
+    if (saved != PRIV_M)
+        goto_priv(saved);
 }
 
 static void g14_pmp_restore(const g14_pmp_save_t *save)
 {
+    unsigned saved = get_current_priv();
+    if (saved != PRIV_M)
+        goto_priv(PRIV_M);
     pmp_restore(save);
+    if (saved != PRIV_M)
+        goto_priv(saved);
 }
 
 /* norm:hgatp_mode_bare_trans: guest-page-fault (20/21/23) can never
@@ -215,7 +233,13 @@ bool test_gbare_04_pmp_access_fault(void) {
  * states that memory access traps writing a nonzero stval set GVA the
  * same as SPV; with V=1 (SPV=1) the faulting address IS a guest
  * virtual address, so GVA must be 1 even under dual Bare.
- * =================================================================== */
+ *
+ * hstatus.GVA/SPV are written only when the trap is taken into HS-mode.
+ * The T-SBI delegation baseline (tsbi_deleg_hedeleg_baseline) delegates
+ * load-access-fault (cause 5) down to VS, where those HS fields are never
+ * written. Route cause 5 back to HS-mode so the fault is delivered there
+ * and the framework captures hstatus.GVA/SPV; hyp_reset_state() in
+ * HYP_TEST_END restores the baseline afterwards. */
 TEST_REGISTER(test_gbare_05_trap_report);
 bool test_gbare_05_trap_report(void) {
     TEST_BEGIN("GBARE-05: htval==0 and GVA==SPV on PMP fault under Bare");
@@ -226,6 +250,10 @@ bool test_gbare_05_trap_report(void) {
     uintptr_t data_target = (uintptr_t)test_data_area;
     g14_pmp_save_t save;
     g14_pmp_deny_page(data_target, &save);
+
+    /* Deliver the load access fault into HS-mode so hstatus.GVA/SPV are
+     * written and observable (see the block comment above). */
+    setup_deleg_to_hs((uintptr_t)1UL << CAUSE_LOAD_ACCESS_FAULT);
 
     trap_expect_begin();
     two_stage_run_in_vs(&ctx, test_vs_load_expect_fault, data_target);

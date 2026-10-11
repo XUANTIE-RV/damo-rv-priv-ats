@@ -14,19 +14,17 @@ extern test_func_t _test_table_end[];
  * so that SVADU-CSR-04 can inspect the reset value of menvcfg. */
 extern uintptr_t g_menvcfg_reset_value;
 
-static inline uintptr_t menvcfg_read_raw(void) {
-    uintptr_t v;
-    asm volatile ("csrr %0, " CSR_STR(CSR_MENVCFG) : "=r"(v));
-    return v;
-}
-
 int main(void) {
     uart_init();
     reset_state();
 
     /* Snapshot menvcfg BEFORE any test runs. SVADU-CSR-01/02 etc.
-     * modify ADUE, so this must happen first. */
-    g_menvcfg_reset_value = menvcfg_read_raw();
+     * modify ADUE, so this must happen first.
+     *
+     * menvcfg is an M-level CSR and main() runs in S-mode under the
+     * T-SBI S-mode-normal model, so the snapshot goes through the
+     * T-SBI CSR proxy instead of a bare csrr. */
+    g_menvcfg_reset_value = tsbi_csr_read(CSR_MENVCFG);
     test_print_banner("RISC-V Svadu Extension Compliance Test");
 
     unsigned int test_count = (unsigned int)(

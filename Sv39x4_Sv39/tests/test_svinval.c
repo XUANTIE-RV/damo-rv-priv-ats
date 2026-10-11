@@ -50,11 +50,11 @@ bool test_ts_sinv_01_vtvm_sinval(void) {
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
     /* Set hstatus.VTVM via csrs (read-modify-write masking VTVM). */
-    asm volatile ("csrs hstatus, %0" :: "r"((uintptr_t)HSTATUS_VTVM));
+    CSRS(CSR_HSTATUS, (uintptr_t)HSTATUS_VTVM);
 
     bool ok = ts2_run_check_fault(&ctx, vs_sinval_vma, 0,
                                   CAUSE_VIRTUAL_INSTRUCTION);
-    asm volatile ("csrc hstatus, %0" :: "r"((uintptr_t)HSTATUS_VTVM));
+    CSRC(CSR_HSTATUS, (uintptr_t)HSTATUS_VTVM);
     if (!ok) {
         TEST_SKIP("platform may not implement Svinval (SINVAL.VMA decoded as illegal)");
     }
@@ -78,8 +78,10 @@ bool test_ts_sinv_02_tvm_hinval(void) {
     TEST_BEGIN("TS-SINV-02: TVM=1 + HS HINVAL.GVMA -> illegal-inst (2)");
     REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
-    /* Set mstatus.TVM to trap HS-mode fence instructions. */
-    asm volatile ("csrs mstatus, %0" :: "r"((uintptr_t)MSTATUS_TVM));
+    /* Set mstatus.TVM to trap HS-mode fence instructions. TVM is a
+     * configuration bit (not an xret return-path bit), so the
+     * adaptive accessor proxies it safely from HS-mode via T-SBI. */
+    tsbi_csr_set(CSR_MSTATUS, MSTATUS_TVM);
 
     /* Execute HINVAL.GVMA from HS-mode (S-mode, V=0). */
     trap_expect_begin();
@@ -88,7 +90,7 @@ bool test_ts_sinv_02_tvm_hinval(void) {
     uintptr_t cause = fired ? trap_get_cause() : 0;
     trap_expect_end();
 
-    asm volatile ("csrc mstatus, %0" :: "r"((uintptr_t)MSTATUS_TVM));
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TVM);
 
     if (!fired) {
         TEST_SKIP("platform may not implement Svinval (HINVAL.GVMA NOP)");

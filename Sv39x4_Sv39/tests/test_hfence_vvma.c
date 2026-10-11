@@ -156,8 +156,10 @@ bool test_ts_hv_04_tvm_no_trap(void) {
     REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
-    /* Set mstatus.TVM=1 (bit 20). */
-    asm volatile ("csrs mstatus, %0" :: "r"((uintptr_t)MSTATUS_TVM));
+    /* Set mstatus.TVM=1 (bit 20). TVM is a configuration bit (not an
+     * xret return-path bit), so the adaptive accessor proxies it
+     * safely from HS-mode via T-SBI. */
+    tsbi_csr_set(CSR_MSTATUS, MSTATUS_TVM);
 
     trap_expect_begin();
     (void)run_in_priv(PRIV_S, g10_hs_hfence_vvma_all, 0);
@@ -165,7 +167,7 @@ bool test_ts_hv_04_tvm_no_trap(void) {
     trap_expect_end();
 
     /* Restore mstatus.TVM=0 to avoid leaking state. */
-    asm volatile ("csrc mstatus, %0" :: "r"((uintptr_t)MSTATUS_TVM));
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TVM);
 
     TEST_ASSERT("HFENCE.VVMA in HS with TVM=1 raised no trap", !fired);
     HYP_TEST_END();
@@ -181,14 +183,14 @@ bool test_ts_hv_05_vtvm_no_trap(void) {
     REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
     /* Set hstatus.VTVM=1 (bit 20). */
-    asm volatile ("csrs hstatus, %0" :: "r"((uintptr_t)HSTATUS_VTVM));
+    CSRS(CSR_HSTATUS, (uintptr_t)HSTATUS_VTVM);
 
     trap_expect_begin();
     (void)run_in_priv(PRIV_S, g10_hs_hfence_vvma_all, 0);
     bool fired = trap_was_triggered();
     trap_expect_end();
 
-    asm volatile ("csrc hstatus, %0" :: "r"((uintptr_t)HSTATUS_VTVM));
+    CSRC(CSR_HSTATUS, (uintptr_t)HSTATUS_VTVM);
 
     TEST_ASSERT("HFENCE.VVMA in HS with VTVM=1 raised no trap", !fired);
     HYP_TEST_END();

@@ -139,7 +139,7 @@ bool test_ts_sf_03_vtvm_virt_inst(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     /* Set hstatus.VTVM=1. */
-    asm volatile ("csrs hstatus, %0" :: "r"((uintptr_t)HSTATUS_VTVM));
+    CSRS(CSR_HSTATUS, (uintptr_t)HSTATUS_VTVM);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, g12_vs_sfence_vma_all, 0);
@@ -148,7 +148,7 @@ bool test_ts_sf_03_vtvm_virt_inst(void) {
     trap_expect_end();
 
     /* Restore VTVM=0. */
-    asm volatile ("csrc hstatus, %0" :: "r"((uintptr_t)HSTATUS_VTVM));
+    CSRC(CSR_HSTATUS, (uintptr_t)HSTATUS_VTVM);
     ts2_finish(&ctx);
 
     TEST_ASSERT("trap fired in VS-mode with VTVM=1", fired);

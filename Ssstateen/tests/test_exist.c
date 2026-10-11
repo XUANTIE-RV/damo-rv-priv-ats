@@ -20,12 +20,12 @@ bool test_ss_exist_sstateen0_read(void) {
     TEST_BEGIN("SS-EXIST-01: sstateen0 readable in S-mode");
 
     /* Ensure mstateen0.SE0=1 to allow S-mode access */
-    uintptr_t saved_mstateen0 = mstateen_read(0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
     mstateen_set_bit63(0, true);
 
     SS_TEST_SMODE_ALLOWED("S-mode read sstateen0", sstateen0_read());
 
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -35,14 +35,14 @@ TEST_REGISTER(test_ss_exist_sstateen0_write);
 bool test_ss_exist_sstateen0_write(void) {
     TEST_BEGIN("SS-EXIST-02: sstateen0 writable in S-mode");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
     mstateen_set_bit63(0, true);
 
     /* Write from S-mode should not trap */
     SS_TEST_SMODE_ALLOWED("S-mode write sstateen0",
                           sstateen0_write(sstateen0_read()));
 
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -52,11 +52,11 @@ TEST_REGISTER(test_ss_exist_sstateen1_rw);
 bool test_ss_exist_sstateen1_rw(void) {
     TEST_BEGIN("SS-EXIST-03: sstateen1 readable/writable in S-mode");
 
-    uintptr_t saved = mstateen_read(1);
+    uintptr_t saved = tsbi_csr_read(CSR_MSTATEEN1);
     mstateen_set_bit63(1, true);
 
-    if (!(mstateen_read(1) & STATEEN_BIT63)) {
-        mstateen_write(1, saved);
+    if (!(tsbi_csr_read(CSR_MSTATEEN1) & STATEEN_BIT63)) {
+        tsbi_csr_write(CSR_MSTATEEN1, saved);
         TEST_SKIP("mstateen1 bit 63 not writable (sstateen1 not accessible)");
     }
 
@@ -65,7 +65,7 @@ bool test_ss_exist_sstateen1_rw(void) {
         sstateen1_write(v);
     });
 
-    mstateen_write(1, saved);
+    tsbi_csr_write(CSR_MSTATEEN1, saved);
     TEST_END();
 }
 
@@ -75,11 +75,11 @@ TEST_REGISTER(test_ss_exist_sstateen2_rw);
 bool test_ss_exist_sstateen2_rw(void) {
     TEST_BEGIN("SS-EXIST-04: sstateen2 readable/writable in S-mode");
 
-    uintptr_t saved = mstateen_read(2);
+    uintptr_t saved = tsbi_csr_read(CSR_MSTATEEN2);
     mstateen_set_bit63(2, true);
 
-    if (!(mstateen_read(2) & STATEEN_BIT63)) {
-        mstateen_write(2, saved);
+    if (!(tsbi_csr_read(CSR_MSTATEEN2) & STATEEN_BIT63)) {
+        tsbi_csr_write(CSR_MSTATEEN2, saved);
         TEST_SKIP("mstateen2 bit 63 not writable (sstateen2 not accessible)");
     }
 
@@ -88,7 +88,7 @@ bool test_ss_exist_sstateen2_rw(void) {
         sstateen2_write(v);
     });
 
-    mstateen_write(2, saved);
+    tsbi_csr_write(CSR_MSTATEEN2, saved);
     TEST_END();
 }
 
@@ -98,11 +98,11 @@ TEST_REGISTER(test_ss_exist_sstateen3_rw);
 bool test_ss_exist_sstateen3_rw(void) {
     TEST_BEGIN("SS-EXIST-05: sstateen3 readable/writable in S-mode");
 
-    uintptr_t saved = mstateen_read(3);
+    uintptr_t saved = tsbi_csr_read(CSR_MSTATEEN3);
     mstateen_set_bit63(3, true);
 
-    if (!(mstateen_read(3) & STATEEN_BIT63)) {
-        mstateen_write(3, saved);
+    if (!(tsbi_csr_read(CSR_MSTATEEN3) & STATEEN_BIT63)) {
+        tsbi_csr_write(CSR_MSTATEEN3, saved);
         TEST_SKIP("mstateen3 bit 63 not writable (sstateen3 not accessible)");
     }
 
@@ -111,7 +111,7 @@ bool test_ss_exist_sstateen3_rw(void) {
         sstateen3_write(v);
     });
 
-    mstateen_write(3, saved);
+    tsbi_csr_write(CSR_MSTATEEN3, saved);
     TEST_END();
 }
 
@@ -121,9 +121,9 @@ TEST_REGISTER(test_ss_exist_sstateen0_width);
 bool test_ss_exist_sstateen0_width(void) {
     TEST_BEGIN("SS-EXIST-06: sstateen0 is 32-bit effective width");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
     /* Allow all bits through from mstateen0 */
-    mstateen_write(0, ~0UL);
+    tsbi_csr_write(CSR_MSTATEEN0, ~0UL);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -141,6 +141,6 @@ bool test_ss_exist_sstateen0_width(void) {
           (unsigned long)readback);
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
