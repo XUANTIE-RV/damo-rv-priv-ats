@@ -114,26 +114,32 @@ static inline void hz_write_mtimecmp(uint64_t v)
 
 static inline uintptr_t hz_quiet_interrupts(void)
 {
-    uintptr_t saved_mie = CSRR(mie);
-    CSRW(mie, 0);
-    CSRC(mip, (1UL << 1));       /* SSIP */
+    /* mie/mip are M-level CSRs: under S-mode-normal proxy them via
+     * tsbi_csr_*. hvip/vsie are HS-level and stay direct. */
+    uintptr_t saved_mie = tsbi_csr_read(CSR_MIE);
+    tsbi_csr_write(CSR_MIE, 0);
+    tsbi_csr_clear(CSR_MIP, (1UL << 1));   /* SSIP */
     hvip_write(0);
     vsie_write(0);
     hz_write_mtimecmp((uint64_t)-1);
     return saved_mie;
 }
 
-/* Restore mie after hz_quiet_interrupts(): call sites use CSRW(mie, saved_mie)
- * directly (no wrapper needed). */
+/* Restore mie after hz_quiet_interrupts(): call sites use
+ * tsbi_csr_write(CSR_MIE, saved_mie) (mie is M-level). */
 
-/* Force every global interrupt enable off (mstatus.MIE, HS-level
- * sstatus.SIE, vsstatus.SIE). Wake sources used by these tests must
- * only prevent the wrs stall; with a global enable left on, the
- * pending interrupt would actually be taken mid-test and corrupt the
- * trap record. */
+/* Force the HS/VS global interrupt enables off (sstatus.SIE,
+ * vsstatus.SIE). Wake sources used by these tests must only prevent the
+ * wrs stall; with a global enable left on, the pending interrupt would
+ * actually be taken mid-test and corrupt the trap record.
+ *
+ * mstatus.MIE is deliberately NOT touched: it only gates interrupts while
+ * the hart runs IN M-mode, whereas under S-mode-normal the wrs stimulus
+ * runs in HS/VS/VU where M-interrupts are always enabled regardless of
+ * MIE. M sources are quiesced via mie/mip instead, and MIE is a
+ * return-path bit the tsbi_csr_* guardrail refuses to set/clear. */
 static inline void hz_suppress_globals(void)
 {
-    CSRC(mstatus, MSTATUS_MIE_BIT);
     CSRC(sstatus, MSTATUS_SIE_BIT);
     CSRW(CSR_VSSTATUS, 0);
 }
@@ -161,18 +167,18 @@ static inline uintptr_t hz_set_m_soft_pending(void)
      * zawrs_delegate_ssip()/zawrs_restore_mideleg() in
      * Zawrs/tests/zawrs_helper.h: no delegation state leaks into
      * later cases even when a case fails in between. */
-    uintptr_t saved_mideleg = CSRR(mideleg);
-    CSRS(mideleg, (1UL << 1));
-    CSRS(mip, (1UL << 1));       /* SSIP */
-    CSRS(mie, (1UL << 1));       /* SSIE */
+    uintptr_t saved_mideleg = tsbi_csr_read(CSR_MIDELEG);
+    tsbi_csr_set(CSR_MIDELEG, (1UL << 1));
+    tsbi_csr_set(CSR_MIP, (1UL << 1));     /* SSIP */
+    tsbi_csr_set(CSR_MIE, (1UL << 1));     /* SSIE */
     return saved_mideleg;
 }
 
 static inline void hz_clear_m_soft_pending(uintptr_t saved_mideleg)
 {
-    CSRC(mip, (1UL << 1));
-    CSRC(mie, (1UL << 1));
-    CSRW(mideleg, saved_mideleg);
+    tsbi_csr_clear(CSR_MIP, (1UL << 1));
+    tsbi_csr_clear(CSR_MIE, (1UL << 1));
+    tsbi_csr_write(CSR_MIDELEG, saved_mideleg);
 }
 
 /* VS-level: hvip.VSSIP injected, hideleg bit 2 routes the VS software
@@ -217,8 +223,9 @@ static inline void hz_clear_vs_soft_pending(void)
  *
  * A pending locally enabled interrupt always targets VS or above and
  * is taken on VU-mode entry, so a pending-interrupt wake source cannot
- * be maintained in VU-mode. Instead arm an M-timer with MTIE and
- * global MIE set: if the implementation stalls, the watchdog
+ * be maintained in VU-mode. Instead arm an M-timer with MTIE (M-interrupts
+ * are always enabled while the hart is in VU, below M): if the
+ * implementation stalls, the watchdog
  * interrupt terminates the stall (norm:Zawrs_exec_resume_rules) and
  * the framework M-mode handler disarms the source. A recorded trap
  * holding the M-timer interrupt cause is a legitimate outcome; a
@@ -240,14 +247,17 @@ static inline void hz_clear_vs_soft_pending(void)
  * window records at most the M-timer interrupt). */
 static inline uintptr_t hz_arm_watchdog(void)
 {
-    uintptr_t saved_mie = CSRR(mie);
-    CSRW(mie, 0);
-    CSRC(mip, (1UL << 1));       /* SSIP */
+    uintptr_t saved_mie = tsbi_csr_read(CSR_MIE);
+    tsbi_csr_write(CSR_MIE, 0);
+    tsbi_csr_clear(CSR_MIP, (1UL << 1));   /* SSIP */
     hvip_write(0);
     hz_write_mtimecmp(*(volatile uint64_t *)PLATFORM_MTIME_ADDR +
                       HZ_WATCHDOG_TICKS);
-    CSRS(mie, (1UL << IRQ_M_TIMER));
-    CSRS(mstatus, MSTATUS_MIE_BIT);
+    tsbi_csr_set(CSR_MIE, (1UL << IRQ_M_TIMER));
+    /* No mstatus.MIE set: the watchdog M-timer interrupt fires while the
+     * hart is in VU (below M), where M-interrupts are always enabled
+     * regardless of mstatus.MIE; MIE is also a guardrail-blocked
+     * return-path bit under the tsbi_csr_* proxy. */
     return saved_mie;
 }
 
@@ -258,8 +268,8 @@ static inline uintptr_t hz_arm_watchdog(void)
  * an MTIMER backs it). */
 static inline void hz_disarm_watchdog(uintptr_t saved_mie)
 {
-    CSRC(mstatus, MSTATUS_MIE_BIT);
-    CSRW(mie, saved_mie);
+    /* mstatus.MIE was never set by hz_arm_watchdog (see note there). */
+    tsbi_csr_write(CSR_MIE, saved_mie);
     hz_write_mtimecmp((uint64_t)-1);
 }
 
@@ -288,7 +298,8 @@ static inline bool hz_trap_is_watchdog_only(void)
  * hstatus.VTW / mstatus.TW control
  *
  * VTW: use hstatus_set_vtw(bool) from common/hyp/hyp_csr.h.
- * TW:  call sites use CSRS/CSRC(mstatus, MSTATUS_TW_BIT) directly.
+ * TW:  call sites use tsbi_csr_set/clear(CSR_MSTATUS, MSTATUS_TW_BIT)
+ *      (mstatus is M-level; TW is a config bit the proxy allows).
  * =================================================================== */
 
 /* ===================================================================

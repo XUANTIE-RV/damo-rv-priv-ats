@@ -38,9 +38,8 @@ bool mideleg_readonly_bits(void)
 {
     TEST_BEGIN("MIDLG-01: Verify mideleg bits 10/6/2 are read-only 1");
 
-    /* Read mideleg. */
-    uintptr_t val;
-    asm volatile("csrr %0, mideleg" : "=r"(val));
+    /* Read mideleg (M-level config; via the T-SBI proxy). */
+    uintptr_t val = tsbi_csr_read(CSR_MIDELEG);
 
     /* Verify bits 10, 6, 2 are 1. */
     uintptr_t mask = VS_BIT_VSEI | VS_BIT_VSTI | VS_BIT_VSSI;
@@ -48,10 +47,10 @@ bool mideleg_readonly_bits(void)
 
     /* Try to clear these bits. */
     val &= ~mask;
-    asm volatile("csrw mideleg, %0" :: "r"(val));
+    tsbi_csr_write(CSR_MIDELEG, val);
 
     /* Read back and verify they are still 1. */
-    asm volatile("csrr %0, mideleg" : "=r"(val));
+    val = tsbi_csr_read(CSR_MIDELEG);
     TEST_ASSERT_EQ("mideleg bits 10/6/2 should still be 1 after clear attempt",
                    val & mask, mask);
 
@@ -71,28 +70,28 @@ bool mideleg_bit12_geilen(void)
     TEST_BEGIN("MIDLG-02: Verify mideleg bit 12 read-only 1 when GEILEN>0");
 
     /* Detect GEILEN: write all 1s to hgeie and read back. */
-    asm volatile("csrw " CSR_STR(CSR_HGEIE) ", %0" :: "r"((uintptr_t)-1) : "memory");
+    CSRW(CSR_HGEIE, (uintptr_t)-1);
     uintptr_t hgeie;
-    asm volatile("csrr %0, " CSR_STR(CSR_HGEIE) : "=r"(hgeie));
+    hgeie = CSRR(CSR_HGEIE);
     /* Restore hgeie to 0 to avoid spurious guest external interrupts. */
-    asm volatile("csrw " CSR_STR(CSR_HGEIE) ", zero" ::: "memory");
+    CSRW(CSR_HGEIE, 0);
 
     if (hgeie == 0)
     {
         TEST_SKIP("GEILEN=0 (hgeie reads zero), bit 12 not required to be RO1");
     }
 
-    /* GEILEN>0: read mideleg and verify bit 12 is 1. */
-    uintptr_t val;
-    asm volatile("csrr %0, mideleg" : "=r"(val));
+    /* GEILEN>0: read mideleg and verify bit 12 is 1 (M-level config; via the
+     * the T-SBI proxy). */
+    uintptr_t val = tsbi_csr_read(CSR_MIDELEG);
     TEST_ASSERT_EQ("mideleg bit 12 should be 1 when GEILEN>0",
                    val & VS_BIT_SGEI, VS_BIT_SGEI);
 
     /* Attempt to clear bit 12 and verify it remains 1. */
     val &= ~VS_BIT_SGEI;
-    asm volatile("csrw mideleg, %0" :: "r"(val));
+    tsbi_csr_write(CSR_MIDELEG, val);
 
-    asm volatile("csrr %0, mideleg" : "=r"(val));
+    val = tsbi_csr_read(CSR_MIDELEG);
     TEST_ASSERT_EQ("mideleg bit 12 should still be 1 after clear attempt",
                    val & VS_BIT_SGEI, VS_BIT_SGEI);
 
@@ -110,8 +109,7 @@ bool hideleg_readonly_zero(void)
 {
     TEST_BEGIN("MIDLG-03: Verify hideleg/hip/hie bits RO-zero when mideleg=0");
 
-    uintptr_t mideleg;
-    asm volatile("csrr %0, mideleg" : "=r"(mideleg));
+    uintptr_t mideleg = tsbi_csr_read(CSR_MIDELEG);
 
     /*
      * Find a writable candidate bit: scan bits [15:0] excluding the
@@ -137,28 +135,28 @@ bool hideleg_readonly_zero(void)
 
     /* --- hideleg: attempt to set the candidate bit, expect read-only 0 --- */
     uintptr_t hideleg;
-    asm volatile("csrr %0, hideleg" : "=r"(hideleg));
+    hideleg = CSRR(CSR_HIDELEG);
     hideleg |= candidate;
-    asm volatile("csrw hideleg, %0" :: "r"(hideleg));
-    asm volatile("csrr %0, hideleg" : "=r"(hideleg));
+    CSRW(CSR_HIDELEG, hideleg);
+    hideleg = CSRR(CSR_HIDELEG);
     TEST_ASSERT_EQ("hideleg bit should read-zero when mideleg bit=0",
                    hideleg & candidate, (uintptr_t)0);
 
     /* --- hip: attempt to set the candidate bit, expect read-only 0 --- */
     uintptr_t hip;
-    asm volatile("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip));
+    hip = CSRR(CSR_HIP);
     hip |= candidate;
-    asm volatile("csrw " CSR_STR(CSR_HIP) ", %0" :: "r"(hip));
-    asm volatile("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip));
+    CSRW(CSR_HIP, hip);
+    hip = CSRR(CSR_HIP);
     TEST_ASSERT_EQ("hip bit should read-zero when mideleg bit=0",
                    hip & candidate, (uintptr_t)0);
 
     /* --- hie: attempt to set the candidate bit, expect read-only 0 --- */
     uintptr_t hie;
-    asm volatile("csrr %0, " CSR_STR(CSR_HIE) : "=r"(hie));
+    hie = CSRR(CSR_HIE);
     hie |= candidate;
-    asm volatile("csrw " CSR_STR(CSR_HIE) ", %0" :: "r"(hie));
-    asm volatile("csrr %0, " CSR_STR(CSR_HIE) : "=r"(hie));
+    CSRW(CSR_HIE, hie);
+    hie = CSRR(CSR_HIE);
     TEST_ASSERT_EQ("hie bit should read-zero when mideleg bit=0",
                    hie & candidate, (uintptr_t)0);
 
@@ -180,16 +178,16 @@ bool mip_vSSIP_alias(void)
     hvip_set_vssi(true);
 
     uintptr_t mip, hip;
-    asm volatile("csrr %0, mip" : "=r"(mip));
-    asm volatile("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip));
+    mip = tsbi_csr_read(CSR_MIP);
+    hip = CSRR(CSR_HIP);
     TEST_ASSERT_EQ("mip.VSSIP should be 1 when hvip.VSSI set",
                    mip & VS_BIT_VSSI, VS_BIT_VSSI);
     TEST_ASSERT_EQ("hip.VSSIP should be 1 when hvip.VSSI set",
                    hip & VS_BIT_VSSI, VS_BIT_VSSI);
 
     hvip_set_vssi(false);
-    asm volatile("csrr %0, mip" : "=r"(mip));
-    asm volatile("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip));
+    mip = tsbi_csr_read(CSR_MIP);
+    hip = CSRR(CSR_HIP);
     TEST_ASSERT_EQ("mip.VSSIP should be 0 when hvip.VSSI cleared",
                    mip & VS_BIT_VSSI, (uintptr_t)0);
     TEST_ASSERT_EQ("hip.VSSIP should be 0 when hvip.VSSI cleared",
@@ -198,16 +196,16 @@ bool mip_vSSIP_alias(void)
     /* ---- VSTIP (bit 6): set via hvip, verify mip reflects it ---- */
     hvip_set_vsti(true);
 
-    asm volatile("csrr %0, mip" : "=r"(mip));
-    asm volatile("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip));
+    mip = tsbi_csr_read(CSR_MIP);
+    hip = CSRR(CSR_HIP);
     TEST_ASSERT_EQ("mip.VSTIP should be 1 when hvip.VSTI set",
                    mip & VS_BIT_VSTI, VS_BIT_VSTI);
     TEST_ASSERT_EQ("hip.VSTIP should be 1 when hvip.VSTI set",
                    hip & VS_BIT_VSTI, VS_BIT_VSTI);
 
     hvip_set_vsti(false);
-    asm volatile("csrr %0, mip" : "=r"(mip));
-    asm volatile("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip));
+    mip = tsbi_csr_read(CSR_MIP);
+    hip = CSRR(CSR_HIP);
     TEST_ASSERT_EQ("mip.VSTIP should be 0 when hvip.VSTI cleared",
                    mip & VS_BIT_VSTI, (uintptr_t)0);
     TEST_ASSERT_EQ("hip.VSTIP should be 0 when hvip.VSTI cleared",
@@ -216,16 +214,16 @@ bool mip_vSSIP_alias(void)
     /* ---- VSEIP (bit 10): set via hvip, verify mip reflects it ---- */
     hvip_set_vsei(true);
 
-    asm volatile("csrr %0, mip" : "=r"(mip));
-    asm volatile("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip));
+    mip = tsbi_csr_read(CSR_MIP);
+    hip = CSRR(CSR_HIP);
     TEST_ASSERT_EQ("mip.VSEIP should be 1 when hvip.VSEI set",
                    mip & VS_BIT_VSEI, VS_BIT_VSEI);
     TEST_ASSERT_EQ("hip.VSEIP should be 1 when hvip.VSEI set",
                    hip & VS_BIT_VSEI, VS_BIT_VSEI);
 
     hvip_set_vsei(false);
-    asm volatile("csrr %0, mip" : "=r"(mip));
-    asm volatile("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip));
+    mip = tsbi_csr_read(CSR_MIP);
+    hip = CSRR(CSR_HIP);
     TEST_ASSERT_EQ("mip.VSEIP should be 0 when hvip.VSEI cleared",
                    mip & VS_BIT_VSEI, (uintptr_t)0);
     TEST_ASSERT_EQ("hip.VSEIP should be 0 when hvip.VSEI cleared",
@@ -247,10 +245,10 @@ bool mip_vSEIP_alias(void)
     TEST_BEGIN("MIDLG-05: Verify mip SGEIP is hip.SGEIP alias");
 
     /* Detect GEILEN to see if SGEIP is supported. */
-    asm volatile("csrw " CSR_STR(CSR_HGEIE) ", %0" :: "r"((uintptr_t)-1) : "memory");
+    CSRW(CSR_HGEIE, (uintptr_t)-1);
     uintptr_t hgeie;
-    asm volatile("csrr %0, " CSR_STR(CSR_HGEIE) : "=r"(hgeie));
-    asm volatile("csrw " CSR_STR(CSR_HGEIE) ", zero" ::: "memory");
+    hgeie = CSRR(CSR_HGEIE);
+    CSRW(CSR_HGEIE, 0);
 
     if (hgeie == 0)
     {
@@ -264,8 +262,8 @@ bool mip_vSEIP_alias(void)
      * on bit 12.
      */
     uintptr_t mip, hip;
-    asm volatile("csrr %0, mip" : "=r"(mip));
-    asm volatile("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip));
+    mip = tsbi_csr_read(CSR_MIP);
+    hip = CSRR(CSR_HIP);
     TEST_ASSERT_EQ("mip.SGEIP should equal hip.SGEIP (alias)",
                    mip & VS_BIT_SGEI, hip & VS_BIT_SGEI);
 
@@ -273,13 +271,13 @@ bool mip_vSEIP_alias(void)
      * Enable a guest external interrupt source via hgeie and verify
      * that mip.SGEIP and hip.SGEIP remain consistent.
      */
-    asm volatile("csrw " CSR_STR(CSR_HGEIE) ", %0" :: "r"(1UL) : "memory");
-    asm volatile("csrr %0, mip" : "=r"(mip));
-    asm volatile("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip));
+    CSRW(CSR_HGEIE, 1UL);
+    mip = tsbi_csr_read(CSR_MIP);
+    hip = CSRR(CSR_HIP);
     TEST_ASSERT_EQ("mip.SGEIP should equal hip.SGEIP after hgeie write",
                    mip & VS_BIT_SGEI, hip & VS_BIT_SGEI);
     /* Restore hgeie. */
-    asm volatile("csrw " CSR_STR(CSR_HGEIE) ", zero" ::: "memory");
+    CSRW(CSR_HGEIE, 0);
 
     HYP_TEST_END();
 }
@@ -297,54 +295,54 @@ bool mie_vSSIE_alias(void)
 
     /* Save original hie and clear it. */
     uintptr_t hie_orig;
-    asm volatile("csrr %0, " CSR_STR(CSR_HIE) : "=r"(hie_orig));
-    asm volatile("csrw " CSR_STR(CSR_HIE) ", zero" ::: "memory");
+    hie_orig = CSRR(CSR_HIE);
+    CSRW(CSR_HIE, 0);
 
     uintptr_t hie, mie_val;
 
     /* ---- VSSIE (bit 2): set via hie, verify mie reflects it ---- */
-    asm volatile("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_BIT_VSSI) : "memory");
-    asm volatile("csrr %0, " CSR_STR(CSR_HIE) : "=r"(hie));
-    asm volatile("csrr %0, mie" : "=r"(mie_val));
+    CSRS(CSR_HIE, VS_BIT_VSSI);
+    hie = CSRR(CSR_HIE);
+    mie_val = tsbi_csr_read(CSR_MIE);
     TEST_ASSERT_EQ("hie.VSSIE should be 1",
                    hie & VS_BIT_VSSI, VS_BIT_VSSI);
     TEST_ASSERT_EQ("mie.VSSIE should be 1 when hie.VSSIE set",
                    mie_val & VS_BIT_VSSI, VS_BIT_VSSI);
-    asm volatile("csrc " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_BIT_VSSI) : "memory");
-    asm volatile("csrr %0, mie" : "=r"(mie_val));
+    CSRC(CSR_HIE, VS_BIT_VSSI);
+    mie_val = tsbi_csr_read(CSR_MIE);
     TEST_ASSERT_EQ("mie.VSSIE should be 0 when hie.VSSIE cleared",
                    mie_val & VS_BIT_VSSI, (uintptr_t)0);
 
     /* ---- VSTIE (bit 6): set via hie, verify mie reflects it ---- */
-    asm volatile("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_BIT_VSTI) : "memory");
-    asm volatile("csrr %0, " CSR_STR(CSR_HIE) : "=r"(hie));
-    asm volatile("csrr %0, mie" : "=r"(mie_val));
+    CSRS(CSR_HIE, VS_BIT_VSTI);
+    hie = CSRR(CSR_HIE);
+    mie_val = tsbi_csr_read(CSR_MIE);
     TEST_ASSERT_EQ("hie.VSTIE should be 1",
                    hie & VS_BIT_VSTI, VS_BIT_VSTI);
     TEST_ASSERT_EQ("mie.VSTIE should be 1 when hie.VSTIE set",
                    mie_val & VS_BIT_VSTI, VS_BIT_VSTI);
-    asm volatile("csrc " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_BIT_VSTI) : "memory");
-    asm volatile("csrr %0, mie" : "=r"(mie_val));
+    CSRC(CSR_HIE, VS_BIT_VSTI);
+    mie_val = tsbi_csr_read(CSR_MIE);
     TEST_ASSERT_EQ("mie.VSTIE should be 0 when hie.VSTIE cleared",
                    mie_val & VS_BIT_VSTI, (uintptr_t)0);
 
     /* ---- VSEIE (bit 10): set via hie, verify mie reflects it ---- */
-    asm volatile("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_BIT_VSEI) : "memory");
-    asm volatile("csrr %0, " CSR_STR(CSR_HIE) : "=r"(hie));
-    asm volatile("csrr %0, mie" : "=r"(mie_val));
+    CSRS(CSR_HIE, VS_BIT_VSEI);
+    hie = CSRR(CSR_HIE);
+    mie_val = tsbi_csr_read(CSR_MIE);
     TEST_ASSERT_EQ("hie.VSEIE should be 1",
                    hie & VS_BIT_VSEI, VS_BIT_VSEI);
     TEST_ASSERT_EQ("mie.VSEIE should be 1 when hie.VSEIE set",
                    mie_val & VS_BIT_VSEI, VS_BIT_VSEI);
-    asm volatile("csrc " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_BIT_VSEI) : "memory");
-    asm volatile("csrr %0, mie" : "=r"(mie_val));
+    CSRC(CSR_HIE, VS_BIT_VSEI);
+    mie_val = tsbi_csr_read(CSR_MIE);
     TEST_ASSERT_EQ("mie.VSEIE should be 0 when hie.VSEIE cleared",
                    mie_val & VS_BIT_VSEI, (uintptr_t)0);
 
     /* ---- SGEIE (bit 12): set via hie, verify mie reflects it ---- */
-    asm volatile("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_BIT_SGEI) : "memory");
-    asm volatile("csrr %0, " CSR_STR(CSR_HIE) : "=r"(hie));
-    asm volatile("csrr %0, mie" : "=r"(mie_val));
+    CSRS(CSR_HIE, VS_BIT_SGEI);
+    hie = CSRR(CSR_HIE);
+    mie_val = tsbi_csr_read(CSR_MIE);
     /*
      * SGEIE in hie is read-only 0 when GEILEN=0.  Check if it stuck.
      */
@@ -352,8 +350,8 @@ bool mie_vSSIE_alias(void)
     {
         TEST_ASSERT_EQ("mie.SGEIE should be 1 when hie.SGEIE set",
                        mie_val & VS_BIT_SGEI, VS_BIT_SGEI);
-        asm volatile("csrc " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_BIT_SGEI) : "memory");
-        asm volatile("csrr %0, mie" : "=r"(mie_val));
+        CSRC(CSR_HIE, VS_BIT_SGEI);
+        mie_val = tsbi_csr_read(CSR_MIE);
         TEST_ASSERT_EQ("mie.SGEIE should be 0 when hie.SGEIE cleared",
                        mie_val & VS_BIT_SGEI, (uintptr_t)0);
     }
@@ -363,7 +361,7 @@ bool mie_vSSIE_alias(void)
     }
 
     /* Restore original hie. */
-    asm volatile("csrw " CSR_STR(CSR_HIE) ", %0" :: "r"(hie_orig) : "memory");
+    CSRW(CSR_HIE, hie_orig);
 
     HYP_TEST_END();
 }
@@ -381,9 +379,8 @@ bool mip_mie_vs_bits_visible(void)
 {
     TEST_BEGIN("MIDLG-07: Verify mip/mie VS interrupt bits are active");
 
-    /* Save original mie. */
-    uintptr_t mie_orig;
-    asm volatile("csrr %0, mie" : "=r"(mie_orig));
+    /* Save original mie (M-level config; via the T-SBI proxy). */
+    uintptr_t mie_orig = tsbi_csr_read(CSR_MIE);
 
     /*
      * VS enable bits: VSSIE(2), VSTIE(6), VSEIE(10).
@@ -391,18 +388,18 @@ bool mip_mie_vs_bits_visible(void)
      */
     uintptr_t vs_enable = VS_BIT_VSSI | VS_BIT_VSTI | VS_BIT_VSEI;
 
-    /* Write all VS enable bits to mie. */
-    asm volatile("csrs mie, %0" :: "r"(vs_enable));
+    /* Write all VS enable bits to mie (M-level; via the T-SBI proxy). */
+    tsbi_csr_set(CSR_MIE, vs_enable);
 
     /* Read back and verify all three bits stuck. */
     uintptr_t mie_val;
-    asm volatile("csrr %0, mie" : "=r"(mie_val));
+    mie_val = tsbi_csr_read(CSR_MIE);
     TEST_ASSERT_EQ("mie VS enable bits should be writable",
                    mie_val & vs_enable, vs_enable);
 
     /* Clear all VS enable bits. */
-    asm volatile("csrc mie, %0" :: "r"(vs_enable));
-    asm volatile("csrr %0, mie" : "=r"(mie_val));
+    tsbi_csr_clear(CSR_MIE, vs_enable);
+    mie_val = tsbi_csr_read(CSR_MIE);
     TEST_ASSERT_EQ("mie VS enable bits should be clearable",
                    mie_val & vs_enable, (uintptr_t)0);
 
@@ -414,13 +411,13 @@ bool mip_mie_vs_bits_visible(void)
      */
     hvip_set_vssi(true);
     uintptr_t mip;
-    asm volatile("csrr %0, mip" : "=r"(mip));
+    mip = tsbi_csr_read(CSR_MIP);
     TEST_ASSERT_EQ("mip.VSSIP should be readable and reflect hvip",
                    mip & VS_BIT_VSSI, VS_BIT_VSSI);
     hvip_set_vssi(false);
 
     /* Restore original mie. */
-    asm volatile("csrw mie, %0" :: "r"(mie_orig));
+    tsbi_csr_write(CSR_MIE, mie_orig);
 
     HYP_TEST_END();
 }

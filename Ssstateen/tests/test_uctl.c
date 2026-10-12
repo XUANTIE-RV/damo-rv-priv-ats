@@ -21,9 +21,9 @@ TEST_REGISTER(test_ss_uctl_c_zero_blocks_umode);
 bool test_ss_uctl_c_zero_blocks_umode(void) {
     TEST_BEGIN("SS-UCTL-01: sstateen0.C=0 blocks U-mode custom state");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
     /* Enable mstateen0.C and SE0 */
-    mstateen_write(0, saved_mstateen0 | STATEEN0_C | STATEEN0_SE0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_C | STATEEN0_SE0);
 
     /* Set sstateen0.C=0 */
     uintptr_t saved_sstateen0 = sstateen_read(0);
@@ -37,7 +37,7 @@ bool test_ss_uctl_c_zero_blocks_umode(void) {
 
     if (!(probe & STATEEN0_C)) {
         sstateen_write(0, saved_sstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.C not writable (no custom state to gate)");
     }
 
@@ -49,7 +49,7 @@ bool test_ss_uctl_c_zero_blocks_umode(void) {
     });
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -59,8 +59,8 @@ TEST_REGISTER(test_ss_uctl_c_one_allows_umode);
 bool test_ss_uctl_c_one_allows_umode(void) {
     TEST_BEGIN("SS-UCTL-02: sstateen0.C=1 allows U-mode custom state");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_C | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_C | STATEEN0_SE0);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -69,7 +69,7 @@ bool test_ss_uctl_c_one_allows_umode(void) {
     uintptr_t probe = sstateen_read(0);
     if (!(probe & STATEEN0_C)) {
         sstateen_write(0, saved_sstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.C not writable (no custom state)");
     }
 
@@ -81,7 +81,7 @@ bool test_ss_uctl_c_one_allows_umode(void) {
     TEST_ASSERT("sstateen0.C set to 1", (sstateen_read(0) & STATEEN0_C) != 0);
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -91,8 +91,8 @@ TEST_REGISTER(test_ss_uctl_smode_not_controlled);
 bool test_ss_uctl_smode_not_controlled(void) {
     TEST_BEGIN("SS-UCTL-03: sstateen0 does NOT control S-mode itself");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_C | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_C | STATEEN0_SE0);
 
     /* Clear all sstateen0 bits */
     uintptr_t saved_sstateen0 = sstateen_read(0);
@@ -104,7 +104,7 @@ bool test_ss_uctl_smode_not_controlled(void) {
                           sstateen0_read());
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -114,8 +114,8 @@ TEST_REGISTER(test_ss_uctl_jvt_zero_blocks_umode);
 bool test_ss_uctl_jvt_zero_blocks_umode(void) {
     TEST_BEGIN("SS-UCTL-04: sstateen0.JVT=0 blocks U-mode jvt");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -126,7 +126,7 @@ bool test_ss_uctl_jvt_zero_blocks_umode(void) {
 
     if (!(probe & STATEEN0_JVT)) {
         sstateen_write(0, saved_sstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.JVT not writable (Zcmt not implemented)");
     }
 
@@ -138,7 +138,7 @@ bool test_ss_uctl_jvt_zero_blocks_umode(void) {
     });
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -148,8 +148,8 @@ TEST_REGISTER(test_ss_uctl_jvt_one_allows_umode);
 bool test_ss_uctl_jvt_one_allows_umode(void) {
     TEST_BEGIN("SS-UCTL-05: sstateen0.JVT=1 allows U-mode jvt");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
     sstateen_set_bits(0, STATEEN0_JVT);
@@ -157,7 +157,7 @@ bool test_ss_uctl_jvt_one_allows_umode(void) {
 
     if (!(probe & STATEEN0_JVT)) {
         sstateen_write(0, saved_sstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.JVT not writable (Zcmt not implemented)");
     }
 
@@ -169,7 +169,7 @@ bool test_ss_uctl_jvt_one_allows_umode(void) {
     });
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -184,8 +184,8 @@ bool test_ss_uctl_fcsr_blocks_umode_fp(void) {
         TEST_SKIP("misa.F=1; FCSR bit is read-only zero per spec");
     }
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_FCSR | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_FCSR | STATEEN0_SE0);
 
     /* Probe FCSR bit */
     uintptr_t saved_sstateen0 = sstateen_read(0);
@@ -195,7 +195,7 @@ bool test_ss_uctl_fcsr_blocks_umode_fp(void) {
 
     if (!(probe & STATEEN0_FCSR)) {
         sstateen_write(0, saved_sstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.FCSR not writable (Zfinx not implemented)");
     }
 
@@ -205,7 +205,7 @@ bool test_ss_uctl_fcsr_blocks_umode_fp(void) {
     });
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -215,8 +215,8 @@ TEST_REGISTER(test_ss_uctl_umode_read_cause2);
 bool test_ss_uctl_umode_read_cause2(void) {
     TEST_BEGIN("SS-UCTL-07: U-mode blocked read triggers cause=2");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -227,7 +227,7 @@ bool test_ss_uctl_umode_read_cause2(void) {
 
     if (!(probe & STATEEN0_JVT)) {
         sstateen_write(0, saved_sstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.JVT not writable");
     }
 
@@ -247,7 +247,7 @@ bool test_ss_uctl_umode_read_cause2(void) {
     }
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -257,8 +257,8 @@ TEST_REGISTER(test_ss_uctl_umode_write_cause2);
 bool test_ss_uctl_umode_write_cause2(void) {
     TEST_BEGIN("SS-UCTL-08: U-mode blocked write triggers cause=2");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -269,7 +269,7 @@ bool test_ss_uctl_umode_write_cause2(void) {
 
     if (!(probe & STATEEN0_JVT)) {
         sstateen_write(0, saved_sstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.JVT not writable");
     }
 
@@ -287,7 +287,7 @@ bool test_ss_uctl_umode_write_cause2(void) {
     }
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -298,8 +298,8 @@ bool test_ss_uctl_vumode_cause22(void) {
     TEST_BEGIN("SS-UCTL-09: VU-mode blocked access triggers cause=22");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
 
     /* Ensure hstateen0 allows VS-mode access to sstateen0 */
     uintptr_t saved_hstateen0 = hstateen_read(0);
@@ -316,7 +316,7 @@ bool test_ss_uctl_vumode_cause22(void) {
     if (!(probe & STATEEN0_JVT)) {
         sstateen_write(0, saved_sstateen0);
         hstateen_write(0, saved_hstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.JVT not writable");
     }
 
@@ -345,6 +345,6 @@ bool test_ss_uctl_vumode_cause22(void) {
 
     sstateen_write(0, saved_sstateen0);
     hstateen_write(0, saved_hstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     HYP_TEST_END();
 }

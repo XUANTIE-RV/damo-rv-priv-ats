@@ -87,14 +87,14 @@ static uintptr_t vsmode_load_unmapped(uintptr_t addr) {
 /* VSTVEC-DIR-01: ecall from VU-mode (cause=8) lands at vstvec.BASE.
  *
  * Flow:
- *   1. M-mode: delegate ecall-from-VU (cause=8) to VS via hedeleg.
- *   2. M-mode: set vstvec to shvstvecd_trap_entry (Direct, MODE=0).
- *   3. M-mode: arm vsscratch.
- *   4. Enter VU-mode via run_in_vu_mode.
+ *   1. HS-mode: delegate ecall-from-VU (cause=8) to VS via hedeleg.
+ *   2. HS-mode: set vstvec to shvstvecd_trap_entry (Direct, MODE=0).
+ *   3. HS-mode: arm vsscratch.
+ *   4. Enter VU-mode via the one-way goto_priv().
  *   5. VU-mode: ecall -> hedeleg delegates to VS-mode.
  *   6. VS-mode handler at vstvec.BASE records trap_pc and vscause.
- *   7. Handler sret -> back to VU-mode.
- *   8. Framework ecall -> back to M-mode. */
+ *   7. Handler forces vsstatus.SPP=1 and sret -> resumes in VS-mode.
+ *   8. goto_priv(PRIV_S): ecall-from-VS (cause=10) -> back to HS-mode. */
 TEST_REGISTER(test_shvstvecd_dir_01_ecall_vu);
 bool test_shvstvecd_dir_01_ecall_vu(void) {
     TEST_BEGIN("VSTVEC-DIR-01: Direct mode, VU ecall lands at vstvec.BASE");
@@ -110,8 +110,19 @@ bool test_shvstvecd_dir_01_ecall_vu(void) {
 
     shvstvecd_reset_trap_record();
 
-    /* Enter VU-mode: execute ecall (cause=8) */
-    run_in_vu_mode(vumode_exec_ecall, 0);
+    /* Enter VU-mode and execute ecall (cause=8).
+     *
+     * goto_priv() is used instead of run_in_vu_mode(): the latter clears
+     * hedeleg[8] before its mret so that its own VU trampoline's return ecall
+     * can reach M-mode, which erases the hedeleg[8]=1 delegation this test is
+     * about to observe. goto_priv(PRIV_VU) raises to M via an ecall-from-S
+     * (cause 9) and leaves hedeleg untouched, so the stimulus ecall really is
+     * delegated to VS. shvstvecd_trap_entry forces vsstatus.SPP=1 before its
+     * sret, so execution resumes in VS-mode and the trailing goto_priv(PRIV_S)
+     * (ecall-from-VS, cause 10) gets back to HS-mode. */
+    goto_priv(PRIV_VU);
+    (void)vumode_exec_ecall(0);
+    goto_priv(PRIV_S);
 
     /* Direct mode: trap landing address must == BASE */
     TEST_ASSERT("trap PC equals vstvec.BASE",

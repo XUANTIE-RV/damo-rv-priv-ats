@@ -220,23 +220,120 @@ unsigned long _diag_arm_last_clear_cause  = 0;
 #endif
 
 /* ===================================================================
- * Ecall convention for privilege switching
+ * Legacy ecall convention (pre-T-SBI)
  *
- * a0 = ECALL_GOTO_PRIV (1)
- * a1 = target privilege level
+ * ecall_args[] used to carry a0/a1 through globals.  The handlers now read
+ * the trapped a0/a1 straight out of the trap frame (T-SBI register
+ * convention, see tsbi.h SECTION 6), so nothing reads these any more.
+ * The definitions stay so that suites which still WRITE them keep
+ * compiling; their writes are simply ignored (expected during migration).
  * =================================================================== */
-/* Ecall argument storage (set by caller before ecall instruction) */
 uintptr_t ecall_args[2];
 
-/* Internal privilege-switch protocol: when a delegated ecall with
- * ECALL_GOTO_PRIV reaches the S-mode handler and the target is
- * M-mode, the S-side cannot write mstatus.MPP.  It issues a nested
- * ecall tagged ECALL_PRIV_RESUME; the M-mode handler then resumes
- * the original caller at g_priv_resume_addr in M-mode.
- * Limitation: this nested ecall is cause 9 (ecall-from-S); tests
- * that delegate cause 9 to S-mode must not rely on this path. */
+/* Retained for suites that still reference it; the T-SBI GOTO path uses
+ * g_tsbi_forward_resume instead. */
 #define ECALL_PRIV_RESUME  2
-static uintptr_t g_priv_resume_addr;
+static uintptr_t g_priv_resume_addr __attribute__((unused));
+
+/* ===================================================================
+ * T-SBI framework-internal state
+ * =================================================================== */
+
+/* P1 raw-ecall escape flag (consume-once).  Set through
+ * tsbi_arm_raw_ecall(); cleared by whichever handler sees the next ecall
+ * first, so exactly one ecall is diverted from service dispatch to the
+ * armed-stimulus path.  Shared by every handler level on purpose: the
+ * stimulus may be delivered to M or S depending on delegation. */
+static volatile bool _tsbi_skip_dispatch;
+
+void tsbi_arm_raw_ecall(bool skip_dispatch)
+{
+    _tsbi_skip_dispatch = skip_dispatch;
+}
+
+/* Resume point of the ORIGINAL requester while a GOTO is being forwarded
+ * up the privilege chain.  The forwarding handler records the requester's
+ * ecall+4 here before re-issuing the ecall; the level that finally SERVES the
+ * request lands its xret there instead of at the forwarder's own ecall+4.
+ * Zero when no forward is in flight.
+ *
+ * This is the framework-internal answer to the upstream reference
+ * implementation's open TODO ("for forwarded GOTOs M-mode should set
+ * mepc = sepc"), and it replaces the old ECALL_PRIV_RESUME pseudo-opcode:
+ * the protocol now only ever sees a standard GOTO request.
+ *
+ * Two rules keep it correct across a multi-hop chain (VS -> HS -> M), and both
+ * halves must be obeyed by every level:
+ *   - forwarding: record only if still zero.  A non-zero value means a LOWER
+ *     level already recorded the true origin, and our own epc is just the
+ *     forwarding ecall inside _tsbi_forward_goto.
+ *   - serving:    consume it via tsbi_goto_resume() below.
+ */
+static uintptr_t g_tsbi_forward_resume;
+
+/* Resolve where a GOTO we are about to serve must resume, and consume the
+ * hand-off.  See g_tsbi_forward_resume for the two-rule invariant. */
+static uintptr_t tsbi_goto_resume(uintptr_t own_resume)
+{
+    if (g_tsbi_forward_resume != 0) {
+        uintptr_t origin = g_tsbi_forward_resume;
+        g_tsbi_forward_resume = 0;
+        return origin;
+    }
+    return own_resume;
+}
+
+/* Record the origin before forwarding a GOTO one level up. */
+static void tsbi_goto_forward_mark(uintptr_t own_resume)
+{
+    if (g_tsbi_forward_resume == 0)
+        g_tsbi_forward_resume = own_resume;
+}
+
+/* ===================================================================
+ * tsbi_forward_up - chain-forward a request one level up
+ *
+ * A handler that cannot serve a request re-issues it to the next level.
+ * The upstream assembly restores its temporaries and executes a bare
+ * ecall, letting a0/a1 pass through untouched.  In C we cannot leave the
+ * registers alone across the call boundary, so we reload them from the
+ * frame and issue the bare ecall; the result is written back into the
+ * frame.  Semantically identical, and invisible to the requester.
+ *
+ * Note this is deliberately NOT tsbi_ecall(): that would overwrite the
+ * caller's a0/a1 with its own arguments and assumes an ordinary C
+ * environment (see tsbi_design_brief.md FAQ).
+ *
+ * Used for the RETURNING forwards (M-level CSR, memory proxy): the upper
+ * level serves the request, mret's back here, and we sret to the
+ * requester with the result in the frame.  Context handover is correct
+ * because we never leave this handler.
+ * =================================================================== */
+static void tsbi_forward_up(uintptr_t *frame)
+{
+    register uintptr_t a0 asm("a0") = frame[TSBI_FRAME_A0];
+    register uintptr_t a1 asm("a1") = frame[TSBI_FRAME_A1];
+    register uintptr_t a2 asm("a2") = frame[TSBI_FRAME_A2];
+    asm volatile ("ecall" : "+r"(a0) : "r"(a1), "r"(a2) : "memory");
+    frame[TSBI_FRAME_A0] = a0;
+}
+
+/* ===================================================================
+ * tsbi_forward_goto - forward a privilege-raising request; never returns
+ *
+ * GOTO_MMODE needs mstatus.MPP, which only M has, so only M can serve it.
+ * (GOTO_VSMODE/VUMODE are NOT forwarded by HS: it owns hstatus.SPV and serves
+ * them locally - see the S handler's GOTO branch for why that is mandatory.
+ * A VS-level handler forwards every GOTO, having authority over none.)
+ *
+ * The body is _tsbi_forward_goto in trap_asm.S: the requester's whole
+ * register context has to be back in the registers before the bare ecall,
+ * which a C function cannot arrange (the compiler owns sp/s0/ra).  See that
+ * routine for why, and note the consequence - with the context handover now
+ * correct, forwarding a GOTO is a fully supported path rather than the
+ * degraded one this used to be.
+ * =================================================================== */
+extern void _tsbi_forward_goto(uintptr_t *frame) __attribute__((noreturn));
 
 /* Count of delegated exceptions actually recorded by the S-mode handler.
  * Lets tests prove that a delegated trap was delivered to S-mode
@@ -419,10 +516,34 @@ __attribute__((weak)) void trap_m_entry_mtval2_hook(uintptr_t mtval2) {
     (void)mtval2;
 }
 
-unsigned m_trap_handler(void) {
+unsigned m_trap_handler(uintptr_t *frame) {
     uintptr_t cause = CSRR(mcause);
     uintptr_t epc   = CSRR(mepc);
     uintptr_t tval  = CSRR(mtval);
+
+    /* ================================================================
+     * P0: nested-fault capture (Strategy A) - MUST BE ABSOLUTELY FIRST
+     *
+     * tsbi_proxy_record.armed means WE are mid-flight executing an
+     * instruction injected on a caller's behalf (CSR / memory proxy) and
+     * that instruction just faulted.  This is our own accident, not a new
+     * event: claiming it here keeps it out of trap_record (which would
+     * corrupt the test's assertion) and out of the UNEXPECTED path.
+     *
+     * The mret below resumes the HANDLER, not the original requester:
+     * tsbi_proxy_record.recover is a label inside tsbi_*_access_dispatch, which
+     * runs in M-mode.  So mstatus must keep saying "came from M" - exactly
+     * what the nested trap just wrote.  Do NOT restore status_snap here: that
+     * would mret into handler code at the requester's privilege level, and the
+     * very next M-level CSR access would fault.  P2 re-applies status_snap once
+     * the dispatch has returned, right before the final mret.
+     * ================================================================ */
+    if (tsbi_proxy_record.armed) {
+        tsbi_proxy_record.faulted = true;
+        tsbi_proxy_record.cause   = cause;
+        CSRW(mepc, tsbi_proxy_record.recover);
+        return PRIV_M;
+    }
 
     /* mtval2 exists only with the H extension or Ssdbltrp
      * (norm:mtval2_Ssdbltrap); reading it when unimplemented traps
@@ -446,45 +567,105 @@ unsigned m_trap_handler(void) {
         trap_record.armed = true;
     }
 
-    /* ---- Handle ecall for privilege switching ---- */
-    if (is_ecall(cause) && ecall_args[0] == ECALL_PRIV_RESUME) {
-        /* Nested switch issued by the S-mode handler: resume the
-         * original caller in M-mode. */
-        current_priv = PRIV_M;
-        uintptr_t ms = CSRR(mstatus);
-        ms &= ~(3UL << 11);      /* clear MPP */
-        ms |=  (3UL << 11);      /* MPP = M */
-        CSRW(mstatus, ms);
-        CSRW(mepc, g_priv_resume_addr);
-        return PRIV_M;           /* _trap_return uses mret */
+    /* ================================================================
+     * P1: raw-ecall escape (consume-once) - MUST PRECEDE P2
+     *
+     * The test declared "my next ecall is the stimulus, not a service
+     * request".  A raw stimulus ecall carries an uncontrolled a0 that
+     * might otherwise look like a valid opcode, so we must divert it
+     * BEFORE P2 reads a0.  The flag is cleared on first sight so the
+     * framework's own follow-up ecall (e.g. run_in_priv's return path)
+     * keeps normal T-SBI semantics.
+     * ================================================================ */
+    bool tsbi_raw_ecall = false;
+    if (is_ecall(cause) && _tsbi_skip_dispatch) {
+        _tsbi_skip_dispatch = false;
+        tsbi_raw_ecall = true;
     }
-    if (is_ecall(cause) && ecall_args[0] == ECALL_GOTO_PRIV) {
-        unsigned target = (unsigned)ecall_args[1];
-        /* Advance past ecall instruction */
-        CSRW(mepc, next_instruction(epc));
-        /* Update current_priv tracking variable */
-        current_priv = target;
-        /* Set mstatus.MPP to target privilege level so mret returns there.
-         * mstatus.MPP is bits [12:11]. Values: U=0, S=1, M=3.
-         * Also clear MPRV (bit 17): if MPP=M, mret does NOT clear MPRV,
-         * which would cause M-mode load/store to use U-mode PMP rules
-         * (since mret clears MPP to U after returning).
-         *
-         * For virtualized targets (PRIV_VS=5, PRIV_VU=4), bit 2 marks V=1:
-         *   - low 2 bits become MPP (S or U)
-         *   - mstatus.MPV (bit 39, RV64) must be set so mret enters V=1
-         */
-        uintptr_t ms = CSRR(mstatus);
-        ms &= ~((3UL << 11) | (1UL << 17)); /* clear MPP and MPRV */
-        ms |= ((uintptr_t)(target & 3) << 11); /* set MPP = target & 3 */
+
+    /* ================================================================
+     * P2: T-SBI service dispatch - M-mode is the chain endpoint
+     *
+     * Full capability, no forward-up exit: GOTO (all five targets),
+     * ECALL_TEST, CSR_ACCESS for any privilege level, memory proxy.
+     * Results are written into frame[TSBI_FRAME_A0] because
+     * RESTORE_CONTEXT reloads a0 from there (a C return only selects
+     * mret vs sret).
+     * ================================================================ */
+    if (!tsbi_raw_ecall && is_ecall(cause)) {
+        uintptr_t op = frame[TSBI_FRAME_A0];
+
+        if (TSBI_IS_GOTO(op)) {
+            unsigned target = tsbi_goto_to_priv(op);
+
+            /* Forwarded up by a lower handler?  Then the resume point is the
+             * ORIGINAL requester's instruction, not the forwarder's own
+             * ecall.  This is the framework-internal counterpart of the
+             * upstream "set mepc = sepc for forwarded GOTOs" TODO. */
+            CSRW(mepc, tsbi_goto_resume(next_instruction(epc)));
+
+            current_priv = target;
+
+            /* mstatus.MPP[12:11] selects where mret lands (U=0,S=1,M=3).
+             * Clear MPRV too: with MPP=M, mret does not clear MPRV, which
+             * would make M-mode load/store use U-mode PMP rules.
+             * For virtualised targets (PRIV_VS=5, PRIV_VU=4) bit 2 marks
+             * V=1: the low 2 bits become MPP and MPV must be set. */
+            uintptr_t ms = CSRR(mstatus);
+            ms &= ~((3UL << 11) | (1UL << 17));    /* clear MPP and MPRV */
+            ms |= ((uintptr_t)(target & 3) << 11); /* MPP = target & 3   */
 #ifdef ENABLE_HYP
-        ms &= ~MSTATUS_MPV;                  /* clear V=1 indicator */
-        if (target & 0x4)                    /* virtualized target */
-            ms |= MSTATUS_MPV;
+            ms &= ~MSTATUS_MPV;
+            if (target & 0x4)
+                ms |= MSTATUS_MPV;
 #endif
-        CSRW(mstatus, ms);
-        /* Return PRIV_M so _trap_return uses mret (which uses MPP above) */
-        return PRIV_M;
+            CSRW(mstatus, ms);
+            return PRIV_M;
+        }
+
+        if (TSBI_IS_ECALL_TEST(op)) {
+            /* Return this ecall's xEPC: proves the handler was entered. */
+            frame[TSBI_FRAME_A0] = epc;
+            CSRW(mepc, next_instruction(epc));
+            return PRIV_M;
+        }
+
+        if (TSBI_IS_CSR_ACCESS(op)) {
+            /* Snapshot our xstatus for P0's faulted path before injecting. */
+            tsbi_proxy_record.status_snap = CSRR(mstatus);
+            frame[TSBI_FRAME_A0] =
+                tsbi_csr_access_dispatch((uint32_t)op, frame[TSBI_FRAME_A1]);
+            /* A fault inside the dispatch left mstatus.MPP/MPV saying "came
+             * from M" (P0 deliberately kept it that way to get back here).
+             * Put the requester's own values back so the mret below returns
+             * to where the request came from. */
+            if (tsbi_proxy_record.faulted)
+                CSRW(mstatus, tsbi_proxy_record.status_snap);
+            CSRW(mepc, next_instruction(epc));
+            return PRIV_M;
+        }
+
+        if (tsbi_is_mem_proxy(op)) {
+            tsbi_proxy_record.status_snap = CSRR(mstatus);
+            frame[TSBI_FRAME_A0] =
+                tsbi_mem_access_dispatch((uint32_t)op, frame[TSBI_FRAME_A1],
+                                         frame[TSBI_FRAME_A2]);
+            if (tsbi_proxy_record.faulted)
+                CSRW(mstatus, tsbi_proxy_record.status_snap);
+            CSRW(mepc, next_instruction(epc));
+            return PRIV_M;
+        }
+
+        /* Recognised as an ecall but not a known operation.  Per the
+         * protocol, unrecognised operations return -1; fall through to the
+         * armed/unexpected path only if nothing else claims it, so tests
+         * that use a bare ecall as stimulus still work when they armed the
+         * trap record instead of the escape flag. */
+        if (!trap_record.armed) {
+            frame[TSBI_FRAME_A0] = TSBI_RESERVED_RET;
+            CSRW(mepc, next_instruction(epc));
+            return PRIV_M;
+        }
     }
 
     /* ---- Handle asynchronous interrupts ---- */
@@ -764,14 +945,294 @@ unsigned m_trap_handler(void) {
 }
 
 /* ===================================================================
+ * T-SBI service stages shared by the S and HS handler levels
+ *
+ * HS *is* the S privilege level with V=0, so it owes requesters exactly the
+ * same subset of the protocol as plain S.  The three stages therefore live
+ * here once and both entry points call them in order: s_trap_handler below,
+ * and hs_trap_handler in common/hyp/hyp_trap.c.  A second copy inside the HS
+ * handler would be free to drift, and the drift would be invisible - a test
+ * would simply see its request silently dropped.
+ *
+ * Keeping the stages in this file also keeps the forwarding primitives and
+ * the escape flag above file-static.
+ *
+ * The order is load-bearing (see tsbi_design_brief.md):
+ *   P0 first - a nested proxy fault is our own accident, not a new event
+ *   P1 next  - an armed raw ecall is a stimulus, not a service request
+ *   P2 last, but still BEFORE the handler records anything: a request we
+ *              served is framework traffic and must not surface in a trap
+ *              record the test is asserting on
+ * =================================================================== */
+
+/* P0: claim a fault taken by an instruction we injected on a caller's
+ * behalf.  Returns true if the trap was ours, in which case the caller must
+ * return to the recovery point at once without recording anything.
+ *
+ * sstatus is deliberately left untouched: tsbi_proxy_record.recover is a
+ * label inside tsbi_*_access_dispatch, which runs at THIS level, so the sret
+ * has to land here - and the nested trap already set SPP to say so.  P2 puts
+ * status_snap back once the dispatch has returned. */
+bool tsbi_s_proxy_capture(uintptr_t cause)
+{
+    if (!tsbi_proxy_record.armed)
+        return false;
+
+    tsbi_proxy_record.faulted = true;
+    tsbi_proxy_record.cause   = cause;
+    CSRW(sepc, tsbi_proxy_record.recover);
+    return true;
+}
+
+/* P1: consume the raw-ecall escape flag.  Returns true when this ecall is an
+ * armed test stimulus and must therefore bypass P2 entirely. */
+bool tsbi_raw_ecall_consume(uintptr_t cause)
+{
+    if (is_ecall(cause) && _tsbi_skip_dispatch) {
+        _tsbi_skip_dispatch = false;
+        return true;
+    }
+    return false;
+}
+
+/* P2: serve the S/HS-level subset of the protocol.
+ *
+ * Reached by ecalls delegated down to us (ecall-from-U with medeleg[8]=1,
+ * ecall-from-VS with medeleg[10]=1 and hedeleg[10] read-only-zero).
+ * ecall-from-S never lands here: medeleg[9] is 0 by framework invariant, so
+ * an S-mode test's request goes straight to M.
+ *
+ * Served locally : ECALL_TEST, GOTO_SMODE/UMODE, GOTO_VSMODE/VUMODE,
+ *                  U/S/HS/VS-level CSR_ACCESS
+ * Forwarded to M : GOTO_MMODE, M-level CSR, memory proxy
+ *
+ * Returns true if the request was disposed of, in which case the caller must
+ * return to the requester at once.  False means "not mine": the trap is a
+ * genuine event and the handler's normal recording path owns it. */
+bool tsbi_s_dispatch(uintptr_t *frame, uintptr_t cause, uintptr_t epc)
+{
+    if (!is_ecall(cause))
+        return false;
+
+    uintptr_t op     = frame[TSBI_FRAME_A0];
+    uintptr_t resume = next_instruction(epc);
+
+    if (TSBI_IS_GOTO(op)) {
+        unsigned target = tsbi_goto_to_priv(op);
+
+        if (target == PRIV_S || target == PRIV_U) {
+            /* Within our authority: set sstatus.SPP and sret. */
+            current_priv = target;
+#ifdef ENABLE_HYP
+            /* The requester is leaving V=1 behind, so SPV must go with it or
+             * the sret would drop it back into VS/VU instead of HS/U.  Safe
+             * to clear unconditionally: hardware overwrote SPV with the
+             * requester's V when it took this trap, so there is no
+             * test-written value here left to destroy. */
+            CSRW(CSR_HSTATUS, CSRR(CSR_HSTATUS) & ~(uintptr_t)HSTATUS_SPV);
+#endif
+            uintptr_t ss = CSRR(sstatus);
+            ss &= ~MSTATUS_SPP_BIT;
+            if (target == PRIV_S)
+                ss |= MSTATUS_SPP_BIT;
+            CSRW(sstatus, ss);
+            CSRW(sepc, tsbi_goto_resume(resume));
+            return true;
+        }
+
+#ifdef ENABLE_HYP
+        if (target == PRIV_VS || target == PRIV_VU) {
+            /* Also within our authority: hstatus is an HS-level CSR, so
+             * entering V=1 needs no M excursion.  Serving this here is
+             * MANDATORY, not an optimisation: sret+hstatus.SPV is the only
+             * way a real hypervisor enters a guest, whereas M's
+             * mret+mstatus.MPV is a path that does not exist in practice and
+             * bypasses hstatus.SPV entirely - no test could then observe SPV
+             * semantics (e.g. sret clearing SPV). */
+            current_priv = target;
+            CSRW(CSR_HSTATUS, CSRR(CSR_HSTATUS) | HSTATUS_SPV);
+            uintptr_t ss = CSRR(sstatus);
+            ss &= ~MSTATUS_SPP_BIT;
+            if (target == PRIV_VS)
+                ss |= MSTATUS_SPP_BIT;   /* SPV=1 + SPP=1 -> VS, 0 -> VU */
+            CSRW(sstatus, ss);
+            CSRW(sepc, tsbi_goto_resume(resume));
+            return true;
+        }
+#endif
+
+        /* Beyond our authority (GOTO_MMODE needs mstatus.MPP): forward up
+         * the privilege chain.  Record the ORIGINAL requester's resume point
+         * first - the level that serves this uses it instead of our own
+         * ecall+4 (see tsbi_goto_resume). */
+        current_priv = target;
+        tsbi_goto_forward_mark(resume);
+        _tsbi_forward_goto(frame);
+        /* Never returns: the serving level resumes the original requester
+         * directly, with the register context this frame carries. */
+    }
+
+    if (TSBI_IS_ECALL_TEST(op)) {
+        frame[TSBI_FRAME_A0] = epc;
+        CSRW(sepc, resume);
+        return true;
+    }
+
+    if (TSBI_IS_CSR_ACCESS(op)) {
+        uint32_t csr = tsbi_csr_addr_of(op);
+        if (tsbi_csr_is_m_level(csr)) {
+            /* No authority: forward, then hand the result back. */
+            tsbi_forward_up(frame);
+            CSRW(sepc, resume);
+            return true;
+        }
+        /* Anything below M is reachable from here - including the VS-level
+         * CSRs a guest cannot touch itself, which is the whole reason a VS
+         * requester needs us. */
+        tsbi_proxy_record.status_snap = CSRR(sstatus);
+        frame[TSBI_FRAME_A0] =
+            tsbi_csr_access_dispatch((uint32_t)op, frame[TSBI_FRAME_A1]);
+        /* Same as the M side: a fault left sstatus.SPP saying "came from
+         * S", so restore the requester's own value before the sret. */
+        if (tsbi_proxy_record.faulted)
+            CSRW(sstatus, tsbi_proxy_record.status_snap);
+        CSRW(sepc, resume);
+        return true;
+    }
+
+    if (tsbi_is_mem_proxy(op)) {
+        /* Physical-address access needs M privilege: forward. */
+        tsbi_forward_up(frame);
+        CSRW(sepc, resume);
+        return true;
+    }
+
+    if (!trap_record.armed) {
+        frame[TSBI_FRAME_A0] = TSBI_RESERVED_RET;
+        CSRW(sepc, resume);
+        return true;
+    }
+
+    return false;
+}
+
+#ifdef ENABLE_HYP
+/* ===================================================================
+ * P2 for the VS level - the most restricted dispatch layer
+ *
+ * Reached by ecall-from-VU once medeleg[8] and hedeleg[8] both delegate it
+ * down (hedeleg[8] is in the baseline, see tsbi/tsbi_deleg.c).  ecall-from-VS
+ * cannot land here: hedeleg[10] is read-only-zero, so a VS-mode test's own
+ * request always stops at HS - which is what starts the VS->HS chain.
+ *
+ * Served locally : ECALL_TEST, U/S-level CSR_ACCESS
+ * Forwarded to HS: every GOTO, HS-level CSR, M-level CSR, memory proxy
+ *
+ * Two notes on that split (it is the design brief's capability table, third
+ * column, not an implementation shortcut):
+ *
+ *  - EVERY GOTO leaves.  Even GOTO_VSMODE/VUMODE, which a VS handler could
+ *    technically fake with vsstatus.SPP + sret while staying inside V=1:
+ *    doing so would enter the guest without ever touching hstatus.SPV, i.e.
+ *    down a path no real hypervisor uses.  Forwarding to HS instead makes the
+ *    request arrive at the level that owns SPV, and HS serves it with the
+ *    genuine sret+SPV entry (see the S dispatch's V=1 branch).  Uniform rule,
+ *    better semantics: a GOTO always names an absolute privilege target and is
+ *    always served by the level that owns every field involved.
+ *
+ *  - HS-level CSRs leave too.  In V=1 the 0x2xx/0x6xx addresses either trap as
+ *    virtual instructions or are simply unreachable, and they are exactly the
+ *    registers a guest is not allowed to see - which is the whole reason a VS
+ *    requester needs a proxy for them.  bits[9:8] does the classifying:
+ *    tsbi_csr_is_hs_level() joins tsbi_csr_is_m_level() as a forward trigger.
+ *
+ * The forwarded ecall reaches HS because ecall-from-VS is never delegated,
+ * so tsbi_forward_up() / _tsbi_forward_goto() need no special casing here.
+ *
+ * The locally served CSR case needs none either: at V=1 the plain S CSR names
+ * alias the virtual ones, so tsbi_csr_access_dispatch() acting on "sstatus"
+ * reaches vsstatus - the guest's own register, which is precisely what a VS/VU
+ * requester means by an S-level CSR.  Same reason CSRW(sepc, resume) below
+ * writes vsepc.
+ *
+ * Returns true if the request was disposed of.  Same contract as
+ * tsbi_s_dispatch: false means the trap is a genuine event and the VS handler's
+ * recording path owns it.
+ * =================================================================== */
+bool tsbi_vs_dispatch(uintptr_t *frame, uintptr_t cause, uintptr_t epc)
+{
+    if (!is_ecall(cause))
+        return false;
+
+    uintptr_t op     = frame[TSBI_FRAME_A0];
+    uintptr_t resume = next_instruction(epc);
+
+    if (TSBI_IS_GOTO(op)) {
+        /* No authority over any privilege-selecting field reachable from here:
+         * forward unconditionally, recording the requester's resume point for
+         * whichever level ends up serving it (see tsbi_goto_resume). */
+        current_priv = tsbi_goto_to_priv(op);
+        tsbi_goto_forward_mark(resume);
+        _tsbi_forward_goto(frame);
+        /* Never returns. */
+    }
+
+    if (TSBI_IS_ECALL_TEST(op)) {
+        frame[TSBI_FRAME_A0] = epc;
+        CSRW(sepc, resume);
+        return true;
+    }
+
+    if (TSBI_IS_CSR_ACCESS(op)) {
+        uint32_t csr = tsbi_csr_addr_of(op);
+        if (tsbi_csr_is_m_level(csr) || tsbi_csr_is_hs_level(csr)) {
+            /* Above our authority: forward, then hand the result back.  This
+             * is the RETURNING kind of forward - HS (or M behind it) serves
+             * the request and returns here, so our own frame stays valid. */
+            tsbi_forward_up(frame);
+            CSRW(sepc, resume);
+            return true;
+        }
+        tsbi_proxy_record.status_snap = CSRR(sstatus);
+        frame[TSBI_FRAME_A0] =
+            tsbi_csr_access_dispatch((uint32_t)op, frame[TSBI_FRAME_A1]);
+        if (tsbi_proxy_record.faulted)
+            CSRW(sstatus, tsbi_proxy_record.status_snap);
+        CSRW(sepc, resume);
+        return true;
+    }
+
+    if (tsbi_is_mem_proxy(op)) {
+        /* Physical-address access: not even HS can serve it, but forwarding
+         * one level is all we do - HS forwards it on to M. */
+        tsbi_forward_up(frame);
+        CSRW(sepc, resume);
+        return true;
+    }
+
+    if (!trap_record.armed) {
+        frame[TSBI_FRAME_A0] = TSBI_RESERVED_RET;
+        CSRW(sepc, resume);
+        return true;
+    }
+
+    return false;
+}
+#endif /* ENABLE_HYP */
+
+/* ===================================================================
  * S-mode trap handler (called from trap.S)
  *
  * Returns the privilege level to return to (for sret SPP setup).
  * =================================================================== */
-unsigned s_trap_handler(void) {
+unsigned s_trap_handler(uintptr_t *frame) {
     uintptr_t cause = CSRR(scause);
     uintptr_t epc   = CSRR(sepc);
     uintptr_t tval  = CSRR(stval);
+
+    /* P0: nested-fault capture (Strategy A) - MUST BE ABSOLUTELY FIRST. */
+    if (tsbi_s_proxy_capture(cause))
+        return PRIV_S;
 
     /* NOTE: do NOT read mtval2 here: mtval2 is an M-mode CSR, so an
      * S-side read may raise an illegal-instruction trap inside the
@@ -796,41 +1257,13 @@ unsigned s_trap_handler(void) {
         trap_record.armed = true;
     }
 
-    /* ---- Handle ecall for privilege switching ---- */
-    if (is_ecall(cause) && ecall_args[0] == ECALL_GOTO_PRIV) {
-        unsigned target = (unsigned)ecall_args[1];
-        uintptr_t resume = next_instruction(epc);
-#ifdef ENABLE_HYP
-        /* Virtualized targets need mret with MPV from M-mode; keep
-         * the existing goto_priv routing for those. */
-        if (is_virt_target(target)) {
-            CSRW(sepc, resume);
-            goto_priv(target);
-            return current_priv;
-        }
-#endif
-        /* Non-virtualized target: switch privilege and resume the
-         * interrupted context right after the ecall.
-         *   target M: S-mode cannot write mstatus.MPP, so issue a
-         *             nested ecall; the M-mode handler resumes the
-         *             caller at 'resume' in M-mode.
-         *   target S/U: return via sret with SPP set accordingly. */
-        current_priv = target;
-        if (target == PRIV_M) {
-            g_priv_resume_addr = resume;
-            ecall_args[0] = ECALL_PRIV_RESUME;
-            asm volatile ("ecall" ::: "memory");
-            /* Unreachable: control resumes in the caller in M-mode */
-            for (;;) { }
-        }
-        uintptr_t ss = CSRR(sstatus);
-        ss &= ~MSTATUS_SPP_BIT;
-        if (target == PRIV_S)
-            ss |= MSTATUS_SPP_BIT;
-        CSRW(sstatus, ss);
-        CSRW(sepc, resume);
-        return PRIV_S;               /* _trap_return uses sret */
-    }
+    /* ================================================================
+     * P1 + P2: raw-ecall escape, then T-SBI service dispatch.
+     * Both stages are shared with the HS handler; see their definitions
+     * above for the served/forwarded split and the ordering rules.
+     * ================================================================ */
+    if (!tsbi_raw_ecall_consume(cause) && tsbi_s_dispatch(frame, cause, epc))
+        return PRIV_S;
 
     /* ---- Handle asynchronous interrupts ---- */
     if (cause & CAUSE_INTERRUPT_BIT) {
@@ -932,6 +1365,18 @@ unsigned s_trap_handler(void) {
 #if __riscv_xlen > 32
         if (!g_trap_preserve_pelp) {
             CSRC(sstatus, MSTATUS_SPELP_BIT);
+#ifdef ENABLE_HYP
+            /* When the trap came from a V=1 mode the sret below returns to VS,
+             * and per norm:Zicfilp_pelp_trap_return an xret into mode y
+             * restores ELP from y's own xpelp -- for VS that is
+             * vsstatus.SPELP, not sstatus.SPELP.  Clear it too, otherwise a
+             * landing-pad fault taken from VS resumes with ELP=LP_EXPECTED and
+             * the very next instruction re-faults (unbounded, because the
+             * expectation has been consumed by then).  hstatus.SPV says the
+             * trap source had V=1. */
+            if (CSRR(CSR_HSTATUS) & HSTATUS_SPV)
+                CSRC(CSR_VSSTATUS, VSSTATUS_SPELP_BIT);
+#endif
         }
 #endif
 
@@ -983,6 +1428,20 @@ unsigned s_trap_handler(void) {
  * Trap API for test framework
  * =================================================================== */
 
+#ifdef ENABLE_HYP
+/* A stimulus trap delegated down to VS by hedeleg lands in vs_trap_handler
+ * (hyp_vs_trap.c), which keeps its own record.  The accessors below merge it so
+ * trap_expect / trap_was_triggered / trap_get_cause observe a VS-delegated trap
+ * exactly as they do an M/HS one.  Declared locally, not via hyp_vs_trap.h,
+ * which pulls in test_framework.h and would make the dependency circular (the
+ * same reason trap_clear_record() declares hs_trap_record_reset locally). */
+extern void      vs_trap_clear(void);
+extern bool      vs_trap_was_triggered(void);
+extern uintptr_t vs_trap_get_cause(void);
+extern uintptr_t vs_trap_get_epc(void);
+extern uintptr_t vs_trap_get_tval(void);
+#endif
+
 void trap_expect_begin(void) {
     __sync_synchronize();
     trap_record.armed       = true;
@@ -992,6 +1451,9 @@ void trap_expect_begin(void) {
     trap_record.epc         = 0;
     trap_record.tval        = 0;
     trap_record.status_snap  = 0;
+#ifdef ENABLE_HYP
+    vs_trap_clear();   /* a fresh expectation must not see a stale VS record */
+#endif
 #ifdef ENABLE_TRAP_ARM_DIAG
     _diag_arm_begin_count++;
 #endif
@@ -1013,7 +1475,19 @@ void trap_expect_end(void) {
  * Unlike trap_expect_end() which only sets armed=false, this function
  * also clears triggered, cause, epc, tval, and all other fields.
  * Used by reset_state() to ensure a clean slate between tests.
+ *
+ * Under ENABLE_HYP this also clears the HS-mode record kept in
+ * common/hyp/hyp_trap.c.  That record is a trap record too, and leaving it
+ * behind is not merely untidy: the accessors below prefer it whenever its
+ * triggered flag is set, so a stale one makes every later test read the
+ * cause/htval of a trap it never caused.  Declared locally rather than by
+ * including hyp_trap.h, which pulls in test_framework.h and would make the
+ * dependency circular.
  * =================================================================== */
+#ifdef ENABLE_HYP
+extern void hs_trap_record_reset(void);
+#endif
+
 void trap_clear_record(void) {
     __sync_synchronize();
     trap_record.armed       = false;
@@ -1029,23 +1503,46 @@ void trap_clear_record(void) {
     trap_record.htinst      = 0;
     trap_record.gva         = false;
     trap_record.spv         = false;
+    hs_trap_record_reset();
+    vs_trap_clear();
 #endif
     __sync_synchronize();
 }
 
 bool trap_was_triggered(void) {
-    return trap_record.triggered;
+    if (trap_record.triggered)
+        return true;
+#ifdef ENABLE_HYP
+    /* A stimulus trap delegated down to VS by hedeleg is recorded by
+     * vs_trap_handler in its own record; merge it so a test observes it
+     * through the same generic API as an M/HS trap. */
+    if (vs_trap_was_triggered())
+        return true;
+#endif
+    return false;
 }
 
 uintptr_t trap_get_cause(void) {
+#ifdef ENABLE_HYP
+    if (!trap_record.triggered && vs_trap_was_triggered())
+        return vs_trap_get_cause();
+#endif
     return trap_record.cause;
 }
 
 uintptr_t trap_get_epc(void) {
+#ifdef ENABLE_HYP
+    if (!trap_record.triggered && vs_trap_was_triggered())
+        return vs_trap_get_epc();
+#endif
     return trap_record.epc;
 }
 
 uintptr_t trap_get_tval(void) {
+#ifdef ENABLE_HYP
+    if (!trap_record.triggered && vs_trap_was_triggered())
+        return vs_trap_get_tval();
+#endif
     return trap_record.tval;
 }
 
@@ -1069,15 +1566,20 @@ void trap_snapshot(trap_snapshot_t *snap) {
 }
 
 #ifdef ENABLE_HYP
-uintptr_t trap_get_htval(void) {
+/* The three below are the M-mode record's raw view.  The names tests actually
+ * call - trap_get_htval/htinst/gva - are defined in common/hyp/hyp_trap.c,
+ * which merges this view with the HS-mode record the same way trap_get_spv()
+ * does.  A trap delegated by hedeleg never reaches this file, so answering
+ * from here alone would report zeroes for it. */
+uintptr_t trap_get_htval_snap(void) {
     return trap_record.htval;
 }
 
-uintptr_t trap_get_htinst(void) {
+uintptr_t trap_get_htinst_snap(void) {
     return trap_record.htinst;
 }
 
-bool trap_get_gva(void) {
+bool trap_get_gva_snap(void) {
     return trap_record.gva;
 }
 

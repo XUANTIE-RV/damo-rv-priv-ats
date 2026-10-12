@@ -250,12 +250,23 @@ uintptr_t vm_run_in_smode(pt_context_t *ctx,
 
 **内部执行流程**：
 
+0. 升权到 M-mode（若调用方不在 M-mode）
 1. 配置 PMP entry 15 为全地址空间 NAPOT RWX（允许 S-mode 访问）
 2. 配置 trap 委托（page fault → S-mode）
 3. 设置 stvec 指向 S-mode trap handler
 4. 启用虚拟内存（写 satp + sfence.vma）
 5. 通过 `run_in_priv(PRIV_S, fn, arg)` 切换到 S-mode 执行 fn
 6. fn 返回后，禁用 VM、恢复 medeleg、清除 PMP entry
+7. 降权回调用方进入时的特权级
+
+**调用方特权级**：任意特权级均可调用。T-SBI 的 S 态常态模型（见
+[tsbi_design_brief.md](./tsbi_design_brief.md) 第一节）下用例本身运行在 S 态，
+但该函数拥有 M 级状态（medeleg、尤其是 satp）：若在 S 态直接写 satp 并继续执行，
+新翻译规则会立刻作用于**框架自己的下一条取指**，而这些用例恰恰是故意装入坏页表来
+诱发 fault 的，结果 fault 落在观测者而不是被观测的载荷上，并且会在同一条取指上
+反复自陷。因此函数自己升权到 M 态完成写入，再经 `mret` 进入载荷，保证 fault 总是
+落在 fn 的访问上。已在 M 态的调用方（`-DTSBI_BOOT_MODE_M` 套件）不付任何代价：
+`goto_priv()` 同特权级为 no-op。
 
 ---
 
@@ -277,8 +288,11 @@ uintptr_t vm_run_in_umode(pt_context_t *ctx,
 **与 `vm_run_in_smode` 的差异：**
 - 使用 `mret` 直接从 M-mode 跳转到 U-mode（MPP=0）
 - 调用方必须在页表映射中设置 `PTE_U` 标志
-- 函数通过 ecall 返回 M-mode（CAUSE_ECALL_FROM_U, cause 8）
+- 函数通过 ecall 返回（CAUSE_ECALL_FROM_U, cause 8）；T-SBI 委托基线把 cause 8
+  下发到 S handler，由它把 `GOTO_MMODE` 请求沿 S→M 链上传兑现
 - 不委托 page fault 到 S-mode（由 M-mode trap_record 捕获）
+
+调用方特权级与 `vm_run_in_smode` 相同：任意特权级均可，函数内部自行升权到 M 态。
 
 ---
 
@@ -637,7 +651,7 @@ RISC-V 规范允许硬件在首次访问时自动设置 A（Accessed）和 D（D
 
 ### PMP 与虚拟内存
 
-`vm_run_in_smode()` 自动配置 PMP entry 15 为全地址空间 NAPOT RWX，以允许 S-mode 访问所有物理内存。函数返回后自动清除该 PMP entry。
+`vm_run_in_smode()` 自动配置 PMP entry 15 为全地址空间 NAPOT RWX，以允许 S-mode 访问所有物理内存。函数返回后自动清除该 PMP entry。注意 `entry.S` 在 boot 期降权进 S 之前已经 hoist 了一份等价配置（entry 0，NAPOT 全空间 RWX），而 PMP 以**编号最小的命中项**为准，因此 entry 15 实际上是冗余保险；保留它只是为了兼容自行改写过 PMP 的套件。
 
 如果测试需要同时验证 PMP 和 VM 的交互行为，需要手动管理 PMP 配置，不使用 `vm_run_in_smode()`。
 

@@ -14,14 +14,18 @@
  *
  * Test list:
  *   HTVAL-CLR-01  illegal-instruction in M-mode does not write htval
- *   HTVAL-CLR-02  ECALL from M-mode does not write htval
+ *   HTVAL-CLR-02  write to a read-only CSR in M-mode does not write htval
  *   HTVAL-CLR-03  EBREAK in M-mode does not write htval
- *   HTVAL-CLR-04  S-mode page-fault (no H involved) does not write htval
+ *   HTVAL-CLR-04  misaligned load in M-mode does not write htval
  *
  * Strategy: pre-load htval with a sentinel, fire a non-GPF trap,
- * read htval back. Since hedeleg=0 there are no S-mode handlers
- * in the way; the trap framework records cause/tval into trap_record
- * but does not touch htval.
+ * read htval back. The trap has to be taken into M-mode:
+ * norm:htval_sz_acc_op has the implementation write htval on any trap
+ * taken into HS-mode and norm:htval_trapval mandates zero for a non-GPF
+ * one, so a stimulus fired from S(HS)-mode -- where the suite body runs
+ * under the T-SBI S-mode-normal boot -- would legitimately clear the
+ * sentinel. M-mode traps leave htval alone, and the trap framework
+ * records cause/tval into trap_record without touching htval.
  * =================================================================== */
 
 static inline void htval_seed(uintptr_t v) {
@@ -35,22 +39,69 @@ static inline uintptr_t htval_peek(void) {
 
 #define HTVAL_SENTINEL  0x1234567890ABCDEFUL
 
+/* Non-GPF stimuli fired from M-mode (CLR-01..04). */
+#define CLR_STIM_ILLEGAL  0   /* csrrw x0, 0x004, x0 - nonexistent CSR */
+#define CLR_STIM_RO_CSR   1   /* csrrw x0, cycle, x0 - write to RO CSR */
+#define CLR_STIM_EBREAK   2   /* ebreak                                */
+#define CLR_STIM_MISALIGN 3   /* misaligned 8-byte load                */
+
+static bool      g_clr_fired;
+static uintptr_t g_clr_cause;
+static uintptr_t g_clr_addr;
+
+static uintptr_t _clr_m_stimulus(uintptr_t which) {
+    trap_expect_begin();
+    switch (which) {
+    case CLR_STIM_ILLEGAL:
+        /* 32-bit illegal CSR access (csrrw zero, 0x004, zero). The trap
+         * handler advances mepc by 4 and we stay armed for exactly one trap.
+         * A 16-bit c.unimp (0x0000) only advances by 2 and would re-fault on
+         * the second halfword. */
+        asm volatile (".option push\n\t"
+                      ".option norvc\n\t"
+                      ".4byte 0x00401073\n\t"
+                      ".option pop");
+        break;
+    case CLR_STIM_RO_CSR:
+        /* csrrw zero, cycle, zero (encoding 0xC0001073): write to the
+         * read-only cycle CSR. Used instead of a plain `ecall` because the
+         * framework's M-mode ecall path is reserved for privilege-switching
+         * and T-SBI service requests, and never surfaces as a recorded trap. */
+        asm volatile (".option push\n\t"
+                      ".option norvc\n\t"
+                      ".4byte 0xC0001073\n\t"
+                      ".option pop");
+        break;
+    case CLR_STIM_EBREAK:
+        asm volatile ("ebreak");
+        break;
+    default:
+        asm volatile ("ld t0, 0(%0)" :: "r"(g_clr_addr) : "t0", "memory");
+        break;
+    }
+    g_clr_fired = trap_was_triggered();
+    g_clr_cause = g_clr_fired ? trap_get_cause() : 0;
+    trap_expect_end();
+    return 0;
+}
+
+/* Fire one non-GPF stimulus in M-mode and record whether it trapped. */
+static void clr_fire_in_m(uintptr_t which) {
+    g_clr_fired = false;
+    g_clr_cause = 0;
+    (void)run_in_priv(PRIV_M, _clr_m_stimulus, which);
+}
+
 TEST_REGISTER(test_htval_clr_01_illegal_inst);
 bool test_htval_clr_01_illegal_inst(void) {
     TEST_BEGIN("HTVAL-CLR-01: illegal-instruction does not modify htval");
     if (!SHTVALA_AVAILABLE) TEST_SKIP("Shtvala extension not available");
     htval_seed(HTVAL_SENTINEL);
 
-    EXPECT_TRAP(CAUSE_ILLEGAL_INST, {
-        /* 32-bit illegal CSR access (csrrw zero, 0x004, zero). The
-         * trap handler advances mepc by 4 and we stay armed for
-         * exactly one trap. A 16-bit c.unimp (0x0000) only advances
-         * by 2 and would re-fault on the second halfword. */
-        asm volatile (".option push\n\t"
-                      ".option norvc\n\t"
-                      ".4byte 0x00401073\n\t"
-                      ".option pop");
-    });
+    clr_fire_in_m(CLR_STIM_ILLEGAL);
+    TEST_ASSERT("trap triggered", g_clr_fired);
+    TEST_ASSERT_EQ("cause matches", g_clr_cause,
+                   (uintptr_t)CAUSE_ILLEGAL_INST);
     TEST_ASSERT_EQ("htval preserved", htval_peek(), HTVAL_SENTINEL);
 
     htval_seed(0);
@@ -67,12 +118,10 @@ bool test_htval_clr_02_csr_ro_write(void) {
      * encoding is 0xC0001073. We use this instead of a plain `ecall`
      * because the framework's M-mode ecall path is reserved for
      * privilege-switching and never surfaces as a recorded trap. */
-    EXPECT_TRAP(CAUSE_ILLEGAL_INST, {
-        asm volatile (".option push\n\t"
-                      ".option norvc\n\t"
-                      ".4byte 0xC0001073\n\t"
-                      ".option pop");
-    });
+    clr_fire_in_m(CLR_STIM_RO_CSR);
+    TEST_ASSERT("trap triggered", g_clr_fired);
+    TEST_ASSERT_EQ("cause matches", g_clr_cause,
+                   (uintptr_t)CAUSE_ILLEGAL_INST);
     TEST_ASSERT_EQ("htval preserved", htval_peek(), HTVAL_SENTINEL);
 
     htval_seed(0);
@@ -90,9 +139,9 @@ bool test_htval_clr_03_ebreak(void) {
 
     htval_seed(HTVAL_SENTINEL);
 
-    EXPECT_TRAP(CAUSE_BREAKPOINT, {
-        asm volatile ("ebreak");
-    });
+    clr_fire_in_m(CLR_STIM_EBREAK);
+    TEST_ASSERT("trap triggered", g_clr_fired);
+    TEST_ASSERT_EQ("cause matches", g_clr_cause, (uintptr_t)CAUSE_BREAKPOINT);
     TEST_ASSERT_EQ("htval preserved", htval_peek(), HTVAL_SENTINEL);
 
     htval_seed(0);
@@ -108,16 +157,12 @@ bool test_htval_clr_04_misalign(void) {
     /* Try a misaligned 8B load on M-mode bare metal. The platform
      * may handle misalign in HW (no trap) — accept either outcome
      * but only assert htval if a trap actually fired. */
-    volatile uint8_t *p = (volatile uint8_t *)test_data_area + 1;
+    g_clr_addr = (uintptr_t)((volatile uint8_t *)test_data_area + 1);
 
-    trap_expect_begin();
-    asm volatile ("ld t0, 0(%0)" :: "r"(p) : "t0", "memory");
-    bool fired = trap_was_triggered();
-    trap_expect_end();
+    clr_fire_in_m(CLR_STIM_MISALIGN);
 
-    if (fired) {
-        LOG_D("trap fired, cause=%lu\n",
-              (unsigned long)trap_get_cause());
+    if (g_clr_fired) {
+        LOG_D("trap fired, cause=%lu\n", (unsigned long)g_clr_cause);
     }
     TEST_ASSERT_EQ("htval preserved", htval_peek(), HTVAL_SENTINEL);
 
@@ -200,6 +245,12 @@ bool test_htval_clr_06_gpf_then_illegal(void) {
     TEST_ASSERT("GPF fired", gpf);
     TEST_ASSERT("htval != 0 after GPF", trap_get_htval() != 0);
 
+    /* Route cause 2 back to HS-mode before phase 2: the T-SBI delegation
+     * baseline also sets hedeleg[2], and a trap taken into VS-mode never
+     * rewrites htval (norm:htval_sz_acc_op only covers traps taken into
+     * HS-mode), which is exactly what this test measures. */
+    setup_deleg_to_hs(1UL << CAUSE_ILLEGAL_INST);
+
     trap_expect_begin();
     (void)run_in_vs_mode(vs_illegal_inst_clr, 0);
     TEST_ASSERT("illegal-inst trap fired", trap_was_triggered());
@@ -251,6 +302,11 @@ bool test_htval_clr_07_gpf_then_pagefault(void) {
                              G_FLAGS_RWXU_AD, PT_LEVEL_2M);
     two_stage_setup_identity(&ctx, r_start, r_end - r_start,
                              G_FLAGS_RWXU_AD, PT_LEVEL_4K);
+
+    /* Route cause 13 back to HS-mode for the same reason as CLR-06: the
+     * delegation baseline delegates load page-faults to VS, and only a trap
+     * taken into HS-mode rewrites htval. */
+    setup_deleg_to_hs(1UL << CAUSE_LOAD_PAGE_FAULT);
 
     trap_expect_begin();
     (void)two_stage_run_in_vs(&ctx, test_vs_load_expect_fault, target);

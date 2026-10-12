@@ -18,6 +18,14 @@
  *
  * These tests probe satp for each standard MODE, recording results
  * into global booleans for Groups 2-6 to consume.
+ *
+ * Every probe goes through satp_probe_mode() (common/hyp/hyp_csr.c), which
+ * runs the write/read-back/restore sequence inside one M-mode excursion.
+ * satp translates the very mode that writes it, so probing a non-Bare MODE
+ * directly from S(HS)-mode -- where the suite body runs under the T-SBI
+ * S-mode-normal boot -- would switch translation on with PPN=0 and fault on
+ * the next instruction fetch. M-mode fetches ignore satp, so the probe is
+ * both safe there and unchanged in meaning.
  * =================================================================== */
 
 /* Global state: which MODEs does satp support? */
@@ -31,10 +39,7 @@ TEST_REGISTER(test_shgatpa_probe_bare);
 bool test_shgatpa_probe_bare(void) {
     TEST_BEGIN("HGATP-PROBE-01: probe satp MODE=Bare support");
 
-    uintptr_t saved = satp_read();
-
-    satp_write(MAKE_SATP(SATP_MODE_BARE, 0, 0));
-    uintptr_t mode = SATP_GET_MODE(satp_read());
+    uintptr_t mode = SATP_GET_MODE(satp_probe_mode(SATP_MODE_BARE));
 
     if (mode == SATP_MODE_BARE) {
         g_satp_supports_bare = true;
@@ -43,7 +48,6 @@ bool test_shgatpa_probe_bare(void) {
     TEST_ASSERT_EQ("satp MODE readback is Bare (0)", mode,
                    (uintptr_t)SATP_MODE_BARE);
 
-    satp_write(saved);
     HYP_TEST_END();
 }
 
@@ -52,11 +56,7 @@ TEST_REGISTER(test_shgatpa_probe_sv39);
 bool test_shgatpa_probe_sv39(void) {
     TEST_BEGIN("HGATP-PROBE-02: probe satp MODE=Sv39 support");
 
-    uintptr_t saved = satp_read();
-
-    satp_write(MAKE_SATP(SATP_MODE_BARE, 0, 0));
-    satp_write(MAKE_SATP(SATP_MODE_SV39, 0, 0));
-    uintptr_t mode = SATP_GET_MODE(satp_read());
+    uintptr_t mode = SATP_GET_MODE(satp_probe_mode(SATP_MODE_SV39));
 
     if (mode == SATP_MODE_SV39) {
         g_satp_supports_sv39 = true;
@@ -70,7 +70,6 @@ bool test_shgatpa_probe_sv39(void) {
     TEST_ASSERT("satp MODE readback is legal (0 or 8)",
                 mode == SATP_MODE_BARE || mode == SATP_MODE_SV39);
 
-    satp_write(saved);
     HYP_TEST_END();
 }
 
@@ -79,11 +78,7 @@ TEST_REGISTER(test_shgatpa_probe_sv48);
 bool test_shgatpa_probe_sv48(void) {
     TEST_BEGIN("HGATP-PROBE-03: probe satp MODE=Sv48 support");
 
-    uintptr_t saved = satp_read();
-
-    satp_write(MAKE_SATP(SATP_MODE_BARE, 0, 0));
-    satp_write(MAKE_SATP(SATP_MODE_SV48, 0, 0));
-    uintptr_t mode = SATP_GET_MODE(satp_read());
+    uintptr_t mode = SATP_GET_MODE(satp_probe_mode(SATP_MODE_SV48));
 
     if (mode == SATP_MODE_SV48) {
         g_satp_supports_sv48 = true;
@@ -97,7 +92,6 @@ bool test_shgatpa_probe_sv48(void) {
     TEST_ASSERT("satp MODE readback is legal (0 or 9)",
                 mode == SATP_MODE_BARE || mode == SATP_MODE_SV48);
 
-    satp_write(saved);
     HYP_TEST_END();
 }
 
@@ -106,11 +100,7 @@ TEST_REGISTER(test_shgatpa_probe_sv57);
 bool test_shgatpa_probe_sv57(void) {
     TEST_BEGIN("HGATP-PROBE-04: probe satp MODE=Sv57 support");
 
-    uintptr_t saved = satp_read();
-
-    satp_write(MAKE_SATP(SATP_MODE_BARE, 0, 0));
-    satp_write(MAKE_SATP(SATP_MODE_SV57, 0, 0));
-    uintptr_t mode = SATP_GET_MODE(satp_read());
+    uintptr_t mode = SATP_GET_MODE(satp_probe_mode(SATP_MODE_SV57));
 
     if (mode == SATP_MODE_SV57) {
         g_satp_supports_sv57 = true;
@@ -124,6 +114,5 @@ bool test_shgatpa_probe_sv57(void) {
     TEST_ASSERT("satp MODE readback is legal (0 or 10)",
                 mode == SATP_MODE_BARE || mode == SATP_MODE_SV57);
 
-    satp_write(saved);
     HYP_TEST_END();
 }

@@ -39,7 +39,7 @@
  * =================================================================== */
 
 static uintptr_t vs_satp_write_fn(uintptr_t new_val) {
-    asm volatile ("csrw satp, %0" :: "r"(new_val));
+    CSRW(CSR_SATP, new_val);
     /* Flush TLB so subsequent instructions use the new mappings. */
     asm volatile ("sfence.vma" ::: "memory");
     return 0;
@@ -75,7 +75,7 @@ bool test_ts_vsatp_01_v1_satp_reads_vsatp(void)
     /* Manual cleanup (avoid double-cleanup from ts2_finish which
      * would zero vsatp before we can verify). */
     gpt_disable();
-    asm volatile ("csrw " CSR_STR(CSR_VSATP) ", zero" ::: "memory");  /* vsatp = 0 */
+    CSRW(CSR_VSATP, 0);  /* vsatp = 0 */
     hyp_reset_state();
 
     TEST_ASSERT_EQ("V=1: csrr satp == vsatp", got, expected);
@@ -116,7 +116,7 @@ bool test_ts_vsatp_02_v1_satp_writes_vsatp(void)
 
     /* Manual cleanup. */
     gpt_disable();
-    asm volatile ("csrw " CSR_STR(CSR_VSATP) ", zero" ::: "memory");  /* vsatp = 0 */
+    CSRW(CSR_VSATP, 0);  /* vsatp = 0 */
     hyp_reset_state();
 
     TEST_ASSERT_EQ("V=1: vsatp was written via satp", got, test_val);
@@ -162,7 +162,7 @@ bool test_ts_vsatp_03_v1_unsupported_mode_ignored(void)
 
     /* Manual cleanup. */
     gpt_disable();
-    asm volatile ("csrw " CSR_STR(CSR_VSATP) ", zero" ::: "memory");
+    CSRW(CSR_VSATP, 0);
     hyp_reset_state();
 
     TEST_ASSERT_EQ("V=1: vsatp unchanged after unsupported MODE write via satp",
@@ -295,7 +295,7 @@ bool test_ts_vsatp_07_vtvm_traps_satp(void)
     ts2_setup_full(&ctx, SATP_MODE_SV39, HGATP_MODE_BARE);
 
     /* Set hstatus.VTVM=1 (bit 20). */
-    asm volatile ("csrs hstatus, %0" :: "r"((uintptr_t)HSTATUS_VTVM));
+    CSRS(CSR_HSTATUS, (uintptr_t)HSTATUS_VTVM);
 
     /* VS-mode reads satp -> should trap as virtual-instruction. */
     trap_expect_begin();
@@ -305,7 +305,7 @@ bool test_ts_vsatp_07_vtvm_traps_satp(void)
     trap_expect_end();
 
     /* Restore hstatus.VTVM=0. */
-    asm volatile ("csrc hstatus, %0" :: "r"((uintptr_t)HSTATUS_VTVM));
+    CSRC(CSR_HSTATUS, (uintptr_t)HSTATUS_VTVM);
     ts2_finish(&ctx);
 
     TEST_ASSERT("trap fired on VS-mode satp access with VTVM=1", fired);

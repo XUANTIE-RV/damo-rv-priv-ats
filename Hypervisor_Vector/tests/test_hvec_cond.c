@@ -23,13 +23,15 @@ bool test_hvec_13(void)
     TEST_BEGIN("HVEC-13: (cond) vsstatus.vs existence with misa.v=0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    /* Probe misa.v writability: write 0 then try to restore/set. */
-    uintptr_t misa_orig = CSRR(misa);
+    /* Probe misa.v writability: write 0 then try to restore/set.
+     * misa is M-level; proxy it so the probe works from HS-mode under
+     * the T-SBI S-mode-normal model. */
+    uintptr_t misa_orig = tsbi_csr_read(CSR_MISA);
     uintptr_t v_bit = (1UL << ('V' - 'A'));
 
-    CSRW(misa, misa_orig & ~v_bit);
-    uintptr_t cleared = CSRR(misa);
-    CSRW(misa, misa_orig);
+    tsbi_csr_write(CSR_MISA, misa_orig & ~v_bit);
+    uintptr_t cleared = tsbi_csr_read(CSR_MISA);
+    tsbi_csr_write(CSR_MISA, misa_orig);
 
     if ((cleared & v_bit) != 0 || !(misa_orig & v_bit)) {
         /* misa.v not writable (or V absent and sticky): the norm is
@@ -41,9 +43,9 @@ bool test_hvec_13(void)
     /* misa.v is writable: clear it and probe vsstatus.vs. Both
      * presence (read/write succeeds) and absence (illegal-instruction)
      * are legal per the "may exist" wording - record the outcome. */
-    CSRW(misa, misa_orig & ~v_bit);
+    tsbi_csr_write(CSR_MISA, misa_orig & ~v_bit);
 
-    M_TRAP_EXPECT_BEGIN();
+    trap_expect_begin();
     uintptr_t val = vsstatus_read();
     bool read_trapped = trap_was_triggered();
     trap_expect_end();
@@ -59,7 +61,7 @@ bool test_hvec_13(void)
 
         /* If present, a write must also be accepted (read the field
          * back; the value itself is unconstrained here). */
-        M_TRAP_EXPECT_BEGIN();
+        trap_expect_begin();
         vsstatus_set_field(SSTATUS_VS_SHIFT, CTX_INITIAL);
         (void)vsstatus_get_field(SSTATUS_VS_SHIFT);
         bool write_trapped = trap_was_triggered();
@@ -67,7 +69,7 @@ bool test_hvec_13(void)
         TEST_ASSERT("present vsstatus.vs accepts writes", !write_trapped);
     }
 
-    CSRW(misa, misa_orig);
+    tsbi_csr_write(CSR_MISA, misa_orig);
 
     HYP_TEST_END();
 }

@@ -37,7 +37,13 @@ int main(void)
     uart_init();
     reset_state();
 
-    /* Configure PMP: allow S/U/V-mode full access to all memory. */
+    /* Configure PMP: allow S/U/V-mode full access to all memory.
+     * pmpaddr0/pmpcfg0 are M-level CSRs; under the S-mode-normal model
+     * main() runs in S(HS)-mode, so raise to M for the write and drop
+     * back. PMP configuration persists across the privilege switch. */
+    unsigned saved_priv = get_current_priv();
+    if (saved_priv != PRIV_M)
+        goto_priv(PRIV_M);
     asm volatile(
         "li t0, -1\n\t"
         "csrw pmpaddr0, t0\n\t"
@@ -45,6 +51,8 @@ int main(void)
         "csrw pmpcfg0, t0\n\t"
         ::: "t0"
     );
+    if (saved_priv != PRIV_M)
+        goto_priv(saved_priv);
 
     test_print_banner("RISC-V Hypervisor x Zawrs Cross Test");
 

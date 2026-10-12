@@ -290,10 +290,10 @@ bool test_sscsrind_scsr_10(void)
     }
 
     /* Setup Smcdeleg delegation for cycle counter (siselect=0x40) */
-    orig_menvcfg = menvcfg_read();
-    orig_mcounteren = mcounteren_read();
-    menvcfg_write(orig_menvcfg | MENVCFG_CDE);
-    mcounteren_write(orig_mcounteren | MCOUNTEREN_CY);
+    orig_menvcfg = tsbi_csr_read(CSR_MENVCFG);
+    orig_mcounteren = tsbi_csr_read(CSR_MCOUNTEREN);
+    tsbi_csr_write(CSR_MENVCFG, orig_menvcfg | MENVCFG_CDE);
+    tsbi_csr_write(CSR_MCOUNTEREN, orig_mcounteren | MCOUNTEREN_CY);
 
     goto_priv(PRIV_S);
     PRIV_DO(siselect_write(0x40));
@@ -304,8 +304,8 @@ bool test_sscsrind_scsr_10(void)
      * If not, may trap. Both behaviors acceptable. */
     TEST_ASSERT("sireg at siselect=0x40: behavior recorded", 1);
 
-    menvcfg_write(orig_menvcfg);
-    mcounteren_write(orig_mcounteren);
+    tsbi_csr_write(CSR_MENVCFG, orig_menvcfg);
+    tsbi_csr_write(CSR_MCOUNTEREN, orig_mcounteren);
     if (SMSTATEEN_AVAILABLE) {
         mstateen0_write(orig_mstateen0);
     }

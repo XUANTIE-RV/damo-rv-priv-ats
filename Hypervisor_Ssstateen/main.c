@@ -34,15 +34,9 @@ int main(void)
     uart_init();
     reset_state();
 
-    /* Configure PMP: allow S/U-mode full access to all memory. */
-    asm volatile(
-        "li t0, -1\n\t"
-        "csrw pmpaddr0, t0\n\t"
-        "li t0, 0x1F\n\t"    /* A=NAPOT | R | W | X */
-        "csrw pmpcfg0, t0\n\t"
-        ::: "t0"
-    );
-
+    /* PMP full-space RWX for S/U is already installed by entry.S during the
+     * M-mode boot phase (before dropping to S), so no per-suite PMP setup is
+     * needed here; a raw csrw pmpaddr0/pmpcfg0 from S-mode would trap. */
     test_print_banner("RISC-V Hypervisor x Ssstateen Cross Test");
 
     unsigned int test_count = (unsigned int)(

@@ -18,11 +18,12 @@ int main(void) {
     /* Enable Svpbmt: set menvcfg.PBMTE (bit 62) = 1.
      * This is required for Spike and other implementations that
      * gate Svpbmt behind menvcfg.PBMTE. Without this, any PTE
-     * with non-zero PBMT bits will trigger a page fault. */
-    uintptr_t menvcfg;
-    asm volatile("csrr %0, " CSR_STR(CSR_MENVCFG) : "=r"(menvcfg));
-    menvcfg |= MENVCFG_PBMTE;
-    asm volatile("csrw " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(menvcfg) : "memory");
+     * with non-zero PBMT bits will trigger a page fault.
+     *
+     * menvcfg is an M-level CSR and main() runs in S-mode under the
+     * T-SBI S-mode-normal model, so the bit is set through the T-SBI
+     * CSR proxy instead of a bare csrr/csrw pair. */
+    tsbi_csr_set(CSR_MENVCFG, MENVCFG_PBMTE);
     test_print_banner("RISC-V Svpbmt Extension Compliance Test");
 
     unsigned int test_count = (unsigned int)(

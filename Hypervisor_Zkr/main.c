@@ -32,14 +32,10 @@ int main(void)
     uart_init();
     reset_state();
 
-    /* Configure PMP: allow S/U-mode full access to all memory. */
-    asm volatile(
-        "li t0, -1\n\t"
-        "csrw pmpaddr0, t0\n\t"
-        "li t0, 0x1F\n\t"    /* A=NAPOT | R | W | X */
-        "csrw pmpcfg0, t0\n\t"
-        ::: "t0"
-    );
+    /* The all-space PMP entry (pmpaddr0 = -1, pmpcfg0 = NAPOT|R|W|X) is
+     * hoisted into common/entry.S and programmed in M-mode before boot drops
+     * to S(HS)-mode, so it must NOT be re-written here: a bare csrw pmpaddr0
+     * from S-mode traps illegal under the T-SBI S-mode-normal model. */
 
     test_print_banner("RISC-V Hypervisor x Zkr Cross Test");
 

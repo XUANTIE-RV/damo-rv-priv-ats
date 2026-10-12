@@ -43,28 +43,28 @@
 #define G14_G_RWXU  (PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D)
 
 /* Pre-program mstatus.MPV / MPP to (mpv, mpp). Caller is responsible
- * for clearing them after the test. */
+ * for clearing them after the test. M-mode only: MPV/MPP are xret
+ * return-path bits, unreachable from below M and refused by the
+ * tsbi_csr_* proxy guard. */
 static inline void g14_set_mpv_mpp(int mpv, unsigned mpp)
 {
     /* clear MPP first */
-    asm volatile ("csrc mstatus, %0" :: "r"((uintptr_t)MSTATUS_MPP_MASK));
+    CSRC(CSR_MSTATUS, (uintptr_t)MSTATUS_MPP_MASK);
     if (mpv) {
-        asm volatile ("csrs mstatus, %0" :: "r"((uintptr_t)MSTATUS_MPV));
+        CSRS(CSR_MSTATUS, (uintptr_t)MSTATUS_MPV);
     } else {
-        asm volatile ("csrc mstatus, %0" :: "r"((uintptr_t)MSTATUS_MPV));
+        CSRC(CSR_MSTATUS, (uintptr_t)MSTATUS_MPV);
     }
-    asm volatile ("csrs mstatus, %0"
-                  :: "r"(((uintptr_t)mpp) << MSTATUS_MPP_OFF));
+    CSRS(CSR_MSTATUS, ((uintptr_t)mpp) << MSTATUS_MPP_OFF);
 }
 
 /* Restore MPV=0, MPP=0. */
 static inline void g14_clear_mpv_mpp(void)
 {
-    asm volatile ("csrc mstatus, %0"
-                  :: "r"((uintptr_t)(MSTATUS_MPV | MSTATUS_MPP_MASK)));
+    CSRC(CSR_MSTATUS, (uintptr_t)(MSTATUS_MPV | MSTATUS_MPP_MASK));
 }
 
-/* Single-instruction ld inside an MPRV=1 window. */
+/* Single-instruction ld inside an MPRV=1 window. M-mode only. */
 static inline uint64_t g14_mprv_ld_d(uintptr_t addr)
 {
     uint64_t v;
@@ -76,6 +76,68 @@ static inline uint64_t g14_mprv_ld_d(uintptr_t addr)
         : "r"((uintptr_t)MSTATUS_MPRV_BIT), "r"(addr)
         : "memory");
     return v;
+}
+
+/* The suite now runs in HS-mode, but MPRV only redirects M-mode
+ * accesses and MPRV/MPV/MPP are mstatus return-path bits (not
+ * proxyable from below M). Every sequence that programs (mpv, mpp)
+ * and then loads inside an MPRV=1 window therefore runs as a single
+ * M-mode excursion via run_in_priv(PRIV_M). The load target is handed
+ * over through g14_ld_va; the loaded value comes back as the callback
+ * return value. Each callback restores MPV=0/MPP=0 before returning
+ * so the excursion return path sees a clean mstatus. */
+static volatile uintptr_t g14_ld_va;
+
+/* TS-MPRV-01 M-mode body: MPV=1/MPP=S with MPRV=0 -> no xlate. */
+static uintptr_t g14_m_mprv0_ld(uintptr_t arg)
+{
+    (void)arg;
+    g14_set_mpv_mpp(/*mpv*/1, /*mpp*/PRIV_S);
+    uint64_t v = *(volatile uint64_t *)g14_ld_va;
+    g14_clear_mpv_mpp();
+    return (uintptr_t)v;
+}
+
+/* TS-MPRV-02 M-mode body: MPRV=1 + MPV=1 + MPP=S -> VS two-stage. */
+static uintptr_t g14_m_mprv_ld_vs(uintptr_t arg)
+{
+    (void)arg;
+    g14_set_mpv_mpp(/*mpv*/1, /*mpp*/PRIV_S);
+    uint64_t v = g14_mprv_ld_d(g14_ld_va);
+    g14_clear_mpv_mpp();
+    return (uintptr_t)v;
+}
+
+/* TS-MPRV-03 M-mode body: MPRV=1 + MPV=1 + MPP=U -> VU two-stage. */
+static uintptr_t g14_m_mprv_ld_vu(uintptr_t arg)
+{
+    (void)arg;
+    g14_set_mpv_mpp(/*mpv*/1, /*mpp*/PRIV_U);
+    uint64_t v = g14_mprv_ld_d(g14_ld_va);
+    g14_clear_mpv_mpp();
+    return (uintptr_t)v;
+}
+
+/* TS-MPRV-04 M-mode body: MPRV=1 + MPP=M -> MPRV is a no-op. */
+static uintptr_t g14_m_mprv_ld_m(uintptr_t arg)
+{
+    (void)arg;
+    g14_set_mpv_mpp(/*mpv*/1, /*mpp*/PRIV_M);
+    uint64_t v = g14_mprv_ld_d(g14_ld_va);
+    g14_clear_mpv_mpp();
+    return (uintptr_t)v;
+}
+
+/* TS-MPRV-05 M-mode body: HLV.D with MPRV=1 + MPV=0 + MPP=M. */
+static uintptr_t g14_m_mprv_hlv(uintptr_t arg)
+{
+    (void)arg;
+    g14_set_mpv_mpp(/*mpv*/0, /*mpp*/PRIV_M);
+    CSRS(CSR_MSTATUS, (uintptr_t)MSTATUS_MPRV_BIT);
+    uint64_t v = hlv_d(g14_ld_va);
+    CSRC(CSR_MSTATUS, (uintptr_t)MSTATUS_MPRV_BIT);
+    g14_clear_mpv_mpp();
+    return (uintptr_t)v;
 }
 
 /* ===================================================================
@@ -117,10 +179,11 @@ bool test_ts_mprv_01_no_xlate(void) {
     uintptr_t va, spa;
     g14_setup(&ctx, &va, &spa, G14_VS_RWX);
 
-    /* MPV=1, MPP=S, but MPRV=0 -> no translation. */
-    g14_set_mpv_mpp(/*mpv*/1, /*mpp*/PRIV_S);
-    uint64_t v = *(volatile uint64_t *)va;  /* MPRV=0 path */
-    g14_clear_mpv_mpp();
+    /* MPV=1, MPP=S, but MPRV=0 -> no translation. The mstatus
+     * programming and the load itself run in M-mode (MPRV semantics
+     * only exist there); see the excursion helper. */
+    g14_ld_va = va;
+    uint64_t v = (uint64_t)run_in_priv(PRIV_M, g14_m_mprv0_ld, 0);
 
     ts2_finish(&ctx);
     TEST_ASSERT_EQ("direct physical (VA-physical) value",
@@ -142,9 +205,8 @@ bool test_ts_mprv_02_vs_two_stage(void) {
     uintptr_t va, spa;
     g14_setup(&ctx, &va, &spa, G14_VS_RWX);  /* VS U=0, S-level access */
 
-    g14_set_mpv_mpp(/*mpv*/1, /*mpp*/PRIV_S);
-    uint64_t v = g14_mprv_ld_d(va);
-    g14_clear_mpv_mpp();
+    g14_ld_va = va;
+    uint64_t v = (uint64_t)run_in_priv(PRIV_M, g14_m_mprv_ld_vs, 0);
 
     ts2_finish(&ctx);
     TEST_ASSERT_EQ("two-stage translated to SPA value",
@@ -166,9 +228,8 @@ bool test_ts_mprv_03_vu_two_stage(void) {
     uintptr_t va, spa;
     g14_setup(&ctx, &va, &spa, G14_VS_RWXU);  /* VS U=1 -> VU OK */
 
-    g14_set_mpv_mpp(/*mpv*/1, /*mpp*/PRIV_U);
-    uint64_t v = g14_mprv_ld_d(va);
-    g14_clear_mpv_mpp();
+    g14_ld_va = va;
+    uint64_t v = (uint64_t)run_in_priv(PRIV_M, g14_m_mprv_ld_vu, 0);
 
     ts2_finish(&ctx);
     TEST_ASSERT_EQ("VU two-stage -> SPA value",
@@ -189,9 +250,8 @@ bool test_ts_mprv_04_mpp_m(void) {
     uintptr_t va, spa;
     g14_setup(&ctx, &va, &spa, G14_VS_RWX);
 
-    g14_set_mpv_mpp(/*mpv*/1, /*mpp*/PRIV_M);
-    uint64_t v = g14_mprv_ld_d(va);  /* MPRV=1 but MPP=M -> no xlate */
-    g14_clear_mpv_mpp();
+    g14_ld_va = va;
+    uint64_t v = (uint64_t)run_in_priv(PRIV_M, g14_m_mprv_ld_m, 0);
 
     ts2_finish(&ctx);
     TEST_ASSERT_EQ("MPP=M -> physical (VA-physical) value",
@@ -213,16 +273,13 @@ bool test_ts_mprv_05_hlv_unaffected(void) {
     uintptr_t va, spa;
     g14_setup(&ctx, &va, &spa, G14_VS_RWX);
 
-    /* Set MPRV=1 + MPV=0 + MPP=M (so MPRV is harmless), then HLV.D. */
-    g14_set_mpv_mpp(/*mpv*/0, /*mpp*/PRIV_M);
-    asm volatile ("csrs mstatus, %0" :: "r"((uintptr_t)MSTATUS_MPRV_BIT));
-
-    /* HLV needs SPVP=S (VS-level) and a regular S-level VS PTE. */
+    /* HLV needs SPVP=S (VS-level) and a regular S-level VS PTE. The
+     * MPRV=1 window around HLV.D runs in M-mode (see helper); HLV
+     * itself must ignore MPRV per norm:mstatus_mprv_hlsv. */
     hstatus_set_spvp(PRIV_S);
-    uint64_t v = hlv_d(va);
+    g14_ld_va = va;
+    uint64_t v = (uint64_t)run_in_priv(PRIV_M, g14_m_mprv_hlv, 0);
 
-    asm volatile ("csrc mstatus, %0" :: "r"((uintptr_t)MSTATUS_MPRV_BIT));
-    g14_clear_mpv_mpp();
     ts2_finish(&ctx);
 
     TEST_ASSERT_EQ("HLV.D returns SPA value", v, 0xCAFEBABE12345678ULL);

@@ -43,7 +43,7 @@ bool test_hzhpM_01(void)
     uintptr_t bit = 1UL << n;
     uint16_t addr = CSR_HPMCOUNTER(n);
 
-    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t saved_hcen = hcounteren_read();
 
     bool m_ok = MCNT_SET_STICK(bit);
@@ -92,7 +92,7 @@ bool test_hzhpM_01(void)
     }
 
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }
 
@@ -111,7 +111,7 @@ bool test_hzhpM_02(void)
     uintptr_t bit = 1UL << n;
     uint16_t addr = CSR_HPMCOUNTER(n);
 
-    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t saved_hcen = hcounteren_read();
     uintptr_t saved_scen = scounteren_read();
 
@@ -161,7 +161,7 @@ bool test_hzhpM_02(void)
 
     scounteren_write(saved_scen);
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }
 
@@ -180,13 +180,13 @@ bool test_hzhpM_03(void)
     uintptr_t bit = 1UL << n;
     uint16_t addr = CSR_HPMCOUNTER(n);
 
-    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t saved_hcen = hcounteren_read();
 
     bool m_ok = MCNT_SET_STICK(bit);
     if (m_ok && !HCNT_CLR_STICK(bit)) {
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("hcounteren[N] is not clearable");
     }
 
@@ -212,7 +212,7 @@ bool test_hzhpM_03(void)
     }
 
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }
 
@@ -231,7 +231,7 @@ bool test_hzhpM_04(void)
     uintptr_t bit = 1UL << n;
     uint16_t addr = CSR_HPMCOUNTER(n);
 
-    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t saved_hcen = hcounteren_read();
 
     /* The consistency scenario follows HZHPM-01's gate-open branch;
@@ -239,12 +239,12 @@ bool test_hzhpM_04(void)
      * read-only zero), the repeated outcome is trivially the same
      * trap and the scenario is not applicable. */
     if (!MCNT_SET_STICK(bit)) {
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("mcounteren[N] read-only zero (gate not openable)");
     }
     if (!HCNT_SET_STICK(bit)) {
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("hcounteren[N] read-only zero (gate not openable)");
     }
 
@@ -279,6 +279,6 @@ bool test_hzhpM_04(void)
     }
 
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }

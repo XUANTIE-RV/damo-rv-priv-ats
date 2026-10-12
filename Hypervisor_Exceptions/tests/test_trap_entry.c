@@ -149,8 +149,8 @@ bool tent_06_hs_trap_to_hs(void) {
      * mstatus.MPV, not hstatus.SPV. */
     setup_deleg_to_hs(1UL << CAUSE_ILLEGAL_INST);
     uintptr_t saved_stvec;
-    asm volatile ("csrr %0, stvec" : "=r"(saved_stvec));
-    asm volatile ("csrw stvec, %0" :: "r"((uintptr_t)&_hs_trap_entry));
+    saved_stvec = CSRR(CSR_STVEC);
+    CSRW(CSR_STVEC, (uintptr_t)&_hs_trap_entry);
 
     /* Switch to HS-mode and execute the illegal instruction.
      * The trap targets HS-mode (via medeleg), where hardware
@@ -165,7 +165,7 @@ bool tent_06_hs_trap_to_hs(void) {
     bool spv = trap_get_spv();
     TEST_ASSERT("SPV == 0 after HS-mode trap", !spv);
 
-    asm volatile ("csrw stvec, %0" :: "r"(saved_stvec));
+    CSRW(CSR_STVEC, saved_stvec);
     clear_all_deleg();
 
     HYP_TEST_END();
@@ -242,7 +242,7 @@ bool tent_09_trap_sie_spie(void) {
 
     /* Verify sstatus.SIE is cleared after trap. */
     uintptr_t sstatus;
-    asm volatile ("csrr %0, sstatus" : "=r"(sstatus));
+    sstatus = CSRR(CSR_SSTATUS);
     bool sie = sstatus & 0x1;  /* Bit 1 is SIE */
     TEST_ASSERT("sstatus.SIE == 0 after trap", !sie);
 
@@ -313,8 +313,14 @@ TEST_REGISTER(tent_12_vs_trap_to_m);
 bool tent_12_vs_trap_to_m(void) {
     TEST_BEGIN("TENT-12: VS-mode ecall trap to M-mode (cause=10)");
 
-    /* Clear medeleg to force trap to M-mode. */
-    asm volatile("csrw medeleg, %0" :: "r"((uintptr_t)0x0));
+    /* Clear medeleg to force trap to M-mode. medeleg is M-level config; this
+     * suite runs in S(HS)-mode, so use the tsbi_csr_* accessor (a raw
+     * csrw medeleg would trap illegal). Save and restore the real delegation
+     * baseline instead of forcing all-ones: the T-SBI baseline deliberately
+     * leaves medeleg[9] (ecall-from-S, the service channel) clear, and writing
+     * 0xFFFFFFFF would set it. */
+    uintptr_t saved_medeleg = tsbi_csr_read(CSR_MEDELEG);
+    tsbi_csr_write(CSR_MEDELEG, 0x0);
 
     /* Trigger VS-mode ecall trap. */
     trap_expect_begin();
@@ -325,7 +331,7 @@ bool tent_12_vs_trap_to_m(void) {
     TEST_ASSERT_EQ("cause == CAUSE_ECALL_FROM_VS", trap_get_cause(), 10);
 
     /* Restore default delegation. */
-    asm volatile("csrw medeleg, %0" :: "r"((uintptr_t)0xFFFFFFFF));
+    tsbi_csr_write(CSR_MEDELEG, saved_medeleg);
 
     HYP_TEST_END();
 }
@@ -337,8 +343,9 @@ TEST_REGISTER(tent_13_vu_trap_to_m);
 bool tent_13_vu_trap_to_m(void) {
     TEST_BEGIN("TENT-13: VU-mode ecall trap to M-mode (cause=8)");
 
-    /* Clear medeleg to force trap to M-mode. */
-    asm volatile("csrw medeleg, %0" :: "r"((uintptr_t)0x0));
+    /* Clear medeleg to force trap to M-mode (M-level config; see TENT-12). */
+    uintptr_t saved_medeleg = tsbi_csr_read(CSR_MEDELEG);
+    tsbi_csr_write(CSR_MEDELEG, 0x0);
 
     /* Trigger VU-mode ecall trap. */
     trap_expect_begin();
@@ -349,7 +356,7 @@ bool tent_13_vu_trap_to_m(void) {
     TEST_ASSERT_EQ("cause == CAUSE_ECALL_FROM_U", trap_get_cause(), 8);
 
     /* Restore default delegation. */
-    asm volatile("csrw medeleg, %0" :: "r"((uintptr_t)0xFFFFFFFF));
+    tsbi_csr_write(CSR_MEDELEG, saved_medeleg);
 
     HYP_TEST_END();
 }
@@ -361,8 +368,9 @@ TEST_REGISTER(tent_14_hs_trap_to_m);
 bool tent_14_hs_trap_to_m(void) {
     TEST_BEGIN("TENT-14: HS-mode illegal-inst trap to M-mode (cause=2)");
 
-    /* Clear medeleg to force trap to M-mode. */
-    asm volatile("csrw medeleg, %0" :: "r"((uintptr_t)0x0));
+    /* Clear medeleg to force trap to M-mode (M-level config; see TENT-12). */
+    uintptr_t saved_medeleg = tsbi_csr_read(CSR_MEDELEG);
+    tsbi_csr_write(CSR_MEDELEG, 0x0);
 
     /* Execute illegal instruction in HS-mode. */
     EXPECT_TRAP(CAUSE_ILLEGAL_INST, {
@@ -372,7 +380,7 @@ bool tent_14_hs_trap_to_m(void) {
     TEST_ASSERT_EQ("cause == CAUSE_ILLEGAL_INST", trap_get_cause(), 2);
 
     /* Restore default delegation. */
-    asm volatile("csrw medeleg, %0" :: "r"((uintptr_t)0xFFFFFFFF));
+    tsbi_csr_write(CSR_MEDELEG, saved_medeleg);
 
     HYP_TEST_END();
 }
@@ -426,23 +434,26 @@ bool tent_16_htval_delegated_gpf(void) {
                          (1UL << CAUSE_LOAD_GUEST_PAGE_FAULT) |
                          (1UL << CAUSE_STORE_GUEST_PAGE_FAULT);
 
-    uintptr_t medeleg_saved = CSRR(medeleg);
+    /* medeleg is M-level config; this suite runs in S(HS)-mode, so use the
+     * tsbi_csr_* accessor (a raw CSRR/CSRW medeleg would trap illegal).
+     * hedeleg is HS-level and stays a direct access. */
+    uintptr_t medeleg_saved = tsbi_csr_read(CSR_MEDELEG);
     uintptr_t hedeleg_saved = hedeleg_read();
 
     /* Delegate guest-page faults M -> HS; keep them at HS-mode. */
-    CSRW(medeleg, medeleg_saved | gpf_mask);
+    tsbi_csr_write(CSR_MEDELEG, medeleg_saved | gpf_mask);
     hedeleg_write(0);
 
     /* H mandates GPF delegability: dropped bits are a violation. */
     TEST_ASSERT_EQ("medeleg GPF bits delegable",
-                   CSRR(medeleg) & gpf_mask, gpf_mask);
+                   tsbi_csr_read(CSR_MEDELEG) & gpf_mask, gpf_mask);
 
     uintptr_t victim_gpa = (uintptr_t)test_fault_page;
     uintptr_t flags = PTE_V | PTE_U | PTE_A | PTE_D;  /* no R/W/X */
     bool fired = probe_load_gpf(victim_gpa, flags);
 
     /* Restore delegation before asserting so failures stay contained. */
-    CSRW(medeleg, medeleg_saved);
+    tsbi_csr_write(CSR_MEDELEG, medeleg_saved);
     hedeleg_write(hedeleg_saved);
 
     TEST_ASSERT("load guest-page-fault fired", fired);

@@ -37,8 +37,8 @@ TEST_REGISTER(test_ss_alloc_ro1_no_h);
 bool test_ss_alloc_ro1_no_h(void) {
     TEST_BEGIN("SS-ALLOC-02: sstateen0 RO1 => mstateen0 same bit RO1");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, ~0UL);  /* Open all bits */
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, ~0UL);  /* Open all bits */
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -60,10 +60,10 @@ bool test_ss_alloc_ro1_no_h(void) {
                   (unsigned long)bit);
 
             /* mstateen0 same bit must also be RO1 */
-            uintptr_t msta_saved = mstateen_read(0);
-            mstateen_clear_bits(0, bit);
-            uintptr_t msta_rb = mstateen_read(0);
-            mstateen_write(0, msta_saved);
+            uintptr_t msta_saved = tsbi_csr_read(CSR_MSTATEEN0);
+            tsbi_csr_clear(CSR_MSTATEEN0, bit);
+            uintptr_t msta_rb = tsbi_csr_read(CSR_MSTATEEN0);
+            tsbi_csr_write(CSR_MSTATEEN0, msta_saved);
 
             if (!(msta_rb & bit)) {
                 LOG_E("sstateen0 bit RO1 but mstateen0 not RO1\n");
@@ -75,7 +75,7 @@ bool test_ss_alloc_ro1_no_h(void) {
     TEST_ASSERT("sstateen0 RO1 bits => mstateen0 same bits also RO1", all_ok);
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -86,8 +86,8 @@ bool test_ss_alloc_ro1_with_h(void) {
     TEST_BEGIN("SS-ALLOC-03: sstateen0 RO1 => mstateen0+hstateen0 RO1");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, ~0UL);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, ~0UL);
 
     uintptr_t saved_hstateen0 = hstateen_read(0);
     hstateen_write(0, ~0UL);
@@ -109,10 +109,10 @@ bool test_ss_alloc_ro1_with_h(void) {
             LOG_D("sstateen0 bit 0x%lx is RO1\n", (unsigned long)bit);
 
             /* Check mstateen0 */
-            uintptr_t ms = mstateen_read(0);
-            mstateen_clear_bits(0, bit);
-            uintptr_t ms_rb = mstateen_read(0);
-            mstateen_write(0, ms);
+            uintptr_t ms = tsbi_csr_read(CSR_MSTATEEN0);
+            tsbi_csr_clear(CSR_MSTATEEN0, bit);
+            uintptr_t ms_rb = tsbi_csr_read(CSR_MSTATEEN0);
+            tsbi_csr_write(CSR_MSTATEEN0, ms);
 
             if (!(ms_rb & bit)) {
                 LOG_E("mstateen0 same bit not RO1\n");
@@ -136,7 +136,7 @@ bool test_ss_alloc_ro1_with_h(void) {
 
     sstateen_write(0, saved_sstateen0);
     hstateen_write(0, saved_hstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     HYP_TEST_END();
 }
 
@@ -146,8 +146,8 @@ TEST_REGISTER(test_ss_alloc_encroachment_roz);
 bool test_ss_alloc_encroachment_roz(void) {
     TEST_BEGIN("SS-ALLOC-04: sstateen0 encroachment bits are ROZ");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, ~0UL);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, ~0UL);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -166,7 +166,7 @@ bool test_ss_alloc_encroachment_roz(void) {
 #endif
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -176,11 +176,11 @@ TEST_REGISTER(test_ss_alloc_bit_correspondence);
 bool test_ss_alloc_bit_correspondence(void) {
     TEST_BEGIN("SS-ALLOC-05: sstateen0 defined bits in mstateen0");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
 
     /* Write all-1s to mstateen0, read back to find defined bits */
-    mstateen_write(0, ~0UL);
-    uintptr_t msta_mask = mstateen_read(0);
+    tsbi_csr_write(CSR_MSTATEEN0, ~0UL);
+    uintptr_t msta_mask = tsbi_csr_read(CSR_MSTATEEN0);
 
     /* Write all-1s to sstateen0, read back */
     uintptr_t saved_sstateen0 = sstateen_read(0);
@@ -201,7 +201,7 @@ bool test_ss_alloc_bit_correspondence(void) {
     LOG_D("sstateen0 writable mask: 0x%lx\n", (unsigned long)ssta_mask);
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -211,13 +211,13 @@ TEST_REGISTER(test_ss_alloc_mstateen_zero_propagates);
 bool test_ss_alloc_mstateen_zero_propagates(void) {
     TEST_BEGIN("SS-ALLOC-06: mstateen0=0 => sstateen0 bit is ROZ");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
 
     /* Ensure SE0=1 so S-mode can access sstateen0 */
-    mstateen_set_bits(0, STATEEN0_SE0);
+    tsbi_csr_set(CSR_MSTATEEN0, STATEEN0_SE0);
 
     /* Clear C bit in mstateen0 */
-    mstateen_clear_bits(0, STATEEN0_C);
+    tsbi_csr_clear(CSR_MSTATEEN0, STATEEN0_C);
 
     /* Now try to set C bit in sstateen0 */
     uintptr_t saved_sstateen0 = sstateen_read(0);
@@ -228,7 +228,7 @@ bool test_ss_alloc_mstateen_zero_propagates(void) {
                 (rb & STATEEN0_C) == 0);
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -238,14 +238,14 @@ TEST_REGISTER(test_ss_alloc_mstateen_one_releases);
 bool test_ss_alloc_mstateen_one_releases(void) {
     TEST_BEGIN("SS-ALLOC-07: mstateen0=1 => sstateen0 bit writable");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
 
     /* Set both SE0 and C in mstateen0 */
-    mstateen_set_bits(0, STATEEN0_SE0 | STATEEN0_C);
+    tsbi_csr_set(CSR_MSTATEEN0, STATEEN0_SE0 | STATEEN0_C);
 
     /* Check if mstateen0.C took effect */
-    if (!(mstateen_read(0) & STATEEN0_C)) {
-        mstateen_write(0, saved_mstateen0);
+    if (!(tsbi_csr_read(CSR_MSTATEEN0) & STATEEN0_C)) {
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("mstateen0.C not writable (no custom state)");
     }
 
@@ -258,7 +258,7 @@ bool test_ss_alloc_mstateen_one_releases(void) {
                 (rb & STATEEN0_C) != 0);
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -268,8 +268,8 @@ TEST_REGISTER(test_ss_alloc_unimplemented_roz);
 bool test_ss_alloc_unimplemented_roz(void) {
     TEST_BEGIN("SS-ALLOC-08: unimplemented extension bits are ROZ");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, ~0UL);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, ~0UL);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -285,6 +285,6 @@ bool test_ss_alloc_unimplemented_roz(void) {
     LOG_D("sstateen0 all-1 readback: 0x%lx\n", (unsigned long)rb);
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }

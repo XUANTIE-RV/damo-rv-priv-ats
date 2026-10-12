@@ -25,12 +25,16 @@ bool test_hcross_sssta_46(void)
     TEST_BEGIN("HCROSS-SSSTA-46: hstateen0 bit fields match mstateen0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    /* hstateen0 is accessible from HS-mode only when mstateen0.SE0 (bit 63) is
+     * set. Open it before touching hstateen0, matching tests 48-50 which set
+     * the corresponding mstateen bit63 first; saved_m restores it below. */
+    mstateen_set_bit63(0, true);
     uintptr_t saved_h = hstateen_read(0);
 
     /* Get mstateen0 writable mask */
-    mstateen_write(0, ~0UL);
-    uintptr_t msta_mask = mstateen_read(0);
+    tsbi_csr_write(CSR_MSTATEEN0, ~0UL);
+    uintptr_t msta_mask = tsbi_csr_read(CSR_MSTATEEN0);
 
     /* Get hstateen0 writable mask (with mstateen0 fully open) */
     hstateen_write(0, ~0UL);
@@ -58,7 +62,7 @@ bool test_hcross_sssta_46(void)
     LOG_D("hstateen0 known bits:     0x%lx\n", (unsigned long)hsta_known);
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -70,11 +74,15 @@ bool test_hcross_sssta_47(void)
     TEST_BEGIN("HCROSS-SSSTA-47: hstateen0 functional bits symmetric with mstateen0");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    /* hstateen0 is accessible from HS-mode only when mstateen0.SE0 (bit 63) is
+     * set. Open it before touching hstateen0, matching tests 48-50 which set
+     * the corresponding mstateen bit63 first; saved_m restores it below. */
+    mstateen_set_bit63(0, true);
     uintptr_t saved_h = hstateen_read(0);
 
-    mstateen_write(0, ~0UL);
-    uintptr_t msta_mask = mstateen_read(0);
+    tsbi_csr_write(CSR_MSTATEEN0, ~0UL);
+    uintptr_t msta_mask = tsbi_csr_read(CSR_MSTATEEN0);
 
     hstateen_write(0, ~0UL);
     uintptr_t hsta_mask = hstateen_read(0);
@@ -96,7 +104,7 @@ bool test_hcross_sssta_47(void)
           (unsigned long)msta_extra);
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -108,19 +116,19 @@ bool test_hcross_sssta_48(void)
     TEST_BEGIN("HCROSS-SSSTA-48: hstateen1 encoding matches mstateen1");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(1);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN1);
     mstateen_set_bit63(1, true);
 
-    if (!(mstateen_read(1) & STATEEN_BIT63))
+    if (!(tsbi_csr_read(CSR_MSTATEEN1) & STATEEN_BIT63))
     {
-        mstateen_write(1, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN1, saved_m);
         TEST_SKIP("mstateen1 bit 63 not writable (hstateen1 not accessible)");
     }
 
     uintptr_t saved_h = hstateen_read(1);
 
-    mstateen_write(1, ~0UL);
-    uintptr_t msta_mask = mstateen_read(1);
+    tsbi_csr_write(CSR_MSTATEEN1, ~0UL);
+    uintptr_t msta_mask = tsbi_csr_read(CSR_MSTATEEN1);
 
     hstateen_write(1, ~0UL);
     uintptr_t hsta_mask = hstateen_read(1);
@@ -132,7 +140,7 @@ bool test_hcross_sssta_48(void)
     LOG_D("hstateen1 mask: 0x%lx\n", (unsigned long)hsta_mask);
 
     hstateen_write(1, saved_h);
-    mstateen_write(1, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN1, saved_m);
     HYP_TEST_END();
 }
 
@@ -144,19 +152,19 @@ bool test_hcross_sssta_49(void)
     TEST_BEGIN("HCROSS-SSSTA-49: hstateen2 encoding matches mstateen2");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(2);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN2);
     mstateen_set_bit63(2, true);
 
-    if (!(mstateen_read(2) & STATEEN_BIT63))
+    if (!(tsbi_csr_read(CSR_MSTATEEN2) & STATEEN_BIT63))
     {
-        mstateen_write(2, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN2, saved_m);
         TEST_SKIP("mstateen2 bit 63 not writable (hstateen2 not accessible)");
     }
 
     uintptr_t saved_h = hstateen_read(2);
 
-    mstateen_write(2, ~0UL);
-    uintptr_t msta_mask = mstateen_read(2);
+    tsbi_csr_write(CSR_MSTATEEN2, ~0UL);
+    uintptr_t msta_mask = tsbi_csr_read(CSR_MSTATEEN2);
 
     hstateen_write(2, ~0UL);
     uintptr_t hsta_mask = hstateen_read(2);
@@ -168,7 +176,7 @@ bool test_hcross_sssta_49(void)
     LOG_D("hstateen2 mask: 0x%lx\n", (unsigned long)hsta_mask);
 
     hstateen_write(2, saved_h);
-    mstateen_write(2, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN2, saved_m);
     HYP_TEST_END();
 }
 
@@ -180,19 +188,19 @@ bool test_hcross_sssta_50(void)
     TEST_BEGIN("HCROSS-SSSTA-50: hstateen3 encoding matches mstateen3");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(3);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN3);
     mstateen_set_bit63(3, true);
 
-    if (!(mstateen_read(3) & STATEEN_BIT63))
+    if (!(tsbi_csr_read(CSR_MSTATEEN3) & STATEEN_BIT63))
     {
-        mstateen_write(3, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN3, saved_m);
         TEST_SKIP("mstateen3 bit 63 not writable (hstateen3 not accessible)");
     }
 
     uintptr_t saved_h = hstateen_read(3);
 
-    mstateen_write(3, ~0UL);
-    uintptr_t msta_mask = mstateen_read(3);
+    tsbi_csr_write(CSR_MSTATEEN3, ~0UL);
+    uintptr_t msta_mask = tsbi_csr_read(CSR_MSTATEEN3);
 
     hstateen_write(3, ~0UL);
     uintptr_t hsta_mask = hstateen_read(3);
@@ -204,6 +212,6 @@ bool test_hcross_sssta_50(void)
     LOG_D("hstateen3 mask: 0x%lx\n", (unsigned long)hsta_mask);
 
     hstateen_write(3, saved_h);
-    mstateen_write(3, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN3, saved_m);
     HYP_TEST_END();
 }

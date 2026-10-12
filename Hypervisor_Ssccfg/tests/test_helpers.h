@@ -100,13 +100,13 @@ static inline void hvien_write(uintptr_t v)
  */
 static inline bool cde_settable(void)
 {
-    uintptr_t orig = menvcfg_read();
+    uintptr_t orig = tsbi_csr_read(CSR_MENVCFG);
     trap_expect_begin();
-    menvcfg_write(orig | MENVCFG_CDE);
+    tsbi_csr_write(CSR_MENVCFG, orig | MENVCFG_CDE);
     bool trapped = trap_was_triggered();
-    uintptr_t rb = trapped ? 0 : menvcfg_read();
+    uintptr_t rb = trapped ? 0 : tsbi_csr_read(CSR_MENVCFG);
     trap_expect_end();
-    menvcfg_write(orig);
+    tsbi_csr_write(CSR_MENVCFG, orig);
     return !trapped && ((rb & MENVCFG_CDE) != 0);
 }
 
@@ -122,7 +122,7 @@ static inline bool cde_settable(void)
 static inline void stateen_allow_csrind(void)
 {
     if (SMSTATEEN_AVAILABLE) {
-        mstateen_set_bits(0, STATEEN0_CSRIND);
+        tsbi_csr_set(CSR_MSTATEEN0, STATEEN0_CSRIND);
         hstateen_set_bits(0, STATEEN0_CSRIND);
     }
 }

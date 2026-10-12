@@ -150,8 +150,8 @@ bool test_sha_hctl_csrind_gate(void) {
     mstateen_set_bit63(0, true);
 
     /* Also ensure mstateen0 CSRIND bit = 1 to allow HS-level access */
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_set_bits(0, STATEEN0_CSRIND);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_set(CSR_MSTATEEN0, STATEEN0_CSRIND);
 
     uintptr_t saved_hstateen0 = hstateen_read(0);
 
@@ -161,7 +161,7 @@ bool test_sha_hctl_csrind_gate(void) {
     uintptr_t rb = hstateen_read(0);
     if ((rb & STATEEN0_CSRIND) == 0) {
         hstateen_write(0, saved_hstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("hstateen0 CSRIND bit not writable (no Sscsrind)");
     }
 
@@ -183,7 +183,7 @@ bool test_sha_hctl_csrind_gate(void) {
     trap_expect_end();
     if (!siselect_valid) {
         hstateen_write(0, saved_hstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("siselect not accessible (no Sscsrind implemented)");
     }
 
@@ -204,6 +204,6 @@ bool test_sha_hctl_csrind_gate(void) {
     );
 
     hstateen_write(0, saved_hstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     HYP_TEST_END();
 }

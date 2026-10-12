@@ -166,21 +166,21 @@ bool test_ts_hg_04_mode_switch(void) {
     (void)ts2_run_check_no_fault(&ctx, test_vs_read_write, va);
 
     /* Switch hgatp.MODE: temporarily go to Bare, fence, then restore. */
-    asm volatile ("csrw " CSR_STR(CSR_HGATP) ", zero" ::: "memory");  /* hgatp = 0 (Bare) */
+    CSRW(CSR_HGATP, 0);  /* hgatp = 0 (Bare) */
     hfence_gvma_all();
     /* Restore by re-enabling the same context. */
     {
         uintptr_t root_ppn = ((uintptr_t)ctx.g_ctx.root_pt) >> PAGE_SHIFT;
         uintptr_t new_hgatp = ((uintptr_t)SUITE_HGATP_MODE << 60) | root_ppn;
-        asm volatile ("csrw " CSR_STR(CSR_HGATP) ", %0" :: "r"(new_hgatp) : "memory");
+        CSRW(CSR_HGATP, new_hgatp);
         hfence_gvma_all();
     }
     /* Re-enable VS state and verify access still works. */
-    asm volatile ("csrw " CSR_STR(CSR_VSATP) ", zero" ::: "memory");  /* vsatp=0 */
+    CSRW(CSR_VSATP, 0);  /* vsatp=0 */
     {
         uintptr_t root_ppn = ((uintptr_t)ctx.vs_ctx.root_pt) >> PAGE_SHIFT;
         uintptr_t vsatp = MAKE_SATP(ctx.vs_ctx.mode, 0, root_ppn);
-        asm volatile ("csrw " CSR_STR(CSR_VSATP) ", %0" :: "r"(vsatp) : "memory");
+        CSRW(CSR_VSATP, vsatp);
         hfence_vvma_all();
     }
     uintptr_t r = ts2_run_check_no_fault(&ctx, test_vs_read_write, va);
@@ -198,7 +198,9 @@ bool test_ts_hg_05_tvm_illegal(void) {
     REQUIRE_VSATP_MODE(SUITE_VSATP_MODE);
     REQUIRE_HGATP_MODE(SUITE_HGATP_MODE);
 
-    asm volatile ("csrs mstatus, %0" :: "r"((uintptr_t)MSTATUS_TVM));
+    /* TVM is a configuration bit (not an xret return-path bit), so
+     * the adaptive accessor proxies it safely from HS-mode via T-SBI. */
+    tsbi_csr_set(CSR_MSTATUS, MSTATUS_TVM);
 
     trap_expect_begin();
     (void)run_in_priv(PRIV_S, g11_hs_hfence_gvma_all, 0);
@@ -206,7 +208,7 @@ bool test_ts_hg_05_tvm_illegal(void) {
     uintptr_t cause = fired ? trap_get_cause() : 0;
     trap_expect_end();
 
-    asm volatile ("csrc mstatus, %0" :: "r"((uintptr_t)MSTATUS_TVM));
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TVM);
 
     TEST_ASSERT("trap fired", fired);
     TEST_ASSERT_EQ("cause = illegal-instruction (2)",

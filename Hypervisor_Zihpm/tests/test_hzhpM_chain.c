@@ -36,23 +36,23 @@ bool test_hzhpM_05(void)
     uintptr_t bit = 1UL << n;
     uint16_t addr = CSR_HPMCOUNTER(n);
 
-    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t saved_hcen = hcounteren_read();
     uintptr_t saved_scen = scounteren_read();
 
     if (!MCNT_SET_STICK(bit)) {
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("mcounteren[N] is read-only zero");
     }
     if (!HCNT_SET_STICK(bit)) {
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("hcounteren[N] is read-only zero");
     }
     if (!SCNT_SET_STICK(bit)) {
         scounteren_write(saved_scen);
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("scounteren[N] is read-only zero");
     }
 
@@ -67,7 +67,7 @@ bool test_hzhpM_05(void)
     if (!SCNT_CLR_STICK(bit)) {
         scounteren_write(saved_scen);
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("scounteren[N] is not clearable");
     }
     trap_expect_begin();
@@ -83,6 +83,6 @@ bool test_hzhpM_05(void)
 
     scounteren_write(saved_scen);
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }

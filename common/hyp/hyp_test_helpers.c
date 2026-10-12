@@ -156,8 +156,6 @@ uintptr_t vs_write_scounteren(uintptr_t val) {
  * VS/VU-mode instruction execution trampolines.
  * =================================================================== */
 
-extern uintptr_t ecall_args[2];
-
 uintptr_t vs_exec_sret(uintptr_t arg) {
     (void)arg;
     /* Set sepc (= vsepc when V=1) to the instruction after sret,
@@ -208,7 +206,11 @@ uintptr_t vs_exec_sinval_vma(uintptr_t arg) {
 
 uintptr_t vs_exec_ecall(uintptr_t arg) {
     (void)arg;
-    ecall_args[0] = 0;  /* NOT ECALL_GOTO_PRIV */
+    /* We want a RAW ecall stimulus, i.e. one the handler records instead of
+     * interpreting.  Zeroing the legacy ecall_args[] tag used to achieve that;
+     * under T-SBI the opcode travels in a0, which we do not control here, so
+     * the escape hatch has to be armed explicitly (consume-once). */
+    tsbi_arm_raw_ecall(true);
     asm volatile ("ecall" ::: "memory");
     return 0;
 }
@@ -519,18 +521,11 @@ uintptr_t u_exec_hlv_w(uintptr_t addr) {
  * =================================================================== */
 
 void setup_deleg_to_vs(uintptr_t exc_mask, uintptr_t int_mask) {
-    /* First delegate from M to HS via medeleg/mideleg. */
-    uintptr_t medeleg;
-    asm volatile ("csrr %0, medeleg" : "=r"(medeleg));
-    medeleg |= exc_mask;
-    asm volatile ("csrw medeleg, %0" :: "r"(medeleg));
+    /* First-level (M->HS) delegation via the M-safe primitive: medeleg/mideleg
+     * are M-level and this helper is called from S(HS)-mode test context. */
+    tsbi_deleg_or(exc_mask, int_mask);
 
-    uintptr_t mideleg;
-    asm volatile ("csrr %0, mideleg" : "=r"(mideleg));
-    mideleg |= int_mask;
-    asm volatile ("csrw mideleg, %0" :: "r"(mideleg));
-
-    /* Then delegate from HS to VS via hedeleg/hideleg. */
+    /* Second-level (HS->VS) via hedeleg/hideleg - HS-level, direct. */
     uintptr_t hedeleg = hedeleg_read();
     hedeleg |= exc_mask;
     hedeleg_write(hedeleg);
@@ -541,11 +536,8 @@ void setup_deleg_to_vs(uintptr_t exc_mask, uintptr_t int_mask) {
 }
 
 void setup_deleg_to_hs(uintptr_t exc_mask) {
-    /* Delegate from M to HS via medeleg only. */
-    uintptr_t medeleg;
-    asm volatile ("csrr %0, medeleg" : "=r"(medeleg));
-    medeleg |= exc_mask;
-    asm volatile ("csrw medeleg, %0" :: "r"(medeleg));
+    /* Delegate from M to HS via medeleg only (M-safe primitive). */
+    tsbi_deleg_or(exc_mask, 0);
 
     /* Clear hedeleg so trap stays at HS-mode. */
     uintptr_t hedeleg = hedeleg_read();
@@ -554,8 +546,9 @@ void setup_deleg_to_hs(uintptr_t exc_mask) {
 }
 
 void clear_all_deleg(void) {
-    asm volatile ("csrw medeleg, zero");
-    asm volatile ("csrw mideleg, zero");
+    /* medeleg/mideleg are M-level; clear every delegatable bit via the M-safe
+     * primitive (raises to M under S-mode-normal). */
+    tsbi_deleg_clear((uintptr_t)-1, (uintptr_t)-1);
     hedeleg_write(0);
     hideleg_write(0);
 }

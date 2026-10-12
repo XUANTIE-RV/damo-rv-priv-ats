@@ -260,7 +260,7 @@ bool test_hzpm_cap_10(void) {
      * + norm:stateen_illegal_state_access), which is a different
      * (also spec-compliant) interception path not under test here. */
     if (SMSTATEEN_AVAILABLE)
-        mstateen_set_bits(0, STATEEN0_ENVCFG);
+        tsbi_csr_set(CSR_MSTATEEN0, STATEEN0_ENVCFG);
 
     trap_expect_begin();
     run_in_vs_mode(hzpm_write_henvcfg, 0);

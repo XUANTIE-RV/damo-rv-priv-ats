@@ -33,7 +33,7 @@
  * State-enable CSR helpers
  *
  * mstateen0 / hstateen0 read/write/set/clear accessors come from
- * common/hyp/hyp_csr.h (mstateen_read(0) / hstateen_set_bits(0, ...) etc.).
+ * common/hyp/hyp_csr.h (tsbi_csr_read(CSR_MSTATEEN0) / hstateen_set_bits(0, ...) etc.).
  * Only the writable-probe helper below is suite-specific.
  * =================================================================== */
 

@@ -87,10 +87,10 @@ static inline void sstateen3_write(uintptr_t v) {
  * Returns true if the bit is writable.
  * =================================================================== */
 static inline bool mstateen0_bit_writable(uintptr_t bit) {
-    uintptr_t orig = mstateen_read(0);
-    mstateen_write(0, orig | bit);
-    uintptr_t val = mstateen_read(0);
-    mstateen_write(0, orig);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, orig | bit);
+    uintptr_t val = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     return (val & bit) != 0;
 }
 

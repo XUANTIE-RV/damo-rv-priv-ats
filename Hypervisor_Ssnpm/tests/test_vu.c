@@ -102,6 +102,13 @@ bool test_hzpm_vu_04(void) {
 
     uintptr_t tagged = pm_tag_address(HZPM_DATA1, pm_max_tag(7), 7);
 
+    /* Route the expected VU load page-fault (cause 13) to the HS handler so the
+     * framework trap_record can observe it. ts2_setup_full_u maps kernel text
+     * U=1 and the resident VS handler cannot fetch U=1 pages at S-level, so if
+     * cause 13 stayed delegated to VS the fault would loop as an exec-fault
+     * storm. setup_deleg_to_hs keeps medeleg[13]=1 and clears hedeleg[13]. */
+    setup_deleg_to_hs(1UL << CAUSE_LOAD_PAGE_FAULT);
+
     trap_expect_begin();
     two_stage_run_in_vu(&ctx, hzpm_load64, tagged);
     TEST_ASSERT("trap triggered", trap_was_triggered());
@@ -130,7 +137,7 @@ bool test_hzpm_vu_05(void) {
      * its usual accessibility when V=1. If Smstateen is implemented,
      * open the ENVCFG gates so VS-mode may access senvcfg. */
     if (SMSTATEEN_AVAILABLE) {
-        mstateen_set_bits(0, STATEEN0_ENVCFG);
+        tsbi_csr_set(CSR_MSTATEEN0, STATEEN0_ENVCFG);
         hstateen_set_bits(0, STATEEN0_ENVCFG);
     }
 

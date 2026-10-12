@@ -68,16 +68,16 @@ static inline int henvcfg_adue_read(void) {
  * menvcfg.ADUE access helpers
  * =================================================================== */
 static inline void menvcfg_adue_set(int enable) {
-    uintptr_t val = menvcfg_read();
+    uintptr_t val = tsbi_csr_read(CSR_MENVCFG);
     if (enable)
         val |= MENVCFG_ADUE;
     else
         val &= ~MENVCFG_ADUE;
-    menvcfg_write(val);
+    tsbi_csr_write(CSR_MENVCFG, val);
 }
 
 static inline int menvcfg_adue_read(void) {
-    return (menvcfg_read() & MENVCFG_ADUE) ? 1 : 0;
+    return (tsbi_csr_read(CSR_MENVCFG) & MENVCFG_ADUE) ? 1 : 0;
 }
 
 /* ===================================================================

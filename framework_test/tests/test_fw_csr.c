@@ -14,6 +14,12 @@ bool test_fw_csr_01(void)
 {
     TEST_BEGIN("FW-CSR-01: MIE preserved across M->S->M");
 
+    /* The round-trip under test starts in M, so the body raises for real
+     * rather than reaching mstatus through the T-SBI CSR proxy - mret
+     * restores MIE from MPIE, so the proxy's own return would undo the
+     * write this case depends on. */
+    goto_priv(PRIV_M);
+
     /* Set MIE=1 */
     uintptr_t mstatus = CSRR(mstatus);
     mstatus |= MSTATUS_MIE_BIT;
@@ -39,6 +45,9 @@ bool test_fw_csr_02(void)
 {
     TEST_BEGIN("FW-CSR-02: SIE preserved across M->S->M");
 
+    /* M->S->M means the body starts in M, as in FW-CSR-01. */
+    goto_priv(PRIV_M);
+
     /* Set SIE=1 */
     uintptr_t mstatus = CSRR(mstatus);
     mstatus |= MSTATUS_SIE_BIT;
@@ -61,6 +70,12 @@ bool test_fw_csr_02(void)
 bool test_fw_csr_03(void)
 {
     TEST_BEGIN("FW-CSR-03: ecall handler only modifies MPP/MPV/MPRV");
+
+    /* The subject here is what one ecall round-trip does to mstatus, so the
+     * body must own mstatus directly: a proxied write goes through an ecall
+     * of its own, and mret sets MPIE = 1 on the way back, which is one of
+     * the very bits being watched. */
+    goto_priv(PRIV_M);
 
     /*
      * Set some bits in mstatus that are NOT MPP/MPV/MPRV.
@@ -100,6 +115,8 @@ bool test_fw_csr_04(void)
      * After mret with MPP=S, hardware sets MPP to the lowest
      * implemented privilege (U=0).
      */
+    goto_priv(PRIV_M);
+
     goto_priv(PRIV_S);
     goto_priv(PRIV_M);
 
@@ -114,6 +131,8 @@ bool test_fw_csr_04(void)
 bool test_fw_csr_05(void)
 {
     TEST_BEGIN("FW-CSR-05: MPP cleared after M->U mret");
+
+    goto_priv(PRIV_M);
 
     goto_priv(PRIV_U);
     goto_priv(PRIV_M);
@@ -151,6 +170,11 @@ bool test_fw_csr_07(void)
 {
     TEST_BEGIN("FW-CSR-07: mtvec preserved across M->S->M");
 
+    /* Reading mtvec would survive the proxy, but the round-trip being
+     * measured is M->S->M - from an S-mode body it would degenerate into a
+     * no-op followed by a raise. */
+    goto_priv(PRIV_M);
+
     uintptr_t mtvec_before = CSRR(mtvec);
 
     goto_priv(PRIV_S);
@@ -166,6 +190,8 @@ bool test_fw_csr_07(void)
 bool test_fw_csr_08(void)
 {
     TEST_BEGIN("FW-CSR-08: stvec preserved across M->S->M");
+
+    goto_priv(PRIV_M);
 
     /* Write a test value to stvec (must be 4-byte aligned) */
     uintptr_t test_stvec = 0x80001000UL;  /* arbitrary aligned address */

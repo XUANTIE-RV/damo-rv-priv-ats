@@ -367,18 +367,21 @@ bool vinst_21_fs0_illegal(void)
     if (!F_AVAILABLE)
         TEST_SKIP("F extension not available");
 
-    uintptr_t saved_mstatus;
-    asm volatile ("csrr %0, mstatus" : "=r"(saved_mstatus));
+    /* mstatus is M-level and partially trap-state; this suite runs in
+     * S(HS)-mode. Read it via the tsbi_csr_read() proxy and write only the FS
+     * config field via tsbi_csr_clear()+tsbi_csr_set(): the guard allows a
+     * config-field write and it leaves the framework-managed MPP/return bits
+     * intact, unlike a full csrw mstatus through the proxy. */
+    uintptr_t saved_mstatus = tsbi_csr_read(CSR_MSTATUS);
 
     /* Set mstatus.FS = Initial (HS-level allows FP). */
-    uintptr_t ms = (saved_mstatus & ~SSTATUS_FS_MASK) | SSTATUS_FS_INITIAL;
-    asm volatile ("csrw mstatus, %0" :: "r"(ms));
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_FS_MASK); tsbi_csr_set(CSR_MSTATUS, (SSTATUS_FS_INITIAL) & (SSTATUS_FS_MASK));
 
     /* Set vsstatus.FS = Off (VS-level disables FP). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
+    vsstatus = CSRR(CSR_VSSTATUS);
     vsstatus = (vsstatus & ~SSTATUS_FS_MASK) | SSTATUS_FS_OFF;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
+    CSRW(CSR_VSSTATUS, vsstatus);
 
     /*
      * VS-mode FP with vsstatus.FS=0 must trigger illegal-instruction
@@ -387,8 +390,9 @@ bool vinst_21_fs0_illegal(void)
      */
     EXPECT_ILLEGAL_INST(run_in_vs_mode(vs_exec_fp_inst, 0));
 
-    /* Restore mstatus.FS. */
-    asm volatile ("csrw mstatus, %0" :: "r"(saved_mstatus));
+    /* Restore the mstatus.FS field this test touched (the rest of mstatus is
+     * framework-managed and must not be written wholesale through the proxy). */
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_FS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_FS_MASK) & (SSTATUS_FS_MASK));
 
     HYP_TEST_END();
 }
@@ -407,18 +411,18 @@ bool vinst_22_vs0_illegal(void)
     if (!V_AVAILABLE)
         TEST_SKIP("V extension not available");
 
-    uintptr_t saved_mstatus;
-    asm volatile ("csrr %0, mstatus" : "=r"(saved_mstatus));
+    /* See VINST-21: read whole mstatus via tsbi_csr_read(), write only the VS
+     * config field via tsbi_csr_clear()+set (mstatus is partially trap-state). */
+    uintptr_t saved_mstatus = tsbi_csr_read(CSR_MSTATUS);
 
     /* Set mstatus.VS = Initial (HS-level allows Vector). */
-    uintptr_t ms = (saved_mstatus & ~SSTATUS_VS_MASK) | SSTATUS_VS_INITIAL;
-    asm volatile ("csrw mstatus, %0" :: "r"(ms));
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_VS_MASK); tsbi_csr_set(CSR_MSTATUS, (SSTATUS_VS_INITIAL) & (SSTATUS_VS_MASK));
 
     /* Set vsstatus.VS = Off (VS-level disables Vector). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
+    vsstatus = CSRR(CSR_VSSTATUS);
     vsstatus = (vsstatus & ~SSTATUS_VS_MASK) | SSTATUS_VS_OFF;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
+    CSRW(CSR_VSSTATUS, vsstatus);
 
     /*
      * VS-mode Vector with vsstatus.VS=0 must trigger illegal-instruction
@@ -427,8 +431,8 @@ bool vinst_22_vs0_illegal(void)
      */
     EXPECT_ILLEGAL_INST(run_in_vs_mode(vs_exec_vector_inst, 0));
 
-    /* Restore mstatus. */
-    asm volatile ("csrw mstatus, %0" :: "r"(saved_mstatus));
+    /* Restore the mstatus.VS field this test touched. */
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_VS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_VS_MASK) & (SSTATUS_VS_MASK));
 
     HYP_TEST_END();
 }
@@ -488,19 +492,15 @@ bool vinst_24_tw_overrides_vtw(void)
 {
     TEST_BEGIN("VINST-24: mstatus.TW=1 overrides VTW");
 
-    /* Set mstatus.TW=1 (bit 21) */
-    uintptr_t ms;
-    asm volatile ("csrr %0, mstatus" : "=r"(ms));
-    ms |= (1UL << 21);
-    asm volatile ("csrw mstatus, %0" :: "r"(ms));
+    /* Set mstatus.TW=1 (bit 21). TW is a config bit: tsbi_csr_set proxies a csrs
+     * that leaves MPP intact (a full csrw mstatus is guard-refused). */
+    tsbi_csr_set(CSR_MSTATUS, 1UL << 21);
 
     /* Execute WFI from VS-mode - should get illegal instruction (cause=2) */
     EXPECT_ILLEGAL_INST(run_in_vs_mode(vs_exec_wfi, 0));
 
     /* Clear mstatus.TW */
-    asm volatile ("csrr %0, mstatus" : "=r"(ms));
-    ms &= ~(1UL << 21);
-    asm volatile ("csrw mstatus, %0" :: "r"(ms));
+    tsbi_csr_clear(CSR_MSTATUS, 1UL << 21);
 
     HYP_TEST_END();
 }
@@ -612,28 +612,13 @@ bool vinst_31_vs_henvcfg(void)
 {
     TEST_BEGIN("VINST-31: VS accesses henvcfg");
 
-    /* Detect Smstateen and enable ENVCFG if present. */
-    uintptr_t orig_mstateen0 = 0;
-    bool smstateen_present = false;
-
-    trap_expect_begin();
-    asm volatile ("csrr %0, " CSR_STR(CSR_MSTATEEN0) : "=r"(orig_mstateen0) :: "memory");
-    bool mstateen_trapped = trap_was_triggered();
-    trap_expect_end();
-
-    if (!mstateen_trapped) {
-        smstateen_present = true;
-        /* Set ENVCFG (bit 62) so henvcfg is accessible in HS-mode,
-         * making it HS-qualified for VS-mode virtual-inst testing. */
-        asm volatile ("csrs " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(1ULL << 62) : "memory");
-    }
-
+    /* henvcfg must be HS-qualified for a VS-mode access to raise a
+     * virtual-instruction (cause=22) rather than illegal-instruction (cause=2).
+     * Under Smstateen that qualification is gated by mstateen0.ENVCFG, which
+     * main.c opens once via hyp_enable_envcfg_access(). mstateen0 is M-level,
+     * so the old runtime trap-probe from HS-mode always trapped and wrongly
+     * concluded Smstateen was absent; capability is compile-time gated now. */
     EXPECT_VIRTUAL_INST(run_in_vs_mode(vs_read_henvcfg, 0));
-
-    /* Restore mstateen0 if modified. */
-    if (smstateen_present) {
-        asm volatile ("csrw " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(orig_mstateen0) : "memory");
-    }
 
     HYP_TEST_END();
 }
@@ -835,13 +820,23 @@ bool vinst_44_tsr_no_effect_vs_mode(void)
 {
     TEST_BEGIN("VINST-44: mstatus.TSR=1 does not affect VS-mode SRET");
 
-    /* Set hstatus.VTSR=1 and mstatus.TSR=1 (bit 22). */
+    /* Set hstatus.VTSR=1 and mstatus.TSR=1 (bit 22). TSR is a config bit:
+     * tsbi_csr_set proxies a csrs that leaves MPP intact (this suite runs in
+     * S(HS)-mode; a raw csrr/csrw mstatus would trap illegal). */
     hstatus_set_vtsr(true);
+    tsbi_csr_set(CSR_MSTATUS, 1UL << 22);   /* mstatus.TSR */
 
-    uintptr_t ms;
-    asm volatile ("csrr %0, mstatus" : "=r"(ms));
-    ms |= (1UL << 22);  /* mstatus.TSR */
-    asm volatile ("csrw mstatus, %0" :: "r"(ms));
+    /* With TSR=1, ANY SRET executed in HS-mode traps illegal -- including the
+     * SRET the HS-level trap handler uses to return to an interrupted guest.
+     * So route every exception to M-mode for this stimulus: the VS-mode SRET's
+     * trap (cause 22 per norm:H_virtinst_vs_sret_vtsr1) is then taken in
+     * M-mode, whose handler returns with mret (TSR gates SRET only), avoiding
+     * an infinite HS trap loop. The trap is still observed through the generic
+     * record. This does not weaken the check: norm:H_cause_virtual_instruction
+     * defines HS-qualification "assuming TSR and TVM are both zero", so the VS
+     * SRET must still report cause 22 (not cause 2) even with TSR=1.
+     * hyp_reset_state at HYP_TEST_END restores the delegation baseline. */
+    clear_all_deleg();
 
     /*
      * mstatus.TSR affects only HS-mode, not VS-mode (norm:mstatus_modes).
@@ -850,10 +845,8 @@ bool vinst_44_tsr_no_effect_vs_mode(void)
      */
     EXPECT_VIRTUAL_INST(run_in_vs_mode(vs_exec_sret, 0));
 
-    /* Clean up. */
-    asm volatile ("csrr %0, mstatus" : "=r"(ms));
-    ms &= ~(1UL << 22);
-    asm volatile ("csrw mstatus, %0" :: "r"(ms));
+    /* Clear mstatus.TSR. */
+    tsbi_csr_clear(CSR_MSTATUS, 1UL << 22);
     hstatus_set_vtsr(false);
 
     HYP_TEST_END();
@@ -918,18 +911,18 @@ bool vinst_46_vs_cycleh_illegal(void)
 {
     TEST_BEGIN("VINST-46: RV64 VS-mode high-half CSR access is always illegal");
 
-    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t saved_hcen = hcounteren_read();
 
     /* Gating condition prone to a false cause=22 report. */
-    mcounteren_set(1UL << 0);
+    tsbi_csr_set(CSR_MCOUNTEREN, 1UL << 0);
     hcounteren_clear(1UL << 0);
 
     EXPECT_ILLEGAL_INST(run_in_vs_mode(vinst_read_cycleh, 0));
 
     /* Restore. */
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
 
     HYP_TEST_END();
 }
@@ -947,12 +940,12 @@ bool vinst_47_vu_instreth_illegal(void)
 {
     TEST_BEGIN("VINST-47: RV64 VU-mode high-half CSR access is always illegal");
 
-    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t saved_hcen = hcounteren_read();
     uintptr_t saved_scen = scounteren_read();
 
     /* Fully enable the low-half counter for VU-mode. */
-    mcounteren_set(1UL << 2);
+    tsbi_csr_set(CSR_MCOUNTEREN, 1UL << 2);
     hcounteren_set(1UL << 2);
     scounteren_set(1UL << 2);
 
@@ -961,7 +954,7 @@ bool vinst_47_vu_instreth_illegal(void)
     /* Restore. */
     scounteren_write(saved_scen);
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
 
     HYP_TEST_END();
 }

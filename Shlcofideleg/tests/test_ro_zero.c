@@ -38,7 +38,7 @@ bool test_shlcofideleg_ro_vsip_lcofip(void) {
                 (csr_read(CSR_VSIP) & LCOFI_BIT) == 0);
 
     /* RO-03: Write vsip bit 13 should have no effect. */
-    csr_write(CSR_VSIP, csr_read(CSR_VSIP) | LCOFI_BIT);
+    csr_set(CSR_VSIP, LCOFI_BIT);
     TEST_ASSERT("vsip.LCOFIP stays 0 after write",
                 (csr_read(CSR_VSIP) & LCOFI_BIT) == 0);
 
@@ -75,7 +75,7 @@ bool test_shlcofideleg_ro_vsie_lcofie(void) {
                 (csr_read(CSR_VSIE) & LCOFI_BIT) == 0);
 
     /* RO-04: Write vsie bit 13 should have no effect. */
-    csr_write(CSR_VSIE, csr_read(CSR_VSIE) | LCOFI_BIT);
+    csr_set(CSR_VSIE, LCOFI_BIT);
     TEST_ASSERT("vsie.LCOFIE stays 0 after write",
                 (csr_read(CSR_VSIE) & LCOFI_BIT) == 0);
 

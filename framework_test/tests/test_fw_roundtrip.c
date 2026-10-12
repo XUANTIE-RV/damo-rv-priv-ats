@@ -14,6 +14,9 @@ bool test_fw_rt_01(void)
 {
     TEST_BEGIN("FW-RT-01: M->S->M round-trip");
 
+    /* main() runs in S-mode, so a case that documents an M start has to
+     * establish it - otherwise the descent below is a no-op. */
+    goto_priv(PRIV_M);
     TEST_ASSERT_EQ("start in M-mode", get_current_priv(), PRIV_M);
 
     goto_priv(PRIV_S);
@@ -30,6 +33,7 @@ bool test_fw_rt_02(void)
 {
     TEST_BEGIN("FW-RT-02: M->U->M round-trip");
 
+    goto_priv(PRIV_M);
     TEST_ASSERT_EQ("start in M-mode", get_current_priv(), PRIV_M);
 
     goto_priv(PRIV_U);
@@ -45,6 +49,8 @@ bool test_fw_rt_02(void)
 bool test_fw_rt_03(void)
 {
     TEST_BEGIN("FW-RT-03: M->S->U->M three-level round-trip");
+
+    goto_priv(PRIV_M);
 
     goto_priv(PRIV_S);
     TEST_ASSERT_EQ("in S-mode", get_current_priv(), PRIV_S);
@@ -68,6 +74,8 @@ bool test_fw_rt_04(void)
      * U->S: ecall to M-mode handler, which sets MPP=S and mrets to S
      * S->M: ecall to M-mode handler, which sets MPP=M and mrets to M
      */
+    goto_priv(PRIV_M);
+
     goto_priv(PRIV_U);
     TEST_ASSERT_EQ("in U-mode", get_current_priv(), PRIV_U);
 
@@ -84,6 +92,8 @@ bool test_fw_rt_04(void)
 bool test_fw_rt_05(void)
 {
     TEST_BEGIN("FW-RT-05: M->S->U->S->M multiple round-trip");
+
+    goto_priv(PRIV_M);
 
     goto_priv(PRIV_S);
     TEST_ASSERT_EQ("in S-mode", get_current_priv(), PRIV_S);
@@ -114,6 +124,10 @@ bool test_fw_rt_06(void)
      * the framework preserves explicitly-set interrupt enable bits,
      * we set MIE=1 before the round-trip (matching FW-CSR-01 approach).
      */
+
+    /* MIE and MPRV both get rewritten by the mret that ends a proxied CSR
+     * access, so the body raises to M and holds mstatus itself. */
+    goto_priv(PRIV_M);
 
     /* Set MIE=1 and SIE=1 explicitly */
     uintptr_t mstatus = CSRR(mstatus);

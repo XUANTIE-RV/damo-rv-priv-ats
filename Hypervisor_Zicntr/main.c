@@ -32,14 +32,10 @@ int main(void)
     uart_init();
     reset_state();
 
-    /* Configure PMP: allow S/U-mode full access to all memory. */
-    asm volatile(
-        "li t0, -1\n\t"
-        "csrw pmpaddr0, t0\n\t"
-        "li t0, 0x1F\n\t"    /* A=NAPOT | R | W | X */
-        "csrw pmpcfg0, t0\n\t"
-        ::: "t0"
-    );
+    /* PMP is opened for S/U by the boot path (common/entry.S) before it drops
+     * privilege, and again by hyp_reset_state(); pmpaddr0/pmpcfg0 are M-level,
+     * so writing them from here (S-mode under the T-SBI model) would raise an
+     * illegal-instruction. */
 
     test_print_banner("RISC-V Hypervisor x Zicntr Cross Test");
 

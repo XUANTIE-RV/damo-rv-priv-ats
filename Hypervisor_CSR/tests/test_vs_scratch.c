@@ -102,11 +102,14 @@ static void vscr_setup_vs_trap(uintptr_t exc_mask)
     setup_deleg_to_vs(exc_mask, 0);
     vs_trap_setup_direct((uintptr_t)vscr_vs_trap_handler);
 
-    /* Enable interrupts through mret into VS-mode */
-    uintptr_t mstatus_val;
-    asm volatile ("csrr %0, mstatus" : "=r"(mstatus_val));
-    mstatus_val |= (1UL << 7);  /* MPIE=1 -> MIE=1 after mret */
-    asm volatile ("csrw mstatus, %0" :: "r"(mstatus_val) : "memory");
+    /* (removed) The old "set mstatus.MPIE=1 so MIE=1 after mret into VS-mode"
+     * is obsolete under S-mode-normal: mstatus is M-level (the raw csrr traps
+     * from S), MPIE is a return-path bit the tsbi_csr_ guard refuses to proxy, and
+     * every framework excursion re-enters via mret (MPIE<-1). It is also not
+     * needed here -- VSCR-05 traps an EXCEPTION into VS via the hedeleg
+     * delegation set above plus this suite's own vstvec handler; exception
+     * delivery does not depend on mstatus.MIE (which only gates interrupts
+     * while executing in M-mode). */
 }
 
 /* ===================================================================
@@ -122,11 +125,11 @@ bool vscr_01_vsscratch_basic_rw(void)
     uintptr_t test_val = 0xABCD;
 
     /* Write vsscratch (CSR 0x240) */
-    asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0" :: "r"(test_val));
+    CSRW(CSR_VSSCRATCH, test_val);
 
     /* Read back and verify */
     uintptr_t val;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSCRATCH) : "=r"(val));
+    val = CSRR(CSR_VSSCRATCH);
 
     TEST_ASSERT_EQ("vsscratch readback matches written value", val, test_val);
 
@@ -147,20 +150,20 @@ bool vscr_02_vsepc_warl(void)
 
     /* Write vsepc with odd address (lower bit set) */
     uintptr_t odd_addr = 0x1001;
-    asm volatile ("csrw " CSR_STR(CSR_VSEPC) ", %0" :: "r"(odd_addr));
+    CSRW(CSR_VSEPC, odd_addr);
 
     /* Read back - should have lower bit cleared (alignment) */
     uintptr_t val;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSEPC) : "=r"(val));
+    val = CSRR(CSR_VSEPC);
 
     /* Verify lower bit is cleared (WARL behavior) */
     TEST_ASSERT_EQ("vsepc lower bit cleared", val & 0x1, 0);
 
     /* Write aligned address */
     uintptr_t aligned_addr = 0x1000;
-    asm volatile ("csrw " CSR_STR(CSR_VSEPC) ", %0" :: "r"(aligned_addr));
+    CSRW(CSR_VSEPC, aligned_addr);
 
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSEPC) : "=r"(val));
+    val = CSRR(CSR_VSEPC);
     TEST_ASSERT_EQ("vsepc aligned address preserved", val, aligned_addr);
 
     HYP_TEST_END();
@@ -183,52 +186,52 @@ bool vscr_03_vscause_wlrl(void)
     uintptr_t val;
 
     /* Instruction misaligned (cause=0) */
-    asm volatile ("csrw " CSR_STR(CSR_VSCAUSE) ", %0" :: "r"((uintptr_t)0));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSCAUSE) : "=r"(val));
+    CSRW(CSR_VSCAUSE, (uintptr_t)0);
+    val = CSRR(CSR_VSCAUSE);
     TEST_ASSERT_EQ("vscause=0 (instruction misaligned) preserved", val, 0);
 
     /* Illegal instruction (cause=2) */
-    asm volatile ("csrw " CSR_STR(CSR_VSCAUSE) ", %0" :: "r"((uintptr_t)2));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSCAUSE) : "=r"(val));
+    CSRW(CSR_VSCAUSE, (uintptr_t)2);
+    val = CSRR(CSR_VSCAUSE);
     TEST_ASSERT_EQ("vscause=2 (illegal instruction) preserved", val, 2);
 
     /* Instruction page fault (cause=12) */
-    asm volatile ("csrw " CSR_STR(CSR_VSCAUSE) ", %0" :: "r"((uintptr_t)12));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSCAUSE) : "=r"(val));
+    CSRW(CSR_VSCAUSE, (uintptr_t)12);
+    val = CSRR(CSR_VSCAUSE);
     TEST_ASSERT_EQ("vscause=12 (instruction page fault) preserved", val, 12);
 
     /* Load page fault (cause=13) */
-    asm volatile ("csrw " CSR_STR(CSR_VSCAUSE) ", %0" :: "r"((uintptr_t)13));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSCAUSE) : "=r"(val));
+    CSRW(CSR_VSCAUSE, (uintptr_t)13);
+    val = CSRR(CSR_VSCAUSE);
     TEST_ASSERT_EQ("vscause=13 (load page fault) preserved", val, 13);
 
     /* Test interrupt cause values (with interrupt bit set).
      * These verify vscause can hold the same interrupt values
      * that scause can hold (norm:vscause_wlrl). */
     uintptr_t int_ssi = CAUSE_INTERRUPT_BIT | 1;
-    asm volatile ("csrw " CSR_STR(CSR_VSCAUSE) ", %0" :: "r"(int_ssi));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSCAUSE) : "=r"(val));
+    CSRW(CSR_VSCAUSE, int_ssi);
+    val = CSRR(CSR_VSCAUSE);
     TEST_ASSERT_EQ("vscause=SSI interrupt preserved", val, int_ssi);
 
     uintptr_t int_sti = CAUSE_INTERRUPT_BIT | 5;
-    asm volatile ("csrw " CSR_STR(CSR_VSCAUSE) ", %0" :: "r"(int_sti));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSCAUSE) : "=r"(val));
+    CSRW(CSR_VSCAUSE, int_sti);
+    val = CSRR(CSR_VSCAUSE);
     TEST_ASSERT_EQ("vscause=STI interrupt preserved", val, int_sti);
 
     uintptr_t int_sei = CAUSE_INTERRUPT_BIT | 9;
-    asm volatile ("csrw " CSR_STR(CSR_VSCAUSE) ", %0" :: "r"(int_sei));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSCAUSE) : "=r"(val));
+    CSRW(CSR_VSCAUSE, int_sei);
+    val = CSRR(CSR_VSCAUSE);
     TEST_ASSERT_EQ("vscause=SEI interrupt preserved", val, int_sei);
 
     /* Verify vscause domain matches scause domain: write to scause
      * and vscause with the same value, both should hold it. */
     uintptr_t domain_test = CAUSE_INTERRUPT_BIT | 1;
-    asm volatile ("csrw scause, %0" :: "r"(domain_test));
+    CSRW(CSR_SCAUSE, domain_test);
     uintptr_t scause_val;
-    asm volatile ("csrr %0, scause" : "=r"(scause_val));
+    scause_val = CSRR(CSR_SCAUSE);
 
-    asm volatile ("csrw " CSR_STR(CSR_VSCAUSE) ", %0" :: "r"(domain_test));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSCAUSE) : "=r"(val));
+    CSRW(CSR_VSCAUSE, domain_test);
+    val = CSRR(CSR_VSCAUSE);
     TEST_ASSERT_EQ("vscause domain matches scause domain",
                    val, scause_val);
 
@@ -250,30 +253,30 @@ bool vscr_04_vstval_warl(void)
     uintptr_t val;
 
     /* Write vstval with all 1s */
-    asm volatile ("csrw " CSR_STR(CSR_VSTVAL) ", %0" :: "r"((uintptr_t)-1));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVAL) : "=r"(val));
+    CSRW(CSR_VSTVAL, (uintptr_t)-1);
+    val = CSRR(CSR_VSTVAL);
 
     /* Write a specific test value */
     uintptr_t test_val = 0xDEADBEEF;
-    asm volatile ("csrw " CSR_STR(CSR_VSTVAL) ", %0" :: "r"(test_val));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVAL) : "=r"(val));
+    CSRW(CSR_VSTVAL, test_val);
+    val = CSRR(CSR_VSTVAL);
     TEST_ASSERT_EQ("vstval test value preserved", val, test_val);
 
     /* Write zero */
-    asm volatile ("csrw " CSR_STR(CSR_VSTVAL) ", zero");
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVAL) : "=r"(val));
+    CSRW(CSR_VSTVAL, 0);
+    val = CSRR(CSR_VSTVAL);
     TEST_ASSERT_EQ("vstval zero preserved", val, 0);
 
     /* Verify vstval domain matches stval domain: write the same
      * value to both and compare readback. */
     uintptr_t domain_vals[] = { 0, 0xDEADBEEF, (uintptr_t)-1, 0x80000000UL };
     for (int i = 0; i < 4; i++) {
-        asm volatile ("csrw stval, %0" :: "r"(domain_vals[i]));
+        CSRW(CSR_STVAL, domain_vals[i]);
         uintptr_t stval_val;
-        asm volatile ("csrr %0, stval" : "=r"(stval_val));
+        stval_val = CSRR(CSR_STVAL);
 
-        asm volatile ("csrw " CSR_STR(CSR_VSTVAL) ", %0" :: "r"(domain_vals[i]));
-        asm volatile ("csrr %0, " CSR_STR(CSR_VSTVAL) : "=r"(val));
+        CSRW(CSR_VSTVAL, domain_vals[i]);
+        val = CSRR(CSR_VSTVAL);
 
         TEST_ASSERT_EQ("vstval domain matches stval domain",
                        val, stval_val);
@@ -352,18 +355,18 @@ bool vscr_06_v0_trap_uses_sepc(void)
     uintptr_t canary_cause = 12;            /* valid cause: instruction page fault */
     uintptr_t canary_tval  = 0xEEEE0000UL;
 
-    asm volatile ("csrw " CSR_STR(CSR_VSEPC) ", %0" :: "r"(canary_epc));    /* vsepc */
-    asm volatile ("csrw " CSR_STR(CSR_VSCAUSE) ", %0" :: "r"(canary_cause));   /* vscause */
-    asm volatile ("csrw " CSR_STR(CSR_VSTVAL) ", %0" :: "r"(canary_tval));    /* vstval */
+    CSRW(CSR_VSEPC, canary_epc);    /* vsepc */
+    CSRW(CSR_VSCAUSE, canary_cause);   /* vscause */
+    CSRW(CSR_VSTVAL, canary_tval);    /* vstval */
 
     /* Read back canary values to confirm they were actually stored.
      * WLRL/WARL fields may reject or mask illegal writes; comparing
      * against the confirmed stored value (not the written value) makes
      * the test robust across all SPEC-compliant implementations. */
     uintptr_t stored_epc, stored_cause, stored_tval;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSEPC) : "=r"(stored_epc));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSCAUSE) : "=r"(stored_cause));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVAL) : "=r"(stored_tval));
+    stored_epc = CSRR(CSR_VSEPC);
+    stored_cause = CSRR(CSR_VSCAUSE);
+    stored_tval = CSRR(CSR_VSTVAL);
     TEST_ASSERT_EQ("vsepc canary stored", stored_epc, canary_epc);
     TEST_ASSERT_EQ("vscause canary stored", stored_cause, canary_cause);
     TEST_ASSERT_EQ("vstval canary stored", stored_tval, canary_tval);
@@ -396,9 +399,9 @@ bool vscr_06_v0_trap_uses_sepc(void)
 
     /* Verify VS CSRs are unchanged (V=0 trap must not touch them) */
     uintptr_t vsepc_after, vscause_after, vstval_after;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSEPC) : "=r"(vsepc_after));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSCAUSE) : "=r"(vscause_after));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVAL) : "=r"(vstval_after));
+    vsepc_after = CSRR(CSR_VSEPC);
+    vscause_after = CSRR(CSR_VSCAUSE);
+    vstval_after = CSRR(CSR_VSTVAL);
 
     TEST_ASSERT_EQ("vsepc unchanged by V=0 trap",
                    vsepc_after, stored_epc);
@@ -430,10 +433,10 @@ bool vscr_07_v1_csr_substitution(void)
     uintptr_t cause_val   = 12;            /* instruction page fault */
     uintptr_t tval_val    = 0xCC770000UL;
 
-    asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0" :: "r"(scratch_val));  /* vsscratch */
-    asm volatile ("csrw " CSR_STR(CSR_VSEPC) ", %0" :: "r"(epc_val));      /* vsepc */
-    asm volatile ("csrw " CSR_STR(CSR_VSCAUSE) ", %0" :: "r"(cause_val));    /* vscause */
-    asm volatile ("csrw " CSR_STR(CSR_VSTVAL) ", %0" :: "r"(tval_val));     /* vstval */
+    CSRW(CSR_VSSCRATCH, scratch_val);  /* vsscratch */
+    CSRW(CSR_VSEPC, epc_val);      /* vsepc */
+    CSRW(CSR_VSCAUSE, cause_val);    /* vscause */
+    CSRW(CSR_VSTVAL, tval_val);     /* vstval */
 
     /* In VS-mode (V=1), S-level CSR names map to VS CSRs.
      * Reading sscratch should return vsscratch, etc. */
@@ -457,7 +460,7 @@ bool vscr_07_v1_csr_substitution(void)
     run_in_vs_mode(vs_write_sscratch, new_scratch);
 
     uintptr_t readback;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSCRATCH) : "=r"(readback));
+    readback = CSRR(CSR_VSSCRATCH);
     TEST_ASSERT_EQ("write sscratch in V=1 modifies vsscratch",
                    readback, new_scratch);
 

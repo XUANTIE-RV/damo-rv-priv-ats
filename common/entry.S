@@ -101,14 +101,19 @@ rvtest_entry_point:
     csrw    mstatus, t0
 #endif
 
-    /* ---- Set up early trap vector ----
+    /* ---- Set up early trap vectors ----
      *
-     * Use the common m_trap_entry handler at boot.
+     * Use the common m_trap_entry / s_trap_entry handlers at boot.
+     * stvec is installed here (not only in reset_state) because the
+     * delegation-first baseline below sends stimulus traps straight to the
+     * S handler, which must therefore be reachable before main() starts.
      * Projects that need Smdbltrp-specific trap handling (e.g., Smdbltrp,
      * Ssdbltrp) should install smdbltrp_m_trap_entry in their main.c.
      */
     la      t0, m_trap_entry
     csrw    mtvec, t0
+    la      t0, s_trap_entry
+    csrw    stvec, t0
 
     /* ---- Clear BSS ---- */
     la      a0, _bss_start
@@ -148,8 +153,67 @@ _bss_done:
      */
     CLEAR_GPRS
 
-    /* ---- Jump to C main ---- */
+    /* ================================================================
+     * S-mode-normal execution model (tsbi_design_brief.md section 1)
+     *
+     * Tests run in S-mode as their normal state; anything that touches
+     * M-mode goes through T-SBI.  Boot therefore finishes the M-mode-only
+     * setup here and then drops to S before entering main().
+     *
+     * Build with -DTSBI_BOOT_MODE_M to keep the historical M-mode entry
+     * (needed by suites that own the very early M environment or a custom
+     * trap entry: Smdbltrp / smrnmi / ntrace / iopmp / clic ...).
+     * ================================================================ */
+
+    /* ---- PMP: allow S/U full access to the whole address space ----
+     * Hoisted out of the individual main.c files so it is guaranteed to be
+     * in place before we drop privilege (otherwise S-mode cannot even
+     * fetch instructions).  NAPOT entry covering everything, R/W/X. */
+    li      t0, -1
+    csrw    pmpaddr0, t0
+    li      t0, 0x1F
+    csrw    pmpcfg0, t0
+
+    /* ---- Delegation-first baseline (medeleg / mideleg / hedeleg) ----
+     * Writes the baseline, then reads it back so the framework knows the
+     * effective value (WARL / read-only-zero bits).  Runs after BSS clear
+     * because it stores the snapshot in BSS. */
+    call    tsbi_deleg_apply_baseline
+
+#ifndef TSBI_BOOT_MODE_M
+    /* ---- Drop to S-mode and enter main() there ----
+     * Lowering privilege is a right, not a request: configure MPP=S and
+     * mret directly (no T-SBI involved).  current_priv must be updated by
+     * hand because we bypass the C helpers here.
+     * ra is pointed at _s_main_return so that main()'s `ret` lands there
+     * while still in S-mode. */
+    la      t0, current_priv
+    li      t1, 1                   /* PRIV_S */
+    sw      t1, 0(t0)
+
+    li      t0, (3 << 11)           /* MPP field mask */
+    csrc    mstatus, t0
+    li      t0, (1 << 11)           /* MPP = S */
+    csrs    mstatus, t0
+
+    la      ra, _s_main_return
+    la      t0, main
+    csrw    mepc, t0
+    mret
+
+_s_main_return:
+    /* main() returned, still in S-mode.  Raising privilege IS a request,
+     * so go back to M through T-SBI GOTO_MMODE before the halt sequence
+     * (RVMODEL_HALT_* needs M-mode). */
+    mv      s0, a0                  /* preserve main()'s exit status */
+    li      a0, 1                   /* TSBI_GOTO_MMODE */
+    ecall
+    mv      a0, s0
+    j       _halt
+#else
+    /* ---- Jump to C main (M-mode entry, legacy/exception suites) ---- */
     call    main
+#endif
 
     /* ---- Halt after main returns ---- */
 _halt:

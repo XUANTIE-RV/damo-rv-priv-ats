@@ -340,6 +340,9 @@
 #define CSR_MHPMEVENT30  0x33E
 #define CSR_MHPMEVENT31  0x33F
 
+/* Parametric M-mode HPM event CSR address by index n (3..31) */
+#define CSR_MHPMEVENT(n)    (CSR_MHPMEVENT3 + ((n) - 3))
+
 /* Machine Counter Inhibit */
 #define CSR_MCOUNTINHIBIT 0x320
 
@@ -458,6 +461,34 @@
  * =================================================================== */
 #if __riscv_xlen == 32
 #define CSR_MHPMEVENTH3   0x723
+#define CSR_MHPMEVENTH4   0x724
+#define CSR_MHPMEVENTH5   0x725
+#define CSR_MHPMEVENTH6   0x726
+#define CSR_MHPMEVENTH7   0x727
+#define CSR_MHPMEVENTH8   0x728
+#define CSR_MHPMEVENTH9   0x729
+#define CSR_MHPMEVENTH10  0x72A
+#define CSR_MHPMEVENTH11  0x72B
+#define CSR_MHPMEVENTH12  0x72C
+#define CSR_MHPMEVENTH13  0x72D
+#define CSR_MHPMEVENTH14  0x72E
+#define CSR_MHPMEVENTH15  0x72F
+#define CSR_MHPMEVENTH16  0x730
+#define CSR_MHPMEVENTH17  0x731
+#define CSR_MHPMEVENTH18  0x732
+#define CSR_MHPMEVENTH19  0x733
+#define CSR_MHPMEVENTH20  0x734
+#define CSR_MHPMEVENTH21  0x735
+#define CSR_MHPMEVENTH22  0x736
+#define CSR_MHPMEVENTH23  0x737
+#define CSR_MHPMEVENTH24  0x738
+#define CSR_MHPMEVENTH25  0x739
+#define CSR_MHPMEVENTH26  0x73A
+#define CSR_MHPMEVENTH27  0x73B
+#define CSR_MHPMEVENTH28  0x73C
+#define CSR_MHPMEVENTH29  0x73D
+#define CSR_MHPMEVENTH30  0x73E
+#define CSR_MHPMEVENTH31  0x73F
 
 #define CSR_MCYCLEH       0xB80
 #define CSR_MINSTRETH     0xB82
@@ -491,6 +522,12 @@
 #define CSR_MHPMCOUNTERH29 0xB9D
 #define CSR_MHPMCOUNTERH30 0xB9E
 #define CSR_MHPMCOUNTERH31 0xB9F
+
+/* Parametric RV32 high-half addresses by index n (3..31). Note the two
+ * families sit at different offsets from their low halves: mhpmevent is
+ * +0x400 (0x323 -> 0x723) while mhpmcounter is +0x80 (0xB03 -> 0xB83). */
+#define CSR_MHPMEVENTH(n)    (CSR_MHPMEVENTH3   + ((n) - 3))
+#define CSR_MHPMCOUNTERH(n)  (CSR_MHPMCOUNTERH3 + ((n) - 3))
 #endif
 
 #endif /* SM_DEFS_H */

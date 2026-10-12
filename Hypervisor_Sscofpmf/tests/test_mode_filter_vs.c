@@ -31,10 +31,9 @@ static uintptr_t _v_execute_nops(uintptr_t count)
 TEST_REGISTER(test_hcross_sscofpmf_04_vsinh_inhibit);
 bool test_hcross_sscofpmf_04_vsinh_inhibit(void) {
     TEST_BEGIN("HCROSS-SSCOFPMF-04: VSINH=1 inhibits VS-mode counting");
+    if (!SSCOFPMF_AVAILABLE) TEST_SKIP("Sscofpmf not supported");
     if (!H_AVAILABLE) TEST_SKIP("H extension not supported");
-    unsigned n = find_first_counter();
-    if (!n) TEST_SKIP("no hpmcounter implemented");
-    if (!is_counting_functional(n)) TEST_SKIP("counter not counting on this platform");
+    unsigned n = COFPMF_TEST_COUNTER;
 
     /* Phase 1: VSINH=1 (+MINH=1 to exclude M-mode transition overhead),
      * the counter must NOT increment while executing in VS-mode. */
@@ -74,10 +73,9 @@ bool test_hcross_sscofpmf_04_vsinh_inhibit(void) {
 TEST_REGISTER(test_hcross_sscofpmf_05_vuinh_inhibit);
 bool test_hcross_sscofpmf_05_vuinh_inhibit(void) {
     TEST_BEGIN("HCROSS-SSCOFPMF-05: VUINH=1 inhibits VU-mode counting");
+    if (!SSCOFPMF_AVAILABLE) TEST_SKIP("Sscofpmf not supported");
     if (!H_AVAILABLE) TEST_SKIP("H extension not supported");
-    unsigned n = find_first_counter();
-    if (!n) TEST_SKIP("no hpmcounter implemented");
-    if (!is_counting_functional(n)) TEST_SKIP("counter not counting on this platform");
+    unsigned n = COFPMF_TEST_COUNTER;
 
     /* Phase 1: VUINH=1 (+MINH=1), the counter must NOT increment
      * while executing in VU-mode. */
@@ -115,9 +113,9 @@ bool test_hcross_sscofpmf_05_vuinh_inhibit(void) {
 TEST_REGISTER(test_hcross_sscofpmf_06_no_h_roz);
 bool test_hcross_sscofpmf_06_no_h_roz(void) {
     TEST_BEGIN("HCROSS-SSCOFPMF-06: VSINH/VUINH read-only zero (no H-ext)");
+    if (!SSCOFPMF_AVAILABLE) TEST_SKIP("Sscofpmf not supported");
     if (H_AVAILABLE) TEST_SKIP("H extension present, negative branch not applicable");
-    unsigned n = find_first_counter();
-    if (!n) TEST_SKIP("no hpmcounter implemented");
+    unsigned n = COFPMF_TEST_COUNTER;
 
     uint64_t orig = cofpmf_read_event(n);
 

@@ -81,7 +81,6 @@ bool test_hcfi_lp_12(void) {
 
     /* Enable LPE for VS-mode */
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* Delegate software-check exception to VS-mode */
     setup_deleg_to_vs(BIT(CAUSE_SOFTWARE_CHECK));
@@ -114,7 +113,6 @@ bool test_hcfi_lp_12(void) {
     TEST_ASSERT("no trap escaped to M-mode",
                 result == 0);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
@@ -140,7 +138,6 @@ bool test_hcfi_lp_13(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* Delegate software-check to VS, using the two-entry handler that
      * keeps SPELP intact on the first entry. */
@@ -183,7 +180,6 @@ bool test_hcfi_lp_13(void) {
     TEST_ASSERT_EQ("fault #2 (after SRET) is software-check",
                    g_vs_exc_cause2, (uintptr_t)CAUSE_SOFTWARE_CHECK);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     /* Clean up vsstatus.SPELP so later tests start from a known state */
@@ -212,7 +208,6 @@ bool test_hcfi_lp_14(void) {
 
     /* Set henvcfg.LPE=0 - VSLPE=0 */
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(false, true);
-    mseccfg_clear(MSECCFG_MLPE);
 
     /* Delegate store page fault to VS, using the handler that forces
      * SPELP=1 before its sret. A natural trap entry cannot create
@@ -271,13 +266,12 @@ bool test_hcfi_lp_15(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* Delegate to HS only (no hedeleg) */
     setup_deleg_to_hs(BIT(CAUSE_SOFTWARE_CHECK));
 
     /* Clear mstatus.SPELP and vsstatus.SPELP for a clean start */
-    asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_SPELP_BIT) : "memory");
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_SPELP_BIT);
     vsstatus_write(vsstatus_read() & ~VSSTATUS_SPELP_BIT);
 
     uint32_t *code = get_cfi_code_buf();
@@ -314,9 +308,8 @@ bool test_hcfi_lp_15(void) {
                 spelp == 1);
 
     /* Clear SPELP */
-    asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_SPELP_BIT) : "memory");
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_SPELP_BIT);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
@@ -344,11 +337,11 @@ bool test_hcfi_lp_16(void) {
                              VS_FLAGS_RW_S_AD);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* Instruction page fault -> HS (medeleg only); software-check ->
-     * VS (medeleg + hedeleg) so the post-SRET re-fault is handled. */
-    CSRS(medeleg, BIT(CAUSE_INST_PAGE_FAULT) | BIT(CAUSE_SOFTWARE_CHECK));
+     * VS (medeleg + hedeleg) so the post-SRET re-fault is handled.
+     * medeleg is M-level: go through the M-safe delegation primitive. */
+    tsbi_deleg_or(BIT(CAUSE_INST_PAGE_FAULT) | BIT(CAUSE_SOFTWARE_CHECK), 0);
     CSRS(CSR_HEDELEG, BIT(CAUSE_SOFTWARE_CHECK));
     CSRC(CSR_HEDELEG, BIT(CAUSE_INST_PAGE_FAULT));
     setup_deleg_to_vs_ex(0, (uintptr_t)vs_exc_handler);
@@ -357,7 +350,7 @@ bool test_hcfi_lp_16(void) {
      * sret restores it (the default handler clearing would hide the
      * hardware behavior under test). */
     g_trap_preserve_pelp = 1;
-    asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_SPELP_BIT) : "memory");
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_SPELP_BIT);
 
     /* VS-mode JALR to the non-executable page:
      * - JALR sets ELP=LP_EXPECTED; the fetch faults -> instruction
@@ -387,7 +380,6 @@ bool test_hcfi_lp_16(void) {
     TEST_ASSERT("mstatus.SPELP cleared by hardware on SRET",
                 (mstatus_read() & MSTATUS_SPELP_BIT) == 0);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
@@ -410,7 +402,6 @@ bool test_hcfi_lp_17(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(false, true);
-    mseccfg_clear(MSECCFG_MLPE);
     setup_deleg_to_hs(BIT(CAUSE_STORE_PAGE_FAULT));
 
     /* Make test_fault_page invalid in VS-stage so the store faults. */
@@ -472,13 +463,12 @@ bool test_hcfi_lp_18(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* No delegation - trap goes to M-mode */
     clear_all_deleg();
 
     /* Clear mstatus.MPELP */
-    asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_MPELP_BIT) : "memory");
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_MPELP_BIT);
 
     uint32_t *code = get_cfi_code_buf();
     emit_nop(code);
@@ -503,9 +493,8 @@ bool test_hcfi_lp_18(void) {
                 mpelp == 1);
 
     /* Clear MPELP */
-    asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_MPELP_BIT) : "memory");
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_MPELP_BIT);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -531,19 +520,19 @@ bool test_hcfi_lp_19(void) {
                              VS_FLAGS_RW_S_AD);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* Instruction page fault -> M-mode (no medeleg); software-check ->
-     * VS (medeleg + hedeleg) so the post-MRET re-fault is handled. */
-    CSRC(medeleg, BIT(CAUSE_INST_PAGE_FAULT));
-    CSRS(medeleg, BIT(CAUSE_SOFTWARE_CHECK));
+     * VS (medeleg + hedeleg) so the post-MRET re-fault is handled.
+     * medeleg is M-level: go through the M-safe delegation primitive. */
+    tsbi_deleg_clear(BIT(CAUSE_INST_PAGE_FAULT), 0);
+    tsbi_deleg_or(BIT(CAUSE_SOFTWARE_CHECK), 0);
     CSRS(CSR_HEDELEG, BIT(CAUSE_SOFTWARE_CHECK));
     setup_deleg_to_vs_ex(0, (uintptr_t)vs_exc_handler);
 
     /* Keep the ELP saved in mstatus.MPELP across the M-mode handler so
      * the mret restores it. */
     g_trap_preserve_pelp = 1;
-    asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_MPELP_BIT) : "memory");
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_MPELP_BIT);
 
     /* VS-mode JALR to the non-executable page:
      * - JALR sets ELP=LP_EXPECTED; the fetch faults -> instruction
@@ -573,7 +562,6 @@ bool test_hcfi_lp_19(void) {
     TEST_ASSERT("mstatus.MPELP cleared by hardware on MRET",
                 (mstatus_read() & MSTATUS_MPELP_BIT) == 0);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
@@ -596,7 +584,6 @@ bool test_hcfi_lp_20(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(false, true);
-    mseccfg_clear(MSECCFG_MLPE);
     clear_all_deleg();
 
     /* Make test_fault_page invalid in VS-stage so the store faults. */
@@ -656,14 +643,13 @@ bool test_hcfi_lp_21(void) {
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
     setup_deleg_to_hs(BIT(CAUSE_STORE_PAGE_FAULT));
 
     /* Make test_fault_page invalid in VS-stage so the store faults. */
     vs_pte_modify(&ctx, (uintptr_t)test_fault_page, PT_LEVEL_4K, 0);
 
     /* Clear mstatus.SPELP to start fresh */
-    asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_SPELP_BIT) : "memory");
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_SPELP_BIT);
 
     /* Trigger a store fault (not an indirect jump, so ELP stays
      * NO_LP_EXPECTED). The trap should save SPELP=0. */
@@ -686,7 +672,6 @@ bool test_hcfi_lp_21(void) {
     TEST_ASSERT("SPELP=0 when ELP was NO_LP_EXPECTED at trap",
                 spelp == 0);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     ts2_finish(&ctx);
@@ -713,7 +698,6 @@ bool test_hcfi_lp_22(void) {
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     senvcfg_set_bits(SENVCFG_LPE);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* VU target: NOP (non-LPAD) + SD zero,0(t0) (faulting store that
      * delivers the return trap), in test_exec_page (covered by a 4KB
@@ -759,7 +743,6 @@ bool test_hcfi_lp_22(void) {
 
     g_vs_exc_recovery = 0;
     senvcfg_clear_bits(SENVCFG_LPE);
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     /* Clean up vsstatus.SPELP so later tests start from a known state */
@@ -788,7 +771,6 @@ bool test_hcfi_lp_23(void) {
 
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     senvcfg_clear_bits(SENVCFG_LPE);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* VU target: NOP (non-LPAD) + SD zero,0(t0) (faulting store that
      * delivers the return trap), in test_exec_page (covered by a 4KB
@@ -828,7 +810,6 @@ bool test_hcfi_lp_23(void) {
                 g_vs_exc_cause == CAUSE_STORE_PAGE_FAULT);
 
     g_vs_exc_recovery = 0;
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     clear_all_deleg();
     /* Clean up vsstatus.SPELP so later tests start from a known state */
@@ -851,10 +832,9 @@ bool test_hcfi_lp_24(void) {
 
     /* Enable HS-level xLPE (menvcfg.LPE); set vsstatus.SPELP=1 as
      * noise that must be ignored while V=0; keep mstatus.SPELP=0. */
-    menvcfg_set_bits(MENVCFG_LPE);
-    mseccfg_set(MSECCFG_MLPE);
+    tsbi_csr_set(CSR_MENVCFG, MENVCFG_LPE);
     vsstatus_write(vsstatus_read() | VSSTATUS_SPELP_BIT);
-    asm volatile("csrc mstatus, %0" :: "r"(MSTATUS_SPELP_BIT) : "memory");
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_SPELP_BIT);
 
     uint32_t *code = get_cfi_code_buf();
     emit_nop(code);
@@ -904,7 +884,6 @@ bool test_hcfi_lp_24(void) {
 
     /* Clear vsstatus.SPELP */
     vsstatus_write(vsstatus_read() & ~VSSTATUS_SPELP_BIT);
-    menvcfg_clear_bits(MENVCFG_LPE);
-    mseccfg_clear(MSECCFG_MLPE);
+    tsbi_csr_clear(CSR_MENVCFG, MENVCFG_LPE);
     HYP_TEST_END();
 }

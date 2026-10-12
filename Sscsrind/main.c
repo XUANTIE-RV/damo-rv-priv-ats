@@ -13,14 +13,8 @@ int main(void)
     uart_init();
     reset_state();
 
-    /* Configure PMP: allow S/U-mode full access */
-    asm volatile(
-        "li t0, -1\n\t"
-        "csrw pmpaddr0, t0\n\t"
-        "li t0, 0x1F\n\t"
-        "csrw pmpcfg0, t0\n\t"
-        ::: "t0"
-    );
+    /* PMP full-space RWX is hoisted into common/entry.S (boot, M-mode);
+     * a bare csrw pmpaddr0/pmpcfg0 here would trap in S-mode-normal. */
 
     test_print_banner("RISC-V Sscsrind Extension Compliance Test");
 

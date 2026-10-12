@@ -33,16 +33,16 @@ bool test_hcross_smcsrind_01(void)
         TEST_SKIP("Smstateen not implemented");
     }
 
-    uintptr_t orig = mstateen_read(0);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
 
     /* Clear CSRIND bit (bit 60) */
-    mstateen_clear_bits(0, MSTATEEN0_CSRIND);
+    tsbi_csr_clear(CSR_MSTATEEN0, MSTATEEN0_CSRIND);
 
     /* S-mode (HS-mode when H ext present, V=0) tries to read vsiselect */
     TEST_SMODE_BLOCKED("S-mode vsiselect read blocked (CSRIND=0)",
                        vsiselect_read());
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     HYP_TEST_END();
 }
 
@@ -62,13 +62,13 @@ bool test_hcross_smcsrind_02(void)
         TEST_SKIP("Smstateen not implemented");
     }
 
-    uintptr_t orig = mstateen_read(0);
-    mstateen_clear_bits(0, MSTATEEN0_CSRIND);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_clear(CSR_MSTATEEN0, MSTATEEN0_CSRIND);
 
     TEST_SMODE_BLOCKED("S-mode vsiselect write blocked (CSRIND=0)",
                        vsiselect_write(0x42));
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     HYP_TEST_END();
 }
 
@@ -88,13 +88,13 @@ bool test_hcross_smcsrind_03(void)
         TEST_SKIP("Smstateen not implemented");
     }
 
-    uintptr_t orig = mstateen_read(0);
-    mstateen_clear_bits(0, MSTATEEN0_CSRIND);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_clear(CSR_MSTATEEN0, MSTATEEN0_CSRIND);
 
     TEST_SMODE_BLOCKED("S-mode vsireg read blocked (CSRIND=0)",
                        vsireg_read());
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     HYP_TEST_END();
 }
 
@@ -114,8 +114,8 @@ bool test_hcross_smcsrind_04(void)
         TEST_SKIP("Smstateen not implemented");
     }
 
-    uintptr_t orig = mstateen_read(0);
-    mstateen_clear_bits(0, MSTATEEN0_CSRIND);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_clear(CSR_MSTATEEN0, MSTATEEN0_CSRIND);
 
     TEST_SMODE_BLOCKED("S-mode vsireg2 read blocked (CSRIND=0)",
                        vsireg2_read());
@@ -142,7 +142,7 @@ bool test_hcross_smcsrind_04(void)
     TEST_SMODE_BLOCKED("S-mode vsireg6 write blocked (CSRIND=0)",
                        vsireg6_write(0x42));
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     HYP_TEST_END();
 }
 
@@ -162,15 +162,15 @@ bool test_hcross_smcsrind_05(void)
         TEST_SKIP("Smstateen not implemented");
     }
 
-    uintptr_t orig = mstateen_read(0);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
 
     /* Set CSRIND bit */
-    mstateen_set_bits(0, MSTATEEN0_CSRIND);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_CSRIND);
 
     TEST_SMODE_ALLOWED("S-mode vsiselect read/write allowed (CSRIND=1)",
                        vsiselect_write(0));
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     HYP_TEST_END();
 }
 
@@ -190,8 +190,8 @@ bool test_hcross_smcsrind_06(void)
         TEST_SKIP("Smstateen not implemented");
     }
 
-    uintptr_t orig = mstateen_read(0);
-    mstateen_set_bits(0, MSTATEEN0_CSRIND);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_CSRIND);
 
     /* vsiselect=0 is reserved, vsireg* may trap or return 0,
      * but the access itself should not be blocked by mstateen0 */
@@ -247,7 +247,7 @@ bool test_hcross_smcsrind_06(void)
               (unsigned long)trap_get_cause());
     }
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     HYP_TEST_END();
 }
 
@@ -267,8 +267,8 @@ bool test_hcross_smcsrind_07(void)
         TEST_SKIP("Smstateen not implemented");
     }
 
-    uintptr_t orig = mstateen_read(0);
-    mstateen_clear_bits(0, MSTATEEN0_CSRIND);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_clear(CSR_MSTATEEN0, MSTATEEN0_CSRIND);
 
     /* M-mode access to vsiselect should still work */
     trap_expect_begin();
@@ -281,7 +281,7 @@ bool test_hcross_smcsrind_07(void)
                 !trapped);
     TEST_ASSERT_EQ("M-mode vsiselect readback", rb, (uintptr_t)0x42);
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     HYP_TEST_END();
 }
 
@@ -301,8 +301,8 @@ bool test_hcross_smcsrind_08(void)
         TEST_SKIP("Smstateen not implemented");
     }
 
-    uintptr_t orig = mstateen_read(0);
-    mstateen_clear_bits(0, MSTATEEN0_CSRIND);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_clear(CSR_MSTATEEN0, MSTATEEN0_CSRIND);
 
     /* M-mode access to vsireg should still work (or trap due to
      * unimplemented select value, but NOT due to mstateen0) */
@@ -324,7 +324,7 @@ bool test_hcross_smcsrind_08(void)
     TEST_ASSERT("M-mode vsireg5 access: not blocked by mstateen0[60]=0", 1);
     TEST_ASSERT("M-mode vsireg6 access: not blocked by mstateen0[60]=0", 1);
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     HYP_TEST_END();
 }
 
@@ -353,16 +353,16 @@ bool test_hcross_smcsrind_09(void)
         TEST_SKIP("Smstateen not implemented");
     }
 
-    uintptr_t orig_m = mstateen_read(0);
+    uintptr_t orig_m = tsbi_csr_read(CSR_MSTATEEN0);
     uintptr_t orig_h = hstateen_read(0);
 
     /* Enable mstateen0.SE0 and mstateen0.CSRIND so HS-mode can
      * access hstateen0 and CSRIND-controlled CSRs */
-    mstateen_set_bits(0, MSTATEEN0_SE0 | MSTATEEN0_CSRIND);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_SE0 | MSTATEEN0_CSRIND);
 
     /* Verify hstateen0.CSRIND is writable (Sscsrind support) */
     if (!hstateen0_bit_writable(STATEEN0_CSRIND)) {
-        mstateen_write(0, orig_m);
+        tsbi_csr_write(CSR_MSTATEEN0, orig_m);
         TEST_SKIP("hstateen0.CSRIND not writable (Sscsrind not impl)");
     }
 
@@ -374,7 +374,7 @@ bool test_hcross_smcsrind_09(void)
     EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_read_siselect, 0));
 
     hstateen_write(0, orig_h);
-    mstateen_write(0, orig_m);
+    tsbi_csr_write(CSR_MSTATEEN0, orig_m);
     HYP_TEST_END();
 }
 
@@ -394,13 +394,13 @@ bool test_hcross_smcsrind_10(void)
         TEST_SKIP("Smstateen not implemented");
     }
 
-    uintptr_t orig_m = mstateen_read(0);
+    uintptr_t orig_m = tsbi_csr_read(CSR_MSTATEEN0);
     uintptr_t orig_h = hstateen_read(0);
 
-    mstateen_set_bits(0, MSTATEEN0_SE0 | MSTATEEN0_CSRIND);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_SE0 | MSTATEEN0_CSRIND);
 
     if (!hstateen0_bit_writable(STATEEN0_CSRIND)) {
-        mstateen_write(0, orig_m);
+        tsbi_csr_write(CSR_MSTATEEN0, orig_m);
         TEST_SKIP("hstateen0.CSRIND not writable");
     }
 
@@ -411,7 +411,7 @@ bool test_hcross_smcsrind_10(void)
     EXPECT_VIRTUAL_INST(run_in_vs_mode(_vs_read_sireg, 0));
 
     hstateen_write(0, orig_h);
-    mstateen_write(0, orig_m);
+    tsbi_csr_write(CSR_MSTATEEN0, orig_m);
     HYP_TEST_END();
 }
 
@@ -460,11 +460,11 @@ bool test_hcross_smcsrind_11(void)
         TEST_SKIP("Smstateen not implemented");
     }
 
-    uintptr_t orig_m = mstateen_read(0);
+    uintptr_t orig_m = tsbi_csr_read(CSR_MSTATEEN0);
     uintptr_t orig_h = hstateen_read(0);
 
     /* Enable mstateen0.SE0 and mstateen0.CSRIND */
-    mstateen_set_bits(0, MSTATEEN0_SE0 | MSTATEEN0_CSRIND);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_SE0 | MSTATEEN0_CSRIND);
 
     /* Set hstateen0.CSRIND=1 to allow VS-mode access */
     hstateen_set_bits(0, STATEEN0_CSRIND);
@@ -472,7 +472,7 @@ bool test_hcross_smcsrind_11(void)
     /* Verify the bit actually got set (writable) */
     if (!(hstateen_read(0) & STATEEN0_CSRIND)) {
         hstateen_write(0, orig_h);
-        mstateen_write(0, orig_m);
+        tsbi_csr_write(CSR_MSTATEEN0, orig_m);
         TEST_SKIP("hstateen0.CSRIND not writable");
     }
 
@@ -483,7 +483,7 @@ bool test_hcross_smcsrind_11(void)
     uintptr_t sel = find_working_vs_siselect();
     if (sel == (uintptr_t)-1) {
         hstateen_write(0, orig_h);
-        mstateen_write(0, orig_m);
+        tsbi_csr_write(CSR_MSTATEEN0, orig_m);
         TEST_SKIP("no VS-mode siselect value accepted for sireg test");
     }
 
@@ -499,6 +499,6 @@ bool test_hcross_smcsrind_11(void)
     trap_expect_end();
 
     hstateen_write(0, orig_h);
-    mstateen_write(0, orig_m);
+    tsbi_csr_write(CSR_MSTATEEN0, orig_m);
     HYP_TEST_END();
 }

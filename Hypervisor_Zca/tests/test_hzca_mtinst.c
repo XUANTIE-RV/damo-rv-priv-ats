@@ -150,6 +150,20 @@ bool test_hzca_24_mtinst_interrupt_zero(void)
     two_stage_ctx_t ctx;
     ts2_setup_full(&ctx, SUITE_VSATP_MODE, SUITE_HGATP_MODE);
 
+    /* The machine software interrupt must be armed in M-mode and taken
+     * from the V=1 (VS-mode) context so it traps into M-mode with
+     * mstatus.MPV=1. Under the T-SBI S-mode-normal model main() runs in
+     * HS-mode, where an enabled+pending MSIP would be taken immediately
+     * (priv<M) with MPV=0. Wrap the arm/run/observe/restore sequence in
+     * a contained M-mode excursion; mstatus.MIE=0 then holds MSIP off
+     * until two_stage_run_in_vs() mrets into VS-mode. The raw mie/
+     * mstatus accesses below are legal because they now execute in
+     * M-mode (mstatus.MIE is a guardrail-blocked return-path bit, so it
+     * cannot be proxied via tsbi_csr_*). */
+    uintptr_t saved_priv = get_current_priv();
+    if (saved_priv != PRIV_M)
+        goto_priv(PRIV_M);
+
     uintptr_t saved_mie;
     asm volatile ("csrr %0, mie" : "=r"(saved_mie));
     uintptr_t saved_mstatus;
@@ -186,6 +200,10 @@ bool test_hzca_24_mtinst_interrupt_zero(void)
     asm volatile ("fence" ::: "memory");
     asm volatile ("csrw mie, %0" :: "r"(saved_mie));
     asm volatile ("csrw mstatus, %0" :: "r"(saved_mstatus));
+
+    if (saved_priv != PRIV_M)
+        goto_priv(saved_priv);
+
     ts2_finish(&ctx);
 
     TEST_ASSERT("machine software interrupt fired in V=1 context", fired);

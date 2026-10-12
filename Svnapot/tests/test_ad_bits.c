@@ -21,23 +21,19 @@
  * Clears menvcfg.ADUE so that A=0 / D=0 pages trigger page faults
  * (Svade semantics) instead of being silently updated by hardware.
  *
- * menvcfg is CSR 0x30A. ADUE is bit 61.
+ * menvcfg is CSR 0x30A, an M-level register, and the suite runs in
+ * S-mode under the T-SBI S-mode-normal model, so the bit is cleared
+ * through the T-SBI CSR proxy. ADUE is bit 61.
  */
 static void disable_svadu(void) {
-    uintptr_t menvcfg;
-    asm volatile("csrr %0, " CSR_STR(CSR_MENVCFG) : "=r"(menvcfg));
-    menvcfg &= ~MENVCFG_ADUE;
-    asm volatile("csrw " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(menvcfg) : "memory");
+    tsbi_csr_clear(CSR_MENVCFG, MENVCFG_ADUE);
 }
 
 /**
  * restore_svadu - Re-enable hardware A/D bit update (Svadu)
  */
 static void restore_svadu(void) {
-    uintptr_t menvcfg;
-    asm volatile("csrr %0, " CSR_STR(CSR_MENVCFG) : "=r"(menvcfg));
-    menvcfg |= MENVCFG_ADUE;
-    asm volatile("csrw " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(menvcfg) : "memory");
+    tsbi_csr_set(CSR_MENVCFG, MENVCFG_ADUE);
 }
 
 /* ===================================================================

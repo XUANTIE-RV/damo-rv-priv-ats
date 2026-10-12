@@ -95,10 +95,10 @@ static inline unsigned find_first_hpm_counter_gatable(void) {
         if (!is_counter_implemented(n))
             continue;
         uintptr_t bit = 1UL << n;
-        uintptr_t saved = mcounteren_read();
-        mcounteren_set(bit);
-        bool sticky = (mcounteren_read() & bit) != 0;
-        mcounteren_write(saved);
+        uintptr_t saved = tsbi_csr_read(CSR_MCOUNTEREN);
+        tsbi_csr_set(CSR_MCOUNTEREN, bit);
+        bool sticky = (tsbi_csr_read(CSR_MCOUNTEREN) & bit) != 0;
+        tsbi_csr_write(CSR_MCOUNTEREN, saved);
         if (sticky)
             return n;
     }

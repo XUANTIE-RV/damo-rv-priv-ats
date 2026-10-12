@@ -42,7 +42,9 @@ bool test_hzacas_01_hs_exec(void)
         uintptr_t prd = 0x1111ULL;   /* matches -> success path */
         uintptr_t psw = 0x2222ULL;
         hzacas_probe_slot = 0x1111ULL;
-        M_TRAP_EXPECT_BEGIN();
+        /* T-SBI S-mode-normal: probe runs in HS-mode where mstatus.MDT
+         * (M-mode double-trap guard) is void, so plain trap arming is used. */
+        trap_expect_begin();
         asm volatile(
             ".option push\n\t.option norvc\n\t"
             "amocas.w %0, %2, (%1)\n\t"

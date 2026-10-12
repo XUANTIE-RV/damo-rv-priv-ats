@@ -108,15 +108,15 @@ static inline bool hcounteren_bit_clear_sticky(uintptr_t bit)
 /* Try to set an mcounteren bit; returns true iff it stuck. */
 static inline bool mcounteren_bit_set_sticky(uintptr_t bit)
 {
-    mcounteren_set(bit);
-    return (mcounteren_read() & bit) != 0;
+    tsbi_csr_set(CSR_MCOUNTEREN, bit);
+    return (tsbi_csr_read(CSR_MCOUNTEREN) & bit) != 0;
 }
 
 /* Try to clear an mcounteren bit; returns true iff it stuck. */
 static inline bool mcounteren_bit_clear_sticky(uintptr_t bit)
 {
-    mcounteren_clear(bit);
-    return (mcounteren_read() & bit) == 0;
+    tsbi_csr_clear(CSR_MCOUNTEREN, bit);
+    return (tsbi_csr_read(CSR_MCOUNTEREN) & bit) == 0;
 }
 
 /* Try to set an scounteren bit; returns true iff it stuck. */

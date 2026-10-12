@@ -15,14 +15,10 @@ int main(void)
     uart_init();
     reset_state();
 
-    /* Configure PMP: allow S/U-mode full access */
-    asm volatile(
-        "li t0, -1\n\t"
-        "csrw pmpaddr0, t0\n\t"
-        "li t0, 0x1F\n\t"
-        "csrw pmpcfg0, t0\n\t"
-        ::: "t0"
-    );
+    /* PMP is configured once at boot (common/entry.S) before dropping to
+     * S-mode: the S-mode-normal model needs S/U access in place before
+     * main() can even run, and pmpaddr/pmpcfg are M-level CSRs that a
+     * test body no longer has the authority to write directly. */
 
     test_print_banner("Framework Privilege Switching Test");
 

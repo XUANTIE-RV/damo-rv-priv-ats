@@ -181,13 +181,28 @@ void vm_switch_mode(pt_context_t *ctx, int new_mode) {
  * vm_run_in_smode - Execute a function in S-mode with VM enabled
  *
  * Flow:
- * 1. Configure trap delegation (page faults -> S-mode)
- * 2. Set stvec to s_trap_entry
- * 3. Enable virtual memory (write satp)
- * 4. Switch to S-mode and execute fn(arg) via run_in_priv()
- * 5. On return, disable VM and restore delegation
+ * 0. Raise to M-mode (this helper owns M-level state; see below)
+ * 1. Set up PMP to allow S-mode access
+ * 2. Configure trap delegation (page faults -> S-mode)
+ * 3. Set stvec to s_trap_entry
+ * 4. Enable virtual memory (write satp)
+ * 5. Switch to S-mode and execute fn(arg) via run_in_priv()
+ * 6. On return, disable VM and restore delegation
+ * 7. Drop back to the privilege the caller came in at
  *
- * Note: This function must be called from M-mode.
+ * Callable from any privilege level.  Under the T-SBI S-mode-normal model
+ * (tsbi_design_brief.md section 1) tests run in S-mode, but this helper still
+ * needs M-mode authority: it programs medeleg and, above all, satp.  Writing
+ * satp from S and continuing to execute there would place the helper's OWN
+ * next instruction fetch under the new translation, so a deliberately broken
+ * page table -- exactly what these suites install to provoke a fault -- would
+ * trap on the harness instead of on the payload it is meant to observe, and
+ * the fetch would keep re-faulting.  Raising first keeps satp programmed
+ * where translation does not apply and enters the payload through mret, so a
+ * fault always lands on fn's access, just as it did when every caller was in
+ * M-mode.  A caller already in M-mode (a -DTSBI_BOOT_MODE_M suite) pays
+ * nothing: goto_priv() is a no-op at the same level.
+ *
  * The page table context must have identity mapping set up
  * so that code and data addresses are valid in both M and S modes.
  */
@@ -195,11 +210,22 @@ uintptr_t vm_run_in_smode(pt_context_t *ctx,
                            uintptr_t (*fn)(uintptr_t),
                            uintptr_t arg) {
     /*
+     * Step 0: own the M-level setup from wherever the caller is.
+     */
+    unsigned caller_priv = get_current_priv();
+    if (caller_priv != PRIV_M)
+        goto_priv(PRIV_M);
+
+    /*
      * Step 1: Set up PMP to allow S-mode access
      *
      * RISC-V requires PMP rules for S/U-mode access. Without any
      * matching PMP entry, all S/U-mode accesses fail with access faults.
      * We set up a catch-all NAPOT entry covering the entire address space.
+     *
+     * entry.S already hoists an equivalent entry 0 configuration ahead of the
+     * drop to S-mode, so this is belt-and-braces rather than the only line of
+     * defence; it is kept because a suite may have reprogrammed PMP itself.
      */
     vm_pmp_allow_all();
 
@@ -257,6 +283,13 @@ uintptr_t vm_run_in_smode(pt_context_t *ctx,
     CSRW(medeleg, medeleg);  /* Restore original delegation */
     vm_pmp_clear();          /* Remove VM PMP entry */
 
+    /*
+     * Step 6: hand control back at the privilege the caller came in at.
+     * run_in_priv() has already returned us to M-mode.
+     */
+    if (get_current_priv() != caller_priv)
+        goto_priv(caller_priv);
+
     return result;
 }
 
@@ -270,29 +303,57 @@ uintptr_t vm_run_in_smode(pt_context_t *ctx,
  * Similar to vm_run_in_smode but targets U-mode.
  *
  * Flow:
+ * 0. Raise to M-mode (satp must not be programmed under the caller's own
+ *    translation - see vm_run_in_smode for the full reasoning)
  * 1. Set up PMP to allow U-mode access
  * 2. Enable virtual memory (write satp)
  * 3. Switch to U-mode via run_in_priv(PRIV_U)
  * 4. On return, disable VM and clean up
+ * 5. Drop back to the privilege the caller came in at
  *
- * Note: This function must be called from M-mode.
+ * Callable from any privilege level.
  * The page table context must have identity mapping set up with
  * PTE_U flag on all pages that fn will access, so that U-mode
  * can read/write/execute them.
  *
- * The ecall from U-mode (cause 8) is handled by the M-mode trap
- * handler directly -- no S-mode delegation of ECALL_FROM_U is
- * needed for the framework's privilege-switch ecall. Page faults
- * are NOT delegated to S-mode here; they are caught by M-mode's
- * trap_record mechanism for test assertions.
+ * The ecall from U-mode (cause 8) returns the payload to the framework: it
+ * is delegated to the S handler by the T-SBI baseline, which forwards the
+ * GOTO_MMODE request up to M.  Page faults are NOT delegated for the sake of
+ * this helper; they are caught by the trap_record mechanism for assertions.
  */
 uintptr_t vm_run_in_umode(pt_context_t *ctx,
                            uintptr_t (*fn)(uintptr_t),
                            uintptr_t arg) {
     /*
+     * Step 0: own the M-level setup from wherever the caller is.
+     */
+    unsigned caller_priv = get_current_priv();
+    if (caller_priv != PRIV_M)
+        goto_priv(PRIV_M);
+
+    /*
      * Step 1: Set up PMP to allow U-mode access
      */
     vm_pmp_allow_all();
+
+    /*
+     * Step 1b: route this helper's traps to M-mode.
+     *
+     * The caller's page table maps the whole code region -- including this
+     * framework's s_trap_entry -- as U=1 so the U-mode payload can execute it.
+     * The T-SBI baseline delegates ecall-from-U and page faults to the S
+     * handler, but with VM enabled an S-mode instruction fetch of a U=1 page
+     * always faults (mstatus.SUM governs loads/stores, not fetches), so the
+     * delegated trap re-faults on the handler entry in an infinite cause-12
+     * storm.  Undelegate them here so the payload's traps are taken in M-mode
+     * (physical fetch, recorded by m_trap_handler via trap_record) -- the
+     * behaviour this helper's contract describes.  Restored in the cleanup. */
+    uintptr_t medeleg = CSRR(medeleg);
+    CSRW(medeleg, medeleg & ~(
+        BIT(CAUSE_ECALL_FROM_U)      |
+        BIT(CAUSE_INST_PAGE_FAULT)   |
+        BIT(CAUSE_LOAD_PAGE_FAULT)   |
+        BIT(CAUSE_STORE_PAGE_FAULT)));
 
     /*
      * Step 2: Enable virtual memory
@@ -315,7 +376,14 @@ uintptr_t vm_run_in_umode(pt_context_t *ctx,
      * Step 4: Clean up
      */
     vm_disable();
+    CSRW(medeleg, medeleg);  /* restore original delegation */
     vm_pmp_clear();
+
+    /*
+     * Step 5: hand control back at the privilege the caller came in at.
+     */
+    if (get_current_priv() != caller_priv)
+        goto_priv(caller_priv);
 
     return result;
 }

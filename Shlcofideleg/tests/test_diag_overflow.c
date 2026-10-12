@@ -70,7 +70,7 @@ bool test_diag_alias_chain(void) {
     csr_write(CSR_SIE, saved_sie & ~LCOFI_BIT);
 
     /* Step 2: Set sie.LCOFIE=1 */
-    csr_write(CSR_SIE, csr_read(CSR_SIE) | LCOFI_BIT);
+    csr_set(CSR_SIE, LCOFI_BIT);
     uintptr_t sie_val = csr_read(CSR_SIE);
     LOG_D("sie after set: 0x%lx (LCOFIE=%d)\n",
           sie_val, (sie_val & LCOFI_BIT) ? 1 : 0);
@@ -93,8 +93,8 @@ bool test_diag_alias_chain(void) {
           vsie_via_asm, (vsie_via_asm & LCOFI_BIT) ? 1 : 0);
 
     /* Step 4: Write vsie.LCOFIE=1, read sie */
-    csr_write(CSR_SIE, csr_read(CSR_SIE) & ~LCOFI_BIT);
-    csr_write(CSR_VSIE, csr_read(CSR_VSIE) | LCOFI_BIT);
+    csr_clear(CSR_SIE, LCOFI_BIT);
+    csr_set(CSR_VSIE, LCOFI_BIT);
     uintptr_t sie_after_vsie = csr_read(CSR_SIE);
     LOG_D("sie after vsie set: 0x%lx (LCOFIE=%d)\n",
           sie_after_vsie, (sie_after_vsie & LCOFI_BIT) ? 1 : 0);

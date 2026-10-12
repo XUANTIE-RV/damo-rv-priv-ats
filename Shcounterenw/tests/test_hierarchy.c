@@ -27,8 +27,8 @@ bool test_shcounterenw_hier_01(void) {
     if (!is_counter_implemented(0)) TEST_SKIP("cycle not implemented");
 
     /* mcounteren[0]=0, hcounteren[0]=1 */
-    uintptr_t saved_mcen = mcounteren_read();
-    mcounteren_clear(1UL << 0);
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
+    tsbi_csr_clear(CSR_MCOUNTEREN, 1UL << 0);
     uintptr_t saved_hcen = hcounteren_read();
     hcounteren_set(1UL << 0);
 
@@ -44,7 +44,7 @@ bool test_shcounterenw_hier_01(void) {
 
     /* Restore */
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }
 
@@ -58,8 +58,8 @@ bool test_shcounterenw_hier_02(void) {
     if (!is_counter_implemented(0)) TEST_SKIP("cycle not implemented");
 
     /* mcounteren[0]=1, hcounteren[0]=1 */
-    uintptr_t saved_mcen = mcounteren_read();
-    mcounteren_set(1UL << 0);
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
+    tsbi_csr_set(CSR_MCOUNTEREN, 1UL << 0);
     uintptr_t saved_hcen = hcounteren_read();
     hcounteren_set(1UL << 0);
 
@@ -71,7 +71,7 @@ bool test_shcounterenw_hier_02(void) {
 
     /* Restore */
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }
 
@@ -85,8 +85,8 @@ bool test_shcounterenw_hier_03(void) {
     if (!is_counter_implemented(0)) TEST_SKIP("cycle not implemented");
 
     /* mcounteren[0]=1, hcounteren[0]=1, scounteren[0]=1 */
-    uintptr_t saved_mcen = mcounteren_read();
-    mcounteren_set(1UL << 0);
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
+    tsbi_csr_set(CSR_MCOUNTEREN, 1UL << 0);
     uintptr_t saved_hcen = hcounteren_read();
     hcounteren_set(1UL << 0);
     uintptr_t saved_scen = scounteren_read();
@@ -101,7 +101,7 @@ bool test_shcounterenw_hier_03(void) {
     /* Restore */
     scounteren_write(saved_scen);
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }
 
@@ -115,8 +115,8 @@ bool test_shcounterenw_hier_04(void) {
     if (!is_counter_implemented(0)) TEST_SKIP("cycle not implemented");
 
     /* mcounteren[0]=1, hcounteren[0]=0, scounteren[0]=1 */
-    uintptr_t saved_mcen = mcounteren_read();
-    mcounteren_set(1UL << 0);
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
+    tsbi_csr_set(CSR_MCOUNTEREN, 1UL << 0);
     uintptr_t saved_hcen = hcounteren_read();
     hcounteren_clear(1UL << 0);
     uintptr_t saved_scen = scounteren_read();
@@ -135,7 +135,7 @@ bool test_shcounterenw_hier_04(void) {
     /* Restore */
     scounteren_write(saved_scen);
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }
 
@@ -159,8 +159,8 @@ bool test_shcounterenw_hier_05(void) {
     scounteren_write(saved_scen);
 
     /* mcounteren[0]=1, hcounteren[0]=1, scounteren[0]=0 */
-    uintptr_t saved_mcen = mcounteren_read();
-    mcounteren_set(1UL << 0);
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
+    tsbi_csr_set(CSR_MCOUNTEREN, 1UL << 0);
     uintptr_t saved_hcen = hcounteren_read();
     hcounteren_set(1UL << 0);
     saved_scen = scounteren_read();
@@ -179,6 +179,6 @@ bool test_shcounterenw_hier_05(void) {
     /* Restore */
     scounteren_write(saved_scen);
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }

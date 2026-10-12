@@ -57,13 +57,13 @@ static uintptr_t tret_sstatus_read(void)
 {
     uintptr_t v;
 
-    asm volatile ("csrr %0, sstatus" : "=r"(v));
+    v = CSRR(CSR_SSTATUS);
     return v;
 }
 
 static void tret_sstatus_write(uintptr_t v)
 {
-    asm volatile ("csrw sstatus, %0" :: "r"(v));
+    CSRW(CSR_SSTATUS, v);
 }
 
 
@@ -72,26 +72,26 @@ static uintptr_t tret_sepc_read(void)
 {
     uintptr_t v;
 
-    asm volatile ("csrr %0, sepc" : "=r"(v));
+    v = CSRR(CSR_SEPC);
     return v;
 }
 
 static void tret_sepc_write(uintptr_t v)
 {
-    asm volatile ("csrw sepc, %0" :: "r"(v));
+    CSRW(CSR_SEPC, v);
 }
 
 static uintptr_t tret_vsepc_read(void)
 {
     uintptr_t v;
 
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSEPC) : "=r"(v));  /* vsepc */
+    v = CSRR(CSR_VSEPC);  /* vsepc */
     return v;
 }
 
 static void tret_vsepc_write(uintptr_t v)
 {
-    asm volatile ("csrw " CSR_STR(CSR_VSEPC) ", %0" :: "r"(v));  /* vsepc */
+    CSRW(CSR_VSEPC, v);  /* vsepc */
 }
 
 /* SRET landing point shared by the HS/VS probes. Runs at the privilege
@@ -218,12 +218,25 @@ static void tret_vs_handler(void)
 static void tret_hs_probe_setup(uintptr_t spv, uintptr_t spp)
 {
     clear_all_deleg();
-    asm volatile ("csrw sscratch, %0" :: "r"(TRET_MAGIC_HS));
-    asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
+    CSRW(CSR_SSCRATCH, TRET_MAGIC_HS);
+    CSRW(CSR_VSSCRATCH, TRET_MAGIC_VS);  /* vsscratch */
     g_tret_landing = 0;
     g_tret_spv = spv;
     g_tret_spp = spp;
     g_tret_land = (uintptr_t)tret_sret_land;
+
+    /* hs_sret_probe is a naked routine that executes a real SRET and never
+     * returns normally: control comes back only through the run_in_priv
+     * trampoline, whose ecall-to-M recovery is what pulls us out of the
+     * VS/VU/U context the SRET lands in. That trampoline is used only when
+     * run_in_priv goes DOWN in privilege. Under the S-mode-normal model the
+     * test body runs in HS-mode, so run_in_priv(PRIV_S, ...) would be a
+     * same-privilege direct call with no trampoline and no recovery, stranding
+     * execution in the guest (its next hstatus access then raises cause 22).
+     * Hop to M-mode first so the PRIV_S run goes down through the trampoline
+     * -- this is also where the old M-mode-normal model ran it. hyp_reset_state
+     * at HYP_TEST_END returns the suite to HS-mode afterwards. */
+    goto_priv(PRIV_M);
 }
 
 /* ------------------------------------------------------------------
@@ -280,12 +293,31 @@ bool tret_04_mret_to_m(void) {
     TEST_BEGIN("TRET-04: Verify current mode is M-mode");
 
     /* We're running in HS-mode (S-mode with virtualization). */
-    /* This is a simplified test - verify we can access M-mode CSRs. */
-    uintptr_t mstatus;
-    asm volatile ("csrr %0, mstatus" : "=r"(mstatus));
+    /* This is a simplified test - verify we can access M-mode CSRs.
+     * mstatus is M-level; read it through the adaptive tsbi_csr_read(), which
+     * routes via the T-SBI CSR proxy from S(HS)-mode. */
+    uintptr_t mstatus = tsbi_csr_read(CSR_MSTATUS);
     TEST_ASSERT("mstatus accessible (M-mode)", mstatus != 0);
 
     HYP_TEST_END();
+}
+
+/* mstatus.MIE is a return-path bit: the tsbi_csr_ guard refuses to proxy a
+ * set/clear of it from S(HS)-mode, and a whole-word tsbi_csr_write would clobber
+ * the framework-managed MPP. Verify MIE writability inside a single M-mode
+ * excursion instead, flipping only MIE with csrs/csrc so the rest of mstatus
+ * (notably MPP, which the excursion's return relies on) is preserved.
+ * Returns 1 if MIE was observed to clear then set (i.e. it is writable). */
+static uintptr_t tret_m_mie_toggle_readback(uintptr_t arg)
+{
+    (void)arg;
+    uintptr_t orig = CSRR(mstatus);
+    CSRC(mstatus, 1UL << 3);              /* MIE <- 0 */
+    uintptr_t rb0 = CSRR(mstatus) & (1UL << 3);
+    CSRS(mstatus, 1UL << 3);              /* MIE <- 1 */
+    uintptr_t rb1 = CSRR(mstatus) & (1UL << 3);
+    CSRW(mstatus, orig);                  /* restore exactly (preserves MPP) */
+    return (rb0 == 0 && rb1 != 0) ? 1 : 0;
 }
 
 /* ------------------------------------------------------------------
@@ -295,9 +327,10 @@ TEST_REGISTER(tret_05_mret_mie_mpie);
 bool tret_05_mret_mie_mpie(void) {
     TEST_BEGIN("TRET-05: MRET MIE/MPIE fields readable/writable");
 
-    /* Verify mstatus MIE/MPIE fields are readable/writable. */
-    uintptr_t mstatus;
-    asm volatile ("csrr %0, mstatus" : "=r"(mstatus));
+    /* Verify mstatus MIE/MPIE fields are readable. mstatus is M-level; read
+     * the whole word via the adaptive tsbi_csr_read() (config bits are correct;
+     * MPP/MPIE reflect the proxy trap). */
+    uintptr_t mstatus = tsbi_csr_read(CSR_MSTATUS);
 
     /* MIE is bit 3, MPIE is bit 7. */
     bool mie = (mstatus >> 3) & 1;
@@ -308,9 +341,11 @@ bool tret_05_mret_mie_mpie(void) {
     TEST_ASSERT("MIE field readable", true);
     TEST_ASSERT("MPIE field readable", true);
 
-    /* Verify they are writable by toggling MIE. */
-    mstatus ^= (1UL << 3);  /* Toggle MIE bit */
-    asm volatile ("csrw mstatus, %0" :: "r"(mstatus));
+    /* Verify MIE is writable via an M-mode excursion write+readback (see
+     * helper): the old raw csrw mstatus from S(HS)-mode traps illegal, and
+     * MIE cannot be proxied by tsbi_csr_ (return-path bit). */
+    TEST_ASSERT("MIE field writable (M-excursion write+readback)",
+                run_in_priv(PRIV_M, tret_m_mie_toggle_readback, 0) == 1);
 
     HYP_TEST_END();
 }
@@ -481,7 +516,7 @@ bool tret_11_sret_v1_to_vs(void) {
 
     clear_all_deleg();
     hstatus_set_vtsr(0);
-    asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
+    CSRW(CSR_VSSCRATCH, TRET_MAGIC_VS);  /* vsscratch */
 
     /* Poison HS sepc; the probe writes vsepc (sepc alias in V=1). */
     tret_sepc_write(TRET_POISON_EPC);
@@ -554,7 +589,7 @@ bool tret_13_sret_v1_sie_spie(void) {
 
     clear_all_deleg();
     hstatus_set_vtsr(0);
-    asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
+    CSRW(CSR_VSSCRATCH, TRET_MAGIC_VS);  /* vsscratch */
 
     /* Pattern (a): SPIE=1, SIE=0 -> after SRET: SIE=1, SPIE=1. */
     vsstatus_write(TRET_SSTATUS_SPP | TRET_SSTATUS_SPIE);
@@ -618,12 +653,13 @@ TEST_REGISTER(tret_15_mret_mepc);
 bool tret_15_mret_mepc(void) {
     TEST_BEGIN("TRET-15: MRET mepc readable/writable");
 
-    /* Verify mepc is readable/writable. */
+    /* mepc is a trap-state CSR: a proxy round-trip from S(HS)-mode would read
+     * back a value clobbered by the ecall trap itself. mcsr_write_readback()
+     * performs the write and the read-back inside one M-mode excursion, so no
+     * intervening trap clobbers it -- the only correct way to check
+     * writability from S-mode. */
     uintptr_t test_val = 0xABCDEF00UL;
-    asm volatile ("csrw mepc, %0" :: "r"(test_val));
-
-    uintptr_t read_val;
-    asm volatile ("csrr %0, mepc" : "=r"(read_val));
+    uintptr_t read_val = mcsr_write_readback(CSR_MEPC, test_val);
 
     TEST_ASSERT_EQ("mepc readback == written value", read_val, test_val);
 
@@ -639,7 +675,7 @@ bool tret_16_sret_v1_preserves_v0(void) {
 
     clear_all_deleg();
     hstatus_set_vtsr(0);
-    asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
+    CSRW(CSR_VSSCRATCH, TRET_MAGIC_VS);  /* vsscratch */
 
     /* Pre-load V=0 state that a spec-compliant SRET(V=1) must keep. */
     hstatus_set_spv(1);
@@ -677,7 +713,7 @@ bool tret_17_sret_v0_preserves_vs(void) {
     /* Pre-load VS state that a spec-compliant SRET(V=0) must keep. */
     vsstatus_write(TRET_SSTATUS_SPP);
     tret_vsepc_write(TRET_POISON_EPC);
-    asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
+    CSRW(CSR_VSSCRATCH, TRET_MAGIC_VS);  /* vsscratch */
 
     /* SRET(V=0) with SPV=1, SPP=1 returns into VS-mode. */
     tret_hs_probe_setup(1 /* SPV */, 1 /* SPP */);
@@ -715,13 +751,13 @@ bool tret_18_vu_trap_hs_sret_resume(void) {
     setup_deleg_to_hs(1UL << CAUSE_BREAKPOINT);
 
     uintptr_t saved_stvec;
-    asm volatile ("csrr %0, stvec" : "=r"(saved_stvec));
-    asm volatile ("csrw stvec, %0" :: "r"((uintptr_t)&_hs_trap_entry));
+    saved_stvec = CSRR(CSR_STVEC);
+    CSRW(CSR_STVEC, (uintptr_t)&_hs_trap_entry);
 
     g_tret_flag = 0;
     run_in_vu_mode(tret_ebreak_probe, 0);
 
-    asm volatile ("csrw stvec, %0" :: "r"(saved_stvec));
+    CSRW(CSR_STVEC, saved_stvec);
     clear_all_deleg();
 
     /* The flag write after the ebreak proves the HS handler took the

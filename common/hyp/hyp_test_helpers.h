@@ -266,12 +266,14 @@ void clear_all_deleg(void);
 
 /* Route exceptions to HS-mode: set medeleg bits so that the specified
  * exception causes trap into HS-mode (where hardware writes htinst)
- * instead of M-mode (where hardware writes mtinst). */
-static inline void hyp_route_exc_to_hs(uintptr_t mask) { CSRS(medeleg, mask); }
+ * instead of M-mode (where hardware writes mtinst).  medeleg is M-level,
+ * so go through the M-safe tsbi_deleg_or() excursion (S-mode-normal);
+ * it also keeps the medeleg[9] ecall-from-S invariant. */
+static inline void hyp_route_exc_to_hs(uintptr_t mask) { tsbi_deleg_or(mask, 0); }
 
 /* Undo hyp_route_exc_to_hs: clear medeleg bits so the specified
- * exception causes trap into M-mode again. */
-static inline void hyp_unroute_exc_from_hs(uintptr_t mask) { CSRC(medeleg, mask); }
+ * exception causes trap into M-mode again (M-safe excursion). */
+static inline void hyp_unroute_exc_from_hs(uintptr_t mask) { tsbi_deleg_clear(mask, 0); }
 
 /* ===================================================================
  * G-stage fault helpers (shared with Shtvala-style tests).

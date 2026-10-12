@@ -27,6 +27,16 @@ EXT_OBJS = \
 
 include ../common/Makefile.common
 
+# Hypervisor x Sm* cross suites manipulate machine-level CSRs directly
+# (mseccfg.PMM, mstatus.MPRV/MPV/MPP, menvcfg/henvcfg PM) and own their M-mode
+# trap entry, so they keep the historical M-mode boot instead of the T-SBI
+# default drop to S-mode (see common/entry.S: TSBI_BOOT_MODE_M).  Under this
+# macro common/tsbi/tsbi_deleg.c zeroes the delegation baseline, reproducing
+# the pre-T-SBI all-traps-land-in-M model the statistics baseline was recorded
+# against.
+CFLAGS  += -DTSBI_BOOT_MODE_M
+ASFLAGS += -DTSBI_BOOT_MODE_M
+
 # Suite G-stage / VS-stage paging mode: follow the platform-selected mode
 # by default; override per build with `make HGATP_MODE=sv39|sv48|sv57`
 # and/or `VSATP_MODE=sv39|sv48|sv57` (see common/Makefile.common).

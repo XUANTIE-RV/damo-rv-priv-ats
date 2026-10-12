@@ -121,7 +121,7 @@ bool test_hzlrsc_32_failed_sc_d_side_effect(void)
     *pte = ppn | PTE_V | PTE_R | PTE_W | PTE_X | PTE_A;   /* D=0 */
 
     ts2_enable_adue();
-    bool adue_on = ((menvcfg_read() & MENVCFG_ADUE) != 0) &&
+    bool adue_on = ((tsbi_csr_read(CSR_MENVCFG) & MENVCFG_ADUE) != 0) &&
                    ((henvcfg_read() & HENVCFG_ADUE) != 0);
     if (!adue_on) {
         ts2_disable_adue();
@@ -172,7 +172,7 @@ bool test_hzlrsc_33_failed_sc_gstage_d_side_effect(void)
     *gpte = gppn | PTE_V | PTE_R | PTE_W | PTE_X | PTE_U | PTE_A;  /* D=0 */
 
     ts2_enable_adue();
-    bool adue_on = ((menvcfg_read() & MENVCFG_ADUE) != 0) &&
+    bool adue_on = ((tsbi_csr_read(CSR_MENVCFG) & MENVCFG_ADUE) != 0) &&
                    ((henvcfg_read() & HENVCFG_ADUE) != 0);
     if (!adue_on) {
         ts2_disable_adue();

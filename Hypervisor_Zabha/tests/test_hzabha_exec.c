@@ -37,7 +37,9 @@ bool test_hzabha_01_hs_exec(void)
         static volatile uint64_t hzabha_probe_slot;
         uintptr_t paddr = (uintptr_t)&hzabha_probe_slot;
         uintptr_t pr;
-        M_TRAP_EXPECT_BEGIN();
+        /* T-SBI S-mode-normal: probe runs in HS-mode where mstatus.MDT
+         * (M-mode double-trap guard) is void, so plain trap arming is used. */
+        trap_expect_begin();
         asm volatile(
             ".option push\n\t.option norvc\n\t"
             "amoadd.b %0, %2, (%1)\n\t"

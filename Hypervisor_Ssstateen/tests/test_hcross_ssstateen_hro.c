@@ -26,8 +26,8 @@ bool test_hcross_sssta_39(void)
     TEST_BEGIN("HCROSS-SSSTA-39: hstateen0 RO1 => mstateen0 same bit RO1");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, ~0UL);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, ~0UL);
 
     uintptr_t saved_h = hstateen_read(0);
 
@@ -49,10 +49,10 @@ bool test_hcross_sssta_39(void)
             if (!(rb & mask))
                 continue;
 
-            uintptr_t ms = mstateen_read(0);
-            mstateen_clear_bits(0, mask);
-            uintptr_t ms_rb = mstateen_read(0);
-            mstateen_write(0, ms);
+            uintptr_t ms = tsbi_csr_read(CSR_MSTATEEN0);
+            tsbi_csr_clear(CSR_MSTATEEN0, mask);
+            uintptr_t ms_rb = tsbi_csr_read(CSR_MSTATEEN0);
+            tsbi_csr_write(CSR_MSTATEEN0, ms);
 
             if (!(ms_rb & mask))
             {
@@ -65,7 +65,7 @@ bool test_hcross_sssta_39(void)
     TEST_ASSERT("hstateen0 RO1 bits => mstateen0 same bits RO1", all_ok);
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -77,12 +77,12 @@ bool test_hcross_sssta_40(void)
     TEST_BEGIN("HCROSS-SSSTA-40: hstateen1 RO1 => mstateen1 same bit RO1");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(1);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN1);
     mstateen_set_bit63(1, true);
 
-    if (!(mstateen_read(1) & STATEEN_BIT63))
+    if (!(tsbi_csr_read(CSR_MSTATEEN1) & STATEEN_BIT63))
     {
-        mstateen_write(1, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN1, saved_m);
         TEST_SKIP("mstateen1 bit 63 not writable (hstateen1 not accessible)");
     }
 
@@ -100,10 +100,10 @@ bool test_hcross_sssta_40(void)
             uintptr_t mask = 1UL << bit;
             if (!(rb & mask))
                 continue;
-            uintptr_t ms = mstateen_read(1);
-            mstateen_clear_bits(1, mask);
-            uintptr_t ms_rb = mstateen_read(1);
-            mstateen_write(1, ms);
+            uintptr_t ms = tsbi_csr_read(CSR_MSTATEEN1);
+            tsbi_csr_clear(CSR_MSTATEEN1, mask);
+            uintptr_t ms_rb = tsbi_csr_read(CSR_MSTATEEN1);
+            tsbi_csr_write(CSR_MSTATEEN1, ms);
             if (!(ms_rb & mask))
             {
                 LOG_E("hstateen1 bit %d RO1 but mstateen1 not\n", bit);
@@ -115,7 +115,7 @@ bool test_hcross_sssta_40(void)
     TEST_ASSERT("hstateen1 RO1 constraint satisfied", all_ok);
 
     hstateen_write(1, saved_h);
-    mstateen_write(1, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN1, saved_m);
     HYP_TEST_END();
 }
 
@@ -127,12 +127,12 @@ bool test_hcross_sssta_41(void)
     TEST_BEGIN("HCROSS-SSSTA-41: hstateen2 RO1 => mstateen2 same bit RO1");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(2);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN2);
     mstateen_set_bit63(2, true);
 
-    if (!(mstateen_read(2) & STATEEN_BIT63))
+    if (!(tsbi_csr_read(CSR_MSTATEEN2) & STATEEN_BIT63))
     {
-        mstateen_write(2, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN2, saved_m);
         TEST_SKIP("mstateen2 bit 63 not writable (hstateen2 not accessible)");
     }
 
@@ -150,10 +150,10 @@ bool test_hcross_sssta_41(void)
             uintptr_t mask = 1UL << bit;
             if (!(rb & mask))
                 continue;
-            uintptr_t ms = mstateen_read(2);
-            mstateen_clear_bits(2, mask);
-            uintptr_t ms_rb = mstateen_read(2);
-            mstateen_write(2, ms);
+            uintptr_t ms = tsbi_csr_read(CSR_MSTATEEN2);
+            tsbi_csr_clear(CSR_MSTATEEN2, mask);
+            uintptr_t ms_rb = tsbi_csr_read(CSR_MSTATEEN2);
+            tsbi_csr_write(CSR_MSTATEEN2, ms);
             if (!(ms_rb & mask))
             {
                 LOG_E("hstateen2 bit %d RO1 but mstateen2 not\n", bit);
@@ -165,7 +165,7 @@ bool test_hcross_sssta_41(void)
     TEST_ASSERT("hstateen2 RO1 constraint satisfied", all_ok);
 
     hstateen_write(2, saved_h);
-    mstateen_write(2, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN2, saved_m);
     HYP_TEST_END();
 }
 
@@ -177,12 +177,12 @@ bool test_hcross_sssta_42(void)
     TEST_BEGIN("HCROSS-SSSTA-42: hstateen3 RO1 => mstateen3 same bit RO1");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(3);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN3);
     mstateen_set_bit63(3, true);
 
-    if (!(mstateen_read(3) & STATEEN_BIT63))
+    if (!(tsbi_csr_read(CSR_MSTATEEN3) & STATEEN_BIT63))
     {
-        mstateen_write(3, saved_m);
+        tsbi_csr_write(CSR_MSTATEEN3, saved_m);
         TEST_SKIP("mstateen3 bit 63 not writable (hstateen3 not accessible)");
     }
 
@@ -200,10 +200,10 @@ bool test_hcross_sssta_42(void)
             uintptr_t mask = 1UL << bit;
             if (!(rb & mask))
                 continue;
-            uintptr_t ms = mstateen_read(3);
-            mstateen_clear_bits(3, mask);
-            uintptr_t ms_rb = mstateen_read(3);
-            mstateen_write(3, ms);
+            uintptr_t ms = tsbi_csr_read(CSR_MSTATEEN3);
+            tsbi_csr_clear(CSR_MSTATEEN3, mask);
+            uintptr_t ms_rb = tsbi_csr_read(CSR_MSTATEEN3);
+            tsbi_csr_write(CSR_MSTATEEN3, ms);
             if (!(ms_rb & mask))
             {
                 LOG_E("hstateen3 bit %d RO1 but mstateen3 not\n", bit);
@@ -215,7 +215,7 @@ bool test_hcross_sssta_42(void)
     TEST_ASSERT("hstateen3 RO1 constraint satisfied", all_ok);
 
     hstateen_write(3, saved_h);
-    mstateen_write(3, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN3, saved_m);
     HYP_TEST_END();
 }
 
@@ -227,8 +227,8 @@ bool test_hcross_sssta_43(void)
     TEST_BEGIN("HCROSS-SSSTA-43: hstateen0 reserved bits are ROZ");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, ~0UL);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, ~0UL);
 
     uintptr_t saved_h = hstateen_read(0);
 
@@ -247,7 +247,7 @@ bool test_hcross_sssta_43(void)
     LOG_D("hstateen0 readback after all-1: 0x%lx\n", (unsigned long)rb);
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -259,8 +259,8 @@ bool test_hcross_sssta_44(void)
     TEST_BEGIN("HCROSS-SSSTA-44: hstateen0 unimplemented extension bits ROZ");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, ~0UL);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, ~0UL);
 
     uintptr_t saved_h = hstateen_read(0);
 
@@ -300,7 +300,7 @@ bool test_hcross_sssta_44(void)
     TEST_ASSERT("hstateen0 optional bit probe completed", 1);
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }
 
@@ -312,8 +312,8 @@ bool test_hcross_sssta_45(void)
     TEST_BEGIN("HCROSS-SSSTA-45: hstateen0 WARL write legal value readback");
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t saved_m = mstateen_read(0);
-    mstateen_write(0, ~0UL);
+    uintptr_t saved_m = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, ~0UL);
 
     uintptr_t saved_h = hstateen_read(0);
 
@@ -340,6 +340,6 @@ bool test_hcross_sssta_45(void)
     TEST_ASSERT("hstateen0 zero write is valid WARL operation", 1);
 
     hstateen_write(0, saved_h);
-    mstateen_write(0, saved_m);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_m);
     HYP_TEST_END();
 }

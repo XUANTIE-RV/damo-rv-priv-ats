@@ -1082,11 +1082,7 @@ void      ts2_enable_adue / ts2_disable_adue / ts2_enable_pbmte / ts2_disable_pb
 - 异常预期：`EXPECT_VIRTUAL_INST`（cause 22）、`EXPECT_ILLEGAL_INST`（2）、`EXPECT_ILLEGAL_OR_VIRTUAL_INST`、`EXPECT_GUEST_PAGE_FAULT(cause, stmt)`、`EXPECT_COUNTER_TRAP`、`VS_EXPECT_NO_TRAP`。
 - 收尾：`HYP_TEST_END()`（以 `hyp_reset_state()` 代替 `reset_state()`）。
 
-### CSR WARL 探测（`common/hyp/hyp_csr.h`）
-
-```c
-uintptr_t csr_warl_probe(unsigned csr_num, uintptr_t value);  /* 写 value、读回实际保留位 */
-```
+### 分页模式与宽度探测（`common/hyp/hyp_csr.h`）
 
 分页模式支持探测用 `hgatp_supports_mode()` / `satp_supports_mode()` / `vsatp_supports_mode()`；VMID/ASID 宽度用 `hgatp_vmid_width()` / `satp_asid_width()` / `vsatp_asid_width()`。
 

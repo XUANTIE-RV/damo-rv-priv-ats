@@ -79,7 +79,6 @@ bool test_hcfi_lp_02(void) {
 
     /* Set henvcfg.LPE=0, menvcfg.LPE=1 */
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(false, true);
-    mseccfg_clear(MSECCFG_MLPE);
 
     /* Prepare code: LPAD + RET */
     uint32_t *code = get_cfi_code_buf();
@@ -102,7 +101,7 @@ bool test_hcfi_lp_02(void) {
 /* ===================================================================
  * HCFI-LP-03: henvcfg.LPE=1, VS-mode ELP updated
  *
- * Set henvcfg.LPE=1, menvcfg.LPE=1, mseccfg.MLPE=1.
+ * Set henvcfg.LPE=1, menvcfg.LPE=1.
  * VS-mode indirect jump to LPAD target should succeed.
  * ELP goes from LP_EXPECTED to NO_LP_EXPECTED via LPAD.
  * =================================================================== */
@@ -120,7 +119,6 @@ bool test_hcfi_lp_03(void) {
 
     /* Set henvcfg.LPE=1, menvcfg.LPE=1 */
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* Prepare code: LPAD + RET */
     uint32_t *code = get_cfi_code_buf();
@@ -135,7 +133,6 @@ bool test_hcfi_lp_03(void) {
     TEST_ASSERT("no trap when LPE=1 and target has LPAD",
                 result == 0);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -193,7 +190,6 @@ bool test_hcfi_lp_05(void) {
 
     /* Set henvcfg.LPE=1, menvcfg.LPE=1 */
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* Prepare code: NOP (NOT LPAD) + RET */
     uint32_t *code = get_cfi_code_buf();
@@ -210,7 +206,6 @@ bool test_hcfi_lp_05(void) {
     TEST_ASSERT_EQ("tval = landing pad fault (2)",
                    trap_get_tval(), (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -236,7 +231,6 @@ bool test_hcfi_lp_06(void) {
 
     /* Set henvcfg.LPE=0, menvcfg.LPE=1 */
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(false, true);
-    mseccfg_clear(MSECCFG_MLPE);
 
     /* Prepare code: NOP (NOT LPAD) + RET */
     uint32_t *code = get_cfi_code_buf();
@@ -277,7 +271,6 @@ bool test_hcfi_lp_07(void) {
     /* Set henvcfg.LPE=1, menvcfg.LPE=1, senvcfg.LPE=0 */
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     senvcfg_clear_bits(SENVCFG_LPE);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* Prepare code: NOP (NOT LPAD) + RET */
     uint32_t *code = get_cfi_code_buf();
@@ -292,7 +285,6 @@ bool test_hcfi_lp_07(void) {
     TEST_ASSERT("no trap in VU-mode when senvcfg.LPE=0",
                 result == 0);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -319,7 +311,6 @@ bool test_hcfi_lp_08(void) {
     /* Set henvcfg.LPE=1, menvcfg.LPE=1, senvcfg.LPE=1 */
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, true);
     senvcfg_set_bits(SENVCFG_LPE);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* Prepare code: NOP (NOT LPAD) + RET */
     uint32_t *code = get_cfi_code_buf();
@@ -337,7 +328,6 @@ bool test_hcfi_lp_08(void) {
                    trap_get_tval(), (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
     senvcfg_clear_bits(SENVCFG_LPE);
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();
@@ -363,7 +353,6 @@ bool test_hcfi_lp_09(void) {
 
     /* Set henvcfg.LPE=1, menvcfg.LPE=0 */
     uintptr_t orig_henvcfg = cfi_setup_vs_lpe(true, false);
-    mseccfg_set(MSECCFG_MLPE);
 
     /* Prepare code: LPAD + RET (valid landing pad) */
     uint32_t *code = get_cfi_code_buf();
@@ -393,7 +382,6 @@ bool test_hcfi_lp_09(void) {
     TEST_ASSERT_EQ("tval = landing pad fault (2)",
                    trap_get_tval(), (uintptr_t)SWCHECK_LANDING_PAD_FAULT);
 
-    mseccfg_clear(MSECCFG_MLPE);
     henvcfg_write(orig_henvcfg);
     ts2_finish(&ctx);
     HYP_TEST_END();

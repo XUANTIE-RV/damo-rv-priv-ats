@@ -24,17 +24,17 @@ bool test_hcross_smsta_05(void) {
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t orig = mstateen_read(0);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
 
     /* Clear SE0 */
-    mstateen_clear_bits(0, MSTATEEN0_SE0);
+    tsbi_csr_clear(CSR_MSTATEEN0, MSTATEEN0_SE0);
 
     /* HS-mode hstateen0 access should be blocked */
     SMSTATEEN_TEST_SMODE_BLOCKED(
         "hstateen0 blocked (SE0=0)",
         hstateen_read(0));
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     TEST_END();
 }
 
@@ -48,10 +48,10 @@ bool test_hcross_smsta_06(void) {
 #if __riscv_xlen == 32
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t orig = mstateen_read(0);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
 
     /* Clear SE0 */
-    mstateen_clear_bits(0, MSTATEEN0_SE0);
+    tsbi_csr_clear(CSR_MSTATEEN0, MSTATEEN0_SE0);
 
     /* HS-mode hstateen0h (0x61C) access should be blocked */
     goto_priv(PRIV_S);
@@ -63,7 +63,7 @@ bool test_hcross_smsta_06(void) {
     goto_priv(PRIV_M);
     CHECK_TRAP("hstateen0h blocked (SE0=0)", CAUSE_ILLEGAL_INST);
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
 #else
     TEST_SKIP("RV32-only test");
 #endif
@@ -84,14 +84,14 @@ bool test_hcross_smsta_07(void) {
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t orig = mstateen_read(0);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
 
     /* Set SE0 to allow sstateen0 access, then clear ENVCFG */
-    mstateen_set_bits(0, MSTATEEN0_SE0);
-    mstateen_clear_bits(0, MSTATEEN0_ENVCFG);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_SE0);
+    tsbi_csr_clear(CSR_MSTATEEN0, MSTATEEN0_ENVCFG);
 
-    if (mstateen_read(0) & MSTATEEN0_ENVCFG) {
-        mstateen_write(0, orig);
+    if (tsbi_csr_read(CSR_MSTATEEN0) & MSTATEEN0_ENVCFG) {
+        tsbi_csr_write(CSR_MSTATEEN0, orig);
         TEST_SKIP("Cannot clear mstateen0.ENVCFG");
     }
 
@@ -105,7 +105,7 @@ bool test_hcross_smsta_07(void) {
     goto_priv(PRIV_M);
     CHECK_TRAP("henvcfg blocked (ENVCFG=0)", CAUSE_ILLEGAL_INST);
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     TEST_END();
 }
 
@@ -122,15 +122,15 @@ bool test_hcross_smsta_08(void) {
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t orig = mstateen_read(0);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
 
-    mstateen_set_bits(0, MSTATEEN0_CSRIND);
-    if (!(mstateen_read(0) & MSTATEEN0_CSRIND)) {
-        mstateen_write(0, orig);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_CSRIND);
+    if (!(tsbi_csr_read(CSR_MSTATEEN0) & MSTATEEN0_CSRIND)) {
+        tsbi_csr_write(CSR_MSTATEEN0, orig);
         TEST_SKIP("mstateen0.CSRIND not writable");
     }
 
-    mstateen_clear_bits(0, MSTATEEN0_CSRIND);
+    tsbi_csr_clear(CSR_MSTATEEN0, MSTATEEN0_CSRIND);
 
     /* HS-mode read of vsiselect (0x250) should trap */
     goto_priv(PRIV_S);
@@ -142,7 +142,7 @@ bool test_hcross_smsta_08(void) {
     goto_priv(PRIV_M);
     CHECK_TRAP("vsiselect blocked (CSRIND=0)", CAUSE_ILLEGAL_INST);
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     TEST_END();
 }
 
@@ -159,15 +159,15 @@ bool test_hcross_smsta_09(void) {
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t orig = mstateen_read(0);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
 
-    mstateen_set_bits(0, MSTATEEN0_IMSIC);
-    if (!(mstateen_read(0) & MSTATEEN0_IMSIC)) {
-        mstateen_write(0, orig);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_IMSIC);
+    if (!(tsbi_csr_read(CSR_MSTATEEN0) & MSTATEEN0_IMSIC)) {
+        tsbi_csr_write(CSR_MSTATEEN0, orig);
         TEST_SKIP("mstateen0.IMSIC not writable");
     }
 
-    mstateen_clear_bits(0, MSTATEEN0_IMSIC);
+    tsbi_csr_clear(CSR_MSTATEEN0, MSTATEEN0_IMSIC);
 
     goto_priv(PRIV_S);
     PRIV_DO({
@@ -178,7 +178,7 @@ bool test_hcross_smsta_09(void) {
     goto_priv(PRIV_M);
     CHECK_TRAP("vstopei blocked (IMSIC=0)", CAUSE_ILLEGAL_INST);
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     TEST_END();
 }
 
@@ -195,15 +195,15 @@ bool test_hcross_smsta_10(void) {
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t orig = mstateen_read(0);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
 
-    mstateen_set_bits(0, MSTATEEN0_CONTEXT);
-    if (!(mstateen_read(0) & MSTATEEN0_CONTEXT)) {
-        mstateen_write(0, orig);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_CONTEXT);
+    if (!(tsbi_csr_read(CSR_MSTATEEN0) & MSTATEEN0_CONTEXT)) {
+        tsbi_csr_write(CSR_MSTATEEN0, orig);
         TEST_SKIP("mstateen0.CONTEXT not writable");
     }
 
-    mstateen_clear_bits(0, MSTATEEN0_CONTEXT);
+    tsbi_csr_clear(CSR_MSTATEEN0, MSTATEEN0_CONTEXT);
 
     goto_priv(PRIV_S);
     PRIV_DO({
@@ -214,7 +214,7 @@ bool test_hcross_smsta_10(void) {
     goto_priv(PRIV_M);
     CHECK_TRAP("hcontext blocked (CONTEXT=0)", CAUSE_ILLEGAL_INST);
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     TEST_END();
 }
 
@@ -231,15 +231,15 @@ bool test_hcross_smsta_11(void) {
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t orig = mstateen_read(0);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
 
-    mstateen_set_bits(0, MSTATEEN0_P1P13);
-    if (!(mstateen_read(0) & MSTATEEN0_P1P13)) {
-        mstateen_write(0, orig);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_P1P13);
+    if (!(tsbi_csr_read(CSR_MSTATEEN0) & MSTATEEN0_P1P13)) {
+        tsbi_csr_write(CSR_MSTATEEN0, orig);
         TEST_SKIP("mstateen0.P1P13 not writable (hedelegh not implemented)");
     }
 
-    mstateen_clear_bits(0, MSTATEEN0_P1P13);
+    tsbi_csr_clear(CSR_MSTATEEN0, MSTATEEN0_P1P13);
 
     goto_priv(PRIV_S);
     PRIV_DO({
@@ -250,7 +250,7 @@ bool test_hcross_smsta_11(void) {
     goto_priv(PRIV_M);
     CHECK_TRAP("hedelegh blocked (P1P13=0)", CAUSE_ILLEGAL_INST);
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     TEST_END();
 }
 
@@ -263,11 +263,11 @@ bool test_hcross_smsta_12(void) {
 
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
 
-    uintptr_t orig = mstateen_read(0);
+    uintptr_t orig = tsbi_csr_read(CSR_MSTATEEN0);
 
-    mstateen_set_bits(0, MSTATEEN0_P1P13);
-    if (!(mstateen_read(0) & MSTATEEN0_P1P13)) {
-        mstateen_write(0, orig);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_P1P13);
+    if (!(tsbi_csr_read(CSR_MSTATEEN0) & MSTATEEN0_P1P13)) {
+        tsbi_csr_write(CSR_MSTATEEN0, orig);
         TEST_SKIP("mstateen0.P1P13 not writable");
     }
 
@@ -282,7 +282,7 @@ bool test_hcross_smsta_12(void) {
     (void)dummy;
 
     if (!hedelegh_exists) {
-        mstateen_write(0, orig);
+        tsbi_csr_write(CSR_MSTATEEN0, orig);
         TEST_SKIP("hedelegh CSR does not exist on this platform");
     }
 
@@ -295,6 +295,6 @@ bool test_hcross_smsta_12(void) {
     goto_priv(PRIV_M);
     CHECK_NO_TRAP("hedelegh allowed (P1P13=1)");
 
-    mstateen_write(0, orig);
+    tsbi_csr_write(CSR_MSTATEEN0, orig);
     TEST_END();
 }

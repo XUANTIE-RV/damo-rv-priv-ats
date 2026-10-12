@@ -107,7 +107,7 @@ void smstateen_open_envcfg_gates(void)
 
     /* Set SE0 first so hstateen0 becomes accessible from HS-mode,
      * then open the ENVCFG gates at both levels. */
-    mstateen_set_bits(0, MSTATEEN0_SE0 | MSTATEEN0_ENVCFG);
+    tsbi_csr_set(CSR_MSTATEEN0, MSTATEEN0_SE0 | MSTATEEN0_ENVCFG);
     hstateen_set_bits(0, STATEEN0_ENVCFG);
 }
 
@@ -144,9 +144,9 @@ static uintptr_t cfi_setup_vs_sse(bool henvcfg_sse, bool menvcfg_sse) {
     uintptr_t orig_henvcfg = henvcfg_read();
 
     if (menvcfg_sse) {
-        menvcfg_set_bits(MENVCFG_SSE);
+        tsbi_csr_set(CSR_MENVCFG, MENVCFG_SSE);
     } else {
-        menvcfg_clear_bits(MENVCFG_SSE);
+        tsbi_csr_clear(CSR_MENVCFG, MENVCFG_SSE);
     }
 
     if (henvcfg_sse) {
@@ -450,10 +450,17 @@ static void vs_exc_handler(void)
 
 /* ===================================================================
  * Delegation helpers
+ *
+ * medeleg is M-level: under the S-mode-normal (T-SBI) execution model the
+ * test body runs in S(HS)-mode, where a bare csrs/csrw medeleg raises
+ * illegal-instruction, so go through the M-safe tsbi_deleg_or /
+ * tsbi_deleg_clear primitives (they own the raise-to-M / drop-back excursion
+ * and keep the medeleg[9] ecall-from-S invariant of the T-SBI service
+ * channel). hedeleg is HS-level and stays direct.
  * =================================================================== */
 
 static void setup_deleg_to_vs(uintptr_t exc_mask) {
-    CSRS(medeleg, exc_mask);
+    tsbi_deleg_or(exc_mask, 0);
     CSRS(CSR_HEDELEG, exc_mask);
     /* Install VS-mode trap handler (Direct mode) */
     g_vs_exc_cause = 0;
@@ -464,12 +471,12 @@ static void setup_deleg_to_vs(uintptr_t exc_mask) {
 }
 
 static void setup_deleg_to_hs(uintptr_t exc_mask) {
-    CSRS(medeleg, exc_mask);
+    tsbi_deleg_or(exc_mask, 0);
     CSRC(CSR_HEDELEG, exc_mask);
 }
 
 static void clear_all_deleg(void) {
-    CSRW(medeleg, 0);
+    tsbi_deleg_clear((uintptr_t)-1, (uintptr_t)-1);
     CSRW(CSR_HEDELEG, 0);
 }
 

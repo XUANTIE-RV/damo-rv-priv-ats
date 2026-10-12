@@ -22,6 +22,45 @@
 
 #include "hyp_test_helpers.h"
 
+/* mtval2/mtinst are M-level trap-state CSRs: hardware rewrites them on every
+ * trap into M-mode (including the T-SBI proxy ecall used by tsbi_csr_/mcsr_), so
+ * they cannot be probed per-access from S(HS)-mode -- a proxy round-trip both
+ * traps on the raw access and clobbers the value. Run each WARL sequence inside
+ * ONE M-mode excursion (no intervening trap) and stash the reads in these
+ * globals for the assertions. Any pattern works: WARL echo is not required,
+ * only that zero is holdable and readback is stable. */
+static uintptr_t g_warl_r0, g_warl_r1a, g_warl_r1b, g_warl_r2;
+
+static uintptr_t mtval2_warl_probe(uintptr_t arg)
+{
+    (void)arg;
+    uintptr_t pat = 0xDEADBEEFCAFEBABEUL;
+    CSRW(CSR_MTVAL2, 0);
+    g_warl_r0 = CSRR(CSR_MTVAL2);
+    CSRW(CSR_MTVAL2, pat);
+    g_warl_r1a = CSRR(CSR_MTVAL2);
+    CSRW(CSR_MTVAL2, pat);
+    g_warl_r1b = CSRR(CSR_MTVAL2);
+    g_warl_r2 = CSRR(CSR_MTVAL2);
+    CSRW(CSR_MTVAL2, 0);
+    return 0;
+}
+
+static uintptr_t mtinst_warl_probe(uintptr_t arg)
+{
+    (void)arg;
+    uintptr_t pat = 0x123456789ABCDEF0UL;
+    CSRW(CSR_MTINST, 0);
+    g_warl_r0 = CSRR(CSR_MTINST);
+    CSRW(CSR_MTINST, pat);
+    g_warl_r1a = CSRR(CSR_MTINST);
+    CSRW(CSR_MTINST, pat);
+    g_warl_r1b = CSRR(CSR_MTINST);
+    g_warl_r2 = CSRR(CSR_MTINST);
+    CSRW(CSR_MTINST, 0);
+    return 0;
+}
+
 /* ------------------------------------------------------------------
  * MTVAL-01: mtval2 WARL read/write
  *
@@ -34,26 +73,13 @@ TEST_REGISTER(mtval2_basic_rw);
 bool mtval2_basic_rw(void) {
     TEST_BEGIN("MTVAL-01: mtval2 WARL read/write semantics");
 
-    /* Zero must be holdable. */
-    asm volatile("csrw " CSR_STR(CSR_MTVAL2) ", zero");
-    uintptr_t r0;
-    asm volatile("csrr %0, " CSR_STR(CSR_MTVAL2) : "=r"(r0));
-    TEST_ASSERT_EQ("mtval2 must hold zero", r0, 0);
-
-    uintptr_t pattern = 0xDEADBEEFCAFEBABEUL;
-    uintptr_t r1a, r1b;
-    asm volatile("csrw " CSR_STR(CSR_MTVAL2) ", %0" :: "r"(pattern));
-    asm volatile("csrr %0, " CSR_STR(CSR_MTVAL2) : "=r"(r1a));
-    asm volatile("csrw " CSR_STR(CSR_MTVAL2) ", %0" :: "r"(pattern));
-    asm volatile("csrr %0, " CSR_STR(CSR_MTVAL2) : "=r"(r1b));
-    TEST_ASSERT_EQ("mtval2 readback must be stable", r1a, r1b);
-
-    uintptr_t r2;
-    asm volatile("csrr %0, " CSR_STR(CSR_MTVAL2) : "=r"(r2));
-    TEST_ASSERT_EQ("mtval2 value must persist", r2, r1a);
-
-    /* Leave the register in a known state for later tests. */
-    asm volatile("csrw " CSR_STR(CSR_MTVAL2) ", zero");
+    /* mtval2 is M-level trap state rewritten on every M-mode trap (incl. the
+     * proxy ecall), so run the whole WARL sequence in ONE M-mode excursion and
+     * assert on the values captured there (see mtval2_warl_probe). */
+    run_in_priv(PRIV_M, mtval2_warl_probe, 0);
+    TEST_ASSERT_EQ("mtval2 must hold zero", g_warl_r0, 0);
+    TEST_ASSERT_EQ("mtval2 readback must be stable", g_warl_r1a, g_warl_r1b);
+    TEST_ASSERT_EQ("mtval2 value must persist", g_warl_r2, g_warl_r1a);
 
     HYP_TEST_END();
 }
@@ -111,12 +137,14 @@ bool mtval2_non_gpf_trap(void) {
                    trap_get_cause(), (uintptr_t)CAUSE_ECALL_FROM_VS);
     trap_expect_end();
 
-    uintptr_t mtval2;
-    asm volatile("csrr %0, " CSR_STR(CSR_MTVAL2) : "=r"(mtval2));
+    /* mtval2/mtinst are M-level trap state rewritten on every M trap; read the
+     * values the framework captured at THIS trap's M-mode entry (on the
+     * M-delivery path trap_get_htval()/htinst() reflect mtval2/mtinst) rather
+     * than the CSRs, which cannot be read from S(HS)-mode. */
+    uintptr_t mtval2 = trap_get_htval();
     TEST_ASSERT_EQ("mtval2 must be 0 on non-GPF trap", mtval2, 0);
 
-    uintptr_t mtinst;
-    asm volatile("csrr %0, " CSR_STR(CSR_MTINST) : "=r"(mtinst));
+    uintptr_t mtinst = trap_get_htinst();
     TEST_ASSERT_EQ("mtinst must be 0 on ecall (standard inst)", mtinst, 0);
 
     HYP_TEST_END();
@@ -133,24 +161,12 @@ TEST_REGISTER(mtinst_basic_rw);
 bool mtinst_basic_rw(void) {
     TEST_BEGIN("MTVAL-04: mtinst WARL read/write semantics");
 
-    asm volatile("csrw " CSR_STR(CSR_MTINST) ", zero");
-    uintptr_t r0;
-    asm volatile("csrr %0, " CSR_STR(CSR_MTINST) : "=r"(r0));
-    TEST_ASSERT_EQ("mtinst must hold zero", r0, 0);
-
-    uintptr_t pattern = 0x123456789ABCDEF0UL;
-    uintptr_t r1a, r1b;
-    asm volatile("csrw " CSR_STR(CSR_MTINST) ", %0" :: "r"(pattern));
-    asm volatile("csrr %0, " CSR_STR(CSR_MTINST) : "=r"(r1a));
-    asm volatile("csrw " CSR_STR(CSR_MTINST) ", %0" :: "r"(pattern));
-    asm volatile("csrr %0, " CSR_STR(CSR_MTINST) : "=r"(r1b));
-    TEST_ASSERT_EQ("mtinst readback must be stable", r1a, r1b);
-
-    uintptr_t r2;
-    asm volatile("csrr %0, " CSR_STR(CSR_MTINST) : "=r"(r2));
-    TEST_ASSERT_EQ("mtinst value must persist", r2, r1a);
-
-    asm volatile("csrw " CSR_STR(CSR_MTINST) ", zero");
+    /* mtinst is M-level trap state (see MTVAL-01): run the WARL sequence in one
+     * M-mode excursion and assert on the values captured there. */
+    run_in_priv(PRIV_M, mtinst_warl_probe, 0);
+    TEST_ASSERT_EQ("mtinst must hold zero", g_warl_r0, 0);
+    TEST_ASSERT_EQ("mtinst readback must be stable", g_warl_r1a, g_warl_r1b);
+    TEST_ASSERT_EQ("mtinst value must persist", g_warl_r2, g_warl_r1a);
 
     HYP_TEST_END();
 }
@@ -247,24 +263,24 @@ TEST_REGISTER(htinst_basic_rw);
 bool htinst_basic_rw(void) {
     TEST_BEGIN("MTVAL-07: htinst WARL read/write semantics");
 
-    asm volatile("csrw " CSR_STR(CSR_HTINST) ", zero");
+    CSRW(CSR_HTINST, 0);
     uintptr_t r0;
-    asm volatile("csrr %0, " CSR_STR(CSR_HTINST) : "=r"(r0));
+    r0 = CSRR(CSR_HTINST);
     TEST_ASSERT_EQ("htinst must hold zero", r0, 0);
 
     uintptr_t pattern = 0x9876543210FEDCBAUL;
     uintptr_t r1a, r1b;
-    asm volatile("csrw " CSR_STR(CSR_HTINST) ", %0" :: "r"(pattern));
-    asm volatile("csrr %0, " CSR_STR(CSR_HTINST) : "=r"(r1a));
-    asm volatile("csrw " CSR_STR(CSR_HTINST) ", %0" :: "r"(pattern));
-    asm volatile("csrr %0, " CSR_STR(CSR_HTINST) : "=r"(r1b));
+    CSRW(CSR_HTINST, pattern);
+    r1a = CSRR(CSR_HTINST);
+    CSRW(CSR_HTINST, pattern);
+    r1b = CSRR(CSR_HTINST);
     TEST_ASSERT_EQ("htinst readback must be stable", r1a, r1b);
 
     uintptr_t r2;
-    asm volatile("csrr %0, " CSR_STR(CSR_HTINST) : "=r"(r2));
+    r2 = CSRR(CSR_HTINST);
     TEST_ASSERT_EQ("htinst value must persist", r2, r1a);
 
-    asm volatile("csrw " CSR_STR(CSR_HTINST) ", zero");
+    CSRW(CSR_HTINST, 0);
 
     HYP_TEST_END();
 }

@@ -9,9 +9,12 @@
 
 #include "hyp_reset.h"
 #include "hyp_csr.h"
+#include "hyp_vs_trap.h"
 #include "encoding.h"
 
 extern void reset_state(void);   /* base reset in test_framework.c */
+extern unsigned get_current_priv(void);
+extern void goto_priv(unsigned target);
 
 /* ===================================================================
  * PMP bootstrap for V=1 execution
@@ -42,6 +45,17 @@ static void hyp_pmp_open_all(void) {
 }
 
 void hyp_reset_state(void) {
+    /* Raise to M first, exactly as reset_state() does.  Under the
+     * S-mode-normal model the test body runs in S, but this function pokes
+     * M-level CSRs directly (pmpaddr0/pmpcfg0 = 0x3A0/0x3B0, menvcfg = 0x30A,
+     * mtval2/mtinst = 0x34A/0x34B); from S every one of them raises an
+     * illegal-instruction exception.  Going through the T-SBI CSR proxy per
+     * write would work too, but a single excursion is both cheaper and what
+     * the rest of the framework does - and reset_state() below leaves us in
+     * M anyway, so the exit contract is unchanged. */
+    if (get_current_priv() != PRIV_M)
+        goto_priv(PRIV_M);
+
     /* ----- PMP: ensure VS/VU accesses are not blanket-denied ----- */
     hyp_pmp_open_all();
 
@@ -99,8 +113,8 @@ void hyp_reset_state(void) {
 #if ZICFISS_AVAILABLE
         clr |= MENVCFG_SSE;
 #endif
-        uintptr_t mv = menvcfg_read();
-        menvcfg_write(mv & ~clr);
+        uintptr_t mv = csr_read(CSR_MENVCFG);
+        csr_write(CSR_MENVCFG, mv & ~clr);
         asm volatile ("sfence.vma" ::: "memory");
     }
 
@@ -123,7 +137,6 @@ void hyp_reset_state(void) {
     /* ----- VS-level CSRs ----- */
     CSRW(CSR_VSSTATUS, 0);
     CSRW(CSR_VSIE, 0);
-    CSRW(CSR_VSTVEC, 0);
     CSRW(CSR_VSSCRATCH, 0);
     CSRW(CSR_VSEPC, 0);
     CSRW(CSR_VSCAUSE, 0);
@@ -131,13 +144,44 @@ void hyp_reset_state(void) {
     CSRW(CSR_VSIP, 0);
     CSRW(CSR_VSATP, 0);
 
+    /* vstvec is NOT cleared: the VS level gets its standing handler instead.
+     * The delegation baseline sends ordinary guest stimulus down to VS (see
+     * tsbi_deleg_hedeleg_baseline / brief section 4), so a cleared vstvec would
+     * route those traps to address 0 rather than to a handler.  M and S have a
+     * permanent entry installed at boot; this gives VS the same.  A suite whose
+     * own VS handler is the object under test overrides it per case with
+     * vs_trap_setup_direct(), and this reset puts the framework entry back. */
+    vs_trap_setup_framework();
+
     /* Final TLB flush: vsatp was just cleared, so flush the VS-stage
      * (HFENCE.VVMA) as well as any lingering G-stage entries
      * (HFENCE.GVMA).  Flushing only GVMA would leave stale VS-stage
      * entries from a prior paged vsatp usable by the next VS run. */
     hfence_vvma_all();
+
+    /* Final TLB flush in case any G-stage entries linger. */
     hfence_gvma_all();
 
     /* ----- Forward to base reset (PMP, satp, M-mode return, etc.) ----- */
     reset_state();
+}
+
+bool hyp_misa_h(void)
+{
+    /* misa is M-level; from S the csrr below would trap.  Same excursion the
+     * reset above takes, and just as cheap when we are already in M. */
+    if (get_current_priv() != PRIV_M)
+        goto_priv(PRIV_M);
+
+    uintptr_t misa;
+    asm volatile ("csrr %0, misa" : "=r"(misa));
+    return (misa & (1UL << ('H' - 'A'))) != 0;
+}
+
+void hyp_reset_state_if_h(void)
+{
+    if (hyp_misa_h())
+        hyp_reset_state();      /* forwards to reset_state() itself */
+    else
+        reset_state();
 }

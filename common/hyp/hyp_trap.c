@@ -43,15 +43,48 @@ static inline uintptr_t hs_next_instruction(uintptr_t epc) {
  * Reads scause/sepc/stval (which in HS-mode refer to the HS-level
  * CSRs) plus hstatus.SPV/GVA and htval/htinst.
  *
+ * Also acts as the S-level T-SBI service point while it is installed:
+ * see the stage calls at the top of the body.
+ *
+ * @frame: the x1-x31 trap frame built by SAVE_CONTEXT.  The T-SBI opcode
+ *         arrives in frame[TSBI_FRAME_A0] and any result must be written
+ *         back there - RESTORE_CONTEXT reloads a0 from that slot, so the C
+ *         return value never reaches the requester.
+ *
  * Returns the privilege level for sret (unused by current asm, but
  * kept for future flexibility).
  * =================================================================== */
 
-unsigned hs_trap_handler(void) {
+unsigned hs_trap_handler(uintptr_t *frame) {
     uintptr_t cause, epc, tval;
     cause = CSRR(scause);
     epc   = CSRR(sepc);
     tval  = CSRR(stval);
+
+    /* ================================================================
+     * T-SBI service stages - MUST precede the trap record below
+     *
+     * Tests install _hs_trap_entry into stvec *in place of* s_trap_entry, so
+     * for as long as it is installed this function is the only S-level
+     * service point that exists.  Skipping these stages would not merely
+     * leave a VS-mode ecall unserved (the old code just advanced sepc past
+     * it): it would take the whole S/HS-level protocol offline for the
+     * duration of the test - CSR proxying included.
+     *
+     * HS is the S privilege level with V=0, so the served/forwarded split is
+     * identical and the implementation is shared with s_trap_handler; see
+     * tsbi.h SECTION 9b.
+     *
+     * They run before _hs_trap_record is written on purpose: a request we
+     * served is framework traffic, not an observable event, and letting it
+     * reach the record would corrupt hs_trap_was_triggered() for the test
+     * that is actually watching.
+     * ================================================================ */
+    if (tsbi_s_proxy_capture(cause))
+        return PRIV_S;
+
+    if (!tsbi_raw_ecall_consume(cause) && tsbi_s_dispatch(frame, cause, epc))
+        return PRIV_S;
 
     /* Read hypervisor-extension trap info */
     uintptr_t hstat  = hstatus_read();
@@ -86,9 +119,9 @@ unsigned hs_trap_handler(void) {
 
     switch (cause_code) {
     case CAUSE_ECALL_FROM_VS:
-        /* VS-mode ecall — advance past ecall and return to HS-mode.
-         * SPP will be set to the mode before trap (VS), but we want
-         * to return to VS-mode normally after sret. */
+        /* A VS-mode ecall that survived the T-SBI dispatch above: either an
+         * armed raw stimulus or an opcode nobody recognises.  Record it (done
+         * already) and step over the ecall so the guest makes progress. */
         CSRW(sepc, epc + 4);
         break;
 
@@ -127,17 +160,38 @@ unsigned hs_trap_handler(void) {
 }
 
 /* ===================================================================
- * Accessor for SPV from the HS-mode trap record
+ * Merged accessors: HS-mode record first, M-mode snapshot second
+ *
+ * A trap reaches exactly one of the two records - hedeleg decides which -
+ * and the test that set hedeleg has no reason to care.  So each accessor
+ * answers from whichever record actually caught the trap.
+ *
+ * Both records are cleared together by trap_clear_record(), so "triggered"
+ * cannot be a leftover from an earlier test.
  * =================================================================== */
 
 bool trap_get_spv(void) {
-    /* Prefer the HS-mode trap record (set by hs_trap_handler) when
-     * available. Fall back to the snapshot captured by s_trap_handler
-     * or m_trap_handler (trap_record.spv) for traps that went through
-     * the common S/M handler path (e.g. LP-36/40 via medeleg). */
     if (_hs_trap_record.triggered)
         return _hs_trap_record.spv;
     return trap_get_spv_snap();
+}
+
+uintptr_t trap_get_htval(void) {
+    if (_hs_trap_record.triggered)
+        return _hs_trap_record.htval;
+    return trap_get_htval_snap();
+}
+
+uintptr_t trap_get_htinst(void) {
+    if (_hs_trap_record.triggered)
+        return _hs_trap_record.htinst;
+    return trap_get_htinst_snap();
+}
+
+bool trap_get_gva(void) {
+    if (_hs_trap_record.triggered)
+        return _hs_trap_record.gva;
+    return trap_get_gva_snap();
 }
 
 /* ===================================================================
@@ -145,6 +199,8 @@ bool trap_get_spv(void) {
  *
  * These allow tests that install _hs_trap_entry as stvec to read
  * trap fields (cause, htinst, htval) captured by hs_trap_handler.
+ * The cause/epc/tval trio is only available here - see the note in
+ * test_framework.h for why it is not merged into trap_get_cause().
  * =================================================================== */
 
 bool hs_trap_was_triggered(void) {
@@ -155,12 +211,24 @@ uintptr_t hs_trap_get_cause(void) {
     return _hs_trap_record.cause;
 }
 
+uintptr_t hs_trap_get_epc(void) {
+    return _hs_trap_record.epc;
+}
+
+uintptr_t hs_trap_get_tval(void) {
+    return _hs_trap_record.tval;
+}
+
 uintptr_t hs_trap_get_htinst(void) {
     return _hs_trap_record.htinst;
 }
 
 uintptr_t hs_trap_get_htval(void) {
     return _hs_trap_record.htval;
+}
+
+bool hs_trap_get_gva(void) {
+    return _hs_trap_record.gva;
 }
 
 void hs_trap_record_reset(void) {

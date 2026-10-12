@@ -127,10 +127,11 @@ bool test_sha_cross_shtvala_htval(void) {
     /* Set vsatp=Bare (no VS-stage translation) */
     vsatp_write(0);
 
-    /* Disable M-mode timer interrupt to protect armed flag */
-    uintptr_t saved_mie;
-    asm volatile ("csrr %0, " CSR_STR(CSR_MIE) : "=r"(saved_mie));
-    asm volatile ("csrc " CSR_STR(CSR_MIE) ", %0" :: "r"(1UL << 7));  /* clear MTIE */
+    /* Disable M-mode timer interrupt to protect armed flag. mie is M-level and
+     * the suite body runs in S(HS)-mode under the T-SBI S-mode-normal boot, so
+     * go through the T-SBI CSR proxy instead of a direct access. */
+    uintptr_t saved_mie = tsbi_csr_read(CSR_MIE);
+    tsbi_csr_clear(CSR_MIE, 1UL << 7);  /* clear MTIE */
 
     trap_expect_begin();
     run_in_vs_mode(_vs_do_load, target_gpa);
@@ -139,7 +140,7 @@ bool test_sha_cross_shtvala_htval(void) {
     uintptr_t htval = fired ? trap_get_htval() : 0;
     trap_expect_end();
 
-    asm volatile ("csrw " CSR_STR(CSR_MIE) ", %0" :: "r"(saved_mie));
+    tsbi_csr_write(CSR_MIE, saved_mie);
 
     gpt_disable();
     hyp_reset_state();
@@ -289,10 +290,11 @@ bool test_sha_cross_htval_vstval_independent(void) {
     /* Clear vstval before G-stage fault */
     vstval_write(0);
 
-    /* Disable M-mode timer interrupt to protect armed flag */
-    uintptr_t saved_mie;
-    asm volatile ("csrr %0, " CSR_STR(CSR_MIE) : "=r"(saved_mie));
-    asm volatile ("csrc " CSR_STR(CSR_MIE) ", %0" :: "r"(1UL << 7));  /* clear MTIE */
+    /* Disable M-mode timer interrupt to protect armed flag. mie is M-level and
+     * the suite body runs in S(HS)-mode under the T-SBI S-mode-normal boot, so
+     * go through the T-SBI CSR proxy instead of a direct access. */
+    uintptr_t saved_mie = tsbi_csr_read(CSR_MIE);
+    tsbi_csr_clear(CSR_MIE, 1UL << 7);  /* clear MTIE */
 
     trap_expect_begin();
     run_in_vs_mode(_vs_do_load, gpf_gpa);
@@ -302,7 +304,7 @@ bool test_sha_cross_htval_vstval_independent(void) {
     uintptr_t vstval_after_gpf = vstval_read();
     trap_expect_end();
 
-    asm volatile ("csrw " CSR_STR(CSR_MIE) ", %0" :: "r"(saved_mie));
+    tsbi_csr_write(CSR_MIE, saved_mie);
 
     gpt_disable();
     hyp_reset_state();

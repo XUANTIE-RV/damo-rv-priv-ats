@@ -36,15 +36,32 @@
 #include "pmp/pmp_cfg.h"
 
 
-/* PMP deny-window helpers from common/pmp/pmp_cfg.h. */
+/* PMP deny-window helpers from common/pmp/pmp_cfg.h. pmp_cfg.c
+ * touches the M-only pmpcfg/pmpaddr registers through the thin
+ * csr_read/csr_write accessors, so from this HS-mode suite it must run
+ * inside an M-mode excursion; the PMP entries persist after we drop
+ * back to the original privilege, so the subsequent VS-mode access
+ * still hits the denial. (Shared pmp_cfg.c is deliberately left
+ * untouched: its S-mode trap-probe semantics are load-bearing for the
+ * entry-count/Smepmp detection used by other suites.) */
 typedef pmp_save_t g19_pmp_save_t;
 
 static void g19_pmp_deny_page(uintptr_t pa, g19_pmp_save_t *save) {
+    unsigned saved = get_current_priv();
+    if (saved != PRIV_M)
+        goto_priv(PRIV_M);
     pmp_deny_page_4k(pa, save);
+    if (saved != PRIV_M)
+        goto_priv(saved);
 }
 
 static void g19_pmp_restore(const g19_pmp_save_t *save) {
+    unsigned saved = get_current_priv();
+    if (saved != PRIV_M)
+        goto_priv(PRIV_M);
     pmp_restore(save);
+    if (saved != PRIV_M)
+        goto_priv(saved);
 }
 
 /* ===================================================================

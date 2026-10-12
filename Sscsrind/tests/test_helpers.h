@@ -48,10 +48,10 @@
  * =================================================================== */
 
 /* mstateen0 accessors delegate to common/csr_ops.h mstateen_*(idx=0) */
-static inline uintptr_t mstateen0_read(void) { return mstateen_read(0); }
-static inline void mstateen0_write(uintptr_t v) { mstateen_write(0, v); }
-static inline void mstateen0_set(uintptr_t bits) { mstateen_set_bits(0, bits); }
-static inline void mstateen0_clear(uintptr_t bits) { mstateen_clear_bits(0, bits); }
+static inline uintptr_t mstateen0_read(void) { return tsbi_csr_read(CSR_MSTATEEN0); }
+static inline void mstateen0_write(uintptr_t v) { tsbi_csr_write(CSR_MSTATEEN0, v); }
+static inline void mstateen0_set(uintptr_t bits) { tsbi_csr_set(CSR_MSTATEEN0, bits); }
+static inline void mstateen0_clear(uintptr_t bits) { tsbi_csr_clear(CSR_MSTATEEN0, bits); }
 
 /* ===================================================================
  * Feature detection

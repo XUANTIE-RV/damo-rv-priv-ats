@@ -66,7 +66,7 @@ static void sstvala_delegate_exceptions(void) {
                     | BIT(CAUSE_BREAKPOINT)            /* cause 3 */
                     | BIT(CAUSE_LOAD_ADDR_MISALIGN)    /* cause 4 */
                     | BIT(CAUSE_STORE_ADDR_MISALIGN);  /* cause 6 */
-    CSRW(medeleg, CSRR(medeleg) | deleg);
+    tsbi_csr_write(CSR_MEDELEG, tsbi_csr_read(CSR_MEDELEG) | deleg);
 }
 
 /* ===================================================================

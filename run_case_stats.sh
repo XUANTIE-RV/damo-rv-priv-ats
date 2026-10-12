@@ -44,15 +44,15 @@ EXT_ZK="Zkr Zkt"
 EXT_ZA="Za64rs Za128rs Zaamo Zabha Zacas Zalasr Zalrsc Zama16b Zawrs"
 
 # Hypervisor extensions
-EXT_HYP="Hypervisor_CSR Hypervisor_Interrupts Hypervisor_Exceptions Sha Shcounterenw Shgatpa Shlcofideleg Shtvala Shvstvala Shvsatpa"
+EXT_HYP="Hypervisor_CSR Hypervisor_Interrupts Hypervisor_Exceptions Sha Shcounterenw Shgatpa Shlcofideleg Shtvala Shvstvala Shvsatpa Shvstvecd"
 
 # Hypervisor translation modes
 EXT_HYP_VM="Sv39x4 Sv48x4 Sv57x4 Sv39x4_Sv39 Sv39x4_Sv48 Sv39x4_Sv57 Sv48x4_Sv39 Sv48x4_Sv48 Sv48x4_Sv57 Sv57x4_Sv39 Sv57x4_Sv48 Sv57x4_Sv57"
 
 # Hypervisor combined
-EXT_HYP_SM="Hypervisor_Smcntrpmf  Hypervisor_Smcsrind  Hypervisor_Smmpm  Hypervisor_Smnpm  Hypervisor_Smstateen Hypervisor_PMP"
-EXT_HYP_SS="Hypervisor_Ssccfg Hypervisor_Ssccptr  Hypervisor_Sscofpmf Hypervisor_Sscsrind  Hypervisor_Ssdbltrp  Hypervisor_Ssnpm  Hypervisor_Ssqosid  Hypervisor_Ssstateen  Hypervisor_Sstc  Hypervisor_Sstvala"
-EXT_HYP_SV="Hypervisor_Svadu  Hypervisor_Svinval  Hypervisor_Svnapot  Hypervisor_Svpbmt"
+EXT_HYP_SM="Hypervisor_Smcntrpmf Hypervisor_Smcsrind Hypervisor_Smmpm Hypervisor_Smnpm Hypervisor_Smstateen Hypervisor_PMP"
+EXT_HYP_SS="Hypervisor_Ssccfg Hypervisor_Ssccptr Hypervisor_Sscofpmf Hypervisor_Sscsrind Hypervisor_Ssdbltrp  Hypervisor_Ssnpm Hypervisor_Ssqosid Hypervisor_Ssstateen Hypervisor_Sstc Hypervisor_Sstvala"
+EXT_HYP_SV="Hypervisor_Svadu  Hypervisor_Svinval Hypervisor_Svnapot Hypervisor_Svpbmt"
 EXT_HYP_ZI="Hypervisor_Zicbom Hypervisor_Zicbop Hypervisor_Zicboz Hypervisor_Zicfilp Hypervisor_Zicfiss Hypervisor_Zkr Hypervisor_Zihintntl Hypervisor_Zicntr Hypervisor_Zihpm Hypervisor_Vector"
 # Hypervisor atomic and reservation set extensions
 EXT_HYP_ZA="Hypervisor_Zalrsc Hypervisor_Zaamo Hypervisor_Zacas Hypervisor_Zabha Hypervisor_Zalasr Hypervisor_Zawrs"

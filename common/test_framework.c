@@ -5,6 +5,11 @@
 
 #include "test_framework.h"
 
+#ifdef ENABLE_HYP
+#include "hyp_reset.h"      /* hyp_misa_h */
+#include "hyp_vs_trap.h"    /* vs_trap_setup_framework */
+#endif
+
 /* Runtime CSR access (defined in csr_accessors.c) */
 extern uintptr_t csr_read(uint16_t csr);
 extern void csr_write(uint16_t csr, uintptr_t val);
@@ -78,6 +83,21 @@ void reset_state(void) {
     CSRW(mtvec, (uintptr_t)m_trap_entry);
     CSRW(stvec, (uintptr_t)s_trap_entry);
 
+#ifdef ENABLE_HYP
+    /* And the third level, for the same reason the other two are here rather
+     * than only at boot: the delegation baseline applied below hands ordinary
+     * V=1 stimulus to the VS handler, so that handler has to be reachable
+     * before any test runs.  Without it a delegated trap would be "delivered"
+     * to vstvec = 0, fault on the fetch, be delegated again by the same bit and
+     * spin at PC 0 with no output at all.
+     *
+     * Guarded at runtime as well as at compile time: a suite may be built with
+     * ENABLE_HYP and still run on a part without H, where vstvec does not
+     * exist. */
+    if (hyp_misa_h())
+        vs_trap_setup_framework();
+#endif
+
     /* Detect mtval2 CSR availability (H-extension / double-trap
      * platforms only). Must run after trap vectors are installed.
      * The probe itself may record a trap, so re-clear the record
@@ -85,9 +105,14 @@ void reset_state(void) {
     trap_probe_mtval2();
     trap_clear_record();
 
-    /* Do NOT delegate exceptions (M-mode handler catches everything) */
-    CSRW(medeleg, 0);
-    CSRW(mideleg, 0);
+    /* Restore the delegation-first baseline (NOT zero).
+     *
+     * S-mode-normal model: stimulus traps are meant to be delivered
+     * straight to the S handler, and ecall-from-S must stay undelegated so
+     * the T-SBI service channel keeps working.  A test that needs the
+     * "undelegated leg" switches a cause out with trap_undelegate_exc()
+     * and gets it restored here. */
+    tsbi_deleg_restore_baseline();
 
     /* Ensure interrupts are disabled */
     CSRC(mstatus, MSTATUS_MIE_BIT | MSTATUS_SIE_BIT);
@@ -202,6 +227,39 @@ void reset_state(void) {
      * Prevents a previous test's page table from remaining active
      * when a subsequent test enters S-mode. */
     CSRW(satp, 0);
+
+#ifdef ENABLE_PM
+    /* Clear Pointer Masking (PM) state via the generic helper.
+     * senvcfg.PMM [33:32] (Ssnpm), menvcfg.PMM [33:32] (Smnpm),
+     * mseccfg.PMM [33:32] (Smmpm).
+     * Only needed when PM extension is enabled. */
+    _safe_csr_clear_field(CSR_SENVCFG, SENVCFG_PMM_MASK);
+    _safe_csr_clear_field(CSR_MENVCFG, MENVCFG_PMM_MASK);
+    /* mseccfg.PMM may be sticky on some implementations;
+     * the write may silently fail, which is acceptable. */
+    _safe_csr_clear_field(CSR_MSECCFG, MSECCFG_PMM_MASK);
+#endif /* ENABLE_PM */
+
+    /* Last clean-slate sweep, for the same reason as after the mtval2 probe
+     * above: every trap-protected probe in this function leaves the record
+     * dirty.  trap_expect_begin() clears it on entry but trap_expect_end()
+     * only disarms, so a probe of a CSR the platform lacks (mseccfg on
+     * Spike, say) leaves triggered=true behind, and the first test to assert
+     * !trap_was_triggered() fails on a trap it never caused. */
+    trap_clear_record();
+
+#ifndef TSBI_BOOT_MODE_M
+    /* Back to the S-mode normal state.
+     *
+     * Everything above needs M-mode authority, so reset_state() raises
+     * privilege on entry (goto_priv(PRIV_M) at the top) and hands control
+     * back to S here - one raise and one drop per reset, rather than one
+     * trap round trip per M-CSR.
+     *
+     * Lowering privilege does not involve T-SBI (see the design brief's
+     * "raising is a request, lowering is a right"). */
+    goto_priv(PRIV_S);
+#endif
 }
 
 /* ===================================================================

@@ -9,6 +9,7 @@ Shlcofideleg,14,0,0,14
 Shtvala,50,47,0,3
 Shvstvala,22,17,0,5
 Shvsatpa,19,19,0,0
+Shvstvecd,18,18,0,0
 Sv39x4,55,55,0,0
 Sv48x4,57,57,0,0
 Sv57x4,57,57,0,0
@@ -29,7 +30,7 @@ Hypervisor_Smstateen,14,8,0,6
 Hypervisor_PMP,8,8,0,0
 Hypervisor_Ssccfg,24,0,0,24
 Hypervisor_Ssccptr,4,3,0,1
-Hypervisor_Sscofpmf,6,3,0,3
+Hypervisor_Sscofpmf,6,3,2,1
 Hypervisor_Sscsrind,33,2,0,31
 Hypervisor_Ssdbltrp,24,0,0,24
 Hypervisor_Ssnpm,48,45,0,3

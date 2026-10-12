@@ -36,21 +36,21 @@ bool test_hzcnt_01(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
-    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t saved_hcen = hcounteren_read();
 
     if (!mcounteren_bit_set_sticky(CNT_BIT_TM)) {
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("mcounteren.TM is read-only zero");
     }
     if (!hcounteren_bit_set_sticky(CNT_BIT_TM)) {
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("hcounteren.TM is read-only zero");
     }
     if (!htimedelta_set_checked(HZCNT_DELTA)) {
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("htimedelta write did not stick");
     }
 
@@ -70,7 +70,7 @@ bool test_hzcnt_01(void)
                 diff >= (int64_t)(HZCNT_DELTA - HZCNT_BOUND));
 
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }
 
@@ -83,29 +83,29 @@ bool test_hzcnt_02(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
-    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t saved_hcen = hcounteren_read();
     uintptr_t saved_scen = scounteren_read();
 
     if (!mcounteren_bit_set_sticky(CNT_BIT_TM)) {
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("mcounteren.TM is read-only zero");
     }
     if (!hcounteren_bit_set_sticky(CNT_BIT_TM)) {
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("hcounteren.TM is read-only zero");
     }
     if (!scounteren_bit_set_sticky(CNT_BIT_TM)) {
         scounteren_write(saved_scen);
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("scounteren.TM is read-only zero");
     }
     if (!htimedelta_set_checked(HZCNT_DELTA)) {
         scounteren_write(saved_scen);
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("htimedelta write did not stick");
     }
 
@@ -126,7 +126,7 @@ bool test_hzcnt_02(void)
 
     scounteren_write(saved_scen);
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }
 
@@ -139,15 +139,15 @@ bool test_hzcnt_03(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
-    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
 
     /* HS-mode time reads are gated by mcounteren (V=0). */
     if (!mcounteren_bit_set_sticky(CNT_BIT_TM)) {
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("mcounteren.TM is read-only zero");
     }
     if (!htimedelta_set_checked(HZCNT_DELTA)) {
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("htimedelta write did not stick");
     }
 
@@ -167,7 +167,7 @@ bool test_hzcnt_03(void)
     TEST_ASSERT("HS rdtime within window of time",
                 diff >= -(int64_t)HZCNT_BOUND);
 
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }
 
@@ -180,21 +180,21 @@ bool test_hzcnt_04(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
-    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t saved_hcen = hcounteren_read();
 
     if (!mcounteren_bit_set_sticky(CNT_BIT_TM)) {
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("mcounteren.TM is read-only zero");
     }
     if (!hcounteren_bit_set_sticky(CNT_BIT_TM)) {
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("hcounteren.TM is read-only zero");
     }
     if (!htimedelta_set_checked(HZCNT_NEG_DELTA)) {
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("htimedelta write did not stick");
     }
 
@@ -222,7 +222,7 @@ bool test_hzcnt_04(void)
                 d <= (int64_t)(0x100000 + HZCNT_BOUND));
 
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }
 
@@ -235,16 +235,16 @@ bool test_hzcnt_05(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
-    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t saved_hcen = hcounteren_read();
 
     if (!mcounteren_bit_set_sticky(CNT_BIT_TM)) {
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("mcounteren.TM is read-only zero");
     }
     if (!hcounteren_bit_clear_sticky(CNT_BIT_TM)) {
         hcounteren_write(saved_hcen);
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("hcounteren.TM is not clearable");
     }
 
@@ -259,7 +259,7 @@ bool test_hzcnt_05(void)
     trap_expect_end();
 
     hcounteren_write(saved_hcen);
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }
 
@@ -272,11 +272,11 @@ bool test_hzcnt_06(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZICNTR_AVAILABLE) TEST_SKIP("Zicntr not implemented");
 
-    uintptr_t saved_mcen = mcounteren_read();
+    uintptr_t saved_mcen = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t saved_hcen = hcounteren_read();
 
     if (!mcounteren_bit_clear_sticky(CNT_BIT_TM)) {
-        mcounteren_write(saved_mcen);
+        tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
         TEST_SKIP("mcounteren.TM is not clearable");
     }
     /* hcounteren setting is irrelevant: mcounteren gates first. */
@@ -293,6 +293,6 @@ bool test_hzcnt_06(void)
     }
     trap_expect_end();
 
-    mcounteren_write(saved_mcen);
+    tsbi_csr_write(CSR_MCOUNTEREN, saved_mcen);
     HYP_TEST_END();
 }

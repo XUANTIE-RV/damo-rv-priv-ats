@@ -22,8 +22,8 @@ TEST_REGISTER(test_ss_func_c_writable);
 bool test_ss_func_c_writable(void) {
     TEST_BEGIN("SS-FUNC-01: sstateen0.C bit writable");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_C | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_C | STATEEN0_SE0);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -33,7 +33,7 @@ bool test_ss_func_c_writable(void) {
 
     if (!(rb & STATEEN0_C)) {
         sstateen_write(0, saved_sstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.C not writable (mstateen0.C=0 or no custom state)");
     }
 
@@ -45,7 +45,7 @@ bool test_ss_func_c_writable(void) {
     TEST_ASSERT("sstateen0.C cleared to 0", (rb & STATEEN0_C) == 0);
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -55,8 +55,8 @@ TEST_REGISTER(test_ss_func_c_zero_blocks);
 bool test_ss_func_c_zero_blocks(void) {
     TEST_BEGIN("SS-FUNC-02: sstateen0.C=0 blocks U-mode custom access");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_C | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_C | STATEEN0_SE0);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -67,7 +67,7 @@ bool test_ss_func_c_zero_blocks(void) {
 
     if (!(probe & STATEEN0_C)) {
         sstateen_write(0, saved_sstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.C not writable");
     }
 
@@ -79,7 +79,7 @@ bool test_ss_func_c_zero_blocks(void) {
     });
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -89,8 +89,8 @@ TEST_REGISTER(test_ss_func_c_one_allows);
 bool test_ss_func_c_one_allows(void) {
     TEST_BEGIN("SS-FUNC-03: sstateen0.C=1 allows U-mode custom access");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_C | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_C | STATEEN0_SE0);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
     sstateen_set_bits(0, STATEEN0_C);
@@ -98,7 +98,7 @@ bool test_ss_func_c_one_allows(void) {
 
     if (!(probe & STATEEN0_C)) {
         sstateen_write(0, saved_sstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.C not writable");
     }
 
@@ -106,7 +106,7 @@ bool test_ss_func_c_one_allows(void) {
     TEST_ASSERT("sstateen0.C == 1", (sstateen_read(0) & STATEEN0_C) != 0);
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -120,8 +120,8 @@ bool test_ss_func_fcsr_roz_misa_f(void) {
         TEST_SKIP("misa.F=0; FCSR ROZ test requires misa.F=1");
     }
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_FCSR | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_FCSR | STATEEN0_SE0);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -133,7 +133,7 @@ bool test_ss_func_fcsr_roz_misa_f(void) {
                 (rb & STATEEN0_FCSR) == 0);
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -147,8 +147,8 @@ bool test_ss_func_fcsr_blocks_fp(void) {
         TEST_SKIP("misa.F=1; FCSR gating only applies with Zfinx (misa.F=0)");
     }
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_FCSR | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_FCSR | STATEEN0_SE0);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -159,7 +159,7 @@ bool test_ss_func_fcsr_blocks_fp(void) {
 
     if (!(probe & STATEEN0_FCSR)) {
         sstateen_write(0, saved_sstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.FCSR not writable (Zfinx not implemented)");
     }
 
@@ -169,7 +169,7 @@ bool test_ss_func_fcsr_blocks_fp(void) {
     });
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -179,8 +179,8 @@ TEST_REGISTER(test_ss_func_jvt_writable);
 bool test_ss_func_jvt_writable(void) {
     TEST_BEGIN("SS-FUNC-06: sstateen0.JVT bit writable");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -189,7 +189,7 @@ bool test_ss_func_jvt_writable(void) {
 
     if (!(rb & STATEEN0_JVT)) {
         sstateen_write(0, saved_sstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.JVT not writable (Zcmt not implemented)");
     }
 
@@ -200,7 +200,7 @@ bool test_ss_func_jvt_writable(void) {
     TEST_ASSERT("sstateen0.JVT cleared to 0", (rb & STATEEN0_JVT) == 0);
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -210,8 +210,8 @@ TEST_REGISTER(test_ss_func_jvt_zero_blocks);
 bool test_ss_func_jvt_zero_blocks(void) {
     TEST_BEGIN("SS-FUNC-07: sstateen0.JVT=0 blocks U-mode jvt");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -221,7 +221,7 @@ bool test_ss_func_jvt_zero_blocks(void) {
 
     if (!(probe & STATEEN0_JVT)) {
         sstateen_write(0, saved_sstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.JVT not writable");
     }
 
@@ -232,7 +232,7 @@ bool test_ss_func_jvt_zero_blocks(void) {
     });
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -242,8 +242,8 @@ TEST_REGISTER(test_ss_func_jvt_one_allows);
 bool test_ss_func_jvt_one_allows(void) {
     TEST_BEGIN("SS-FUNC-08: sstateen0.JVT=1 allows U-mode jvt");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0 | STATEEN0_JVT | STATEEN0_SE0);
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
     sstateen_set_bits(0, STATEEN0_JVT);
@@ -251,7 +251,7 @@ bool test_ss_func_jvt_one_allows(void) {
 
     if (!(probe & STATEEN0_JVT)) {
         sstateen_write(0, saved_sstateen0);
-        mstateen_write(0, saved_mstateen0);
+        tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
         TEST_SKIP("sstateen0.JVT not writable");
     }
 
@@ -262,7 +262,7 @@ bool test_ss_func_jvt_one_allows(void) {
     });
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }
 
@@ -272,8 +272,8 @@ TEST_REGISTER(test_ss_func_wpri_roz);
 bool test_ss_func_wpri_roz(void) {
     TEST_BEGIN("SS-FUNC-09: sstateen0 WPRI bits read-only zero");
 
-    uintptr_t saved_mstateen0 = mstateen_read(0);
-    mstateen_write(0, ~0UL);  /* Open all mstateen0 bits */
+    uintptr_t saved_mstateen0 = tsbi_csr_read(CSR_MSTATEEN0);
+    tsbi_csr_write(CSR_MSTATEEN0, ~0UL);  /* Open all mstateen0 bits */
 
     uintptr_t saved_sstateen0 = sstateen_read(0);
 
@@ -297,6 +297,6 @@ bool test_ss_func_wpri_roz(void) {
           (unsigned long)reserved_readback);
 
     sstateen_write(0, saved_sstateen0);
-    mstateen_write(0, saved_mstateen0);
+    tsbi_csr_write(CSR_MSTATEEN0, saved_mstateen0);
     TEST_END();
 }

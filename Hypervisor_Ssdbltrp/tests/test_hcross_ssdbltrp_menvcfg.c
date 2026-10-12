@@ -24,12 +24,12 @@ bool test_hcross_ssdbltrp_17(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
-    uintptr_t orig_m = menvcfg_read();
+    uintptr_t orig_m = tsbi_csr_read(CSR_MENVCFG);
     uintptr_t orig_h = henvcfg_read();
     uintptr_t orig_vs = vsstatus_read();
 
     /* Disable menvcfg.DTE (global disable) */
-    menvcfg_clear_bits(MENVCFG_DTE);
+    tsbi_csr_clear(CSR_MENVCFG, MENVCFG_DTE);
 
     /* Try to set henvcfg.DTE - should be read-only zero */
     henvcfg_set_bits(HENVCFG_DTE);
@@ -48,7 +48,7 @@ bool test_hcross_ssdbltrp_17(void)
     /* Restore */
     vsstatus_write(orig_vs);
     henvcfg_write(orig_h);
-    menvcfg_write(orig_m);
+    tsbi_csr_write(CSR_MENVCFG, orig_m);
     SSDBLTRP_HYP_TEST_END();
 }
 
@@ -63,11 +63,11 @@ bool test_hcross_ssdbltrp_18(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!check_ssdbltrp_extension()) TEST_SKIP("Ssdbltrp not available");
 
-    uintptr_t orig_m = menvcfg_read();
+    uintptr_t orig_m = tsbi_csr_read(CSR_MENVCFG);
     uintptr_t orig_h = henvcfg_read();
 
     /* Disable menvcfg.DTE (global disable) */
-    menvcfg_clear_bits(MENVCFG_DTE);
+    tsbi_csr_clear(CSR_MENVCFG, MENVCFG_DTE);
 
     /* Try to set henvcfg.DTE - should be read-only zero */
     henvcfg_set_bits(HENVCFG_DTE);
@@ -83,6 +83,6 @@ bool test_hcross_ssdbltrp_18(void)
 
     /* Restore */
     henvcfg_write(orig_h);
-    menvcfg_write(orig_m);
+    tsbi_csr_write(CSR_MENVCFG, orig_m);
     SSDBLTRP_HYP_TEST_END();
 }

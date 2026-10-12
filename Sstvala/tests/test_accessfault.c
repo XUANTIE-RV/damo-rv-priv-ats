@@ -44,11 +44,18 @@ bool test_sstvala_laf_01(void) {
     /* Set up PMP:
      * entry 0: target_addr NAPOT 4KiB, Inaccessible (R=0,W=0,X=0)
      * entry 1: full address space, RWX (baseline) */
+    /* PMP config touches M-level CSRs and must not return to S-mode with an
+     * empty table (no-match implicitly denies all S/U access).  Run the whole
+     * clear+deny+catch-all sequence inside one M-excursion; entry 1 (full RWX)
+     * is installed before we drop back, so S-mode fetch stays legal. */
+    unsigned _pmp_sv = get_current_priv();
+    if (_pmp_sv != PRIV_M) goto_priv(PRIV_M);
     pmp_clear_all();
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(target_addr, 0x1000, 0);
     pmp_set_entry(0, &e0);
     pmp_entry_t e1 = PMP_ENTRY_FULL(PMP_RWX);
     pmp_set_entry(1, &e1);
+    if (_pmp_sv != PRIV_M) goto_priv(_pmp_sv);
 
     /* Switch to S-mode and attempt a load */
     goto_priv(PRIV_S);
@@ -59,7 +66,7 @@ bool test_sstvala_laf_01(void) {
     TEST_ASSERT_EQ("stval == faulting addr",
                    trap_get_tval(), target_addr);
 
-    pmp_clear_all();
+    ensure_smode_pmp();
     TEST_END();
 }
 
@@ -75,11 +82,18 @@ bool test_sstvala_laf_02(void) {
     /* Use a different offset within the test region */
     uintptr_t target_addr = (uintptr_t)test_fault_page;
 
+    /* PMP config touches M-level CSRs and must not return to S-mode with an
+     * empty table (no-match implicitly denies all S/U access).  Run the whole
+     * clear+deny+catch-all sequence inside one M-excursion; entry 1 (full RWX)
+     * is installed before we drop back, so S-mode fetch stays legal. */
+    unsigned _pmp_sv = get_current_priv();
+    if (_pmp_sv != PRIV_M) goto_priv(PRIV_M);
     pmp_clear_all();
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(target_addr, 0x1000, 0); /* Inaccessible */
     pmp_set_entry(0, &e0);
     pmp_entry_t e1 = PMP_ENTRY_FULL(PMP_RWX);
     pmp_set_entry(1, &e1);
+    if (_pmp_sv != PRIV_M) goto_priv(_pmp_sv);
 
     goto_priv(PRIV_S);
     PRIV_DO_TRAP(mem_load64(target_addr));
@@ -89,7 +103,7 @@ bool test_sstvala_laf_02(void) {
     TEST_ASSERT_EQ("stval == different faulting addr",
                    trap_get_tval(), target_addr);
 
-    pmp_clear_all();
+    ensure_smode_pmp();
     TEST_END();
 }
 
@@ -103,11 +117,18 @@ bool test_sstvala_saf_01(void) {
     uintptr_t target_addr = (uintptr_t)test_data_area;
 
     /* entry 0: target region R-only (no W, no X) */
+    /* PMP config touches M-level CSRs and must not return to S-mode with an
+     * empty table (no-match implicitly denies all S/U access).  Run the whole
+     * clear+deny+catch-all sequence inside one M-excursion; entry 1 (full RWX)
+     * is installed before we drop back, so S-mode fetch stays legal. */
+    unsigned _pmp_sv = get_current_priv();
+    if (_pmp_sv != PRIV_M) goto_priv(PRIV_M);
     pmp_clear_all();
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(target_addr, 0x1000, PMP_R);
     pmp_set_entry(0, &e0);
     pmp_entry_t e1 = PMP_ENTRY_FULL(PMP_RWX);
     pmp_set_entry(1, &e1);
+    if (_pmp_sv != PRIV_M) goto_priv(_pmp_sv);
 
     goto_priv(PRIV_S);
     PRIV_DO_TRAP(mem_store64(target_addr, 0xDEADUL));
@@ -117,7 +138,7 @@ bool test_sstvala_saf_01(void) {
     TEST_ASSERT_EQ("stval == faulting addr",
                    trap_get_tval(), target_addr);
 
-    pmp_clear_all();
+    ensure_smode_pmp();
     TEST_END();
 }
 
@@ -133,11 +154,18 @@ bool test_sstvala_iaf_01(void) {
     uintptr_t target_addr = (uintptr_t)test_exec_page;
 
     /* entry 0: target region RW (no X) */
+    /* PMP config touches M-level CSRs and must not return to S-mode with an
+     * empty table (no-match implicitly denies all S/U access).  Run the whole
+     * clear+deny+catch-all sequence inside one M-excursion; entry 1 (full RWX)
+     * is installed before we drop back, so S-mode fetch stays legal. */
+    unsigned _pmp_sv = get_current_priv();
+    if (_pmp_sv != PRIV_M) goto_priv(PRIV_M);
     pmp_clear_all();
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(target_addr, 0x1000, PMP_RW);
     pmp_set_entry(0, &e0);
     pmp_entry_t e1 = PMP_ENTRY_FULL(PMP_RWX);
     pmp_set_entry(1, &e1);
+    if (_pmp_sv != PRIV_M) goto_priv(_pmp_sv);
 
     goto_priv(PRIV_S);
     PRIV_DO_EXEC_TRAP(target_addr);
@@ -147,6 +175,6 @@ bool test_sstvala_iaf_01(void) {
     TEST_ASSERT_EQ("stval == faulting addr",
                    trap_get_tval(), target_addr);
 
-    pmp_clear_all();
+    ensure_smode_pmp();
     TEST_END();
 }

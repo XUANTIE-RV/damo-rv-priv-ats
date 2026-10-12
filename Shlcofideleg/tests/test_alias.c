@@ -79,22 +79,22 @@ bool test_shlcofideleg_alias_lcofie_bidirectional(void) {
     hideleg_write(saved_hideleg | LCOFI_BIT);
 
     /* ALIAS-03: sie→vsie forward set. */
-    csr_write(CSR_SIE, csr_read(CSR_SIE) | LCOFI_BIT);
+    csr_set(CSR_SIE, LCOFI_BIT);
     TEST_ASSERT("vsie.LCOFIE=1 when sie.LCOFIE=1",
                 (csr_read(CSR_VSIE) & LCOFI_BIT) != 0);
 
     /* ALIAS-04: sie→vsie forward clear. */
-    csr_write(CSR_SIE, csr_read(CSR_SIE) & ~LCOFI_BIT);
+    csr_clear(CSR_SIE, LCOFI_BIT);
     TEST_ASSERT("vsie.LCOFIE=0 when sie.LCOFIE=0",
                 (csr_read(CSR_VSIE) & LCOFI_BIT) == 0);
 
     /* ALIAS-05: vsie→sie reverse set. */
-    csr_write(CSR_VSIE, csr_read(CSR_VSIE) | LCOFI_BIT);
+    csr_set(CSR_VSIE, LCOFI_BIT);
     TEST_ASSERT("sie.LCOFIE=1 when vsie.LCOFIE set",
                 (csr_read(CSR_SIE) & LCOFI_BIT) != 0);
 
     /* ALIAS-06: vsie→sie reverse clear. */
-    csr_write(CSR_VSIE, csr_read(CSR_VSIE) & ~LCOFI_BIT);
+    csr_clear(CSR_VSIE, LCOFI_BIT);
     TEST_ASSERT("sie.LCOFIE=0 when vsie.LCOFIE cleared",
                 (csr_read(CSR_SIE) & LCOFI_BIT) == 0);
 

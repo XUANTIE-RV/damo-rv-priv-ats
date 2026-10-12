@@ -27,7 +27,7 @@ bool test_pmf_ctr_04_hcounteren_cy0(void)
         TEST_SKIP("Smcntrpmf not implemented");
 
     /* mcounteren.CY=1 (M permits), hcounteren.CY=0 (HS blocks VS/VU). */
-    mcounteren_set(COUNTEREN_CY);
+    tsbi_csr_set(CSR_MCOUNTEREN, COUNTEREN_CY);
     hcounteren_clear(COUNTEREN_CY);
 
     /* VS-mode read of cycle must raise virtual-instruction (cause=22). */
@@ -62,7 +62,7 @@ bool test_hcross_pmf_01_orthogonal(void)
         TEST_SKIP("cycle counter not functional");
 
     /* Access fully permitted: mcounteren.CY=1, hcounteren.CY=1. */
-    mcounteren_set(COUNTEREN_CY);
+    tsbi_csr_set(CSR_MCOUNTEREN, COUNTEREN_CY);
     hcounteren_set(COUNTEREN_CY);
 
     /* Counting inhibited for VS-mode (and M-mode to isolate the delta). */

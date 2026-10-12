@@ -209,6 +209,16 @@ bool test_ts_map_12_vu_mode(void)
 
     uintptr_t va = (uintptr_t)test_data_area;
 
+    /* Keep any fault at HS rather than the standing VS entry:
+     * ts2_setup_full_u maps all kernel text with U=1 for the VU
+     * payload, and an S-level VS handler can never fetch from U=1
+     * pages, so a delegated fault would re-fault the handler's own
+     * fetch forever (hang) instead of failing this no-fault
+     * assertion cleanly. No behavioural change while no fault
+     * fires; HYP_TEST_END restores the delegation baseline. */
+    setup_deleg_to_hs((1UL << CAUSE_LOAD_PAGE_FAULT) |
+                      (1UL << CAUSE_STORE_PAGE_FAULT));
+
     trap_expect_begin();
     (void)two_stage_run_in_vu(&ctx, test_vs_read_write, va);
     bool fired = trap_was_triggered();

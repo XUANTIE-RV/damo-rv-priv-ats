@@ -53,13 +53,13 @@ bool test_hcross_ssccfg_01_vs_scountovf(void) {
     if (!SSCOFPMF_AVAILABLE) TEST_SKIP("Sscofpmf not supported");
 
     stateen_allow_csrind();
-    uintptr_t orig_cde = menvcfg_read();
-    menvcfg_write(orig_cde | MENVCFG_CDE);
+    uintptr_t orig_cde = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde | MENVCFG_CDE);
 
     TEST_VS_MODE_TRAP("VS-mode scountovf read virtual-inst",
                       _vs_read_scountovf, 0, CAUSE_VIRTUAL_INSTRUCTION);
 
-    menvcfg_write(orig_cde);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde);
     HYP_TEST_END();
 }
 
@@ -74,13 +74,13 @@ bool test_hcross_ssccfg_02_vu_scountovf(void) {
     if (!SSCOFPMF_AVAILABLE) TEST_SKIP("Sscofpmf not supported");
 
     stateen_allow_csrind();
-    uintptr_t orig_cde = menvcfg_read();
-    menvcfg_write(orig_cde | MENVCFG_CDE);
+    uintptr_t orig_cde = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde | MENVCFG_CDE);
 
     TEST_VU_MODE_TRAP("VU-mode scountovf read virtual-inst",
                       _vu_read_scountovf, 0, CAUSE_VIRTUAL_INSTRUCTION);
 
-    menvcfg_write(orig_cde);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde);
     HYP_TEST_END();
 }
 
@@ -95,8 +95,8 @@ bool test_hcross_ssccfg_03_hs_scountovf(void) {
     if (!SSCOFPMF_AVAILABLE) TEST_SKIP("Sscofpmf not supported");
 
     stateen_allow_csrind();
-    uintptr_t orig_cde = menvcfg_read();
-    menvcfg_write(orig_cde | MENVCFG_CDE);
+    uintptr_t orig_cde = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde | MENVCFG_CDE);
 
     /* HS-mode (V=0 S-mode) is NOT subject to the virtualization clause */
     goto_priv(PRIV_S);
@@ -107,7 +107,7 @@ bool test_hcross_ssccfg_03_hs_scountovf(void) {
     goto_priv(PRIV_M);
     TEST_ASSERT("HS-mode scountovf read no trap", !trapped);
 
-    menvcfg_write(orig_cde);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde);
     HYP_TEST_END();
 }
 
@@ -122,8 +122,8 @@ bool test_hcross_ssccfg_04_vs_scountovf_cde0(void) {
     if (!SSCOFPMF_AVAILABLE) TEST_SKIP("Sscofpmf not supported");
 
     stateen_allow_csrind();
-    uintptr_t orig_cde = menvcfg_read();
-    menvcfg_write(orig_cde & ~MENVCFG_CDE);
+    uintptr_t orig_cde = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde & ~MENVCFG_CDE);
 
     /* CDE=0: the virtualization clause does not apply; the access
      * follows Sscofpmf base rules and must NOT raise
@@ -138,7 +138,7 @@ bool test_hcross_ssccfg_04_vs_scountovf_cde0(void) {
                     cause != CAUSE_VIRTUAL_INSTRUCTION);
     }
 
-    menvcfg_write(orig_cde);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde);
     HYP_TEST_END();
 }
 
@@ -152,13 +152,13 @@ bool test_hcross_ssccfg_05_vs_scountinhibit(void) {
     if (!counter_virt_preconditions(&skip)) TEST_SKIP(skip);
 
     stateen_allow_csrind();
-    uintptr_t orig_cde = menvcfg_read();
-    menvcfg_write(orig_cde | MENVCFG_CDE);
+    uintptr_t orig_cde = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde | MENVCFG_CDE);
 
     TEST_VS_MODE_TRAP("VS-mode scountinhibit read virtual-inst",
                       _vs_read_scountinhibit, 0, CAUSE_VIRTUAL_INSTRUCTION);
 
-    menvcfg_write(orig_cde);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde);
     HYP_TEST_END();
 }
 
@@ -172,13 +172,13 @@ bool test_hcross_ssccfg_06_vu_scountinhibit(void) {
     if (!counter_virt_preconditions(&skip)) TEST_SKIP(skip);
 
     stateen_allow_csrind();
-    uintptr_t orig_cde = menvcfg_read();
-    menvcfg_write(orig_cde | MENVCFG_CDE);
+    uintptr_t orig_cde = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde | MENVCFG_CDE);
 
     TEST_VU_MODE_TRAP("VU-mode scountinhibit read virtual-inst",
                       _vu_read_scountinhibit, 0, CAUSE_VIRTUAL_INSTRUCTION);
 
-    menvcfg_write(orig_cde);
+    tsbi_csr_write(CSR_MENVCFG, orig_cde);
     HYP_TEST_END();
 }
 

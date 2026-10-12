@@ -68,6 +68,45 @@ void trap_m_entry_mtval2_hook(uintptr_t mtval2)
     smdbltrp_saved_mtval2 = mtval2;
 }
 
+/* mtval2 is an M-level trap-state CSR and ssdbltrp_run_s_probe() is an
+ * M-mode trampoline (csrw mepc/mstatus + mret into S).  Under the
+ * S-mode-normal model both must run inside an M-excursion; run_in_priv()
+ * is a no-op when already in M-mode. */
+static uintptr_t _mtval2_read_m(uintptr_t a)  { (void)a; return CSRR(mtval2); }
+static uintptr_t _mtval2_write_m(uintptr_t v) { CSRW(mtval2, v); return 0; }
+static inline uintptr_t mtval2_read_m(void)         { return run_in_priv(PRIV_M, _mtval2_read_m, 0); }
+static inline void      mtval2_write_m(uintptr_t v) { run_in_priv(PRIV_M, _mtval2_write_m, v); }
+/* mtval2 is trap-state: every M-mode trap entry rewrites it, so a write and
+ * a read in SEPARATE excursions read back what the read-excursion's own entry
+ * ecall wrote (0).  Do write+readback inside ONE excursion. */
+struct _mtval2_wrb { uintptr_t val; };
+static uintptr_t _mtval2_write_readback_m(uintptr_t a) {
+    struct _mtval2_wrb *p = (struct _mtval2_wrb *)a;
+    CSRW(mtval2, p->val);
+    return CSRR(mtval2);
+}
+static inline uintptr_t mtval2_write_readback_m(uintptr_t v) {
+    struct _mtval2_wrb p = { v };
+    return run_in_priv(PRIV_M, _mtval2_write_readback_m, (uintptr_t)&p);
+}
+
+/* Run the S-mode double-trap probe inside one M-excursion.  arm_mtval2 != 0
+ * arms the one-shot M-entry captures INSIDE the excursion: run_in_priv's own
+ * entry ecall is an M-trap, so arming before it would let that ecall
+ * (mtval2 = 0) consume the capture meant for the double-trap delivery. */
+static uintptr_t _run_s_probe_m(uintptr_t arm_mtval2) {
+    ssdbltrp_probe_active = true;
+    if (arm_mtval2) {
+        _mtval2_hook_wanted   = true;
+        smdbltrp_m_entries    = 0;
+        smdbltrp_mstatus_wanted = 1;
+        smdbltrp_dbg_ring_idx = 0;
+    }
+    ssdbltrp_run_s_probe();
+    ssdbltrp_probe_active = false;
+    return 0;
+}
+
 /* MTVAL2-01: mtval2 CSR exists and is read/write */
 TEST_REGISTER(test_mtval2_01);
 bool test_mtval2_01(void)
@@ -81,22 +120,24 @@ bool test_mtval2_01(void)
     /* norm:mtval2_Ssdbltrap: Ssdbltrp requires mtval2.  Accessing an
      * unimplemented CSR raises illegal-instruction, which is a spec
      * violation here and must fail explicitly. */
-    uint64_t mtval2 = 0;
-    M_EXPECT_NO_TRAP(asm volatile("csrr %0, mtval2" : "=r"(mtval2)));
+    /* mtval2 is M-level trap-state: probe its existence in an M-excursion.
+     * Ssdbltrp requires mtval2, so a trap here is a spec violation. */
+    trap_expect_begin();
+    (void)mtval2_read_m();
+    bool mtval2_exists = !trap_was_triggered();
+    trap_expect_end();
+    TEST_ASSERT("mtval2 CSR exists (norm:mtval2_Ssdbltrap)", mtval2_exists);
 
     /* WARL stability check: mtval2 may only hold a subset of values
      * (norm:mtval2_val), so verify write/read-back stability instead
      * of exact value retention. */
     uintptr_t w1 = 0x12345678ABCDEF00ULL;
-    CSRW(mtval2, w1);
-    uintptr_t r1 = CSRR(mtval2);
-    CSRW(mtval2, r1);
-    uintptr_t r2 = CSRR(mtval2);
+    uintptr_t r1 = mtval2_write_readback_m(w1);
+    uintptr_t r2 = mtval2_write_readback_m(r1);
     TEST_ASSERT_EQ("mtval2 WARL write is stable", r2, r1);
 
     /* norm:mtval2_val: mtval2 must be able to hold zero. */
-    CSRW(mtval2, 0);
-    TEST_ASSERT_EQ("mtval2 holds zero", CSRR(mtval2), 0);
+    TEST_ASSERT_EQ("mtval2 holds zero", mtval2_write_readback_m(0), 0);
 
     TEST_END();
 }
@@ -111,8 +152,8 @@ bool test_mtval2_02(void)
         TEST_SKIP("Ssdbltrp not implemented");
     }
 
-    uintptr_t menvcfg_orig = CSRR(menvcfg);
-    uintptr_t medeleg_orig = CSRR(medeleg);
+    uintptr_t menvcfg_orig = tsbi_csr_read(CSR_MENVCFG);
+    uintptr_t medeleg_orig = tsbi_csr_read(CSR_MEDELEG);
     set_dte();
     clear_sdt();
 
@@ -121,10 +162,10 @@ bool test_mtval2_02(void)
      * unexpected trap and escalates to a double-trap into M-mode
      * (norm:sstatus_sdt_trap).  Cause 9 must stay non-delegated so
      * the trampoline's return ecall reaches M-mode directly. */
-    CSRW(medeleg, 1UL << CAUSE_ILLEGAL_INST);
-    if ((CSRR(medeleg) & (1UL << CAUSE_ILLEGAL_INST)) == 0) {
-        CSRW(medeleg, medeleg_orig);
-        CSRW(menvcfg, menvcfg_orig);
+    tsbi_csr_write(CSR_MEDELEG, 1UL << CAUSE_ILLEGAL_INST);
+    if ((tsbi_csr_read(CSR_MEDELEG) & (1UL << CAUSE_ILLEGAL_INST)) == 0) {
+        tsbi_csr_write(CSR_MEDELEG, medeleg_orig);
+        tsbi_csr_write(CSR_MENVCFG, menvcfg_orig);
         TEST_SKIP("medeleg[2] not writable");
     }
 
@@ -133,7 +174,6 @@ bool test_mtval2_02(void)
      * exception is an unrecoverable critical error on platforms
      * without Smrnmi. */
     clear_sdt();
-    clear_mdt();
 
     /* Phase 1 - SDT=0 canary: per norm:sstatus_sdt_trap the delegated
      * trap must be delivered to S-mode without any double-trap
@@ -144,10 +184,8 @@ bool test_mtval2_02(void)
     ssdbltrp_dt_entries = 0;
     ssdbltrp_s_probe_repeats = 0;
 
-    M_TRAP_EXPECT_BEGIN();
-    ssdbltrp_probe_active = true;
-    ssdbltrp_run_s_probe();
-    ssdbltrp_probe_active = false;
+    trap_expect_begin();
+    run_in_priv(PRIV_M, _run_s_probe_m, 0);
     trap_expect_end();
 
     if (trap_dt_snap_valid) {
@@ -157,8 +195,8 @@ bool test_mtval2_02(void)
                     "aborted",
                     false);
         clear_sdt();
-        CSRW(medeleg, medeleg_orig);
-        CSRW(menvcfg, menvcfg_orig);
+        tsbi_csr_write(CSR_MEDELEG, medeleg_orig);
+        tsbi_csr_write(CSR_MENVCFG, menvcfg_orig);
         TEST_END();
     }
 
@@ -170,18 +208,11 @@ bool test_mtval2_02(void)
     _exec_return_addr = (uintptr_t)ssdbltrp_probe_rearm;
     trap_dt_snap_valid = false;
     ssdbltrp_dt_entries = 0;
-    _mtval2_hook_wanted = true;
-    /* One-shot entry-state capture: only the FIRST M-mode entry after
-     * arming describes the hardware double-trap delivery; later
-     * entries (e.g. the return ecall) must not overwrite it. */
-    smdbltrp_m_entries = 0;
-    smdbltrp_mstatus_wanted = 1;
-    smdbltrp_dbg_ring_idx = 0;
-
-    M_TRAP_EXPECT_BEGIN();
-    ssdbltrp_probe_active = true;
-    ssdbltrp_run_s_probe();
-    ssdbltrp_probe_active = false;
+    /* The one-shot M-entry captures are armed INSIDE the excursion (arg 1):
+     * run_in_priv's entry ecall is itself an M-trap that would otherwise
+     * consume the capture meant for the double-trap delivery. */
+    trap_expect_begin();
+    run_in_priv(PRIV_M, _run_s_probe_m, 1);
     /* Back in M-mode. */
     trap_expect_end();
 
@@ -242,8 +273,8 @@ bool test_mtval2_02(void)
     }
 
     clear_sdt();
-    CSRW(medeleg, medeleg_orig);
-    CSRW(menvcfg, menvcfg_orig);
+    tsbi_csr_write(CSR_MEDELEG, medeleg_orig);
+    tsbi_csr_write(CSR_MENVCFG, menvcfg_orig);
     TEST_END();
 }
 
@@ -257,30 +288,28 @@ bool test_mtval2_03(void)
         TEST_SKIP("Ssdbltrp not implemented");
     }
 
-    uintptr_t menvcfg_orig = CSRR(menvcfg);
-    uintptr_t medeleg_orig = CSRR(medeleg);
+    uintptr_t menvcfg_orig = tsbi_csr_read(CSR_MENVCFG);
+    uintptr_t medeleg_orig = tsbi_csr_read(CSR_MEDELEG);
     set_dte();
     clear_sdt();
 
     /* Pre-load mtval2 with a nonzero sentinel.  mtval2 is WARL and
      * may only hold a subset of values (norm:mtval2_val), so use the
      * read-back as the effective sentinel. */
-    uintptr_t sentinel = 0xA5A5A5A5A5A5A5A0ULL;
-    CSRW(mtval2, sentinel);
-    sentinel = CSRR(mtval2);
+    uintptr_t sentinel = mtval2_write_readback_m(0xA5A5A5A5A5A5A5A0ULL);
     if (sentinel == 0) {
-        CSRW(medeleg, medeleg_orig);
-        CSRW(menvcfg, menvcfg_orig);
+        tsbi_csr_write(CSR_MEDELEG, medeleg_orig);
+        tsbi_csr_write(CSR_MENVCFG, menvcfg_orig);
         TEST_SKIP("mtval2 WARL holds only zero, cannot observe preservation");
     }
 
     /* Delegate illegal-instruction to S-mode; with SDT=0 the probe's
      * illegal instruction must be delivered to S-mode normally (SDT
      * goes 0 -> 1) without any M-mode involvement. */
-    CSRW(medeleg, 1UL << CAUSE_ILLEGAL_INST);
-    if ((CSRR(medeleg) & (1UL << CAUSE_ILLEGAL_INST)) == 0) {
-        CSRW(medeleg, medeleg_orig);
-        CSRW(menvcfg, menvcfg_orig);
+    tsbi_csr_write(CSR_MEDELEG, 1UL << CAUSE_ILLEGAL_INST);
+    if ((tsbi_csr_read(CSR_MEDELEG) & (1UL << CAUSE_ILLEGAL_INST)) == 0) {
+        tsbi_csr_write(CSR_MEDELEG, medeleg_orig);
+        tsbi_csr_write(CSR_MENVCFG, menvcfg_orig);
         TEST_SKIP("medeleg[2] not writable");
     }
 
@@ -292,12 +321,9 @@ bool test_mtval2_03(void)
      * an M-mode trap with MDT=1 is an unrecoverable critical error
      * without Smrnmi). */
     clear_sdt();
-    clear_mdt();
 
-    M_TRAP_EXPECT_BEGIN();
-    ssdbltrp_probe_active = true;
-    ssdbltrp_run_s_probe();
-    ssdbltrp_probe_active = false;
+    trap_expect_begin();
+    run_in_priv(PRIV_M, _run_s_probe_m, 0);
     /* Back in M-mode via the non-delegated return ecall. */
     trap_expect_end();
 
@@ -329,7 +355,7 @@ bool test_mtval2_03(void)
          *     "other traps write zero" rule on M-mode entries).
          * Any other value proves spurious M-mode involvement (e.g. an
          * escalation that wrote the trap cause into mtval2). */
-        uintptr_t mtval2_after = CSRR(mtval2);
+        uintptr_t mtval2_after = mtval2_read_m();
         TEST_ASSERT("mtval2 not modified by S-mode trap delivery "
                     "(sentinel or zero expected)",
                     mtval2_after == sentinel || mtval2_after == 0);
@@ -340,8 +366,8 @@ bool test_mtval2_03(void)
     }
 
     clear_sdt();
-    CSRW(mtval2, 0);
-    CSRW(medeleg, medeleg_orig);
-    CSRW(menvcfg, menvcfg_orig);
+    mtval2_write_m(0);
+    tsbi_csr_write(CSR_MEDELEG, medeleg_orig);
+    tsbi_csr_write(CSR_MENVCFG, menvcfg_orig);
     TEST_END();
 }

@@ -19,6 +19,10 @@
  * from F_AVAILABLE / V_AVAILABLE (common/capabilities.h, force-included and
  * derived from config/<platform>/rvtest_config.h). No runtime misa probing. */
 
+/* mstatus field writes use tsbi_csr_clear(CSR_MSTATUS, mask) + tsbi_csr_set()
+ * of the config field: mstatus is partially trap-state, so a full proxied write
+ * is guard-refused; clear+set of a config field (FS/VS) is the safe form. */
+
 /* ===================================================================
  * VS-mode trampolines: FP and vector instructions
  *
@@ -40,24 +44,24 @@ bool vsst_01_basic_rw(void)
     uintptr_t test_val = VSSTATUS_WRITABLE_MASK;
 
     /* Write vsstatus (CSR 0x200). */
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(test_val));
+    CSRW(CSR_VSSTATUS, test_val);
 
     /* Read back and verify writable fields. */
     uintptr_t readback;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
+    readback = CSRR(CSR_VSSTATUS);
 
     uintptr_t hw_writable = readback & VSSTATUS_WRITABLE_MASK;
 
     /* Write zero and verify all hardware-writable bits clear. */
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", zero");
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
+    CSRW(CSR_VSSTATUS, 0);
+    readback = CSRR(CSR_VSSTATUS);
 
     TEST_ASSERT_EQ("vsstatus cleared to zero",
                    readback & hw_writable, 0UL);
 
     /* Re-write and verify consistent readback (WARL stability). */
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(test_val));
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
+    CSRW(CSR_VSSTATUS, test_val);
+    readback = CSRR(CSR_VSSTATUS);
 
     TEST_ASSERT_EQ("vsstatus writable fields consistent readback",
                    readback & VSSTATUS_WRITABLE_MASK, hw_writable);
@@ -78,10 +82,10 @@ bool vsst_02_substitution(void)
 
     /* Write a known value to vsstatus from M-mode. */
     uintptr_t test_val = (1UL << 5) | (1UL << 19);  /* SPIE | MXR */
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(test_val));
+    CSRW(CSR_VSSTATUS, test_val);
 
     uintptr_t written;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(written));
+    written = CSRR(CSR_VSSTATUS);
 
     /* VS-mode reads sstatus — should return vsstatus value. */
     uintptr_t vs_read = run_in_vs_mode(vs_read_sstatus, 0);
@@ -91,12 +95,12 @@ bool vsst_02_substitution(void)
                    written & VSSTATUS_WRITABLE_MASK);
 
     /* VS-mode writes sstatus, verify vsstatus is modified. */
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", zero");
+    CSRW(CSR_VSSTATUS, 0);
     uintptr_t write_val = (1UL << 18);  /* SUM */
     run_in_vs_mode(vs_write_sstatus, write_val);
 
     uintptr_t readback;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
+    readback = CSRR(CSR_VSSTATUS);
 
     TEST_ASSERT_EQ("VS sstatus write lands on vsstatus",
                    readback & (1UL << 18), write_val & (1UL << 18));
@@ -118,23 +122,24 @@ bool vsst_03_fs_off_fp_illegal(void)
     if (!F_AVAILABLE)
         TEST_SKIP("F extension not available");
 
-    uintptr_t saved_mstatus;
-    asm volatile ("csrr %0, mstatus" : "=r"(saved_mstatus));
+    uintptr_t saved_mstatus = tsbi_csr_read(CSR_MSTATUS);
 
     /* Set mstatus.FS = Initial (HS-level allows FP). */
-    uintptr_t mstatus = (saved_mstatus & ~SSTATUS_FS_MASK) | SSTATUS_FS_INITIAL;
-    asm volatile ("csrw mstatus, %0" :: "r"(mstatus));
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_FS_MASK); tsbi_csr_set(CSR_MSTATUS, (SSTATUS_FS_INITIAL) & (SSTATUS_FS_MASK));
 
     /* Set vsstatus.FS = Off (VS-level disables FP). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
+    vsstatus = CSRR(CSR_VSSTATUS);
     vsstatus = (vsstatus & ~SSTATUS_FS_MASK) | SSTATUS_FS_OFF;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
+    CSRW(CSR_VSSTATUS, vsstatus);
 
     /* VS-mode FP should trigger illegal-instruction (cause=2). */
     EXPECT_ILLEGAL_INST(run_in_vs_mode(vs_exec_fp_inst, 0));
 
-    asm volatile ("csrw mstatus, %0" :: "r"(saved_mstatus));
+    /* Restore the mstatus FS/VS fields this test touched (only those were
+     * modified; the rest of mstatus is framework-managed). */
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_FS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_FS_MASK) & (SSTATUS_FS_MASK));
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_VS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_VS_MASK) & (SSTATUS_VS_MASK));
 
     HYP_TEST_END();
 }
@@ -153,23 +158,24 @@ bool vsst_04_sstatus_fs_off_fp_illegal(void)
     if (!F_AVAILABLE)
         TEST_SKIP("F extension not available");
 
-    uintptr_t saved_mstatus;
-    asm volatile ("csrr %0, mstatus" : "=r"(saved_mstatus));
+    uintptr_t saved_mstatus = tsbi_csr_read(CSR_MSTATUS);
 
     /* Set mstatus.FS = Off (HS-level disables FP). */
-    uintptr_t mstatus = (saved_mstatus & ~SSTATUS_FS_MASK) | SSTATUS_FS_OFF;
-    asm volatile ("csrw mstatus, %0" :: "r"(mstatus));
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_FS_MASK); tsbi_csr_set(CSR_MSTATUS, (SSTATUS_FS_OFF) & (SSTATUS_FS_MASK));
 
     /* Set vsstatus.FS = Initial (VS-level allows FP). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
+    vsstatus = CSRR(CSR_VSSTATUS);
     vsstatus = (vsstatus & ~SSTATUS_FS_MASK) | SSTATUS_FS_INITIAL;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
+    CSRW(CSR_VSSTATUS, vsstatus);
 
     /* VS-mode FP should trigger illegal-instruction (cause=2). */
     EXPECT_ILLEGAL_INST(run_in_vs_mode(vs_exec_fp_inst, 0));
 
-    asm volatile ("csrw mstatus, %0" :: "r"(saved_mstatus));
+    /* Restore the mstatus FS/VS fields this test touched (only those were
+     * modified; the rest of mstatus is framework-managed). */
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_FS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_FS_MASK) & (SSTATUS_FS_MASK));
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_VS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_VS_MASK) & (SSTATUS_VS_MASK));
 
     HYP_TEST_END();
 }
@@ -188,23 +194,24 @@ bool vsst_05_both_fs_nonzero_fp_ok(void)
     if (!F_AVAILABLE)
         TEST_SKIP("F extension not available");
 
-    uintptr_t saved_mstatus;
-    asm volatile ("csrr %0, mstatus" : "=r"(saved_mstatus));
+    uintptr_t saved_mstatus = tsbi_csr_read(CSR_MSTATUS);
 
     /* Set mstatus.FS = Initial. */
-    uintptr_t mstatus = (saved_mstatus & ~SSTATUS_FS_MASK) | SSTATUS_FS_INITIAL;
-    asm volatile ("csrw mstatus, %0" :: "r"(mstatus));
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_FS_MASK); tsbi_csr_set(CSR_MSTATUS, (SSTATUS_FS_INITIAL) & (SSTATUS_FS_MASK));
 
     /* Set vsstatus.FS = Initial. */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
+    vsstatus = CSRR(CSR_VSSTATUS);
     vsstatus = (vsstatus & ~SSTATUS_FS_MASK) | SSTATUS_FS_INITIAL;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
+    CSRW(CSR_VSSTATUS, vsstatus);
 
     /* VS-mode FP should complete without any trap. */
     VS_EXPECT_NO_TRAP(run_in_vs_mode(vs_exec_fp_inst, 0));
 
-    asm volatile ("csrw mstatus, %0" :: "r"(saved_mstatus));
+    /* Restore the mstatus FS/VS fields this test touched (only those were
+     * modified; the rest of mstatus is framework-managed). */
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_FS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_FS_MASK) & (SSTATUS_FS_MASK));
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_VS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_VS_MASK) & (SSTATUS_VS_MASK));
 
     HYP_TEST_END();
 }
@@ -223,35 +230,35 @@ bool vsst_06_fp_makes_both_fs_dirty(void)
     if (!F_AVAILABLE)
         TEST_SKIP("F extension not available");
 
-    uintptr_t saved_mstatus;
-    asm volatile ("csrr %0, mstatus" : "=r"(saved_mstatus));
+    uintptr_t saved_mstatus = tsbi_csr_read(CSR_MSTATUS);
 
     /* Set mstatus.FS = Initial. */
-    uintptr_t mstatus = (saved_mstatus & ~SSTATUS_FS_MASK) | SSTATUS_FS_INITIAL;
-    asm volatile ("csrw mstatus, %0" :: "r"(mstatus));
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_FS_MASK); tsbi_csr_set(CSR_MSTATUS, (SSTATUS_FS_INITIAL) & (SSTATUS_FS_MASK));
 
     /* Set vsstatus.FS = Initial. */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
+    vsstatus = CSRR(CSR_VSSTATUS);
     vsstatus = (vsstatus & ~SSTATUS_FS_MASK) | SSTATUS_FS_INITIAL;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
+    CSRW(CSR_VSSTATUS, vsstatus);
 
     /* Execute FP instruction in VS-mode. */
     run_in_vs_mode(vs_exec_fp_inst, 0);
 
     /* Check mstatus.FS == Dirty (3). */
-    uintptr_t mstatus_after;
-    asm volatile ("csrr %0, mstatus" : "=r"(mstatus_after));
+    uintptr_t mstatus_after = tsbi_csr_read(CSR_MSTATUS);
     TEST_ASSERT_EQ("mstatus.FS == Dirty",
                    mstatus_after & SSTATUS_FS_MASK, SSTATUS_FS_DIRTY);
 
     /* Check vsstatus.FS == Dirty (3). */
     uintptr_t vsstatus_after;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus_after));
+    vsstatus_after = CSRR(CSR_VSSTATUS);
     TEST_ASSERT_EQ("vsstatus.FS == Dirty",
                    vsstatus_after & SSTATUS_FS_MASK, SSTATUS_FS_DIRTY);
 
-    asm volatile ("csrw mstatus, %0" :: "r"(saved_mstatus));
+    /* Restore the mstatus FS/VS fields this test touched (only those were
+     * modified; the rest of mstatus is framework-managed). */
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_FS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_FS_MASK) & (SSTATUS_FS_MASK));
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_VS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_VS_MASK) & (SSTATUS_VS_MASK));
 
     HYP_TEST_END();
 }
@@ -270,23 +277,24 @@ bool vsst_07_vs_off_vector_illegal(void)
     if (!V_AVAILABLE)
         TEST_SKIP("V extension not available");
 
-    uintptr_t saved_mstatus;
-    asm volatile ("csrr %0, mstatus" : "=r"(saved_mstatus));
+    uintptr_t saved_mstatus = tsbi_csr_read(CSR_MSTATUS);
 
     /* Set mstatus.VS = Initial (HS-level allows Vector). */
-    uintptr_t mstatus = (saved_mstatus & ~SSTATUS_VS_MASK) | SSTATUS_VS_INITIAL;
-    asm volatile ("csrw mstatus, %0" :: "r"(mstatus));
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_VS_MASK); tsbi_csr_set(CSR_MSTATUS, (SSTATUS_VS_INITIAL) & (SSTATUS_VS_MASK));
 
     /* Set vsstatus.VS = Off (VS-level disables Vector). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
+    vsstatus = CSRR(CSR_VSSTATUS);
     vsstatus = (vsstatus & ~SSTATUS_VS_MASK) | SSTATUS_VS_OFF;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
+    CSRW(CSR_VSSTATUS, vsstatus);
 
     /* VS-mode Vector should trigger illegal-instruction (cause=2). */
     EXPECT_ILLEGAL_INST(run_in_vs_mode(vs_exec_vector_inst, 0));
 
-    asm volatile ("csrw mstatus, %0" :: "r"(saved_mstatus));
+    /* Restore the mstatus FS/VS fields this test touched (only those were
+     * modified; the rest of mstatus is framework-managed). */
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_FS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_FS_MASK) & (SSTATUS_FS_MASK));
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_VS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_VS_MASK) & (SSTATUS_VS_MASK));
 
     HYP_TEST_END();
 }
@@ -305,23 +313,24 @@ bool vsst_08_sstatus_vs_off_vector_illegal(void)
     if (!V_AVAILABLE)
         TEST_SKIP("V extension not available");
 
-    uintptr_t saved_mstatus;
-    asm volatile ("csrr %0, mstatus" : "=r"(saved_mstatus));
+    uintptr_t saved_mstatus = tsbi_csr_read(CSR_MSTATUS);
 
     /* Set mstatus.VS = Off (HS-level disables Vector). */
-    uintptr_t mstatus = (saved_mstatus & ~SSTATUS_VS_MASK) | SSTATUS_VS_OFF;
-    asm volatile ("csrw mstatus, %0" :: "r"(mstatus));
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_VS_MASK); tsbi_csr_set(CSR_MSTATUS, (SSTATUS_VS_OFF) & (SSTATUS_VS_MASK));
 
     /* Set vsstatus.VS = Initial (VS-level allows Vector). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
+    vsstatus = CSRR(CSR_VSSTATUS);
     vsstatus = (vsstatus & ~SSTATUS_VS_MASK) | SSTATUS_VS_INITIAL;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
+    CSRW(CSR_VSSTATUS, vsstatus);
 
     /* VS-mode Vector should trigger illegal-instruction (cause=2). */
     EXPECT_ILLEGAL_INST(run_in_vs_mode(vs_exec_vector_inst, 0));
 
-    asm volatile ("csrw mstatus, %0" :: "r"(saved_mstatus));
+    /* Restore the mstatus FS/VS fields this test touched (only those were
+     * modified; the rest of mstatus is framework-managed). */
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_FS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_FS_MASK) & (SSTATUS_FS_MASK));
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_VS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_VS_MASK) & (SSTATUS_VS_MASK));
 
     HYP_TEST_END();
 }
@@ -340,35 +349,35 @@ bool vsst_09_vector_makes_both_vs_dirty(void)
     if (!V_AVAILABLE)
         TEST_SKIP("V extension not available");
 
-    uintptr_t saved_mstatus;
-    asm volatile ("csrr %0, mstatus" : "=r"(saved_mstatus));
+    uintptr_t saved_mstatus = tsbi_csr_read(CSR_MSTATUS);
 
     /* Set mstatus.VS = Initial. */
-    uintptr_t mstatus = (saved_mstatus & ~SSTATUS_VS_MASK) | SSTATUS_VS_INITIAL;
-    asm volatile ("csrw mstatus, %0" :: "r"(mstatus));
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_VS_MASK); tsbi_csr_set(CSR_MSTATUS, (SSTATUS_VS_INITIAL) & (SSTATUS_VS_MASK));
 
     /* Set vsstatus.VS = Initial. */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
+    vsstatus = CSRR(CSR_VSSTATUS);
     vsstatus = (vsstatus & ~SSTATUS_VS_MASK) | SSTATUS_VS_INITIAL;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
+    CSRW(CSR_VSSTATUS, vsstatus);
 
     /* Execute Vector instruction in VS-mode. */
     run_in_vs_mode(vs_exec_vector_inst, 0);
 
     /* Check mstatus.VS == Dirty (3). */
-    uintptr_t mstatus_after;
-    asm volatile ("csrr %0, mstatus" : "=r"(mstatus_after));
+    uintptr_t mstatus_after = tsbi_csr_read(CSR_MSTATUS);
     TEST_ASSERT_EQ("mstatus.VS == Dirty",
                    mstatus_after & SSTATUS_VS_MASK, SSTATUS_VS_DIRTY);
 
     /* Check vsstatus.VS == Dirty (3). */
     uintptr_t vsstatus_after;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus_after));
+    vsstatus_after = CSRR(CSR_VSSTATUS);
     TEST_ASSERT_EQ("vsstatus.VS == Dirty",
                    vsstatus_after & SSTATUS_VS_MASK, SSTATUS_VS_DIRTY);
 
-    asm volatile ("csrw mstatus, %0" :: "r"(saved_mstatus));
+    /* Restore the mstatus FS/VS fields this test touched (only those were
+     * modified; the rest of mstatus is framework-managed). */
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_FS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_FS_MASK) & (SSTATUS_FS_MASK));
+    tsbi_csr_clear(CSR_MSTATUS, SSTATUS_VS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_VS_MASK) & (SSTATUS_VS_MASK));
 
     HYP_TEST_END();
 }
@@ -391,22 +400,22 @@ bool vsst_10_sd_reflects_vs_view(void)
 
     /* Set vsstatus.FS = Clean, vsstatus.VS = Off (no dirty state). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
+    vsstatus = CSRR(CSR_VSSTATUS);
     vsstatus = (vsstatus & ~(SSTATUS_FS_MASK | SSTATUS_VS_MASK))
                | SSTATUS_FS_CLEAN | SSTATUS_VS_OFF;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
+    CSRW(CSR_VSSTATUS, vsstatus);
 
     /* Read back — SD should be 0 (nothing dirty). */
     uintptr_t readback;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
+    readback = CSRR(CSR_VSSTATUS);
     TEST_ASSERT_EQ("SD=0 when FS=Clean, VS=Off",
                    readback & SSTATUS_SD_BIT, 0UL);
 
     /* Set vsstatus.FS = Dirty → SD should become 1. */
     vsstatus = (readback & ~SSTATUS_FS_MASK) | SSTATUS_FS_DIRTY;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
+    CSRW(CSR_VSSTATUS, vsstatus);
 
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
+    readback = CSRR(CSR_VSSTATUS);
     TEST_ASSERT_EQ("SD=1 when FS=Dirty",
                    readback & SSTATUS_SD_BIT, SSTATUS_SD_BIT);
 
@@ -414,9 +423,9 @@ bool vsst_10_sd_reflects_vs_view(void)
     if (V_AVAILABLE) {
         vsstatus = (readback & ~(SSTATUS_FS_MASK | SSTATUS_VS_MASK))
                    | SSTATUS_FS_OFF | SSTATUS_VS_DIRTY;
-        asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
+        CSRW(CSR_VSSTATUS, vsstatus);
 
-        asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
+        readback = CSRR(CSR_VSSTATUS);
         TEST_ASSERT_EQ("SD=1 when VS=Dirty",
                        readback & SSTATUS_SD_BIT, SSTATUS_SD_BIT);
     }
@@ -424,30 +433,30 @@ bool vsst_10_sd_reflects_vs_view(void)
     /* Cross-validation: mstatus.FS=Dirty + vsstatus.FS=Off → SD=0.
      * HS-level sstatus.FS must NOT influence vsstatus.SD. */
     {
-        uintptr_t saved_mstatus;
-        asm volatile ("csrr %0, mstatus" : "=r"(saved_mstatus));
+        uintptr_t saved_mstatus = tsbi_csr_read(CSR_MSTATUS);
 
         /* Set mstatus.FS = Dirty at HS level. */
-        uintptr_t mstatus = (saved_mstatus & ~SSTATUS_FS_MASK)
-                            | SSTATUS_FS_DIRTY;
-        asm volatile ("csrw mstatus, %0" :: "r"(mstatus));
+        tsbi_csr_clear(CSR_MSTATUS, SSTATUS_FS_MASK); tsbi_csr_set(CSR_MSTATUS, (SSTATUS_FS_DIRTY) & (SSTATUS_FS_MASK));
 
         /* Set vsstatus.FS = Off, vsstatus.VS = Off. */
         vsstatus = (vsstatus & ~(SSTATUS_FS_MASK | SSTATUS_VS_MASK))
                    | SSTATUS_FS_OFF | SSTATUS_VS_OFF;
-        asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
+        CSRW(CSR_VSSTATUS, vsstatus);
 
-        asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
+        readback = CSRR(CSR_VSSTATUS);
         TEST_ASSERT_EQ("SD=0 despite mstatus.FS=Dirty (HS independent)",
                        readback & SSTATUS_SD_BIT, 0UL);
 
-        /* Also verify HS sstatus.SD IS set (mstatus.FS=Dirty). */
+        /* Also verify HS sstatus.SD IS set (mstatus.FS=Dirty). sstatus is
+         * S-level, directly readable from HS-mode. */
         uintptr_t hs_sstatus;
-        asm volatile ("csrr %0, sstatus" : "=r"(hs_sstatus));
+        hs_sstatus = CSRR(CSR_SSTATUS);
         TEST_ASSERT_EQ("HS sstatus.SD=1 when mstatus.FS=Dirty",
                        hs_sstatus & SSTATUS_SD_BIT, SSTATUS_SD_BIT);
 
-        asm volatile ("csrw mstatus, %0" :: "r"(saved_mstatus));
+        /* Restore the mstatus FS/VS fields this test touched. */
+        tsbi_csr_clear(CSR_MSTATUS, SSTATUS_FS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_FS_MASK) & (SSTATUS_FS_MASK));
+        tsbi_csr_clear(CSR_MSTATUS, SSTATUS_VS_MASK); tsbi_csr_set(CSR_MSTATUS, (saved_mstatus & SSTATUS_VS_MASK) & (SSTATUS_VS_MASK));
     }
 
     HYP_TEST_END();
@@ -466,23 +475,23 @@ bool vsst_11_v0_no_effect(void)
 
     /* Save and set sstatus.SIE = 1 (HS-mode interrupt enable). */
     uintptr_t saved_sstatus;
-    asm volatile ("csrr %0, sstatus" : "=r"(saved_sstatus));
-    asm volatile ("csrs sstatus, %0" :: "r"(SSTATUS_SIE_BIT));
+    saved_sstatus = CSRR(CSR_SSTATUS);
+    CSRS(CSR_SSTATUS, SSTATUS_SIE_BIT);
 
     /* Clear vsstatus.SIE = 0 — must NOT affect HS-mode. */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
+    vsstatus = CSRR(CSR_VSSTATUS);
     vsstatus &= ~SSTATUS_SIE_BIT;
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
+    CSRW(CSR_VSSTATUS, vsstatus);
 
     /* Verify HS-mode sstatus.SIE is still 1. */
     uintptr_t sstatus;
-    asm volatile ("csrr %0, sstatus" : "=r"(sstatus));
+    sstatus = CSRR(CSR_SSTATUS);
     TEST_ASSERT_EQ("HS sstatus.SIE unaffected by vsstatus.SIE=0",
                    sstatus & SSTATUS_SIE_BIT, SSTATUS_SIE_BIT);
 
     /* Restore sstatus. */
-    asm volatile ("csrw sstatus, %0" :: "r"(saved_sstatus));
+    CSRW(CSR_SSTATUS, saved_sstatus);
 
     HYP_TEST_END();
 }
@@ -501,7 +510,7 @@ bool vsst_12_uxl_rw(void)
 
     /* Read current vsstatus.UXL. */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
+    vsstatus = CSRR(CSR_VSSTATUS);
     uintptr_t original_uxl = (vsstatus >> SSTATUS_UXL_SHIFT) & 3UL;
 
     /* UXL should have a valid value (1=32, 2=64, 3=128). */
@@ -511,10 +520,10 @@ bool vsst_12_uxl_rw(void)
     /* Try writing UXL = 2 (XLEN=64, the common RV64 value). */
     uintptr_t new_vsstatus = (vsstatus & ~SSTATUS_UXL_MASK)
                              | (2UL << SSTATUS_UXL_SHIFT);
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(new_vsstatus));
+    CSRW(CSR_VSSTATUS, new_vsstatus);
 
     uintptr_t readback;
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
+    readback = CSRR(CSR_VSSTATUS);
     uintptr_t readback_uxl = (readback >> SSTATUS_UXL_SHIFT) & 3UL;
 
     /* WARL: implementation may keep original value or accept new one. */
@@ -526,16 +535,16 @@ bool vsst_12_uxl_rw(void)
      * it or silently constrain it to a legal value. */
     new_vsstatus = (vsstatus & ~SSTATUS_UXL_MASK)
                    | (3UL << SSTATUS_UXL_SHIFT);
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(new_vsstatus));
+    CSRW(CSR_VSSTATUS, new_vsstatus);
 
-    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
+    readback = CSRR(CSR_VSSTATUS);
     readback_uxl = (readback >> SSTATUS_UXL_SHIFT) & 3UL;
 
     TEST_ASSERT("UXL WARL: legal value after writing 3",
                 readback_uxl >= 1 && readback_uxl <= 3);
 
     /* Restore original UXL. */
-    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
+    CSRW(CSR_VSSTATUS, vsstatus);
 
     HYP_TEST_END();
 }

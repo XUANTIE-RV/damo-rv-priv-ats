@@ -53,7 +53,7 @@ bool test_ntl_hyp_05a(void)
     /* henvcfg.CBIE=0 and CBCFE=0 (hyp_reset_state wrote henvcfg=0);
      * menvcfg.CBIE enables the HS-level path per the cmo.adoc
      * pseudocode. */
-    uintptr_t orig_menvcfg = menvcfg_read();
+    uintptr_t orig_menvcfg = tsbi_csr_read(CSR_MENVCFG);
     menvcfg_set_cbie(CBIE_INVAL);
     ntl_henvcfg_set_cbie(0);
     ntl_henvcfg_set_cbcfe(0);
@@ -64,7 +64,7 @@ bool test_ntl_hyp_05a(void)
     ntl_cmo_vs_run(true, true, &pc_pref, &rep_pref);
     ntl_cmo_vs_run(false, true, &pc_plain, &rep_plain);
 
-    menvcfg_write(orig_menvcfg);
+    tsbi_csr_write(CSR_MENVCFG, orig_menvcfg);
 
     TEST_ASSERT("prefixed: trap triggered", rep_pref.triggered);
     TEST_ASSERT("unprefixed: trap triggered", rep_plain.triggered);
@@ -103,7 +103,7 @@ bool test_ntl_hyp_05b(void)
      * check on menvcfg.CBCFE precedes the virtual-instruction check
      * on henvcfg.CBCFE, so menvcfg.CBCFE must be enabled first to
      * reach the V=1 gating under test. */
-    uintptr_t orig_menvcfg = menvcfg_read();
+    uintptr_t orig_menvcfg = tsbi_csr_read(CSR_MENVCFG);
     menvcfg_set_cbcfe(1);
     ntl_henvcfg_set_cbcfe(0);
 
@@ -113,7 +113,7 @@ bool test_ntl_hyp_05b(void)
     ntl_cmo_vs_run(true, false, &pc_pref, &rep_pref);
     ntl_cmo_vs_run(false, false, &pc_plain, &rep_plain);
 
-    menvcfg_write(orig_menvcfg);
+    tsbi_csr_write(CSR_MENVCFG, orig_menvcfg);
 
     TEST_ASSERT("prefixed: trap triggered", rep_pref.triggered);
     TEST_ASSERT("unprefixed: trap triggered", rep_plain.triggered);

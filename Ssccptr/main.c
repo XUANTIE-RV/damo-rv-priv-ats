@@ -14,7 +14,6 @@ extern test_func_t _test_table_end[];
 int main(void) {
     uart_init();
     reset_state();
-    pmp_clear_all();
     test_print_banner("RISC-V Ssccptr Extension Compliance Test");
 
     unsigned int test_count = (unsigned int)(

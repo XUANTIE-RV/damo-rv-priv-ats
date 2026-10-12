@@ -34,14 +34,14 @@ bool test_hzwrs_04(void)
     if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     uintptr_t saved_mie = hz_quiet_interrupts();
-    CSRC(mstatus, MSTATUS_TW_BIT);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TW_BIT);
     hstatus_set_vtw(true);
     (void)hz_reserve();
 
     hz_vs_expect(_vs_wrs_nto, true, CAUSE_VIRTUAL_INSTRUCTION);
 
     hstatus_set_vtw(false);
-    CSRW(mie, saved_mie);
+    tsbi_csr_write(CSR_MIE, saved_mie);
 
     HYP_TEST_END();
 }
@@ -56,14 +56,14 @@ bool test_hzwrs_05(void)
     if (!ZAWRS_AVAILABLE) TEST_SKIP("Zawrs not implemented");
 
     uintptr_t saved_mie = hz_quiet_interrupts();
-    CSRC(mstatus, MSTATUS_TW_BIT);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TW_BIT);
     hstatus_set_vtw(true);
     (void)hz_reserve();
 
     hz_vu_expect(_vu_wrs_nto, true, CAUSE_VIRTUAL_INSTRUCTION);
 
     hstatus_set_vtw(false);
-    CSRW(mie, saved_mie);
+    tsbi_csr_write(CSR_MIE, saved_mie);
 
     HYP_TEST_END();
 }
@@ -85,7 +85,7 @@ bool test_hzwrs_06(void)
      * software interrupt: hvip.VSSIP injected, routed to VS-level by
      * hideleg[2] and locally enabled by vsie.SSIE. */
     uintptr_t saved_mie = hz_quiet_interrupts();
-    CSRC(mstatus, MSTATUS_TW_BIT);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TW_BIT);
     hstatus_set_vtw(true);
     (void)hz_reserve();
     hz_suppress_globals();
@@ -99,7 +99,7 @@ bool test_hzwrs_06(void)
 
     hz_clear_vs_soft_pending();
     hstatus_set_vtw(false);
-    CSRW(mie, saved_mie);
+    tsbi_csr_write(CSR_MIE, saved_mie);
 
     if (trapped) {
         LOG_I("implementation takes the VTW interception: wrs.nto "
@@ -129,10 +129,10 @@ bool test_hzwrs_07(void)
      * written by hardware on trap entry (SPV is only written for
      * traps taken into HS-mode) and captured by the framework's
      * HS-mode handler (trap_get_spv). */
-    CSRS(medeleg, (1UL << CAUSE_VIRTUAL_INSTRUCTION));
+    tsbi_deleg_or((1UL << CAUSE_VIRTUAL_INSTRUCTION), 0);
 
     uintptr_t saved_mie = hz_quiet_interrupts();
-    CSRC(mstatus, MSTATUS_TW_BIT);
+    tsbi_csr_clear(CSR_MSTATUS, MSTATUS_TW_BIT);
     hstatus_set_vtw(true);
     (void)hz_reserve();
 
@@ -150,8 +150,8 @@ bool test_hzwrs_07(void)
     }
 
     hstatus_set_vtw(false);
-    CSRW(mie, saved_mie);
-    CSRC(medeleg, (1UL << CAUSE_VIRTUAL_INSTRUCTION));
+    tsbi_csr_write(CSR_MIE, saved_mie);
+    tsbi_deleg_clear((1UL << CAUSE_VIRTUAL_INSTRUCTION), 0);
 
     HYP_TEST_END();
 }

@@ -21,7 +21,7 @@ int main(void)
      * handler that clears MDT via MRET to prevent double traps.
      */
     extern void smdbltrp_m_trap_entry(void);
-    CSRW(mtvec, (uintptr_t)&smdbltrp_m_trap_entry);
+    tsbi_csr_write(CSR_MTVEC, (uintptr_t)&smdbltrp_m_trap_entry);
 
     /* Install the Ssdbltrp S-mode trap handler: wraps the common
      * s_trap_handler and captures mtval2 at S-mode trap entry so
@@ -29,14 +29,8 @@ int main(void)
     extern void ssdbltrp_s_trap_entry(void);
     CSRW(stvec, (uintptr_t)&ssdbltrp_s_trap_entry);
 
-    /* Configure PMP: allow S/U-mode full access */
-    asm volatile(
-        "li t0, -1\n\t"
-        "csrw pmpaddr0, t0\n\t"
-        "li t0, 0x1F\n\t"
-        "csrw pmpcfg0, t0\n\t"
-        ::: "t0"
-    );
+    /* PMP full-space RWX is hoisted into common/entry.S (boot, M-mode);
+     * a bare csrw pmpaddr0/pmpcfg0 here would trap in S-mode-normal. */
 
     test_print_banner("RISC-V Ssdbltrp Extension Compliance Test");
 
@@ -46,9 +40,9 @@ int main(void)
      * critical error without Smrnmi, so tests must keep MDT cleared.
      */
     {
-        uintptr_t ms0 = CSRR(mstatus);
-        clear_mdt();
-        uintptr_t ms1 = CSRR(mstatus);
+        uintptr_t ms0 = tsbi_csr_read(CSR_MSTATUS);
+        tsbi_csr_clear(CSR_MSTATUS, MSTATUS_MDT_BIT);
+        uintptr_t ms1 = tsbi_csr_read(CSR_MSTATUS);
         printf("[ENV] mstatus=0x%lx MDT@reset=%d MDT@after_clear=%d\n",
                (unsigned long)ms0,
                (int)(((unsigned long)ms0 >> 42) & 1UL),
@@ -66,7 +60,7 @@ int main(void)
          * handler which does not clear MDT, causing double traps.
          */
         extern void smdbltrp_m_trap_entry(void);
-        CSRW(mtvec, (uintptr_t)&smdbltrp_m_trap_entry);
+        tsbi_csr_write(CSR_MTVEC, (uintptr_t)&smdbltrp_m_trap_entry);
 
         /* Re-install the mtval2-capturing S-mode handler too, since
          * reset_state() resets stvec to the default s_trap_entry. */

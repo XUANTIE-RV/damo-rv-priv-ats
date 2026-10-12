@@ -41,28 +41,33 @@ static inline uintptr_t seed_read_m(void)
 
 /* ===================================================================
  * mseccfg access helpers
+ *
+ * mseccfg (0x747) is M-level. Under the T-SBI S-mode-normal model the test
+ * body runs in S(HS)-mode, where a bare csrr/csrw/csrs/csrc mseccfg raises
+ * illegal-instruction, so these go through the tsbi_csr_* proxy (same shape
+ * as the sibling Hypervisor_Zicfilp suite).  seed itself is NOT proxied: it
+ * requires the read-write csrrw form, so M-mode reads use an explicit
+ * run_in_priv(PRIV_M) excursion (see ZKR-HYP-11).
  * =================================================================== */
 
 static inline uintptr_t mseccfg_read_zkr(void)
 {
-    uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MSECCFG) : "=r"(v) :: "memory");
-    return v;
+    return tsbi_csr_read(CSR_MSECCFG);
 }
 
 static inline void mseccfg_write_zkr(uintptr_t v)
 {
-    asm volatile("csrw " CSR_STR(CSR_MSECCFG) ", %0" :: "r"(v) : "memory");
+    tsbi_csr_write(CSR_MSECCFG, v);
 }
 
 static inline void mseccfg_set_bits(uintptr_t bits)
 {
-    asm volatile("csrs " CSR_STR(CSR_MSECCFG) ", %0" :: "r"(bits) : "memory");
+    tsbi_csr_set(CSR_MSECCFG, bits);
 }
 
 static inline void mseccfg_clear_bits(uintptr_t bits)
 {
-    asm volatile("csrc " CSR_STR(CSR_MSECCFG) ", %0" :: "r"(bits) : "memory");
+    tsbi_csr_clear(CSR_MSECCFG, bits);
 }
 
 /* ===================================================================

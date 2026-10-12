@@ -23,10 +23,10 @@
 #include "hyp_priv.h"
 #include "encoding.h"
 #include "uart.h"
+#include "tsbi/tsbi.h"
 #include "hyp/hyp_csr.h"
 
 extern unsigned current_priv;
-extern uintptr_t ecall_args[2];
 
 /* ===================================================================
  * Trampoline state
@@ -65,9 +65,17 @@ static void __attribute__((used)) _v_trampoline(void) {
         : "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7",
           "t0", "t1", "t2", "t3", "t4", "t5", "t6", "ra", "memory"
     );
-    ecall_args[0] = ECALL_GOTO_PRIV;
-    ecall_args[1] = PRIV_M;
-    asm volatile ("ecall" ::: "memory");
+    /* Ask to be put back in M-mode.  This MUST use the T-SBI wire protocol
+     * (opcode in a0): the legacy ecall_args[] tag is dead - trap.c keeps the
+     * array only so old writers still compile, and ignores its contents.  A
+     * bare ecall here would therefore hand the handler whatever a0 the test
+     * payload happened to leave behind as an "opcode", the request would be
+     * dropped, and we would sret straight back into VS/VU - leaving the test
+     * body running at V=1 and faulting on its next HS-level CSR access.
+     *
+     * The result is already parked in _v_run_result above, so tsbi_ecall()
+     * overwriting a0/a1 costs us nothing. */
+    (void)tsbi_ecall(tsbi_priv_to_goto(PRIV_M), 0);
 }
 
 /* ===================================================================
@@ -104,16 +112,28 @@ static uintptr_t run_in_virt_priv(unsigned target,
     /* Update tracked privilege so subsequent ecall returns set MPV/MPP correctly. */
     current_priv = target;
 
-    /* Ensure the trampoline's ecall (cause=10, ecall-from-VS) always
-     * traps to M-mode. If medeleg[10]=1 or hedeleg[10]=1, the hardware
-     * would delegate the ecall to S/VS-mode instead, breaking the
-     * return path. Clear both bits before mret. */
+    /* Ensure the trampoline's return ecall always traps straight to
+     * M-mode. The ecall is executed in the target mode, so its cause
+     * depends on that mode: ecall-from-VS is CAUSE_ECALL_FROM_VS (10),
+     * while ecall-from-VU reports CAUSE_ECALL_FROM_U (8) -- under V=1
+     * the "from U" code carries the VU ecall. The T-SBI delegation
+     * baseline delegates BOTH causes down toward the VS/HS handlers
+     * (the normal guest-request path), but this ecall is a framework-
+     * internal "return to M" request: the multi-level VS->HS->M
+     * forwarding chain rebuilds a guest's resume point, not this
+     * M-mode caller's, so it cannot serve the trampoline. Un-delegate
+     * the cause the target mode will actually raise so the ecall
+     * lands in M directly -- the VS path already relied on this, the
+     * VU path was simply clearing the wrong bit. */
+    uintptr_t ecall_cause = (target == PRIV_VU) ? CAUSE_ECALL_FROM_U
+                                                : CAUSE_ECALL_FROM_VS;
+
     uintptr_t md = CSRR(medeleg);
-    md &= ~(1UL << 10);
+    md &= ~(1UL << ecall_cause);
     CSRW(medeleg, md);
 
     uintptr_t hd = hedeleg_read();
-    hd &= ~(1UL << 10);
+    hd &= ~(1UL << ecall_cause);
     hedeleg_write(hd);
 
     /* Enter VS/VU at _v_trampoline, return here via the ecall round-trip.
@@ -207,11 +227,9 @@ void __attribute__((noreturn)) goto_vu_mode(void) {
 }
 
 void return_to_hs_mode(void) {
-    /* Issue ecall from VS/VU-mode. The M-mode handler recognizes
-     * CAUSE_ECALL_FROM_VS (10) as a privilege-switch ecall. */
-    ecall_args[0] = ECALL_GOTO_PRIV;
-    ecall_args[1] = PRIV_M;
-    asm volatile ("ecall" ::: "memory");
+    /* Same T-SBI request the trampoline issues; see _v_trampoline for why a
+     * bare ecall is not interchangeable with this. */
+    (void)tsbi_ecall(tsbi_priv_to_goto(PRIV_M), 0);
 }
 
 unsigned get_virt_priv(void) {

@@ -64,9 +64,10 @@ bool test_sha_prio_gstage_over_vsstage(void) {
     two_stage_setup_identity(&ctx, base, PLATFORM_MEM_SIZE,
                              G_FLAGS_RWXU_AD, PT_LEVEL_2M);
 
-    uintptr_t saved_mie;
-    asm volatile ("csrr %0, " CSR_STR(CSR_MIE) : "=r"(saved_mie));
-    asm volatile ("csrc " CSR_STR(CSR_MIE) ", %0" :: "r"(1UL << 7));
+    /* mie is M-level and the suite body runs in S(HS)-mode under the T-SBI
+     * S-mode-normal boot, so go through the T-SBI CSR proxy. */
+    uintptr_t saved_mie = tsbi_csr_read(CSR_MIE);
+    tsbi_csr_clear(CSR_MIE, 1UL << 7);  /* clear MTIE */
 
     trap_expect_begin();
     two_stage_run_in_vs(&ctx, _prio_vs_do_load, target_gpa);
@@ -75,7 +76,7 @@ bool test_sha_prio_gstage_over_vsstage(void) {
     uintptr_t htval = fired ? trap_get_htval() : 0;
     trap_expect_end();
 
-    asm volatile ("csrw " CSR_STR(CSR_MIE) ", %0" :: "r"(saved_mie));
+    tsbi_csr_write(CSR_MIE, saved_mie);
     two_stage_cleanup(&ctx);
 
     TEST_ASSERT("G-stage fault triggered", fired);
@@ -129,10 +130,11 @@ bool test_sha_prio_inst_fetch_over_illegal(void) {
     two_stage_g_map_page(&ctx, target_gpa, target_gpa,
                          no_x_flags, PT_LEVEL_4K);
 
-    /* Disable timer interrupts to protect armed flag */
-    uintptr_t saved_mie;
-    asm volatile ("csrr %0, " CSR_STR(CSR_MIE) : "=r"(saved_mie));
-    asm volatile ("csrc " CSR_STR(CSR_MIE) ", %0" :: "r"(1UL << 7));
+    /* Disable timer interrupts to protect armed flag. mie is M-level and the
+     * suite body runs in S(HS)-mode under the T-SBI S-mode-normal boot, so go
+     * through the T-SBI CSR proxy. */
+    uintptr_t saved_mie = tsbi_csr_read(CSR_MIE);
+    tsbi_csr_clear(CSR_MIE, 1UL << 7);  /* clear MTIE */
 
     /* Arm the M-mode trap mechanism */
     trap_expect_begin();
@@ -148,7 +150,7 @@ bool test_sha_prio_inst_fetch_over_illegal(void) {
     trap_expect_end();
 
     /* Restore state */
-    asm volatile ("csrw " CSR_STR(CSR_MIE) ", %0" :: "r"(saved_mie));
+    tsbi_csr_write(CSR_MIE, saved_mie);
 
     two_stage_cleanup(&ctx);
 

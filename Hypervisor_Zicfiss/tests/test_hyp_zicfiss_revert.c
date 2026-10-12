@@ -111,6 +111,14 @@ bool test_hcfi_ss_72(void) {
     orig_h = cfi_setup_vs_sse(false, true);
     senvcfg_set_bits(SENVCFG_SSE);
 
+    /* Route the expected load page fault back to HS. The T-SBI hedeleg
+     * baseline delegates cause 13 to VS, but ts2_setup_full_u maps the kernel
+     * text -- which holds the standing VS handler _vs_trap_entry -- as U=1, and
+     * an S-level instruction fetch from a U=1 page always faults, so the
+     * handler would self-trap forever. HS runs with satp=Bare, so the fault is
+     * observable there. HYP_TEST_END restores the delegation baseline. */
+    setup_deleg_to_hs(BIT(CAUSE_LOAD_PAGE_FAULT));
+
     vs_pte_modify(&ctx, SS_PAGE_ADDR, PT_LEVEL_4K, PTE_SS_PAGE_FLAGS | PTE_U);
 
     r = two_stage_run_in_vu(&ctx, probe_load, SS_PAGE_ADDR);
