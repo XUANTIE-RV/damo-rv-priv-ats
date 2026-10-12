@@ -30,7 +30,7 @@
 
 #define HAS_MISA_F() ({ \
     uintptr_t _misa; \
-    asm volatile("csrr %0, misa" : "=r"(_misa) :: "memory"); \
+    _misa = tsbi_csr_read(CSR_MISA); \
     (_misa & (1UL << ('F' - 'A'))) != 0; \
 })
 

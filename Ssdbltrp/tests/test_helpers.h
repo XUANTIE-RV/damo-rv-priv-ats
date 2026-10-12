@@ -111,16 +111,16 @@ static inline void execute_sret(void) {
  * =================================================================== */
 
 static inline void set_dte(void) {
-    asm volatile("csrs menvcfg, %0" :: "r"(MENVCFG_DTE_BIT));
+    tsbi_csr_set(CSR_MENVCFG, MENVCFG_DTE_BIT);
 }
 
 static inline void clear_dte(void) {
-    asm volatile("csrc menvcfg, %0" :: "r"(MENVCFG_DTE_BIT));
+    tsbi_csr_clear(CSR_MENVCFG, MENVCFG_DTE_BIT);
 }
 
 static inline bool get_dte(void) {
     uint64_t menvcfg;
-    asm volatile("csrr %0, menvcfg" : "=r"(menvcfg));
+    menvcfg = tsbi_csr_read(CSR_MENVCFG);
     return (menvcfg & MENVCFG_DTE_BIT) != 0;
 }
 
@@ -146,8 +146,8 @@ static inline bool check_ssdbltrp(void) {
     clear_mdt();
 
     /* Save menvcfg and set DTE=1 */
-    uint64_t menvcfg_orig = CSRR(menvcfg);
-    CSRS(menvcfg, MENVCFG_DTE_BIT);
+    uint64_t menvcfg_orig = tsbi_csr_read(CSR_MENVCFG);
+    tsbi_csr_set(CSR_MENVCFG, MENVCFG_DTE_BIT);
 
     /* Save sstatus and try to set SDT */
     uint64_t sstatus_orig = CSRR(sstatus);
@@ -156,7 +156,7 @@ static inline bool check_ssdbltrp(void) {
     clear_sdt();
 
     /* Restore menvcfg (DTE bit) */
-    CSRW(menvcfg, menvcfg_orig);
+    tsbi_csr_write(CSR_MENVCFG, menvcfg_orig);
 
     return sdt_stuck;
 }

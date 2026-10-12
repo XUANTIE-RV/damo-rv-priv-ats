@@ -20,8 +20,8 @@ bool test_sstc_stimecmp_rw_all_ones(void) {
 
     menvcfg_set(MENVCFG_STCE);
 
-    stimecmp_write((uintptr_t)-1);
-    uintptr_t val = stimecmp_read();
+    stimecmp_write_mmode((uintptr_t)-1);
+    uintptr_t val = stimecmp_read_mmode();
     TEST_ASSERT_EQ("stimecmp all-ones", val, (uintptr_t)-1);
 
     sstc_clear_timer();
@@ -37,8 +37,8 @@ bool test_sstc_stimecmp_rw_all_zeros(void) {
 
     menvcfg_set(MENVCFG_STCE);
 
-    stimecmp_write(0);
-    uintptr_t val = stimecmp_read();
+    stimecmp_write_mmode(0);
+    uintptr_t val = stimecmp_read_mmode();
     TEST_ASSERT_EQ("stimecmp all-zeros", val, 0);
 
     sstc_clear_timer();
@@ -57,12 +57,12 @@ bool test_sstc_stimecmp_rw_alternating(void) {
     uintptr_t pat1 = (uintptr_t)0x5555555555555555ULL;
     uintptr_t pat2 = (uintptr_t)0xAAAAAAAAAAAAAAAAULL;
 
-    stimecmp_write(pat1);
-    uintptr_t val = stimecmp_read();
+    stimecmp_write_mmode(pat1);
+    uintptr_t val = stimecmp_read_mmode();
     TEST_ASSERT_EQ("stimecmp 0x5555...", val, pat1);
 
-    stimecmp_write(pat2);
-    val = stimecmp_read();
+    stimecmp_write_mmode(pat2);
+    val = stimecmp_read_mmode();
     TEST_ASSERT_EQ("stimecmp 0xAAAA...", val, pat2);
 
     sstc_clear_timer();
@@ -79,8 +79,8 @@ bool test_sstc_stimecmp_rw_high_bits(void) {
     menvcfg_set(MENVCFG_STCE);
 
     uintptr_t pattern = (uintptr_t)0x1234567800000000ULL;
-    stimecmp_write(pattern);
-    uintptr_t val = stimecmp_read();
+    stimecmp_write_mmode(pattern);
+    uintptr_t val = stimecmp_read_mmode();
     TEST_ASSERT_EQ("stimecmp high bits", val, pattern);
 
     sstc_clear_timer();
@@ -126,9 +126,9 @@ bool test_sstc_stimecmp_no_affect_time(void) {
     uintptr_t t1 = time_read();
 
     /* Write stimecmp to various values */
-    stimecmp_write(0);
-    stimecmp_write((uintptr_t)-1);
-    stimecmp_write(0x12345678);
+    stimecmp_write_mmode(0);
+    stimecmp_write_mmode((uintptr_t)-1);
+    stimecmp_write_mmode(0x12345678);
 
     /* Read time after */
     uintptr_t t2 = time_read();

@@ -31,18 +31,18 @@ extern void mcounteren_clear(uintptr_t mask);
 static inline uintptr_t mcounteren_read(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MCOUNTEREN) : "=r"(v) :: "memory");
+    v = tsbi_csr_read(CSR_MCOUNTEREN);
     return v;
 }
 
 static inline void mcounteren_set(uintptr_t mask)
 {
-    asm volatile("csrs " CSR_STR(CSR_MCOUNTEREN) ", %0" :: "r"(mask) : "memory");
+    tsbi_csr_set(CSR_MCOUNTEREN, mask);
 }
 
 static inline void mcounteren_clear(uintptr_t mask)
 {
-    asm volatile("csrc " CSR_STR(CSR_MCOUNTEREN) ", %0" :: "r"(mask) : "memory");
+    tsbi_csr_clear(CSR_MCOUNTEREN, mask);
 }
 #endif
 
@@ -91,6 +91,20 @@ static inline void vstimecmp_write(uintptr_t v) {
 }
 
 /* ===================================================================
+ * M-mode stimecmp access
+ *
+ * The "M-mode stimecmp" tests (SSTC-RW-01..04,06) verify M-level
+ * read-write, which under the S-mode-normal model must run inside an
+ * M-excursion: stimecmp_write/read are direct S-level accesses gated by
+ * menvcfg.STCE, whereas the M-mode path is unconditional and matches the
+ * tests' stated intent.  run_in_priv() is a no-op when already in M-mode.
+ * =================================================================== */
+static inline uintptr_t _stimecmp_write_m(uintptr_t v) { stimecmp_write(v); return 0; }
+static inline void stimecmp_write_mmode(uintptr_t v) { run_in_priv(PRIV_M, _stimecmp_write_m, v); }
+static inline uintptr_t _stimecmp_read_m(uintptr_t a) { (void)a; return stimecmp_read(); }
+static inline uintptr_t stimecmp_read_mmode(void) { return run_in_priv(PRIV_M, _stimecmp_read_m, 0); }
+
+/* ===================================================================
  * time CSR read helper
  *
  * RV32: time is 64-bit, split across time(0xC01) and timeh(0xC81).
@@ -118,20 +132,20 @@ static inline uintptr_t time_read(void) {
 
 static inline uintptr_t menvcfg_read(void) {
     uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MENVCFGH) : "=r"(v) :: "memory");
+    v = tsbi_csr_read(CSR_MENVCFGH);
     return v;
 }
 
 static inline void menvcfg_write(uintptr_t v) {
-    asm volatile("csrw " CSR_STR(CSR_MENVCFGH) ", %0" :: "r"(v) : "memory");
+    tsbi_csr_write(CSR_MENVCFGH, v);
 }
 
 static inline void menvcfg_set(uintptr_t bits) {
-    asm volatile("csrs " CSR_STR(CSR_MENVCFGH) ", %0" :: "r"(bits) : "memory");
+    tsbi_csr_set(CSR_MENVCFGH, bits);
 }
 
 static inline void menvcfg_clear(uintptr_t bits) {
-    asm volatile("csrc " CSR_STR(CSR_MENVCFGH) ", %0" :: "r"(bits) : "memory");
+    tsbi_csr_clear(CSR_MENVCFGH, bits);
 }
 
 static inline uintptr_t henvcfg_read(void) {
@@ -154,20 +168,20 @@ static inline void henvcfg_clear(uintptr_t bits) {
 #else
 static inline uintptr_t menvcfg_read(void) {
     uintptr_t v;
-    asm volatile("csrr %0, " CSR_STR(CSR_MENVCFG) : "=r"(v) :: "memory");
+    v = tsbi_csr_read(CSR_MENVCFG);
     return v;
 }
 
 static inline void menvcfg_write(uintptr_t v) {
-    asm volatile("csrw " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(v) : "memory");
+    tsbi_csr_write(CSR_MENVCFG, v);
 }
 
 static inline void menvcfg_set(uintptr_t bits) {
-    asm volatile("csrs " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(bits) : "memory");
+    tsbi_csr_set(CSR_MENVCFG, bits);
 }
 
 static inline void menvcfg_clear(uintptr_t bits) {
-    asm volatile("csrc " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(bits) : "memory");
+    tsbi_csr_clear(CSR_MENVCFG, bits);
 }
 
 static inline uintptr_t henvcfg_read(void) {
@@ -210,7 +224,7 @@ static inline void hcounteren_clear(uintptr_t bits) {
  * =================================================================== */
 static inline uintptr_t mip_read(void) {
     uintptr_t v;
-    asm volatile("csrr %0, mip" : "=r"(v) :: "memory");
+    v = tsbi_csr_read(CSR_MIP);
     return v;
 }
 
@@ -290,7 +304,7 @@ static inline void sstc_clear_timer(void) {
     asm volatile("csrw " CSR_STR(CSR_STIMECMPH) ", %0" :: "r"((uintptr_t)-1) : "memory");
     asm volatile("csrw " CSR_STR(CSR_STIMECMP) ", %0" :: "r"((uintptr_t)-1) : "memory");
 #else
-    stimecmp_write((uintptr_t)-1);
+    stimecmp_write_mmode((uintptr_t)-1);
 #endif
 }
 

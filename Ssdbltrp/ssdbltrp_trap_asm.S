@@ -131,6 +131,14 @@ smdbltrp_saved_mtval:
 smdbltrp_saved_mstatus:
     .dword  0
 
+    /* Trap-entry mstatus preserved across the MDT-clearing MRET so the
+     * return path (MPP) survives; distinct from the one-shot observation
+     * slot above. */
+    .align 3
+    .global smdbltrp_mstatus_ret
+smdbltrp_mstatus_ret:
+    .dword  0
+
     /* mtval2 snapshot captured at M-mode trap entry.  On a double-trap
      * delivery (Ssdbltrp, norm:sstatus_sdt_trap) the hardware writes
      * the original trap cause into mtval2.  The value must be captured
@@ -294,6 +302,13 @@ smdbltrp_m_trap_entry:
     la      t1, smdbltrp_dbg_ring_idx
     STORE   t2, 0(t1)
 
+    /* Preserve the trap-entry mstatus (still in t0) before the MDT-clearing
+     * MRET below clobbers it.  The dance writes mstatus=(3<<11) and mrets,
+     * which leaves MPP=U; a T-SBI ecall from S-mode must mret back to S, so
+     * the original MPP (and MPIE) has to be restored at after_mret. */
+    la      t1, smdbltrp_mstatus_ret
+    STORE   t0, 0(t1)
+
     /* Step 3: Set up MRET to clear MDT while staying in M-mode */
     la      t0, after_mret
     csrw    mepc, t0
@@ -307,6 +322,22 @@ smdbltrp_m_trap_entry:
 
 after_mret:
     /* Now in M-mode with MDT=0, we can safely access CSRs */
+
+    /* Undo the dance's mstatus clobber: restore the trap-entry mstatus with
+     * MDT cleared, so MPP/MPIE survive and the C handler's return path lands
+     * in the mode the trap came from (S for a T-SBI ecall). */
+#if __riscv_xlen == 64
+    la      t0, smdbltrp_mstatus_ret
+    LOAD    t0, 0(t0)
+    li      t1, (1 << 42)         /* mstatus.MDT (bit 42 on RV64) */
+    not     t1, t1
+    and     t0, t0, t1
+    csrw    mstatus, t0
+#else
+    la      t0, smdbltrp_mstatus_ret
+    LOAD    t0, 0(t0)
+    csrw    mstatus, t0           /* RV32: MDT lives in mstatush, not here */
+#endif
 
     /* mtval2 is captured by the C-handler entry hook instead (see
      * trap_m_entry_mtval2_hook): the hook reads at the earliest
@@ -474,10 +505,13 @@ ssdbltrp_probe_rearm:
      * assertions. */
     .global ssdbltrp_probe_return
 ssdbltrp_probe_return:
-    la      t0, ecall_args
-    li      t1, 1                   /* ECALL_GOTO_PRIV */
-    STORE   t1, 0(t0)
-    li      t1, 3                   /* PRIV_M */
-    STORE   t1, REGSIZE(t0)
+    /* T-SBI calling convention: the GOTO opcode travels in a0, and the
+     * M-mode handler dispatches on it.  The old ECALL_GOTO_PRIV/ecall_args
+     * memory tag is dead under T-SBI (the handler ignores it), which left
+     * hardware in S-mode while current_priv stayed M -> the framework's
+     * restore path then ran set_prev_priv's `csrr mstatus` in S-mode and
+     * trapped.  Request GOTO_MMODE directly so both the M-mode double-trap
+     * redirect and the S-mode tolerance skip land back in M-mode. */
+    li      a0, 1                   /* TSBI_GOTO_MMODE */
     ecall
     ret

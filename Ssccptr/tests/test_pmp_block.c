@@ -31,6 +31,7 @@ bool test_ssccptr_pmp_block_l0_load(void) {
     uintptr_t pt_page_pa = get_pt_page_addr(&ctx, test_va, 0);
     TEST_ASSERT("L0 PT page found", pt_page_pa != 0);
 
+    if (get_current_priv() != PRIV_M) goto_priv(PRIV_M);
     pmp_clear_all();
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(pt_page_pa, PAGE_SIZE_4K, PMP_X);
     pmp_set_entry(0, &e0);
@@ -45,7 +46,7 @@ bool test_ssccptr_pmp_block_l0_load(void) {
     CHECK_TRAP("load: PTE read blocked", CAUSE_LAF);
 
     vm_disable();
-    pmp_clear_all();
+    ensure_smode_pmp();
     pt_pool_reset();
     TEST_END();
 }
@@ -67,6 +68,7 @@ bool test_ssccptr_pmp_block_l0_store(void) {
     uintptr_t pt_page_pa = get_pt_page_addr(&ctx, test_va, 0);
     TEST_ASSERT("L0 PT page found", pt_page_pa != 0);
 
+    if (get_current_priv() != PRIV_M) goto_priv(PRIV_M);
     pmp_clear_all();
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(pt_page_pa, PAGE_SIZE_4K, PMP_X);
     pmp_set_entry(0, &e0);
@@ -81,7 +83,7 @@ bool test_ssccptr_pmp_block_l0_store(void) {
     CHECK_TRAP("store: PTE read blocked", CAUSE_SAF);
 
     vm_disable();
-    pmp_clear_all();
+    ensure_smode_pmp();
     pt_pool_reset();
     TEST_END();
 }
@@ -104,6 +106,7 @@ bool test_ssccptr_pmp_block_l0_fetch(void) {
     uintptr_t pt_page_pa = get_pt_page_addr(&ctx, test_va, 0);
     TEST_ASSERT("L0 PT page found", pt_page_pa != 0);
 
+    if (get_current_priv() != PRIV_M) goto_priv(PRIV_M);
     pmp_clear_all();
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(pt_page_pa, PAGE_SIZE_4K, PMP_X);
     pmp_set_entry(0, &e0);
@@ -118,7 +121,7 @@ bool test_ssccptr_pmp_block_l0_fetch(void) {
     CHECK_TRAP("fetch: PTE read blocked", CAUSE_IAF);
 
     vm_disable();
-    pmp_clear_all();
+    ensure_smode_pmp();
     pt_pool_reset();
     TEST_END();
 }
@@ -140,6 +143,7 @@ bool test_ssccptr_pmp_block_l1_load(void) {
     uintptr_t pt_page_pa = get_pt_page_addr(&ctx, test_va, 1);
     TEST_ASSERT("L1 PT page found", pt_page_pa != 0);
 
+    if (get_current_priv() != PRIV_M) goto_priv(PRIV_M);
     pmp_clear_all();
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(pt_page_pa, PAGE_SIZE_4K, PMP_X);
     pmp_set_entry(0, &e0);
@@ -177,7 +181,7 @@ bool test_ssccptr_pmp_block_l1_load(void) {
     CHECK_TRAP("load: L1 PTE read blocked", CAUSE_LAF);
 
     vm_disable();
-    pmp_clear_all();
+    ensure_smode_pmp();
     pt_pool_reset();
     TEST_END();
 }
@@ -198,6 +202,7 @@ bool test_ssccptr_pmp_block_root_load(void) {
 
     uintptr_t pt_page_pa = (uintptr_t)ctx.root_pt;
 
+    if (get_current_priv() != PRIV_M) goto_priv(PRIV_M);
     pmp_clear_all();
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(pt_page_pa, PAGE_SIZE_4K, PMP_X);
     pmp_set_entry(0, &e0);
@@ -234,7 +239,7 @@ bool test_ssccptr_pmp_block_root_load(void) {
     CHECK_TRAP("load: root PTE read blocked", CAUSE_LAF);
 
     vm_disable();
-    pmp_clear_all();
+    ensure_smode_pmp();
     pt_pool_reset();
     TEST_END();
 }
@@ -257,6 +262,7 @@ bool test_ssccptr_pmp_restore(void) {
     TEST_ASSERT("L0 PT page found", pt_page_pa != 0);
 
     /* Phase 1: PMP blocks L0 PT read -> expect access fault */
+    if (get_current_priv() != PRIV_M) goto_priv(PRIV_M);
     pmp_clear_all();
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(pt_page_pa, PAGE_SIZE_4K, PMP_X);
     pmp_set_entry(0, &e0);
@@ -272,7 +278,7 @@ bool test_ssccptr_pmp_restore(void) {
     vm_disable();
 
     /* Phase 2: Remove PMP restriction -> expect walk succeeds */
-    pmp_clear_all();
+    ensure_smode_pmp();
 
     uintptr_t result = vm_run_in_smode(&ctx, probe_load, test_va);
     TEST_ASSERT_EQ("restored: page walk succeeds after PMP removal",

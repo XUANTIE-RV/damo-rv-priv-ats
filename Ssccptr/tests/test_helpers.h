@@ -154,6 +154,17 @@ static uintptr_t test_smode_load_value(uintptr_t arg) {
 static bool sv_mode_detected[16] = {false};
 static bool sv_mode_checked[16]  = {false};
 
+/* satp MODE probe body, executed in M-mode: satp does not gate M-mode
+ * instruction fetch, so writing a mode whose (empty) table would otherwise
+ * fault the very next fetch is safe here.  Returns the satp read-back. */
+static uintptr_t _sv_probe_satp_m(uintptr_t satp_val) {
+    CSRW(satp, satp_val);
+    uintptr_t readback = CSRR(satp);
+    CSRW(satp, 0);            /* restore Bare mode */
+    vm_sfence_vma(0, 0);
+    return readback;
+}
+
 static bool is_sv_mode_supported(int mode) {
     if (mode >= 16) return false;
     if (sv_mode_checked[mode])
@@ -167,10 +178,11 @@ static bool is_sv_mode_supported(int mode) {
     uintptr_t root_ppn = (uintptr_t)ctx.root_pt >> PAGE_SHIFT;
     uintptr_t satp_val = MAKE_SATP(mode, 0, root_ppn);
 
-    CSRW(satp, satp_val);
-    uintptr_t readback = CSRR(satp);
-    CSRW(satp, 0);  /* restore Bare mode */
-    vm_sfence_vma(0, 0);
+    /* Writing satp retargets the CURRENT mode's translation immediately, so
+     * probing from S-mode with an empty table would fault on the next fetch
+     * (and the delegated handler fetch would fault too -> storm).  Run the
+     * whole write-readback-restore inside one M-excursion. */
+    uintptr_t readback = run_in_priv(PRIV_M, _sv_probe_satp_m, satp_val);
 
     int readback_mode = (int)(readback >> SATP_MODE_SHIFT);
     sv_mode_detected[mode] = (readback_mode == mode);

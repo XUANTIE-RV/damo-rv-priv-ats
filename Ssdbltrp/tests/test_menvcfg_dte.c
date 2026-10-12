@@ -13,16 +13,16 @@ bool test_menvcfg_dte_01(void)
 
     /* Read menvcfg and check DTE bit position */
     uint64_t menvcfg;
-    asm volatile("csrr %0, menvcfg" : "=r"(menvcfg));
+    menvcfg = tsbi_csr_read(CSR_MENVCFG);
 
     /* Try to set DTE */
-    asm volatile("csrs menvcfg, %0" :: "r"(MENVCFG_DTE_BIT));
-    asm volatile("csrr %0, menvcfg" : "=r"(menvcfg));
+    tsbi_csr_set(CSR_MENVCFG, MENVCFG_DTE_BIT);
+    menvcfg = tsbi_csr_read(CSR_MENVCFG);
 
     bool dte_set = (menvcfg & MENVCFG_DTE_BIT) != 0;
 
     /* Clear DTE */
-    asm volatile("csrc menvcfg, %0" :: "r"(MENVCFG_DTE_BIT));
+    tsbi_csr_clear(CSR_MENVCFG, MENVCFG_DTE_BIT);
 
     TEST_ASSERT("DTE at bit 59", dte_set);
     TEST_END();
@@ -37,13 +37,13 @@ bool test_menvcfg_dte_02(void)
     uint64_t menvcfg;
 
     /* Set DTE=1 */
-    asm volatile("csrs menvcfg, %0" :: "r"(MENVCFG_DTE_BIT));
-    asm volatile("csrr %0, menvcfg" : "=r"(menvcfg));
+    tsbi_csr_set(CSR_MENVCFG, MENVCFG_DTE_BIT);
+    menvcfg = tsbi_csr_read(CSR_MENVCFG);
     bool val1 = (menvcfg & MENVCFG_DTE_BIT) != 0;
 
     /* Clear DTE=0 */
-    asm volatile("csrc menvcfg, %0" :: "r"(MENVCFG_DTE_BIT));
-    asm volatile("csrr %0, menvcfg" : "=r"(menvcfg));
+    tsbi_csr_clear(CSR_MENVCFG, MENVCFG_DTE_BIT);
+    menvcfg = tsbi_csr_read(CSR_MENVCFG);
     bool val2 = (menvcfg & MENVCFG_DTE_BIT) != 0;
 
     TEST_ASSERT("DTE write 1", val1);
@@ -62,7 +62,7 @@ bool test_menvcfg_dte_03(void)
     }
 
     /* Clear DTE */
-    asm volatile("csrc menvcfg, %0" :: "r"(MENVCFG_DTE_BIT));
+    tsbi_csr_clear(CSR_MENVCFG, MENVCFG_DTE_BIT);
 
     /* Try to set SDT */
     set_sdt();
@@ -84,7 +84,7 @@ bool test_menvcfg_dte_04(void)
     }
 
     /* Set DTE=1 */
-    asm volatile("csrs menvcfg, %0" :: "r"(MENVCFG_DTE_BIT));
+    tsbi_csr_set(CSR_MENVCFG, MENVCFG_DTE_BIT);
 
     /* Try to set SDT */
     set_sdt();
@@ -92,7 +92,7 @@ bool test_menvcfg_dte_04(void)
 
     /* Clean up */
     clear_sdt();
-    asm volatile("csrc menvcfg, %0" :: "r"(MENVCFG_DTE_BIT));
+    tsbi_csr_clear(CSR_MENVCFG, MENVCFG_DTE_BIT);
 
     TEST_ASSERT("SDT enabled when DTE=1", sdt_val);
     TEST_END();

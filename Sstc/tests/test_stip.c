@@ -29,7 +29,7 @@ bool test_sstc_stip_readonly_write1(void) {
     TEST_ASSERT("STIP initially 0", (mip_val & MIP_STIP) == 0);
 
     /* Try to set STIP via csrs mip */
-    CSRS(mip, MIP_STIP);
+    tsbi_csr_set(CSR_MIP, MIP_STIP);
 
     mip_val = mip_read();
     TEST_ASSERT("STIP still 0 after write attempt", (mip_val & MIP_STIP) == 0);
@@ -55,7 +55,7 @@ bool test_sstc_stip_readonly_write0(void) {
     TEST_ASSERT("STIP initially 1", (mip_val & MIP_STIP) != 0);
 
     /* Try to clear STIP via csrc mip */
-    CSRC(mip, MIP_STIP);
+    tsbi_csr_clear(CSR_MIP, MIP_STIP);
 
     mip_val = mip_read();
     TEST_ASSERT("STIP still 1 after clear attempt", (mip_val & MIP_STIP) != 0);
@@ -141,16 +141,16 @@ bool test_sstc_stip_stce0_writable(void) {
     menvcfg_clear(MENVCFG_STCE);
 
     /* Clear any residual STIP */
-    CSRC(mip, MIP_STIP);
+    tsbi_csr_clear(CSR_MIP, MIP_STIP);
 
     /* Try to set STIP via csrs mip */
-    CSRS(mip, MIP_STIP);
+    tsbi_csr_set(CSR_MIP, MIP_STIP);
     uintptr_t mip_val = mip_read();
     TEST_ASSERT("STIP writable when STCE=0 (set to 1)",
                 (mip_val & MIP_STIP) != 0);
 
     /* Clean up: clear STIP */
-    CSRC(mip, MIP_STIP);
+    tsbi_csr_clear(CSR_MIP, MIP_STIP);
 
     TEST_END();
 }

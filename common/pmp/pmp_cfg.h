@@ -271,26 +271,52 @@ static inline void pmp_restore(const pmp_save_t *save) {
 }
 
 /* Quick PMP entry-0 full-space NAPOT RWX open (for S/U-mode access).
- * Lightweight inline-asm alternative to pmp_set_entry() when only
- * a catch-all permission grant is needed (no save/restore). */
-static inline void pmp_open_entry0_all(void)
+ * Lightweight alternative to pmp_set_entry() when only a catch-all
+ * permission grant is needed (no save/restore).
+ *
+ * PMP CSRs are M-level.  Under the S-mode-normal model the write must run
+ * inside an M-excursion; run_in_priv() is a no-op when already in M-mode,
+ * so M-boot callers are unaffected. */
+extern uintptr_t run_in_priv(unsigned priv, uintptr_t (*fn)(uintptr_t), uintptr_t arg);
+
+static inline uintptr_t _pmp_open_entry0_all_m(uintptr_t arg)
 {
+    (void)arg;
     asm volatile(
         "li t0, -1\n\t"
         "csrw pmpaddr0, t0\n\t"
         "li t0, 0x1F\n\t"
         "csrw pmpcfg0, t0\n\t"
         ::: "t0");
+    return 0;
+}
+
+static inline void pmp_open_entry0_all(void)
+{
+    run_in_priv(PRIV_M, _pmp_open_entry0_all_m, 0);
 }
 
 /* Clear all PMP entries then open entry 0 as a full-space RWX NAPOT
  * region, so S-mode (and U-mode) accesses are permitted by PMP. This
- * is the authoritative version of the per-suite ensure_smode_pmp(). */
-static inline void ensure_smode_pmp(void)
+ * is the authoritative version of the per-suite ensure_smode_pmp().
+ *
+ * The whole clear-and-reinstall sequence MUST run inside ONE M-excursion:
+ * pmp_clear_all() leaves no matching entry, and the implicit no-match rule
+ * denies every S/U access, so returning to S-mode before entry 0 is
+ * re-opened would fault on the very next instruction fetch.  run_in_priv()
+ * is a no-op when already in M-mode, so M-boot callers are unaffected. */
+static inline uintptr_t _ensure_smode_pmp_m(uintptr_t arg)
 {
+    (void)arg;
     pmp_clear_all();
     pmp_entry_t pmp_all = PMP_ENTRY_FULL(PMP_RWX);
     pmp_set_entry(0, &pmp_all);
+    return 0;
+}
+
+static inline void ensure_smode_pmp(void)
+{
+    run_in_priv(PRIV_M, _ensure_smode_pmp_m, 0);
 }
 
 #endif /* PMP_CFG_H */

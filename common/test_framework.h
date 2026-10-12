@@ -377,18 +377,31 @@ extern bool g_trap_force_pelp;
  * Use M_TRAP_EXPECT_BEGIN / M_EXPECT_TRAP / M_EXPECT_NO_TRAP
  * instead of their plain counterparts when the protected operation
  * runs in M-mode and may raise a synchronous exception.
+ *
+ * T-SBI S-mode-normal note: mstatus(.h).MDT is M-mode-only state, so
+ * a bare CSRC/CSRS/CSRR of it from S/U-mode is an illegal instruction
+ * (scause=2). Under the S-mode-normal model main() and most stimuli run
+ * in S-mode, where there is no M-double-trap exposure at all -- the MDT
+ * helpers therefore guard the raw access on get_current_priv()==PRIV_M
+ * and degrade to a no-op / false elsewhere. This keeps the exact
+ * behaviour for M-mode callers (reset_state(), genuine M-mode stimuli)
+ * while making M_TRAP_EXPECT_* safe to arm from S-mode.
  * =================================================================== */
 
 #ifdef SMDBLTRP_SUPPORTED
 #if __riscv_xlen == 64
 #define MSTATUS_MDT_BIT  (1UL << 42)
 static inline void clear_mdt(void) {
-    CSRC(mstatus, MSTATUS_MDT_BIT);
+    if (get_current_priv() == PRIV_M)
+        CSRC(mstatus, MSTATUS_MDT_BIT);
 }
 static inline void set_mdt(void) {
-    CSRS(mstatus, MSTATUS_MDT_BIT);
+    if (get_current_priv() == PRIV_M)
+        CSRS(mstatus, MSTATUS_MDT_BIT);
 }
 static inline bool get_mdt(void) {
+    if (get_current_priv() != PRIV_M)
+        return false;
     return (CSRR(mstatus) & MSTATUS_MDT_BIT) != 0;
 }
 #else
@@ -397,12 +410,16 @@ static inline bool get_mdt(void) {
  * bit 42 = mstatush bit (42-32) = bit 10. */
 #define MSTATUSH_MDT_BIT  (1UL << 10)
 static inline void clear_mdt(void) {
-    CSRC(CSR_MSTATUSH, MSTATUSH_MDT_BIT);
+    if (get_current_priv() == PRIV_M)
+        CSRC(CSR_MSTATUSH, MSTATUSH_MDT_BIT);
 }
 static inline void set_mdt(void) {
-    CSRS(CSR_MSTATUSH, MSTATUSH_MDT_BIT);
+    if (get_current_priv() == PRIV_M)
+        CSRS(CSR_MSTATUSH, MSTATUSH_MDT_BIT);
 }
 static inline bool get_mdt(void) {
+    if (get_current_priv() != PRIV_M)
+        return false;
     return (CSRR(CSR_MSTATUSH) & MSTATUSH_MDT_BIT) != 0;
 }
 #endif

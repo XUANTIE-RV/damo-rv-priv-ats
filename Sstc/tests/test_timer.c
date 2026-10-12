@@ -115,16 +115,16 @@ bool test_sstc_timer_mmode_capture(void) {
     sstc_clear_timer();
 
     /* Do NOT delegate STI to S-mode (mideleg.STIP = 0) */
-    CSRC(mideleg, MIDELEG_STIP);
+    tsbi_csr_clear(CSR_MIDELEG, MIDELEG_STIP);
 
     /* Enable STIE in mie and global MIE in mstatus */
-    CSRS(mie, MIE_STIE);
+    tsbi_csr_set(CSR_MIE, MIE_STIE);
 
     /* Arm trap record */
     trap_expect_begin();
 
     /* Enable global interrupts */
-    CSRS(mstatus, MSTATUS_MIE_BIT);
+    if (get_current_priv() == PRIV_M) CSRS(mstatus, MSTATUS_MIE_BIT);
 
     /* Trigger timer interrupt */
     sstc_trigger_stip();
@@ -133,7 +133,7 @@ bool test_sstc_timer_mmode_capture(void) {
     DELAY_LOOP(1000);
 
     /* Disable global interrupts */
-    CSRC(mstatus, MSTATUS_MIE_BIT);
+    if (get_current_priv() == PRIV_M) CSRC(mstatus, MSTATUS_MIE_BIT);
     trap_expect_end();
 
     /* Verify the trap record */
@@ -145,7 +145,7 @@ bool test_sstc_timer_mmode_capture(void) {
     }
 
     /* Cleanup */
-    CSRC(mie, MIE_STIE);
+    tsbi_csr_clear(CSR_MIE, MIE_STIE);
     sstc_clear_timer();
     TEST_END();
 }
@@ -161,7 +161,7 @@ bool test_sstc_timer_smode_delegate(void) {
     sstc_clear_timer();
 
     /* Delegate STI to S-mode */
-    CSRS(mideleg, MIDELEG_STIP);
+    tsbi_csr_set(CSR_MIDELEG, MIDELEG_STIP);
 
     /* Enable STIE in sie */
     CSRS(sie, SIE_STIE);
@@ -194,7 +194,7 @@ bool test_sstc_timer_smode_delegate(void) {
 
     /* Cleanup */
     sstc_clear_timer();
-    CSRC(mideleg, MIDELEG_STIP);
+    tsbi_csr_clear(CSR_MIDELEG, MIDELEG_STIP);
     CSRC(sie, SIE_STIE);
     TEST_END();
 }
@@ -210,21 +210,21 @@ bool test_sstc_timer_stie0_no_interrupt(void) {
     sstc_clear_timer();
 
     /* Ensure STIE is cleared in both mie and sie */
-    CSRC(mie, MIE_STIE);
+    tsbi_csr_clear(CSR_MIE, MIE_STIE);
     CSRC(sie, SIE_STIE);
 
     /* Arm trap to detect if any interrupt fires */
     trap_expect_begin();
 
     /* Enable global interrupts */
-    CSRS(mstatus, MSTATUS_MIE_BIT);
+    if (get_current_priv() == PRIV_M) CSRS(mstatus, MSTATUS_MIE_BIT);
 
     /* Trigger STIP */
     sstc_trigger_stip();
     DELAY_LOOP(SSTC_DELAY);
 
     /* Disable global interrupts */
-    CSRC(mstatus, MSTATUS_MIE_BIT);
+    if (get_current_priv() == PRIV_M) CSRC(mstatus, MSTATUS_MIE_BIT);
     trap_expect_end();
 
     /* STIP should be pending but no interrupt taken */
@@ -279,17 +279,17 @@ bool test_sstc_timer_handler_clear(void) {
     sstc_clear_timer();
 
     /* Don't delegate; use M-mode handler which auto-clears stimecmp */
-    CSRC(mideleg, MIDELEG_STIP);
-    CSRS(mie, MIE_STIE);
+    tsbi_csr_clear(CSR_MIDELEG, MIDELEG_STIP);
+    tsbi_csr_set(CSR_MIE, MIE_STIE);
 
     trap_expect_begin();
-    CSRS(mstatus, MSTATUS_MIE_BIT);
+    if (get_current_priv() == PRIV_M) CSRS(mstatus, MSTATUS_MIE_BIT);
 
     /* Trigger */
     sstc_trigger_stip();
     DELAY_LOOP(1000);
 
-    CSRC(mstatus, MSTATUS_MIE_BIT);
+    if (get_current_priv() == PRIV_M) CSRC(mstatus, MSTATUS_MIE_BIT);
     trap_expect_end();
 
     /* The M-mode trap handler in trap.c writes stimecmp=MAX on irq==5,
@@ -300,7 +300,7 @@ bool test_sstc_timer_handler_clear(void) {
     uintptr_t mip_val = mip_read();
     TEST_ASSERT("STIP cleared after handler", (mip_val & MIP_STIP) == 0);
 
-    CSRC(mie, MIE_STIE);
+    tsbi_csr_clear(CSR_MIE, MIE_STIE);
     sstc_clear_timer();
     TEST_END();
 }

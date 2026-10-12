@@ -13,16 +13,9 @@ int main(void) {
     uart_init();
     reset_state();
 
-    /* Configure PMP: allow S/U-mode full access to all memory.
-     * Without PMP entries, S/U-mode has no memory access at all.
-     * Use NAPOT mode with all-ones address to cover entire address space. */
-    asm volatile(
-        "li t0, -1\n\t"
-        "csrw pmpaddr0, t0\n\t"
-        "li t0, 0x1F\n\t"    /* A=NAPOT(0x18) | R(0x01) | W(0x02) | X(0x04) = 0x1F */
-        "csrw pmpcfg0, t0\n\t"
-        ::: "t0"
-    );
+    /* PMP full-space RWX is hoisted into common/entry.S (boot, M-mode).
+     * A bare csrw pmpaddr0/pmpcfg0 here is an M-level access that traps
+     * under the S-mode-normal model, so it must not be repeated. */
     test_print_banner("RISC-V Sstc Extension Compliance Test");
 
     unsigned int test_count = (unsigned int)(

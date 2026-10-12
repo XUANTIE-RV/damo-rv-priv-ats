@@ -337,6 +337,25 @@ uintptr_t vm_run_in_umode(pt_context_t *ctx,
     vm_pmp_allow_all();
 
     /*
+     * Step 1b: route this helper's traps to M-mode.
+     *
+     * The caller's page table maps the whole code region -- including this
+     * framework's s_trap_entry -- as U=1 so the U-mode payload can execute it.
+     * The T-SBI baseline delegates ecall-from-U and page faults to the S
+     * handler, but with VM enabled an S-mode instruction fetch of a U=1 page
+     * always faults (mstatus.SUM governs loads/stores, not fetches), so the
+     * delegated trap re-faults on the handler entry in an infinite cause-12
+     * storm.  Undelegate them here so the payload's traps are taken in M-mode
+     * (physical fetch, recorded by m_trap_handler via trap_record) -- the
+     * behaviour this helper's contract describes.  Restored in the cleanup. */
+    uintptr_t medeleg = CSRR(medeleg);
+    CSRW(medeleg, medeleg & ~(
+        BIT(CAUSE_ECALL_FROM_U)      |
+        BIT(CAUSE_INST_PAGE_FAULT)   |
+        BIT(CAUSE_LOAD_PAGE_FAULT)   |
+        BIT(CAUSE_STORE_PAGE_FAULT)));
+
+    /*
      * Step 2: Enable virtual memory
      */
     vm_enable(ctx, 0);
@@ -357,6 +376,7 @@ uintptr_t vm_run_in_umode(pt_context_t *ctx,
      * Step 4: Clean up
      */
     vm_disable();
+    CSRW(medeleg, medeleg);  /* restore original delegation */
     vm_pmp_clear();
 
     /*

@@ -144,7 +144,7 @@ bool test_sstvala_ima_01(void) {
      * would fault — but jalr masks bit 0, making it untriggerable.
      */
     uintptr_t misa;
-    asm volatile ("csrr %0, misa" : "=r"(misa));
+    misa = tsbi_csr_read(CSR_MISA);
     if (misa & (1UL << 2)) {
         TEST_SKIP("C extension present (IALIGN=2); "
                   "instruction misaligned untriggerable via jalr");

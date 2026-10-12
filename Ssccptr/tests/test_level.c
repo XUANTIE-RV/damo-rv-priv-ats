@@ -103,6 +103,7 @@ bool test_ssccptr_level_l0_pmp_block(void) {
     TEST_ASSERT("L0 PT page found", pt_page_pa != 0);
 
     /* PMP: set L0 PT page to X-only (block reads) */
+    if (get_current_priv() != PRIV_M) goto_priv(PRIV_M);
     pmp_clear_all();
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(pt_page_pa, PAGE_SIZE_4K, PMP_X);
     pmp_set_entry(0, &e0);
@@ -120,7 +121,7 @@ bool test_ssccptr_level_l0_pmp_block(void) {
     CHECK_TRAP("PMP blocks L0 PT read", CAUSE_LAF);
 
     vm_disable();
-    pmp_clear_all();
+    ensure_smode_pmp();
     pt_pool_reset();
     TEST_END();
 }
@@ -144,6 +145,7 @@ bool test_ssccptr_level_l1_pmp_block(void) {
     uintptr_t pt_page_pa = get_pt_page_addr(&ctx, test_va, 1);
     TEST_ASSERT("L1 PT page found", pt_page_pa != 0);
 
+    if (get_current_priv() != PRIV_M) goto_priv(PRIV_M);
     pmp_clear_all();
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(pt_page_pa, PAGE_SIZE_4K, PMP_X);
     pmp_set_entry(0, &e0);
@@ -182,7 +184,7 @@ bool test_ssccptr_level_l1_pmp_block(void) {
     CHECK_TRAP("PMP blocks L1 PT read", CAUSE_LAF);
 
     vm_disable();
-    pmp_clear_all();
+    ensure_smode_pmp();
     pt_pool_reset();
     TEST_END();
 }
@@ -206,6 +208,7 @@ bool test_ssccptr_level_root_pmp_block(void) {
     uintptr_t pt_page_pa = (uintptr_t)ctx.root_pt;
     TEST_ASSERT("root PT page found", pt_page_pa != 0);
 
+    if (get_current_priv() != PRIV_M) goto_priv(PRIV_M);
     pmp_clear_all();
     pmp_entry_t e0 = PMP_ENTRY_NAPOT(pt_page_pa, PAGE_SIZE_4K, PMP_X);
     pmp_set_entry(0, &e0);
@@ -243,7 +246,7 @@ bool test_ssccptr_level_root_pmp_block(void) {
     CHECK_TRAP("PMP blocks root PT read", CAUSE_LAF);
 
     vm_disable();
-    pmp_clear_all();
+    ensure_smode_pmp();
     pt_pool_reset();
     TEST_END();
 }

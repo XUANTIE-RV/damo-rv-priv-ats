@@ -198,12 +198,12 @@ bool test_sstvecd_int_01_ssip(void) {
 
     /* Save mideleg so we can restore the framework's delegation state. */
     uintptr_t saved_mideleg;
-    asm volatile ("csrr %0, mideleg" : "=r"(saved_mideleg));
+    saved_mideleg = tsbi_csr_read(CSR_MIDELEG);
 
     /* Delegate supervisor software interrupt to S-mode. vm_run_in_smode
      * does not touch mideleg, so this delegation persists across the
      * S-mode entry. */
-    asm volatile ("csrs mideleg, %0" :: "r"(BIT_SSI) : "memory");
+    tsbi_csr_set(CSR_MIDELEG, BIT_SSI);
 
     uintptr_t entry = (uintptr_t)&sstvecd_trap_entry;
 
@@ -229,7 +229,7 @@ bool test_sstvecd_int_01_ssip(void) {
 
     /* Cleanup: clear any residual sip.SSIP and restore mideleg. */
     asm volatile ("csrc sip, %0"     :: "r"(BIT_SSI) : "memory");
-    asm volatile ("csrw mideleg, %0" :: "r"(saved_mideleg) : "memory");
+    tsbi_csr_write(CSR_MIDELEG, saved_mideleg);
 
     pt_pool_reset();
     STVEC_RESTORE();
