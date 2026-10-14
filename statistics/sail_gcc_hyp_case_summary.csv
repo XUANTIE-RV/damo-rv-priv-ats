@@ -26,7 +26,7 @@ Hypervisor_Smcntrpmf,7,6,0,1
 Hypervisor_Smcsrind,11,0,0,11
 Hypervisor_Smmpm,5,5,0,0
 Hypervisor_Smnpm,6,6,0,0
-Hypervisor_Smstateen,14,8,0,6
+Hypervisor_Smstateen,14,9,0,5
 Hypervisor_PMP,8,8,0,0
 Hypervisor_Ssccfg,24,0,0,24
 Hypervisor_Ssccptr,4,3,0,1
@@ -35,7 +35,7 @@ Hypervisor_Sscsrind,33,2,0,31
 Hypervisor_Ssdbltrp,24,0,0,24
 Hypervisor_Ssnpm,48,45,0,3
 Hypervisor_Ssqosid,6,6,0,0
-Hypervisor_Ssstateen,50,20,0,30
+Hypervisor_Ssstateen,50,23,0,27
 Hypervisor_Sstc,15,15,0,0
 Hypervisor_Sstvala,8,8,0,0
 Hypervisor_Svadu,7,7,0,0
