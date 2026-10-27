@@ -14,9 +14,6 @@
  *       SSEED=1: read-write access allowed; other accesses raise
  *       illegal-instruction.
  *
- * With H ext present and V=0, S-mode is HS-mode. Under the T-SBI S-mode-normal
- * model the test body already runs in HS-mode, so the seed stimulus is issued
- * natively via PRIV_DO and asserted with CHECK_* (no goto_priv scaffolding).
  * =================================================================== */
 
 /* ---- ZKR-HYP-01: SSEED=1 HS-mode csrrw access OK ---- */
@@ -28,6 +25,8 @@ bool test_zkr_hyp_01(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
+
+    goto_priv(PRIV_S);
 
     uintptr_t orig = mseccfg_read_zkr();
     mseccfg_set_bits(MSECCFG_SSEED);
@@ -55,6 +54,8 @@ bool test_zkr_hyp_13(void)
     if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
 
+    goto_priv(PRIV_S);
+
     uintptr_t orig = mseccfg_read_zkr();
     mseccfg_set_bits(MSECCFG_SSEED);
 
@@ -73,6 +74,8 @@ bool test_zkr_hyp_02(void)
     if (!H_AVAILABLE) TEST_SKIP("H extension not available");
     if (!ZKR_AVAILABLE) TEST_SKIP("Zkr not implemented");
     REQUIRE_SSEED();
+
+    goto_priv(PRIV_S);
 
     uintptr_t orig = mseccfg_read_zkr();
     mseccfg_clear_bits(MSECCFG_SSEED);
