@@ -40,3 +40,6 @@
 [submodule "SPEC/riscv-smmtt"]
 	path = SPEC/riscv-smmtt
 	url = https://github.com/riscv/riscv-smmtt.git
+[submodule "SPEC/riscv-security-model"]
+	path = SPEC/riscv-security-model
+	url = https://github.com/riscv/riscv-security-model.git

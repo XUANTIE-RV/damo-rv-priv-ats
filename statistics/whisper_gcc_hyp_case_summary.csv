@@ -30,7 +30,7 @@ Hypervisor_Smstateen,14,12,0,2
 Hypervisor_PMP,8,8,0,0
 Hypervisor_Ssccfg,24,11,0,13
 Hypervisor_Ssccptr,4,3,0,1
-Hypervisor_Sscofpmf,6,2,3,1
+Hypervisor_Sscofpmf,6,1,0,5
 Hypervisor_Sscsrind,33,30,0,3
 Hypervisor_Ssdbltrp,24,0,0,24
 Hypervisor_Ssnpm,48,39,2,7
