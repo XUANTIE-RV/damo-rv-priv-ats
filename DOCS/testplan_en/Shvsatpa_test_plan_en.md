@@ -103,9 +103,9 @@ The MODE field of `satp`/`vsatp` is WARL: writing an unsupported value causes th
 
 `common/hyp/hyp_reset.c::hyp_reset_state()` resets hypervisor CSR state. Each test case in this plan backs up the target CSR before operation and restores it after completion. Operations within VS-mode return to M-mode via the ecall return mechanism of `run_in_vs_mode` before assertions and cleanup are performed.
 
-### 5. Passing Probe Results
+### 5. Mode Support Preconditions
 
-After Group 1 probes the set of MODEs supported by `satp`, the results are stored in global variables (e.g., `g_satp_supported_modes[]`) for use by Group 2/3/4/5. The support status of each MODE is recorded as a bool array or bitmask.
+Group 1 probes the WARL read-back behaviour of each `satp` MODE; the probe is itself the subject under test and passes no state to other groups. Where another group needs a given SvNN to be available as a precondition, the platform configuration's `SV39_SUPPORTED` / `SV48_SUPPORTED` / `SV57_SUPPORTED` declarations are authoritative.
 
 ---
 
@@ -116,21 +116,21 @@ After Group 1 probes the set of MODEs supported by `satp`, the results are store
 
 ---
 
-### Group 1: `satp` MODE Support Probing (Baseline Establishment)
+### Group 1: `satp` MODE Support Probing
 
 **Specification Basis**:
 - `norm:satp_mode` (`supervisor.adoc:1009-1018`): MODE field encoding definition
 - `norm:satp_mode_sxlen64` (`supervisor.adoc:1044-1050`): Defines Sv39/Sv48/Sv57 when SXLEN=64
 - `norm:satp_mode_op_unsupported` (`supervisor.adoc:1052-1055`): Writing unsupported MODE renders entire write ineffective
 
-**Test Responsibilities**: Probe the set of translation modes supported by `satp` in M/HS-mode to establish a comparison baseline for Group 2/3/4/5. Perform write-readback tests for each standard MODE value (Bare=0, Sv39=8, Sv48=9, Sv57=10).
+**Test Responsibilities**: Probe the WARL read-back behaviour of each `satp` translation-mode MODE field in M/HS-mode; that behaviour is itself the subject under test. Perform write-readback tests for each standard MODE value (Bare=0, Sv39=8, Sv48=9, Sv57=10).
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
 | VSATP-PROBE-01 | satp MODE=Bare probe | Write `satp = 0` (MODE=0, ASID=0, PPN=0), read back MODE field | Readback MODE=0 (Bare is typically supported) |
-| VSATP-PROBE-02 | satp MODE=Sv39 probe | Write `satp = 8 << 60` (MODE=8), read back MODE field | Readback MODE ∈ {0, 8}; record support status |
-| VSATP-PROBE-03 | satp MODE=Sv48 probe | Write `satp = 9 << 60` (MODE=9), read back MODE field | Readback MODE ∈ {previous valid value, 9}; record support status |
-| VSATP-PROBE-04 | satp MODE=Sv57 probe | Write `satp = 10 << 60` (MODE=10), read back MODE field | Readback MODE ∈ {previous valid value, 10}; record support status |
+| VSATP-PROBE-02 | satp MODE=Sv39 probe | Write `satp = 8 << 60` (MODE=8), read back MODE field | Readback MODE ∈ {0, 8} |
+| VSATP-PROBE-03 | satp MODE=Sv48 probe | Write `satp = 9 << 60` (MODE=9), read back MODE field | Readback MODE ∈ {previous valid value, 9} |
+| VSATP-PROBE-04 | satp MODE=Sv57 probe | Write `satp = 10 << 60` (MODE=10), read back MODE field | Readback MODE ∈ {previous valid value, 10} |
 
 > [!NOTE]
 > Probing logic: Set `satp` to a known state (Bare=0) before writing, then write the target MODE. If readback MODE == target value, it is supported; if readback MODE == previous value (0), it is not supported. At least one non-Bare mode should be supported (otherwise the H extension can hardly run guest OS).
@@ -143,14 +143,14 @@ After Group 1 probes the set of MODEs supported by `satp`, the results are store
 - `norm:shvsatpa_satp_vsatp_modes` (`shvsatpa.adoc:4-6`): All translation modes supported by `satp` must also be supported by `vsatp`
 - `norm:vsatp_sz_acc_op` (`hypervisor.adoc:1384-1392`): `vsatp` is a VSXLEN-bit RW register
 
-**Test Responsibilities**: For each MODE detected as supported by satp in Group 1, directly write to `vsatp` (CSR 0x280) in M/HS-mode and verify readback MODE consistency, confirming vsatp supports the same mode set.
+**Test Responsibilities**: For each MODE that the platform configuration declares `satp` to support, directly write to `vsatp` (CSR 0x280) in M/HS-mode and verify readback MODE consistency, confirming vsatp supports the same mode set.
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
 | VSATP-MODE-01 | vsatp MODE=Bare support | Write `vsatp = 0` (MODE=0), read back MODE | `MODE == 0` (Bare must be supported by vsatp) |
-| VSATP-MODE-02 | vsatp MODE=Sv39 support | Execute only when `g_satp_supports_sv39 == true`; write `vsatp = 8 << 60`, read back MODE | `MODE == 8` (Shvsatpa requires consistency) |
-| VSATP-MODE-03 | vsatp MODE=Sv48 support | Execute only when `g_satp_supports_sv48 == true`; write `vsatp = 9 << 60`, read back MODE | `MODE == 9` (Shvsatpa requires consistency) |
-| VSATP-MODE-04 | vsatp MODE=Sv57 support | Execute only when `g_satp_supports_sv57 == true`; write `vsatp = 10 << 60`, read back MODE | `MODE == 10` (Shvsatpa requires consistency) |
+| VSATP-MODE-02 | vsatp MODE=Sv39 support | Execute only when the platform configuration declares Sv39; write `vsatp = 8 << 60`, read back MODE | `MODE == 8` (Shvsatpa requires consistency) |
+| VSATP-MODE-03 | vsatp MODE=Sv48 support | Execute only when the platform configuration declares Sv48; write `vsatp = 9 << 60`, read back MODE | `MODE == 9` (Shvsatpa requires consistency) |
+| VSATP-MODE-04 | vsatp MODE=Sv57 support | Execute only when the platform configuration declares Sv57; write `vsatp = 10 << 60`, read back MODE | `MODE == 10` (Shvsatpa requires consistency) |
 
 > [!IMPORTANT]
 > This is the core verification group for the Shvsatpa extension. If satp supports Sv39 but vsatp does not, the Shvsatpa constraint is violated. The assertion condition is: **for each MODE supported by satp, the MODE read back after writing to vsatp must equal the written value**.
@@ -247,16 +247,6 @@ After Group 1 probes the set of MODEs supported by `satp`, the results are store
 | `MODE_SV48` | 9 | 48-bit paged virtual address |
 | `MODE_SV57` | 10 | 57-bit paged virtual address |
 | `MODE_SV64` | 11 | 64-bit (future specification) |
-
-### Global Variables
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `g_satp_supports_bare` | `volatile bool` | Whether satp supports Bare mode |
-| `g_satp_supports_sv39` | `volatile bool` | Whether satp supports Sv39 mode |
-| `g_satp_supports_sv48` | `volatile bool` | Whether satp supports Sv48 mode |
-| `g_satp_supports_sv57` | `volatile bool` | Whether satp supports Sv57 mode |
-| `g_vsmode_satp_readback` | `volatile uintptr_t` | Pass-through variable for VS-mode satp readback value |
 
 ### Test Framework API
 

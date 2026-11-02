@@ -37,11 +37,17 @@ bool test_hcross_sscofpmf_01_vs_both_allow(void) {
     if (!H_AVAILABLE) TEST_SKIP("H extension not supported");
     unsigned n = COFPMF_TEST_COUNTER;
 
-    /* Set both mcounteren and hcounteren bits */
+    /* Set both mcounteren and hcounteren bits, and confirm both took effect:
+     * the fields are WARL and may be read-only zero
+     * (norm:mcounteren_flds_rdonly0), in which case VS-mode reading zero is
+     * the specified behaviour and not a scountovf mirroring failure. */
     uintptr_t mc_orig = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t hc_orig = CSRR(hcounteren);
-    tsbi_csr_write(CSR_MCOUNTEREN, mc_orig | (1UL << n));
-    CSRW(hcounteren, hc_orig | (1UL << n));
+    if (!cofpmf_mcounteren_set(n) || !cofpmf_hcounteren_set(n)) {
+        tsbi_csr_write(CSR_MCOUNTEREN, mc_orig);
+        CSRW(hcounteren, hc_orig);
+        TEST_SKIP("mcounteren/hcounteren bit read-only zero: VS-mode cannot observe this counter");
+    }
 
     /* Set OF=1 */
     uint64_t orig = cofpmf_read_event(n);
@@ -74,11 +80,16 @@ bool test_hcross_sscofpmf_02_vs_mc0(void) {
     if (!H_AVAILABLE) TEST_SKIP("H extension not supported");
     unsigned n = COFPMF_TEST_COUNTER;
 
-    /* Clear mcounteren bit (hcounteren doesn't matter), set OF=1 */
+    /* Clear mcounteren bit (hcounteren doesn't matter), set OF=1.  Read both
+     * gates back: the masking must really come from mcounteren=0, and a bit
+     * that cannot be cleared/set makes the precondition unreachable. */
     uintptr_t mc_orig = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t hc_orig = CSRR(hcounteren);
-    tsbi_csr_write(CSR_MCOUNTEREN, mc_orig & ~(1UL << n));
-    CSRW(hcounteren, hc_orig | (1UL << n));
+    if (!cofpmf_mcounteren_clear(n) || !cofpmf_hcounteren_set(n)) {
+        tsbi_csr_write(CSR_MCOUNTEREN, mc_orig);
+        CSRW(hcounteren, hc_orig);
+        TEST_SKIP("cannot establish the mcounteren=0 / hcounteren=1 precondition (WARL)");
+    }
 
     uint64_t orig = cofpmf_read_event(n);
     cofpmf_write_event(n, orig | MHPMEVENT_OF);
@@ -110,11 +121,15 @@ bool test_hcross_sscofpmf_03_vs_hc0(void) {
     if (!H_AVAILABLE) TEST_SKIP("H extension not supported");
     unsigned n = COFPMF_TEST_COUNTER;
 
-    /* Set mcounteren=1, clear hcounteren, set OF=1 */
+    /* Set mcounteren=1, clear hcounteren, set OF=1.  Read both gates back so
+     * the masking is provably due to hcounteren=0 alone. */
     uintptr_t mc_orig = tsbi_csr_read(CSR_MCOUNTEREN);
     uintptr_t hc_orig = CSRR(hcounteren);
-    tsbi_csr_write(CSR_MCOUNTEREN, mc_orig | (1UL << n));
-    CSRW(hcounteren, hc_orig & ~(1UL << n));
+    if (!cofpmf_mcounteren_set(n) || !cofpmf_hcounteren_clear(n)) {
+        tsbi_csr_write(CSR_MCOUNTEREN, mc_orig);
+        CSRW(hcounteren, hc_orig);
+        TEST_SKIP("cannot establish the mcounteren=1 / hcounteren=0 precondition (WARL)");
+    }
 
     uint64_t orig = cofpmf_read_event(n);
     cofpmf_write_event(n, orig | MHPMEVENT_OF);

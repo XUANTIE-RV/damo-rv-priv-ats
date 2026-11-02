@@ -20,10 +20,12 @@
  * writing it to vsatp (CSR 0x280) must succeed.
  * =================================================================== */
 
-extern volatile bool g_satp_supports_bare;
-extern volatile bool g_satp_supports_sv39;
-extern volatile bool g_satp_supports_sv48;
-extern volatile bool g_satp_supports_sv57;
+/* The SvNN antecedent of "vsatp supports SvNN if satp does" is taken from
+ * the platform config's compile-time SV39/48/57_AVAILABLE declarations
+ * (common/capabilities.h) through REQUIRE_SATP_MODE (hyp/hyp_test.h), not
+ * from a runtime satp probe result handed over by Group 1. A config that
+ * declares a mode the DUT then rejects makes the case FAIL instead of
+ * silently skipping it. */
 
 /* ---- VSATP-MODE-01 ---- */
 TEST_REGISTER(test_shvsatpa_vsatp_mode_bare);
@@ -47,9 +49,7 @@ TEST_REGISTER(test_shvsatpa_vsatp_mode_sv39);
 bool test_shvsatpa_vsatp_mode_sv39(void) {
     TEST_BEGIN("VSATP-MODE-02: vsatp supports Sv39 if satp does");
 
-    if (!g_satp_supports_sv39) {
-        TEST_SKIP("satp does not support Sv39");
-    }
+    REQUIRE_SATP_MODE(SATP_MODE_SV39);
 
     uintptr_t saved = vsatp_read();
 
@@ -69,9 +69,7 @@ TEST_REGISTER(test_shvsatpa_vsatp_mode_sv48);
 bool test_shvsatpa_vsatp_mode_sv48(void) {
     TEST_BEGIN("VSATP-MODE-03: vsatp supports Sv48 if satp does");
 
-    if (!g_satp_supports_sv48) {
-        TEST_SKIP("satp does not support Sv48");
-    }
+    REQUIRE_SATP_MODE(SATP_MODE_SV48);
 
     uintptr_t saved = vsatp_read();
 
@@ -91,9 +89,7 @@ TEST_REGISTER(test_shvsatpa_vsatp_mode_sv57);
 bool test_shvsatpa_vsatp_mode_sv57(void) {
     TEST_BEGIN("VSATP-MODE-04: vsatp supports Sv57 if satp does");
 
-    if (!g_satp_supports_sv57) {
-        TEST_SKIP("satp does not support Sv57");
-    }
+    REQUIRE_SATP_MODE(SATP_MODE_SV57);
 
     uintptr_t saved = vsatp_read();
 

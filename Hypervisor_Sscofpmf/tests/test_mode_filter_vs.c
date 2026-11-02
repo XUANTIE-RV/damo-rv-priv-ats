@@ -33,11 +33,15 @@ bool test_hcross_sscofpmf_04_vsinh_inhibit(void) {
     TEST_BEGIN("HCROSS-SSCOFPMF-04: VSINH=1 inhibits VS-mode counting");
     if (!SSCOFPMF_AVAILABLE) TEST_SKIP("Sscofpmf not supported");
     if (!H_AVAILABLE) TEST_SKIP("H extension not supported");
+    COFPMF_REQUIRE_COUNTING();
     unsigned n = COFPMF_TEST_COUNTER;
 
-    /* Phase 1: VSINH=1 (+MINH=1 to exclude M-mode transition overhead),
-     * the counter must NOT increment while executing in VS-mode. */
-    cofpmf_write_event(n, COFPMF_EVENT_INSTRET | MHPMEVENT_VSINH | MHPMEVENT_MINH);
+    /* Phase 1: VSINH=1.  MINH/SINH are set as well so the M-mode proxy work
+     * and the HS-mode switch code that serve the measurement cannot land in
+     * the window: VSINH is the bit under test, and inhibiting M/HS does not
+     * change what VS-mode execution may count. */
+    cofpmf_write_event(n, COFPMF_EVENT_INSTRET | MHPMEVENT_VSINH |
+                          MHPMEVENT_MINH | MHPMEVENT_SINH);
     uint64_t ev_readback = cofpmf_read_event(n);
     if ((ev_readback & MHPMEVENT_VSINH) == 0) {
         /* H extension is implemented (checked above), so VS-mode exists
@@ -54,7 +58,8 @@ bool test_hcross_sscofpmf_04_vsinh_inhibit(void) {
     /* Phase 2: positive control with VSINH=0 — the same VS-mode
      * sequence must count, proving the phase-1 zero is due to the
      * inhibit bit rather than a non-counting platform. */
-    cofpmf_write_event(n, COFPMF_EVENT_INSTRET | MHPMEVENT_MINH);
+    cofpmf_write_event(n, COFPMF_EVENT_INSTRET | MHPMEVENT_MINH |
+                          MHPMEVENT_SINH);
     cofpmf_write_counter(n, 0);
     run_in_vs_mode(_v_execute_nops, 200);
     uint64_t count_allowed = cofpmf_read_counter(n);
@@ -62,6 +67,10 @@ bool test_hcross_sscofpmf_04_vsinh_inhibit(void) {
     cofpmf_write_counter(n, 0);
 
     TEST_ASSERT("counter did not increment with VSINH=1", count_inhibited == 0);
+    if (count_allowed == 0)
+        LOG_E("stimulus evidence: ctr%u event=%u inhibited=%lu allowed=%lu\n",
+              n, (unsigned)COFPMF_EVENT_INSTRET,
+              (unsigned long)count_inhibited, (unsigned long)count_allowed);
     TEST_ASSERT("VS-mode counting works with VSINH=0", count_allowed > 0);
 
     TEST_END();
@@ -75,11 +84,13 @@ bool test_hcross_sscofpmf_05_vuinh_inhibit(void) {
     TEST_BEGIN("HCROSS-SSCOFPMF-05: VUINH=1 inhibits VU-mode counting");
     if (!SSCOFPMF_AVAILABLE) TEST_SKIP("Sscofpmf not supported");
     if (!H_AVAILABLE) TEST_SKIP("H extension not supported");
+    COFPMF_REQUIRE_COUNTING();
     unsigned n = COFPMF_TEST_COUNTER;
 
-    /* Phase 1: VUINH=1 (+MINH=1), the counter must NOT increment
-     * while executing in VU-mode. */
-    cofpmf_write_event(n, COFPMF_EVENT_INSTRET | MHPMEVENT_VUINH | MHPMEVENT_MINH);
+    /* Phase 1: VUINH=1.  MINH/SINH keep the M-mode proxy work and the
+     * HS-mode switch code out of the window; VUINH is the bit under test. */
+    cofpmf_write_event(n, COFPMF_EVENT_INSTRET | MHPMEVENT_VUINH |
+                          MHPMEVENT_MINH | MHPMEVENT_SINH);
     uint64_t ev_readback = cofpmf_read_event(n);
     if ((ev_readback & MHPMEVENT_VUINH) == 0) {
         /* H extension is implemented (checked above), so VU-mode exists
@@ -94,7 +105,8 @@ bool test_hcross_sscofpmf_05_vuinh_inhibit(void) {
     cofpmf_stop_counting(n);
 
     /* Phase 2: positive control with VUINH=0. */
-    cofpmf_write_event(n, COFPMF_EVENT_INSTRET | MHPMEVENT_MINH);
+    cofpmf_write_event(n, COFPMF_EVENT_INSTRET | MHPMEVENT_MINH |
+                          MHPMEVENT_SINH);
     cofpmf_write_counter(n, 0);
     run_in_vu_mode(_v_execute_nops, 200);
     uint64_t count_allowed = cofpmf_read_counter(n);
@@ -102,6 +114,10 @@ bool test_hcross_sscofpmf_05_vuinh_inhibit(void) {
     cofpmf_write_counter(n, 0);
 
     TEST_ASSERT("counter did not increment with VUINH=1", count_inhibited == 0);
+    if (count_allowed == 0)
+        LOG_E("stimulus evidence: ctr%u event=%u inhibited=%lu allowed=%lu\n",
+              n, (unsigned)COFPMF_EVENT_INSTRET,
+              (unsigned long)count_inhibited, (unsigned long)count_allowed);
     TEST_ASSERT("VU-mode counting works with VUINH=0", count_allowed > 0);
 
     TEST_END();

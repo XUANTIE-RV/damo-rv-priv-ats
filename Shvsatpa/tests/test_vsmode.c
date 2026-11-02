@@ -29,9 +29,11 @@
  *   satp=Bare (safe: SvNN -> identity) and reads back to confirm.
  * =================================================================== */
 
-extern volatile bool g_satp_supports_sv39;
-extern volatile bool g_satp_supports_sv48;
-extern volatile bool g_satp_supports_sv57;
+/* The per-mode requirement is gated by the REQUIRE_HGATP_MODE(g_mode) at the
+ * top of _vsmode_test_mode() below (compile-time SV39/48/57_AVAILABLE from
+ * common/capabilities.h). The former runtime g_satp_supports_svNN checks in
+ * each case were redundant with it and tied this file to Group 1's probe
+ * order. */
 
 /* Volatile for VS->M data passing */
 static volatile uintptr_t g_vsmode_read_before;
@@ -137,10 +139,6 @@ TEST_REGISTER(test_shvsatpa_vsmode_sv39);
 bool test_shvsatpa_vsmode_sv39(void) {
     TEST_BEGIN("VSATP-VS-02: VS-mode reads/writes satp MODE=Sv39 (actually vsatp)");
 
-    if (!g_satp_supports_sv39) {
-        TEST_SKIP("satp does not support Sv39");
-    }
-
     _vsmode_test_mode(SATP_MODE_SV39, HGATP_MODE_SV39X4,
                       "Sv39", (uintptr_t)SATP_MODE_SV39);
 
@@ -152,10 +150,6 @@ TEST_REGISTER(test_shvsatpa_vsmode_sv48);
 bool test_shvsatpa_vsmode_sv48(void) {
     TEST_BEGIN("VSATP-VS-03: VS-mode reads/writes satp MODE=Sv48 (actually vsatp)");
 
-    if (!g_satp_supports_sv48) {
-        TEST_SKIP("satp does not support Sv48");
-    }
-
     _vsmode_test_mode(SATP_MODE_SV48, HGATP_MODE_SV48X4,
                       "Sv48", (uintptr_t)SATP_MODE_SV48);
 
@@ -166,10 +160,6 @@ bool test_shvsatpa_vsmode_sv48(void) {
 TEST_REGISTER(test_shvsatpa_vsmode_sv57);
 bool test_shvsatpa_vsmode_sv57(void) {
     TEST_BEGIN("VSATP-VS-04: VS-mode reads/writes satp MODE=Sv57 (actually vsatp)");
-
-    if (!g_satp_supports_sv57) {
-        TEST_SKIP("satp does not support Sv57");
-    }
 
     _vsmode_test_mode(SATP_MODE_SV57, HGATP_MODE_SV57X4,
                       "Sv57", (uintptr_t)SATP_MODE_SV57);

@@ -16,8 +16,12 @@
  *   HGATP-PROBE-03  satp MODE=Sv48 probe
  *   HGATP-PROBE-04  satp MODE=Sv57 probe
  *
- * These tests probe satp for each standard MODE, recording results
- * into global booleans for Groups 2-6 to consume.
+ * These tests probe satp for each standard MODE and assert on the
+ * read-back: the satp MODE WARL behaviour is their subject under test
+ * (norm:satp_mode_sxlen64 / norm:satp_mode_op_unsupported), not a
+ * capability gate. Groups 2-6 gate on the compile-time SV39/48/57_AVAILABLE
+ * declarations from the platform config instead, so nothing is passed
+ * between groups and Group 1 does not have to run first.
  *
  * Every probe goes through satp_probe_mode() (common/hyp/hyp_csr.c), which
  * runs the write/read-back/restore sequence inside one M-mode excursion.
@@ -28,22 +32,12 @@
  * both safe there and unchanged in meaning.
  * =================================================================== */
 
-/* Global state: which MODEs does satp support? */
-volatile bool g_satp_supports_bare = false;
-volatile bool g_satp_supports_sv39 = false;
-volatile bool g_satp_supports_sv48 = false;
-volatile bool g_satp_supports_sv57 = false;
-
 /* ---- HGATP-PROBE-01 ---- */
 TEST_REGISTER(test_shgatpa_probe_bare);
 bool test_shgatpa_probe_bare(void) {
     TEST_BEGIN("HGATP-PROBE-01: probe satp MODE=Bare support");
 
     uintptr_t mode = SATP_GET_MODE(satp_probe_mode(SATP_MODE_BARE));
-
-    if (mode == SATP_MODE_BARE) {
-        g_satp_supports_bare = true;
-    }
 
     TEST_ASSERT_EQ("satp MODE readback is Bare (0)", mode,
                    (uintptr_t)SATP_MODE_BARE);
@@ -59,10 +53,8 @@ bool test_shgatpa_probe_sv39(void) {
     uintptr_t mode = SATP_GET_MODE(satp_probe_mode(SATP_MODE_SV39));
 
     if (mode == SATP_MODE_SV39) {
-        g_satp_supports_sv39 = true;
         LOG_I("satp supports Sv39\n");
     } else {
-        g_satp_supports_sv39 = false;
         LOG_I("satp does NOT support Sv39 (readback MODE=%lu)\n",
               (unsigned long)mode);
     }
@@ -81,10 +73,8 @@ bool test_shgatpa_probe_sv48(void) {
     uintptr_t mode = SATP_GET_MODE(satp_probe_mode(SATP_MODE_SV48));
 
     if (mode == SATP_MODE_SV48) {
-        g_satp_supports_sv48 = true;
         LOG_I("satp supports Sv48\n");
     } else {
-        g_satp_supports_sv48 = false;
         LOG_I("satp does NOT support Sv48 (readback MODE=%lu)\n",
               (unsigned long)mode);
     }
@@ -103,10 +93,8 @@ bool test_shgatpa_probe_sv57(void) {
     uintptr_t mode = SATP_GET_MODE(satp_probe_mode(SATP_MODE_SV57));
 
     if (mode == SATP_MODE_SV57) {
-        g_satp_supports_sv57 = true;
         LOG_I("satp supports Sv57\n");
     } else {
-        g_satp_supports_sv57 = false;
         LOG_I("satp does NOT support Sv57 (readback MODE=%lu)\n",
               (unsigned long)mode);
     }

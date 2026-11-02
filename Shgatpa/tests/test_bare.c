@@ -16,7 +16,8 @@
  *   HGATP-BARE-03  hgatp Bare mode PPN/VMID zero
  * =================================================================== */
 
-extern volatile bool g_satp_supports_sv39;
+/* Sv39x4 availability comes from the compile-time SV39_AVAILABLE
+ * declaration, not from a runtime satp probe handed over by Group 1. */
 
 /* ---- HGATP-BARE-01 ---- */
 TEST_REGISTER(test_shgatpa_bare_readback);
@@ -43,7 +44,7 @@ bool test_shgatpa_bare_switch_back(void) {
     uintptr_t saved = hgatp_read();
 
     /* Set an SvNNx4 mode if available */
-    if (g_satp_supports_sv39) {
+    if (SV39_AVAILABLE) {
         hgatp_write_raw(MAKE_HGATP(HGATP_MODE_SV39X4, 0, 0x1000));
         uintptr_t mid_mode = HGATP_GET_MODE(hgatp_read());
         TEST_ASSERT_EQ("hgatp in Sv39x4 mode before switch",
