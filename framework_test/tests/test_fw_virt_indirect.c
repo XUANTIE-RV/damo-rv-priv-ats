@@ -12,14 +12,6 @@
 
 #ifdef ENABLE_HYP
 
-/* Helper: check V=1 mode by reading hstatus.SPV */
-static uintptr_t check_v1_mode_fn(uintptr_t arg)
-{
-    (void)arg;
-    uintptr_t hstatus = CSRR(hstatus);
-    return (hstatus >> 7) & 0x1;  /* SPV is bit 7 */
-}
-
 /* FW-VIRT-IND-01: S->VS indirect switch */
 bool test_fw_virt_ind_01(void)
 {
@@ -72,13 +64,33 @@ bool test_fw_virt_ind_04(void)
 {
     TEST_BEGIN("FW-VIRT-IND-04: S->VS V=1 mode verification");
 
+    goto_priv(PRIV_S);
+    TEST_ASSERT_EQ("current_priv should be PRIV_S", get_current_priv(), PRIV_S);
+
+    /* Control: hstatus is an HS-level CSR, so HS-mode reads it cleanly. */
+    PRIV_DO(CSRR(hstatus));
+    bool hs_ok = !trap_was_triggered();
+
     /*
-     * This test requires two-stage translation setup (hgatp) to execute
-     * code in VS-mode. Without proper G-stage translation, QEMU will
-     * trigger guest page faults when fetching instructions in VS-mode.
-     * Skip this test if two-stage translation is not available.
+     * S->VS requires the indirect path: S->M (ecall), then M->VS (mret with
+     * MPV=1, MPP=S).  The framework handles this automatically.
      */
-    TEST_SKIP("Requires two-stage translation setup (hgatp)");
+    goto_priv(PRIV_VS);
+    TEST_ASSERT_EQ("current_priv should be PRIV_VS", get_current_priv(), PRIV_VS);
+
+    /* Nothing about the hart changed between the two reads except V, so the
+     * access being rejected now - with a virtual-instruction rather than an
+     * illegal-instruction exception - is the V=1 evidence
+     * (norm:H_virtinst_vu_vs_nonhigh_allowedhs_tvm0). */
+    PRIV_DO(CSRR(hstatus));
+    bool vs_trapped = trap_was_triggered();
+    uintptr_t vs_cause = trap_get_cause();
+
+    goto_priv(PRIV_M);
+    TEST_ASSERT("HS-mode read hstatus", hs_ok);
+    TEST_ASSERT("VS-mode read of hstatus trapped", vs_trapped);
+    TEST_ASSERT_EQ("cause is virtual-instruction", vs_cause,
+                   (uintptr_t)CAUSE_VIRTUAL_INSTRUCTION);
 
     TEST_END();
 }

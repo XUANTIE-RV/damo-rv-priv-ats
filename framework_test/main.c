@@ -31,5 +31,11 @@ int main(void)
         _test_table[i]();
     }
 
+    /* test_print_summary() returns non-zero on failure and entry.S picks the
+     * halt path from it.  Its _s_main_return sequence raises privilege with a
+     * T-SBI GOTO_MMODE ecall, which is only a service request while we are
+     * still in S-mode - from M-mode the same ecall would be an ecall-from-M.
+     * reset_state(), run by every TEST_END()/TEST_SKIP(), guarantees the
+     * S-mode return. */
     return test_print_summary();
 }

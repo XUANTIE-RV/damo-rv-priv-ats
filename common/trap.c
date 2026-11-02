@@ -631,6 +631,21 @@ unsigned m_trap_handler(uintptr_t *frame) {
         }
 
         if (TSBI_IS_CSR_ACCESS(op)) {
+#if defined(SMDBLTRP_SUPPORTED)
+            /* Smdbltrp hardware sets mstatus.MDT on every M-mode trap
+             * entry. Strategy A needs a faulting injected instruction to
+             * arrive as a normal nested trap so P0 can claim it; with
+             * MDT=1 it escalates to a fatal double trap before P0 runs.
+             * Clear MDT for the injection window (the final mret clears
+             * it regardless). Bare CSRC: the test-privilege tracker says
+             * S here, so the get_current_priv()-guarded clear_mdt() in
+             * test_framework.h would be a no-op. */
+#if __riscv_xlen == 64
+            CSRC(mstatus, MSTATUS_MDT_BIT);
+#else
+            CSRC(CSR_MSTATUSH, MSTATUSH_MDT_BIT);
+#endif
+#endif
             /* Snapshot our xstatus for P0's faulted path before injecting. */
             tsbi_proxy_record.status_snap = CSRR(mstatus);
             frame[TSBI_FRAME_A0] =
@@ -646,6 +661,14 @@ unsigned m_trap_handler(uintptr_t *frame) {
         }
 
         if (tsbi_is_mem_proxy(op)) {
+#if defined(SMDBLTRP_SUPPORTED)
+            /* Same MDT rationale as the CSR_ACCESS branch above. */
+#if __riscv_xlen == 64
+            CSRC(mstatus, MSTATUS_MDT_BIT);
+#else
+            CSRC(CSR_MSTATUSH, MSTATUSH_MDT_BIT);
+#endif
+#endif
             tsbi_proxy_record.status_snap = CSRR(mstatus);
             frame[TSBI_FRAME_A0] =
                 tsbi_mem_access_dispatch((uint32_t)op, frame[TSBI_FRAME_A1],

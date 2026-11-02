@@ -22,6 +22,12 @@
 /* Provided by common/string.c (bare-metal libc replacement). */
 extern void *memset(void *dst, int c, size_t n);
 
+/* exec_at()-style recovery anchor (weak symbol in common/trap.c). The M
+ * and S handlers already honour it; the HS handler needs the same seam
+ * because an instruction fetch fault at a wild jump target leaves sepc
+ * on an unreadable address that hs_next_instruction() cannot step past. */
+extern uintptr_t _exec_return_addr;
+
 /* ===================================================================
  * HS-mode trap record (captures hypervisor-specific trap info)
  * =================================================================== */
@@ -116,6 +122,18 @@ unsigned hs_trap_handler(uintptr_t *frame) {
 
     /* Handle specific trap causes */
     uintptr_t cause_code = cause & ~CAUSE_INTERRUPT_BIT; /* mask interrupt bit */
+
+    /* Recovery: if a test published an exec_at()-style recovery anchor,
+     * redirect sepc there instead of stepping past the faulting fetch.
+     * Same contract as the M-mode and S-mode handlers (common/trap.c): a
+     * fetch fault at a wild jump target leaves sepc on an address that
+     * cannot be read, so hs_next_instruction() below would nest-fault.
+     * The anchor escapes the fault page in one shot. */
+    if (_exec_return_addr != 0) {
+        CSRW(sepc, _exec_return_addr);
+        _exec_return_addr = 0;
+        return PRIV_S;
+    }
 
     switch (cause_code) {
     case CAUSE_ECALL_FROM_VS:

@@ -180,8 +180,12 @@
  * menvcfg is M-level. Under the S-mode-normal (T-SBI) execution model the
  * suites run in S/HS-mode, where a bare csrr/csrw menvcfg raises
  * illegal-instruction, so the menvcfg_* helpers go through the tsbi_csr_*
- * proxy. senvcfg/henvcfg are S/HS-level and stay direct (they are gated by
- * Smstateen ENVCFG, which the suites open via hyp_enable_envcfg_access()).
+ * proxy. senvcfg/henvcfg are S/HS-level and stay direct; they are gated by
+ * Smstateen mstateen0.SE0/ENVCFG (reset 0), so a suite that programs them
+ * from S(HS)-mode opens that gate once from its setup -- the H suites call
+ * hyp_enable_envcfg_access(), the plain cmo.* suites set the bits through
+ * tsbi_csr_set(CSR_MSTATEEN0, ...) in main.c because common/hyp is not
+ * linked without ENABLE_HYP.
  * =================================================================== */
 
 static inline uintptr_t menvcfg_get_cbie(void)
@@ -317,6 +321,36 @@ static inline void henvcfg_set_cbze(unsigned en)
     else
         asm volatile("csrc 0x60A, %0" :: "r"(ENVCFG_CBZE));
 }
+
+/* ===================================================================
+ * M-excursion CBO probes
+ *
+ * "M-mode is not restricted by xenvcfg" is a claim about M-mode, so the
+ * instruction has to actually execute there.  Under the S-mode-normal model
+ * the test body runs in S(HS)-mode, where menvcfg/senvcfg DO gate cbo.*: run
+ * the stimulus in S and the case either fails outright (enable bit clear) or
+ * passes only by accident of whatever the previous case left in menvcfg --
+ * either way it is no longer testing M-mode.
+ *
+ * Each probe runs arm/execute/disarm inside one M excursion and returns 1 if
+ * the instruction trapped, 0 if it did not, so the caller asserts on the
+ * return value.  Keeping the arming inside the excursion means the recorded
+ * trap can only be this instruction's.
+ *
+ * Unused probes cost nothing: they are static inline.
+ * =================================================================== */
+#define DEFINE_CMO_M_CBO_PROBE(name, cbo_op)            \
+    static inline uintptr_t name(uintptr_t addr)        \
+    {                                                   \
+        trap_expect_begin();                            \
+        cbo_op(addr);                                   \
+        trap_expect_end();                              \
+        return trap_was_triggered() ? 1 : 0;            \
+    }
+
+/* Run one cbo.* in M-mode: 1 = it trapped, 0 = it did not. */
+#define CMO_M_CBO_TRAPPED(probe, addr) \
+    (run_in_priv(PRIV_M, (probe), (uintptr_t)(addr)) != 0)
 
 /* ===================================================================
  * CBO instruction decode from stval / htinst
