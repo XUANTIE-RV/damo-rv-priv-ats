@@ -445,6 +445,148 @@ $(COMMON_DIR)/%.o: $(COMMON_DIR)/%.S $(FLAG_SIG_FILE)
 # Helper: convert filename to Make variable name (replace - and . with _)
 _varname = $(subst -,_,$(subst .,_,$(1)))
 
+# =====================================================================
+# MULTI_ELFS -- split one suite into one ELF per registered test file
+#
+# Default (MULTI_ELFS unset): a suite links the single $(TARGET) that
+# carries every test file #included by tests/test_register.c. This is
+# what all simulator and hardware flows consume, and it is unchanged.
+#
+# MULTI_ELFS=1: every test source #included by the suite's
+# tests/test_register.c is linked into its own ELF, so a suite whose
+# single image is too large for a target can be loaded and run as N
+# small images instead. The split is a pure build-time re-grouping:
+#
+#   - no test_register.c, no test source and no suite Makefile is
+#     touched: the split is driven purely by the register file's own
+#     #include list (a suite whose test sources are coupled must be
+#     decoupled first -- see the note below)
+#   - each image gets an auto-generated register source that is a
+#     verbatim copy of tests/test_register.c with every `#include "*.c"`
+#     dropped except this image's, so shared globals, _Static_asserts and
+#     the #if branches inside the register file survive the split
+#     unchanged and in registration order
+#   - the rest of EXT_OBJS (main.o, <suite>_reset.o, helper objects) is
+#     linked into every image unchanged
+#
+# Image names are $(basename $(TARGET))_<test file stem without its test_
+# prefix>.elf, e.g. pmp_test.elf -> pmp_test_cap.elf, pmp_test_lock.elf,
+# ... so that the word "test" appears once rather than twice.
+#
+# Every suite in the tree registers its cases through
+# tests/test_register.c, so that one #include list is the only split axis
+# this file needs to know about. A suite whose EXT_OBJS carries no
+# test_register.o, or whose register file #includes no test source,
+# silently keeps the single-image build -- convert such a suite to the
+# common form rather than teaching this file about a second layout.
+#
+# Coupled test sources are deliberately NOT groupable. If one #included
+# file defines a helper, a global or a macro that another #included file
+# uses (they only ever worked because test_register.c folds them into one
+# translation unit), decouple it instead: move the shared item somewhere
+# every image links it -- a stateless helper as static inline into the
+# suite's helper header, a stateful facility into tests/test_helpers.c
+# listed in EXT_OBJS, or storage written by a helper object into that
+# object itself. Keeping a grouping knob would let such coupling stay
+# invisible, and it cannot express the two cases that actually need help:
+# a helper object's symbol must be present in EVERY image, and a case
+# that depends on irreversible state set by an earlier case (sticky
+# mseccfg.MML, PMP L bits) needs the whole suite left unsplit.
+#
+# NOTE: every image repeats the common framework, so the sum of the
+# image sizes grows; only the per-image size drops. Each image also
+# re-runs main()'s reset-state checks, so the target must be reset
+# between images (a hart left with locked PMP entries, a dirty
+# delegation baseline, ... would make the next image fail spuriously).
+#
+# A split cannot work at all where a helper OBJECT listed in EXT_OBJS
+# references a symbol defined inside a register-included test file: that
+# object goes into every image, so the definition would have to as well.
+# Move such a definition into the helper object (or main.c) instead.
+# =====================================================================
+MULTI_ELFS ?= 0
+
+# Register object driving the split, and the directory it lives in.
+# Computed unconditionally so `clean` can also drop stale generated
+# sources left over from an earlier MULTI_ELFS=1 build.
+_MULTI_REG_OBJ := $(filter %test_register.o,$(EXT_OBJS))
+_MULTI_REG_SRC := $(patsubst %.o,%.c,$(_MULTI_REG_OBJ))
+_MULTI_REG_DIR := $(dir $(_MULTI_REG_SRC))
+
+# Test sources #included by the register file, in registration order.
+# The leading `.*#` also matches the `/* Group N */ #include "x.c"` form
+# used by the Sv*x4 suites; `awk '!seen'` de-duplicates a file that
+# appears in several #if branches of the same register file.
+_MULTI_TEST_SRCS := $(if $(_MULTI_REG_SRC),$(shell sed -n \
+    's/.*#[[:space:]]*include[[:space:]]*"\([^"]*\.c\)".*/\1/p' \
+    $(_MULTI_REG_SRC) 2>/dev/null | awk '!seen[$$0]++'))
+
+# An image is named after its test source with the redundant `test_`
+# prefix dropped: pmp_test.elf plus tests/test_cap.c gives
+# pmp_test_cap.elf, not pmp_test_test_cap.elf. Every #include in a
+# register file is a bare filename (no suite in the tree includes a test
+# source from a subdirectory), so $(basename) alone yields the stem, and
+# every stem in the tree starts with `test_`; $(patsubst) leaves one that
+# does not unchanged. The generated source keeps the FULL stem, because
+# the rule that builds it matches the register file's own #include line
+# by exact name.
+_MULTI_NAMES := $(basename $(_MULTI_TEST_SRCS))
+_MULTI_GEN_SRCS := $(addprefix $(_MULTI_REG_DIR)_multi_,\
+    $(addsuffix .c,$(_MULTI_NAMES)))
+
+# Everything a MULTI_ELFS=1 build leaves behind, globbed lazily so that a
+# plain `make clean` (MULTI_ELFS unset) also clears it. Without this the
+# stale split images would survive next to the freshly rebuilt single
+# image and a hardware flow could pick up either one.
+_MULTI_STALE = $(foreach x,elf asm sym bin trace rvvi,\
+                   $(wildcard $(basename $(TARGET))_*.$(x))) \
+               $(wildcard $(_MULTI_REG_DIR)_multi_*.c) \
+               $(wildcard $(_MULTI_REG_DIR)_multi_*.o) \
+               $(wildcard $(_MULTI_REG_DIR)_multi_*.d)
+
+ifeq ($(MULTI_ELFS),1)
+ifneq ($(_MULTI_NAMES),)
+
+_MULTI_TARGET_BASE := $(basename $(TARGET))
+_MULTI_BASE_OBJS   := $(filter-out $(_MULTI_REG_OBJ),$(EXT_OBJS))
+
+# Hand the generated image list to the multi-target machinery below.
+TARGETS := $(foreach n,$(_MULTI_NAMES),$(_MULTI_TARGET_BASE)_$(patsubst test_%,%,$(n)).elf)
+
+# The generated-source rule below is the first rule make sees in this
+# makefile, so without this the split sources -- not the images -- would
+# become the default goal.
+.DEFAULT_GOAL := all
+
+# Per image: the suite's other objects plus this image's register object.
+# $(1) is the full source stem, which names the generated object, and $(2)
+# is the image stem with `test_` dropped. $(2) is derived here in the
+# argument list rather than inside the define: a nested $(call) rebinds
+# $(1)/$(2) to the inner function's own parameters.
+# NOTE: kept on one line -- a backslash continuation inside a top-level
+# $(foreach) is passed through literally by make, unlike inside a
+# variable assignment where it collapses to a space.
+define _MULTI_OBJS_DEF
+$(call _varname,$(_MULTI_TARGET_BASE)_$(2))_OBJS := $(_MULTI_BASE_OBJS) $(_MULTI_REG_DIR)_multi_$(1).o
+endef
+$(foreach n,$(_MULTI_NAMES),$(eval $(call _MULTI_OBJS_DEF,$(n),$(patsubst test_%,%,$(n)))))
+
+# Auto-generated register source: verbatim copy of tests/test_register.c
+# with every `#include "*.c"` dropped except this image's own. Comments,
+# shared globals, _Static_asserts and #if branches are copied through
+# untouched, and the kept test is matched by exact name so test_cap.c
+# never picks up test_cap_extra.c.
+#
+# This is a STATIC pattern rule (the generated list is spelled out on the
+# left) rather than a plain `_multi_%.c` pattern: a plain pattern would
+# also match `_multi_<name>.d.c`, which lets make rebuild the `-include`d
+# .d dependency files into bogus link targets.
+$(_MULTI_GEN_SRCS): $(_MULTI_REG_DIR)_multi_%.c: $(_MULTI_REG_SRC)
+	@awk -v keep="$*.c" '/#[[:space:]]*include[[:space:]]*".*\.c"/ { if (match($$0, /"[^"]*\.c"/) && substr($$0, RSTART + 1, RLENGTH - 2) == keep) print; next } { print }' $< > $@
+
+endif # _MULTI_NAMES
+endif # MULTI_ELFS
+
 ifdef TARGETS
 # =================================================================
 # Multi-target mode
@@ -463,10 +605,20 @@ ifdef TARGETS
 
 all: $(TARGETS)
 
-# Generate a link rule for each target
+# Generate a link rule for each target.
+#
+# Object order MUST match the single-target rule's ALL_OBJS =
+# $(COMMON_OBJS) $(EXT_OBJS), i.e. common objects first. Suites that carry
+# their own kernel.ld instead of INCLUDEing config/<CONFIG>/link.ld have no
+# dedicated `.text.init` output section, so where common/entry.S's boot code
+# (section .text.init, holding rvtest_entry_point) lands is decided purely by
+# link order. Reversing it pushes the boot code away from MEM_BASE, and since
+# the QEMU RISC-V reset vector jumps to the start of DRAM rather than to the
+# ELF entry point, the image then starts in main() with no stack or M-mode
+# setup and hangs before printing anything.
 define MULTI_TARGET_RULE
-$(1): $$($(call _varname,$(basename $(1)))_OBJS) $$(COMMON_OBJS) kernel.ld
-	$$(CC) $$(LDFLAGS) $$(LINK_T) -o $(1) $$($(call _varname,$(basename $(1)))_OBJS) $$(COMMON_OBJS)
+$(1): $$(COMMON_OBJS) $$($(call _varname,$(basename $(1)))_OBJS) kernel.ld
+	$$(CC) $$(LDFLAGS) $$(LINK_T) -o $(1) $$(COMMON_OBJS) $$($(call _varname,$(basename $(1)))_OBJS)
 	$$(OBJDUMP) -S $(1) > $(basename $(1)).asm
 	$$(OBJDUMP) -t $(1) | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$$$/ d' > $(basename $(1)).sym
 	$$(OBJCOPY) -O binary $(1) $(basename $(1)).bin
@@ -480,6 +632,7 @@ _ALL_EXT_OBJS = $(sort $(foreach t,$(TARGETS),$($(call _varname,$(basename $(t))
 clean:
 	rm -f $(_ALL_EXT_OBJS) $(_ALL_EXT_OBJS:.o=.d)
 	rm -f $(TARGETS)
+	rm -f $(_MULTI_STALE)
 	rm -f $(foreach t,$(TARGETS),$(basename $(t)).asm $(basename $(t)).sym $(basename $(t)).bin)
 	rm -f $(foreach t,$(TARGETS),$(basename $(t)).trace $(basename $(t)).rvvi)
 	rm -f $(FLAG_SIG_FILE)
@@ -509,6 +662,7 @@ clean:
 	rm -f $(ALL_OBJS) $(ALL_OBJS:.o=.d)
 	rm -f $(TARGET) $(TARGET_BASE).asm $(TARGET_BASE).sym $(TARGET_BASE).bin
 	rm -f $(TARGET_BASE).trace $(TARGET_BASE).rvvi
+	rm -f $(_MULTI_STALE)
 	rm -f $(FLAG_SIG_FILE)
 	find $(COMMON_DIR) \( -name "*.o" -o -name "*.d" \) -type f -delete
 

@@ -1,5 +1,6 @@
 *.o
 *.d
+.build_flags
 *.asm
 *.sym
 *.elf

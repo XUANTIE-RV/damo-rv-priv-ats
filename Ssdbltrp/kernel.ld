@@ -3,7 +3,7 @@ ENTRY(rvtest_entry_point)
 
 SECTIONS
 {
-    . = 0x80000000;
+    . = MEM_BASE;
 
     .text : {
         *(.text.init)

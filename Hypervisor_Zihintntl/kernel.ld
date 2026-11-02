@@ -1,12 +1,4 @@
-/*
- * Hypervisor x Zihintntl cross test linker script
- *
- * Uses MEM_BASE (passed via --defsym from Makefile.common) so the
- * binary is linked at the correct address for every platform:
- *   qemu-rv64-max  -> MEM_BASE=0x80000000
- *   haps_xiaohui   -> MEM_BASE=0x60000000
- *   spike/sail     -> MEM_BASE=0x80000000
- */
+/* Hypervisor x Zihintntl cross test linker script */
 
 OUTPUT_ARCH("riscv")
 ENTRY(rvtest_entry_point)
