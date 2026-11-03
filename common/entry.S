@@ -165,6 +165,17 @@ _bss_done:
      * trap entry: Smdbltrp / smrnmi / ntrace / iopmp / clic ...).
      * ================================================================ */
 
+    /* ---- Snapshot the pmpcfg reset state (opt-in) ----
+     * The PMP open below overwrites pmpcfg0, so a suite that verifies the
+     * reset value of the pmpcfg A/L fields (norm:pmp_A_L_rst) cannot read
+     * the live CSRs from main() and still observe the DUT reset state.
+     * Such a suite builds with -DPMP_RESET_SNAPSHOT and captures the values
+     * here, immediately before the framework touches PMP.  Gated so every
+     * other suite keeps a byte-identical boot path. */
+#ifdef PMP_RESET_SNAPSHOT
+    call    pmp_boot_snapshot
+#endif
+
     /* ---- PMP: allow S/U full access to the whole address space ----
      * Hoisted out of the individual main.c files so it is guaranteed to be
      * in place before we drop privilege (otherwise S-mode cannot even
