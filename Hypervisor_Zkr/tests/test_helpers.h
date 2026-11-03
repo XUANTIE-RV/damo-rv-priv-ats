@@ -149,9 +149,11 @@ static uintptr_t _vs_seed_csrrs_rw(uintptr_t arg)
 }
 
 /* ===================================================================
- * HS-mode seed access macros (used with PRIV_DO after goto_priv(PRIV_S))
+ * HS-mode seed access macros (used with PRIV_DO)
  *
- * With H ext present and V=0, S-mode == HS-mode. These use GCC
+ * With H ext present and V=0, S-mode == HS-mode, and under the T-SBI
+ * S-mode-normal model the test body already runs there - so these are
+ * issued directly, with no goto_priv(PRIV_S) scaffolding.  They use GCC
  * statement expressions so they work inside PRIV_DO().
  * =================================================================== */
 
