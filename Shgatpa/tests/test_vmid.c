@@ -21,16 +21,15 @@
  *   HGATP-VMID-02  VMID retention after MODE switch (observe)
  * =================================================================== */
 
-extern volatile bool g_satp_supports_sv39;
+/* Sv39x4 availability comes from the compile-time SV39_AVAILABLE
+ * declaration, not from a runtime satp probe handed over by Group 1. */
 
 /* ---- HGATP-VMID-01 ---- */
 TEST_REGISTER(test_shgatpa_vmid_width);
 bool test_shgatpa_vmid_width(void) {
     TEST_BEGIN("HGATP-VMID-01: VMID field width probe");
 
-    if (!g_satp_supports_sv39) {
-        TEST_SKIP("satp does not support Sv39, need Sv39x4 for VMID probe");
-    }
+    REQUIRE_SATP_MODE(SATP_MODE_SV39);
 
     uintptr_t saved = hgatp_read();
 
@@ -72,9 +71,7 @@ TEST_REGISTER(test_shgatpa_vmid_mode_switch);
 bool test_shgatpa_vmid_mode_switch(void) {
     TEST_BEGIN("HGATP-VMID-02: VMID retention after MODE switch (observe)");
 
-    if (!g_satp_supports_sv39) {
-        TEST_SKIP("satp does not support Sv39, need Sv39x4 for VMID test");
-    }
+    REQUIRE_SATP_MODE(SATP_MODE_SV39);
 
     uintptr_t saved = hgatp_read();
 

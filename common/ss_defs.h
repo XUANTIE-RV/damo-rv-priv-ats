@@ -79,6 +79,7 @@
 #define SENVCFG_CBIE_MASK   (3ULL << 4)  /* CBIE field mask [5:4] (Zicbom) */
 #define SENVCFG_CBCFE   (1ULL << 6)     /* Cache-Block Clean/Flush Enable (Zicbom) */
 #define SENVCFG_CBZE    (1ULL << 7)     /* Cache-Block Zero Enable (Zicboz) */
+#define SENVCFG_UKTE    (1ULL << 8)     /* Svukte: U-mode upper-half fault enable */
 #define SENVCFG_PMM_OFF  32             /* PMM field offset in senvcfg */
 #define SENVCFG_PMM_MASK (3ULL << 32)   /* PMM field mask [33:32] (Ssnpm) */
 #define SENVCFG_FIOM    (1ULL << 0)     /* FENCE.I implicit memory ordering (Zifencei) */

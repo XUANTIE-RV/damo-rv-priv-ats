@@ -13,6 +13,8 @@
  */
 
 #include "hyp_test_helpers.h"
+#include "test_helpers.h"
+
 /* ===================================================================
  * VS-level interrupt cause codes (translated from VS to S level).
  *   VSSI (hvip bit 2)  -> vscause = 1 (SSI)
@@ -23,13 +25,11 @@
 #define VS_IRQ_STI   (CAUSE_INTERRUPT_BIT | 5)
 #define VS_IRQ_SEI   (CAUSE_INTERRUPT_BIT | 9)
 
-/* VS_VSSIP / VS_VSTIP / VS_VSEIP are defined once in test_interrupts.c
- * (Group 1-2, included before this file in the unity build). */
-
-/* vs_int_handler, g_vs_int_cause, g_vs_int_triggered, and
- * setup_vs_int_test() are reused from test_interrupts.c (Group 1-2,
- * same unity-build TU). The delegation tests use the same handler
- * and setup logic. */
+/* The VS_VSSIP / VS_VSTIP / VS_VSEIP injection masks, the
+ * g_vs_int_cause / g_vs_int_triggered record and setup_vs_int_test() come
+ * from test_helpers.h: these delegation tests arm exactly the same
+ * VS-mode fixture as Group 1-2, so the fixture lives in its own object
+ * (tests/test_helpers.c) rather than in either group's test file. */
 
 /* ------------------------------------------------------------------
  * DELEG-08: hideleg delegates VSSI to VS-mode

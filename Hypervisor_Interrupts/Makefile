@@ -18,6 +18,7 @@ QEMU_CPU   = max
 EXT_OBJS = \
     main.o \
     ../common/hyp/hyp_test_helpers_region.o \
+    tests/test_helpers.o \
     tests/test_register.o
 
 include ../common/Makefile.common

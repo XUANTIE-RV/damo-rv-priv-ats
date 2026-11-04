@@ -5,15 +5,23 @@
  * Group 2: Basic upward privilege switching (S/U-mode -> M-mode)
  *
  * Tests FW-UP-01 through FW-UP-07
+ *
+ * "The CSR read succeeded" is never asserted as a bare `true`: an ungated
+ * read that faults would halt the suite as an UNEXPECTED TRAP instead of
+ * failing the case, so every read here is trap-protected and the assertion
+ * states the observation.  Where the case has to prove WHICH level was
+ * reached, the probe reads one CSR that level may access and one it may not.
  */
 
 #include "test_framework.h"
 
-/* Helper function to read mstatus (only works in M-mode) */
-static uintptr_t read_mstatus_fn(uintptr_t arg)
+/* Returns 1 when mstatus could be read, 0 when the read trapped.
+ * mstatus is M-only, so a clean read is sufficient evidence of M-mode. */
+static uintptr_t m_mode_probe_fn(uintptr_t arg)
 {
     (void)arg;
-    return CSRR(mstatus);
+    PRIV_DO(CSRR(mstatus));
+    return trap_was_triggered() ? 0u : 1u;
 }
 
 /* FW-UP-01: S->M switch, verify current_priv */
@@ -50,25 +58,22 @@ bool test_fw_up_03(void)
     TEST_BEGIN("FW-UP-03: S->M ecall path verification");
 
     /*
-     * S->M uses ecall. The ecall should trap to M-mode handler with
-     * cause=9 (ecall-from-S). The handler sets MPP=M and mrets back.
-     * We verify the switch succeeded by reading mstatus (M-mode only CSR).
+     * S->M is a T-SBI GOTO_MMODE request: the ecall traps with cause 9,
+     * medeleg[9] is held at 0 so it reaches the M handler, which raises MPP
+     * to M and mrets past the ecall.
      *
-     * Note: Per RISC-V Privileged Spec Section 3.1.6.1, MRET clears
-     * MPP to the least-privileged mode (U-mode). So we cannot verify
-     * MPP after mret returns. Instead, we verify we're in M-mode by
-     * successfully reading mstatus (which faults in non-M modes).
+     * Per RISC-V Privileged Spec mret clears MPP to the least-privileged
+     * mode, so MPP cannot be inspected afterwards; the observable half is
+     * that an M-only CSR is now reachable.
      */
     goto_priv(PRIV_S);
     TEST_ASSERT_EQ("current_priv should be PRIV_S before ecall", get_current_priv(), PRIV_S);
 
     goto_priv(PRIV_M);
-
-    /* Verify we're in M-mode: current_priv tracking and mstatus access */
     TEST_ASSERT_EQ("current_priv should be PRIV_M after S->M", get_current_priv(), PRIV_M);
-    /* If CSRR(mstatus) doesn't fault, we are confirmed in M-mode */
-    (void)CSRR(mstatus);
-    TEST_ASSERT("mstatus read succeeded (M-mode only CSR)", true);
+
+    PRIV_DO(CSRR(mstatus));
+    CHECK_NO_TRAP("mstatus read succeeded (M-mode only CSR)");
 
     TEST_END();
 }
@@ -79,19 +84,20 @@ bool test_fw_up_04(void)
     TEST_BEGIN("FW-UP-04: U->M ecall path verification");
 
     /*
-     * U->M uses ecall. Per RISC-V Privileged Spec Section 3.1.6.1,
-     * MRET clears MPP to the least-privileged mode after returning.
-     * So we verify M-mode entry by successfully reading mstatus.
+     * U->M is a T-SBI GOTO_MMODE request too.  The ecall traps with cause 8,
+     * which medeleg[8] hands to the S handler; S cannot raise privilege
+     * itself, so it forwards the request up to M (see tsbi_design_brief.md).
+     * MPP is already cleared again by the time the body runs, so the check is
+     * the same observable one as FW-UP-03.
      */
     goto_priv(PRIV_U);
     TEST_ASSERT_EQ("current_priv should be PRIV_U before ecall", get_current_priv(), PRIV_U);
 
     goto_priv(PRIV_M);
-
-    /* Verify we're in M-mode */
     TEST_ASSERT_EQ("current_priv should be PRIV_M after U->M", get_current_priv(), PRIV_M);
-    (void)CSRR(mstatus);
-    TEST_ASSERT("mstatus read succeeded (M-mode only CSR)", true);
+
+    PRIV_DO(CSRR(mstatus));
+    CHECK_NO_TRAP("mstatus read succeeded (M-mode only CSR)");
 
     TEST_END();
 }
@@ -102,23 +108,24 @@ bool test_fw_up_05(void)
     TEST_BEGIN("FW-UP-05: U->S ecall path verification");
 
     /*
-     * U->S uses ecall (delegated to S-mode handler).
-     * Per RISC-V Privileged Spec Section 3.1.6.2, SRET clears SPP
-     * to 0 (U-mode) after returning. So we verify S-mode entry by
-     * successfully reading sstatus (S-mode CSR) and checking
-     * current_priv tracking.
+     * U->S is a T-SBI GOTO_SMODE request.  Per the spec SRET clears SPP to 0
+     * after returning, so the path is verified by where the body ends up
+     * rather than by a status field: sstatus must be reachable and mstatus
+     * must not be, which is exactly the S-mode authority split.
      */
     goto_priv(PRIV_U);
     TEST_ASSERT_EQ("current_priv should be PRIV_U before ecall", get_current_priv(), PRIV_U);
 
     goto_priv(PRIV_S);
-
-    /* Verify we're in S-mode */
     TEST_ASSERT_EQ("current_priv should be PRIV_S after U->S", get_current_priv(), PRIV_S);
 
-    /* Verify by reading sstatus (should work in S-mode, faults in U-mode) */
-    (void)CSRR(sstatus);
-    TEST_ASSERT("sstatus read succeeded (S-mode CSR)", true);
+    PRIV_DO(CSRR(sstatus));
+    bool sstatus_ok = !trap_was_triggered();
+    PRIV_DO(CSRR(mstatus));
+    bool mstatus_denied = trap_was_triggered();
+
+    TEST_ASSERT("sstatus read succeeded (S-mode CSR)", sstatus_ok);
+    TEST_ASSERT("mstatus denied: the switch landed in S, not M", mstatus_denied);
 
     TEST_END();
 }
@@ -131,10 +138,8 @@ bool test_fw_up_06(void)
     goto_priv(PRIV_S);
 
     /* Use run_in_priv to execute in M-mode and read mstatus */
-    (void)run_in_priv(PRIV_M, read_mstatus_fn, 0);
-
-    /* If we successfully read mstatus, we were in M-mode */
-    TEST_ASSERT("mstatus read succeeded in M-mode", true);
+    uintptr_t ok = run_in_priv(PRIV_M, m_mode_probe_fn, 0);
+    TEST_ASSERT_EQ("mstatus read succeeded in M-mode", ok, 1u);
 
     TEST_END();
 }
@@ -144,12 +149,26 @@ bool test_fw_up_07(void)
 {
     TEST_BEGIN("FW-UP-07: U->S S-mode CSR access verification");
 
+    /* Reference readings taken with M authority.  stvec is a plain S-level
+     * CSR, so the value an S-mode read returns has to be this one - a read
+     * that was emulated, redirected or fabricated would not match. */
+    goto_priv(PRIV_M);
+    uintptr_t ref_stvec = CSRR(stvec);
+
     goto_priv(PRIV_U);
     goto_priv(PRIV_S);
+    TEST_ASSERT_EQ("current_priv should be PRIV_S after U->S", get_current_priv(), PRIV_S);
 
-    /* Verify we can read sstatus in S-mode */
-    (void)CSRR(sstatus);
-    TEST_ASSERT("sstatus read succeeded in S-mode", true);
+    PRIV_DO(CSRR(sstatus));
+    bool sstatus_ok = !trap_was_triggered();
+    PRIV_DO(CSRR(stvec));
+    bool stvec_ok = !trap_was_triggered();
+    uintptr_t got_stvec = CSRR(stvec);
+
+    TEST_ASSERT("sstatus read succeeded in S-mode", sstatus_ok);
+    TEST_ASSERT("stvec read succeeded in S-mode", stvec_ok);
+    TEST_ASSERT_EQ("stvec read in S-mode matches the M-mode reference",
+                   got_stvec, ref_stvec);
 
     TEST_END();
 }

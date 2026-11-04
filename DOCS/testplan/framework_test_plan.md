@@ -1,8 +1,35 @@
 # 测试框架特权态切换功能测试计划
 
-> 本文档描述对 `common/` 目录中测试框架的特权态切换功能进行验证的测试计划。测试覆盖 `goto_priv()`、`get_current_priv()`、`run_in_priv()` 等核心 API，以及底层 `mret`/`sret`/`ecall` 机制在所有特权级（M/S/U/VS/VU）之间的切换行为。
->
-> 生成时间：2026-06-26
+> 本文档描述对 `common/` 目录中测试框架的特权态切换功能进行验证的测试计划。测试覆盖 `goto_priv()`、`get_current_priv()`、`run_in_priv()` 等核心 API，以及底层 `mret`/`sret` 与 T-SBI `ecall` 服务通道在所有特权级（M/S/U/VS/VU）之间的切换行为。
+
+---
+
+## 执行模型（T-SBI，S-mode 常态）
+
+本套件运行在 T-SBI 的 **S-mode 常态模型**下（见 `DOCS/framework/tsbi_design_brief.md` 第 1 节），
+这是理解下文所有用例前置条件的前提：
+
+1. `common/entry.S` 在 M-mode 完成 boot 期设置（PMP 全空间 RWX、三级 trap 向量、委托基线）后
+   用 `mret` 降入 S-mode，`main()` 在 **S-mode**（`ENABLE_HYP=1` 时即 HS-mode）执行。
+2. **升权是请求，降权是权利**：`goto_priv()` 向更高特权级切换时发 T-SBI `ecall`
+   （`a0` = `TSBI_GOTO_xMODE`，服务号走寄存器而非全局变量），由上级 handler 置 `xPP` 后 `xret`；
+   向更低特权级切换仍是本地 `mret`/`sret`，不经过 T-SBI。
+3. `TEST_END()` / `TEST_SKIP()` 先 `goto_priv(PRIV_M)` 让 `reset_state()` 拿到 M 权限，
+   `reset_state()` 收尾再 `goto_priv(PRIV_S)` 交还控制权，因此**每个用例结束后特权级回到 S**，
+   `main()` 也必须在 S-mode 返回（`entry.S` 的 `_s_main_return` 依赖这一点完成 halt）。
+4. 因此用例名中的 “M→X” 起点必须由用例自己建立：`main()` 已在 S-mode，直接写
+   `goto_priv(PRIV_X)` 会把 “M→S 下降” 退化成 no-op。Group 1/4/5/6/9/10 中所有以 M 为起点的
+   用例都在开头显式 `goto_priv(PRIV_M)`。
+5. 确需 M-mode 语义的用例采用 **M-excursion**：`goto_priv(PRIV_M)` 或
+   `run_in_priv(PRIV_M, fn, arg)`，执行完立即回 S（`run_in_priv` 在 `fn` 返回后自动回落到
+   进入时的特权级）。
+6. 本套件**不得**通过 `-DTSBI_BOOT_MODE_M` 退回 M-mode 常态启动：该开关是给拥有早期 M 环境
+   或自定义 trap 入口的套件（Smdbltrp / Smrnmi / ntrace / iopmp / clic 等）用的，
+   而本套件被测对象正是 T-SBI 的 S-mode 常态切换链路本身。
+
+> [!NOTE]
+> T-SBI 协议层的独立验收由 `tsbi_test/` 承担（服务号编码、CSR 代理、三级 dispatch、委托基线）。
+> 本套件只验证建立在该协议之上的**特权态切换 API 行为**，两者不重复。
 
 ---
 
@@ -30,18 +57,21 @@
 
 ## 框架实现依据
 
-本测试计划基于 `common/privilege.c` 和 `common/trap.c` 中的实现：
+本测试计划基于以下实现（不标行号，以符号名为准）：
 
 | 组件 | 文件 | 描述 |
 |------|------|------|
-| `goto_priv()` | `privilege.c:164-175` | 双向特权级切换入口，向上用 ecall，向下用 mret/sret |
-| `lower_priv()` | `privilege.c:94-134` | 向下切换，配置 MPP/SPP 后执行 mret/sret |
-| `set_prev_priv()` | `privilege.c:49-86` | 配置 mstatus.MPP/MPV 或 sstatus.SPP |
-| `do_ecall()` | `privilege.c:139-143` | 通过 ecall 陷入 M-mode handler |
-| `run_in_priv()` | `privilege.c:199-274` | 在目标特权级执行函数 |
-| `get_current_priv()` | `privilege.c:40-42` | 返回 `current_priv` 软件跟踪变量 |
-| `m_trap_handler()` | `trap.c:220-379` | M-mode trap handler，处理 ecall 切换 |
-| `s_trap_handler()` | `trap.c:386-473` | S-mode trap handler，处理 ecall 切换 |
+| `goto_priv()` | `common/privilege.c` | 双向特权级切换入口：向上发 T-SBI GOTO 请求，向下本地 mret/sret |
+| `lower_priv()` | `common/privilege.c` | 向下切换；虚拟化目标且当前非 M 时先 ecall 升到 M 再 mret |
+| `set_prev_priv()` | `common/privilege.c` | 配置 `mstatus.MPP`/`MPV` 或 `sstatus.SPP` |
+| `do_ecall()` | `common/privilege.c` | 将目标特权级映射为 T-SBI GOTO 操作码并发 `ecall` |
+| `run_in_priv()` | `common/privilege.c` | 在目标特权级执行函数，返回后自动回落到进入时的特权级 |
+| `get_current_priv()` | `common/privilege.c` | 返回 `current_priv` 软件跟踪变量 |
+| `tsbi_ecall()` / GOTO 操作码 | `common/tsbi/tsbi.h` | 协议单一真相源：`a0` = 操作码，`a1` = 参数 |
+| `m_trap_handler()` | `common/trap.c` | M 级 handler：P0 嵌套 fault → P1 raw-ecall 逃逸 → P2 GOTO/SYSTEM dispatch |
+| `s_trap_handler()` | `common/trap.c` | S/HS 级 handler：本地可办的就地办，其余转发 M |
+| `tsbi_deleg_*_baseline()` | `common/tsbi/tsbi_deleg.c` | 委托优先基线（medeleg/mideleg/hedeleg/hideleg） |
+| boot 降权与收尾 | `common/entry.S` | PMP 上提、装三级向量、`mret` 降 S；`_s_main_return` 请求升 M 后 halt |
 
 ### 特权级常量定义
 
@@ -56,27 +86,42 @@ PRIV_VS = 5   /* V=1, nominal S-mode (bit 2 = V flag) */
 ### 切换路径矩阵
 
 ```
-向下切换（mret/sret 路径）：
+向下切换（本地 mret/sret，不经 T-SBI）：
   M  -> S:    mret (MPP=S, MPV=0)
   M  -> U:    mret (MPP=U, MPV=0)
   S  -> U:    sret (SPP=U)
   M  -> VS:   mret (MPP=S, MPV=1)
   M  -> VU:   mret (MPP=U, MPV=1)
 
-向上切换（ecall 路径）：
-  U  -> S:    ecall -> S-mode handler -> goto_priv()
-  U  -> M:    ecall -> M-mode handler
-  S  -> M:    ecall -> M-mode handler
-  VS -> M:    ecall -> M-mode handler (MPV cleared)
-  VS -> HS:   ecall -> M-mode handler (MPV=0, MPP=S)
-  VU -> VS:   ecall -> M-mode handler (MPV=1, MPP=S)
-  VU -> M:    ecall -> M-mode handler (MPV=0, MPP=M)
+向上切换（T-SBI ecall 服务请求，a0 = GOTO 操作码 1..5；能在本级兑现就不上转）：
+  U  -> S:    ecall(GOTO_SMODE, cause=8) -> medeleg[8]=1 递至 S handler；
+              S 有权兑现：置 sstatus.SPP=1 后 sret（不经 M）
+  U  -> M:    ecall(GOTO_MMODE, cause=8) -> S handler 无权 -> 转发 M -> mret(MPP=M)
+  S  -> M:    ecall(GOTO_MMODE, cause=9) -> medeleg[9] 恒为 0，直达 M handler
+  VS -> HS:   ecall(GOTO_SMODE, cause=10) -> hedeleg[10] read-only-zero 故停在 HS；
+              HS 有权兑现：清 hstatus.SPV、置 SPP=1 后 sret（不经 M）
+  VS -> M:    ecall(GOTO_MMODE, cause=10) -> HS 无权 -> 转发 M -> mret(MPP=M)
+  VU -> VS:   ecall(GOTO_VSMODE, cause=8) -> medeleg[8]+hedeleg[8] 递至 VS handler；
+              VS 无权 -> 转发 HS，HS 兑现：置 hstatus.SPV=1、SPP=1 后 sret（不经 M）
+  VU -> M:    ecall(GOTO_MMODE, cause=8) -> VS handler -> HS -> 转发 M -> mret(MPP=M)
 
-虚拟化目标的间接路径：
-  S  -> VS:   ecall to M -> mret (MPV=1, MPP=S)
-  S  -> VU:   ecall to M -> mret (MPV=1, MPP=U)
-  VS -> VU:   ecall to M -> mret (MPV=1, MPP=U)
+虚拟化目标的间接路径（这是 privilege.c 的 lower_priv 实现选择，不是架构限制）：
+  S  -> VS/VU: goto_priv 将其归为“下降” -> lower_priv 先 ecall(GOTO_MMODE) 升到 M，
+               再由 M 置 MPV=1、MPP=S/U 后 mret
+  VS -> VU:    同上，先 ecall(GOTO_MMODE) 到 M，再 mret(MPV=1, MPP=U)
 ```
+
+> [!IMPORTANT]
+> 进入 V=1 有**两条共存但不同源**的路径，不要混为一谈：
+>
+> - `tsbi_s_dispatch()` 在 HS 级就地兑现 `GOTO_VSMODE`/`GOTO_VUMODE`：置 `hstatus.SPV=1` +
+>   `sstatus.SPP` 后 `sret`。代码注释将其定义为**强制而非优化**：SPV+sret 是真实 hypervisor
+>   进入 guest 的唯一方式，走 M 的 mret+MPV 会完全绕过 `hstatus.SPV`，使 SPV 语义无法被观测。
+> - `goto_priv(PRIV_VS/PRIV_VU)` 从 S 或 VS 出发时，因 `priv_cmp` 把虚拟化目标归为“下降”，
+>   走的是 `lower_priv()` 的 ecall→M→mret(MPV=1) 路径。
+>
+> 因此 Group 8 的 S→VS / S→VU / VS→VU **不**经过 HS 级 SPV 兑现；只有 VU→VS
+> （`priv_cmp` 判为上升，发 GOTO_VSMODE）会走 HS 就地兑现的 SPV+sret 路径。
 
 ---
 
@@ -91,7 +136,7 @@ PRIV_VS = 5   /* V=1, nominal S-mode (bit 2 = V flag) */
 | FW-DOWN-03 | M→S 切换后 mstatus.MPP 验证 | M-mode 调用 `goto_priv(PRIV_S)`，回到 M-mode 后检查切换过程中 MPP 是否正确配置 | MPP 在 mret 前被设为 S (01)，mret 后 MPP 被硬件清零 |
 | FW-DOWN-04 | M→U 切换后 mstatus.MPP 验证 | M-mode 调用 `goto_priv(PRIV_U)`，验证 MPP 配置 | MPP 在 mret 前被设为 U (00) |
 | FW-DOWN-05 | M→S 切换后 MPRV 清零验证 | M-mode 先设 MPRV=1，调用 `goto_priv(PRIV_S)`，检查 MPRV 是否被清零 | MPRV=0（`set_prev_priv` 中清除了 MPP 和 MPRV） |
-| FW-DOWN-06 | M→S 切换后 S-mode 执行验证 | M-mode 调用 `goto_priv(PRIV_S)`，在 S-mode 读取 `sstatus` CSR | 读取成功，无异常（证明确实在 S-mode 执行） |
+| FW-DOWN-06 | M→S 切换后 S-mode 执行验证 | M-mode 用 `run_in_priv(PRIV_S, s_mode_probe_fn, 0)` 执行双向探针：先 trap 保护读 `sstatus`，再 trap 保护读 `mstatus` | 探针返回 0x3：sstatus 可读 **且** mstatus 被拒（两者合起来才能把执行钉在 S：单看 sstatus 在 M-mode 也成立，单看 mstatus 被拒在 U-mode 也成立） |
 | FW-DOWN-07 | M→U 切换后 U-mode 执行验证 | M-mode 调用 `goto_priv(PRIV_U)`，在 U-mode 尝试读取 `sstatus` CSR | 触发 illegal-instruction 异常 (cause=2)（U-mode 不可访问 S-mode CSR） |
 | FW-DOWN-08 | M→S 切换后 mstatus.MPV 清零 | M-mode 调用 `goto_priv(PRIV_S)`（非虚拟化目标），检查 MPV 位 | MPV=0（非虚拟化切换不应设置 V=1） |
 
@@ -110,16 +155,27 @@ PRIV_VS = 5   /* V=1, nominal S-mode (bit 2 = V flag) */
 |---------|----------|----------|----------|
 | FW-UP-01 | S→M 切换后 current_priv 验证 | S-mode 调用 `goto_priv(PRIV_M)`，检查 `get_current_priv()` | 返回 `PRIV_M` (3) |
 | FW-UP-02 | U→M 切换后 current_priv 验证 | U-mode 调用 `goto_priv(PRIV_M)`，检查 `get_current_priv()` | 返回 `PRIV_M` (3) |
-| FW-UP-03 | S→M ecall 路径验证 | S-mode 调用 `goto_priv(PRIV_M)`，验证通过 ecall 陷入 M-mode handler | M-mode trap handler 收到 ecall-from-S (cause=9)，handler 设置 MPP=M 后 mret 回到 M-mode |
-| FW-UP-04 | U→M ecall 路径验证 | U-mode 调用 `goto_priv(PRIV_M)`，验证通过 ecall 陷入 M-mode handler | M-mode trap handler 收到 ecall-from-U (cause=8) |
-| FW-UP-05 | U→S ecall 路径验证 | U-mode 调用 `goto_priv(PRIV_S)`，验证通过 ecall 进入 S-mode handler | S-mode trap handler 收到 ecall-from-U (cause=8)，S-mode handler 调用 `goto_priv(PRIV_S)` |
-| FW-UP-06 | S→M 切换后 M-mode CSR 可访问 | S-mode 调用 `goto_priv(PRIV_M)` 后，读取 `mstatus` CSR | 读取成功（证明确实在 M-mode） |
-| FW-UP-07 | U→S 切换后 S-mode CSR 可访问 | U-mode 调用 `goto_priv(PRIV_S)` 后，读取 `sstatus` CSR | 读取成功（证明确实在 S-mode） |
+| FW-UP-03 | S→M ecall 路径验证 | S-mode 调用 `goto_priv(PRIV_M)`，回 M 后用 `PRIV_DO(CSRR(mstatus))` + `CHECK_NO_TRAP` 验证 | ecall-from-S (cause=9)，medeleg[9] 恒为 0 所以直达 M handler；handler 设 MPP=M 后 mret，mstatus 可读 |
+| FW-UP-04 | U→M ecall 路径验证 | U-mode 调用 `goto_priv(PRIV_M)`，同上验证 | ecall-from-U (cause=8) 先递到 S handler，S 无权升权故转发 M；mstatus 可读 |
+| FW-UP-05 | U→S ecall 路径验证 | U-mode 调用 `goto_priv(PRIV_S)`，在 S-mode 双向探针：`sstatus` 可读 + `mstatus` 被拒 | 两个断言均成立，证明落在 S 而不是 M（SRET 已将 SPP 清零，无法用状态位反推） |
+| FW-UP-06 | S→M 切换后 M-mode CSR 可访问 | S-mode 用 `run_in_priv(PRIV_M, m_mode_probe_fn, 0)` 在 M-mode trap 保护读 `mstatus` | helper 返回 1（读取未触发异常），证明确实在 M-mode |
+| FW-UP-07 | U→S 切换后 S-mode CSR 可访问 | 先在 M-mode 取 `stvec` 参考值；经 U→S 后在 S-mode trap 保护读 `sstatus`/`stvec` 并比对 `stvec` | 两次读取均无异常，且 S-mode 读到的 `stvec` 等于 M-mode 参考值（被仿真/重定向/编造的读取不会相等） |
 
 > [!NOTE]
-> - 向上切换始终通过 ecall 路径。`do_ecall()` 设置 `ecall_args[0] = ECALL_GOTO_PRIV (1)`, `ecall_args[1] = target`，然后执行 `ecall` 指令。
-> - M-mode trap handler 识别 ecall 后，设置 `mstatus.MPP` 为目标特权级，`mepc` 推进到 ecall 后一条指令，然后通过 `mret` 返回。
-> - FW-UP-05 验证 U→S 的路径：U-mode ecall 陷入 M-mode handler，M-mode handler 设置 MPP=S 后 mret 到 S-mode。
+> - 向上切换始终走 T-SBI 服务请求：`do_ecall()` 把目标特权级映射成 GOTO 操作码放进 `a0`
+>   （`TSBI_GOTO_MMODE`=1 … `TSBI_GOTO_VUMODE`=5）；handler 只从 trap frame 读寄存器，
+>   不再使用全局 `ecall_args[]`。
+> - 服务该请求的 handler 设置 `mstatus.MPP` 为目标特权级、把 `mepc` 推进到 ecall 后一条指令，
+>   然后 `mret` 返回；返回后 MPP 被硬件清零为最低实现特权级。
+> - FW-UP-05 验证 U→S 的路径：U-mode ecall（cause=8，GOTO_SMODE）由 medeleg[8] 递到 S handler，
+>   **升权到 S 属于 S handler 自己的权限范围**，它置 `sstatus.SPP=1` 后直接 `sret`，全程不经 M。
+> - 本组用例的常态起点是 S-mode（`main()` 所在特权级），`goto_priv(PRIV_S)` 是 no-op；
+>   U 起点由 `goto_priv(PRIV_U)` 建立。
+> - **不得用 `TEST_ASSERT(..., true)` 表达“读取成功”**：未加保护的 CSR 读取一旦 fault 会被
+>   当成 UNEXPECTED TRAP 直接 halt，用例根本没机会失败。正确写法是 `PRIV_DO(...)` +
+>   `CHECK_NO_TRAP(...)`，或 helper 回报的 cause/标志位。
+> - 需要证明“到达的是哪一级”时用**双向探针**：读一个该级可访问的 CSR 加一个不可访问的，
+>   单向读取在相邻特权级上往往同样成立。
 
 ---
 
@@ -168,14 +224,20 @@ PRIV_VS = 5   /* V=1, nominal S-mode (bit 2 = V flag) */
 | FW-RUN-02 | run_in_priv U-mode 执行 | M-mode 调用 `run_in_priv(PRIV_U, fn, arg)`，fn 返回固定值 | 返回值与 fn 的返回值一致 |
 | FW-RUN-03 | run_in_priv S-mode 中验证特权级 | fn 内部调用 `get_current_priv()` 并返回 | fn 返回 `PRIV_S` |
 | FW-RUN-04 | run_in_priv U-mode 中验证特权级 | fn 内部调用 `get_current_priv()` 并返回 | fn 返回 `PRIV_U` |
-| FW-RUN-05 | run_in_priv 执行后回到 M-mode | `run_in_priv(PRIV_S, fn, arg)` 返回后，检查 `get_current_priv()` | 返回 `PRIV_M`（run_in_priv 自动回到 M-mode） |
-| FW-RUN-06 | run_in_priv 参数传递 | fn 接收 arg 参数并原样返回 | 返回值与传入的 arg 一致 |
+| FW-RUN-05 | run_in_priv 执行后回到调用方特权级 | 先 `goto_priv(PRIV_M)` 建立 M-mode 调用方，`run_in_priv(PRIV_S, fn, arg)` 返回后检查 `get_current_priv()` | 返回 `PRIV_M`（`run_in_priv` 回落到**进入时**的特权级，不是固定回 M） |
+| FW-RUN-06 | run_in_priv 参数传递 | M-mode 下 fn 接收 arg 并原样返回 | 返回值与传入的 arg 一致（参数确实跨过了特权级下降） |
 | FW-RUN-07 | run_in_priv M-mode 直接调用 | 在 M-mode 调用 `run_in_priv(PRIV_M, fn, arg)` | fn 直接在 M-mode 执行，返回值正确（不走 mret 路径） |
 | FW-RUN-08 | run_in_priv 同特权级直接调用 | 在 S-mode 调用 `run_in_priv(PRIV_S, fn, arg)` | fn 直接执行（priv >= current_priv 走直接调用路径） |
 
 > [!NOTE]
-> - `run_in_priv()` 内部使用 `_run_trampoline`：在目标特权级执行 fn(arg) 后，通过 ecall 回到 M-mode。
-> - FW-RUN-07/08 验证 `run_in_priv()` 中 `priv >= current_priv` 时直接调用 fn 的路径（不走 mret/sret）。
+> - `run_in_priv()` 内部使用 `_run_trampoline`：在目标特权级执行 fn(arg) 后，通过 T-SBI
+>   `GOTO_MMODE` ecall 回到 M-mode，再把控制权交回进入时的特权级。
+> - **调用方特权级决定走哪条路**：`priv >= current_priv` 时直接调用 fn（不走 mret/sret），
+>   否则才是真正的特权级下降。因此 FW-RUN-01~04/06 必须在开头显式 `goto_priv(PRIV_M)`：
+>   `main()` 已在 S-mode，否则 `run_in_priv(PRIV_S, ...)` 会退化成同级直接调用，
+>   与 FW-RUN-08 重复，而方案要测的 mret 下降路径反而没人覆盖。
+> - FW-RUN-07/08 测的正是 `priv >= current_priv` 的直接调用分支：07 在 M-mode 调 PRIV_M，
+>   08 在 S-mode 调 PRIV_S。
 
 ---
 
@@ -187,18 +249,31 @@ PRIV_VS = 5   /* V=1, nominal S-mode (bit 2 = V flag) */
 |---------|----------|----------|----------|
 | FW-VIRT-DOWN-01 | M→VS 切换后 current_priv | M-mode 调用 `goto_priv(PRIV_VS)`，检查 `get_current_priv()` | 返回 `PRIV_VS` (5) |
 | FW-VIRT-DOWN-02 | M→VU 切换后 current_priv | M-mode 调用 `goto_priv(PRIV_VU)`，检查 `get_current_priv()` | 返回 `PRIV_VU` (4) |
-| FW-VIRT-DOWN-03 | M→VS mstatus.MPV=1 验证 | M-mode 调用 `goto_priv(PRIV_VS)`，验证切换过程中 MPV 被设为 1 | MPV=1（mret 前配置），mret 后进入 V=1 模式 |
-| FW-VIRT-DOWN-04 | M→VS mstatus.MPP=S 验证 | M-mode 调用 `goto_priv(PRIV_VS)`，验证 MPP 设为 S | MPP=S (01)（`target & 3 = 5 & 3 = 1 = S`） |
-| FW-VIRT-DOWN-05 | M→VU mstatus.MPP=U 验证 | M-mode 调用 `goto_priv(PRIV_VU)`，验证 MPP 设为 U | MPP=U (00)（`target & 3 = 4 & 3 = 0 = U`） |
-| FW-VIRT-DOWN-06 | M→VU mstatus.MPV=1 验证 | M-mode 调用 `goto_priv(PRIV_VU)`，验证 MPV 被设为 1 | MPV=1 |
-| FW-VIRT-DOWN-07 | M→VS 后 hstatus.SPV 验证 | M→VS 切换后，在 VS-mode 读取 hstatus.SPV | SPV=1（硬件在 V=1 trap 时设置 SPV） |
-| FW-VIRT-DOWN-08 | M→VS 后 VS-mode CSR 访问 | M→VS 切换后，在 VS-mode 读取 vsstatus (sstatus 的虚拟化视图) | 读取成功，无 virtual-instruction 异常 |
-| FW-VIRT-DOWN-09 | M→VU 后 VU-mode 限制验证 | M→VU 切换后，在 VU-mode 尝试读取 sstatus | 触发 virtual-instruction 或 illegal-instruction 异常（VU-mode 不可访问 S-mode CSR） |
+| FW-VIRT-DOWN-03 | M→VS mstatus.MPV=1 验证 | M→VS 后在 VS-mode 触发一次落在 M 的 illegal-instruction trap，读 handler 入口快照 `trap_get_mpv()` | MPV=1（norm:mstatus_mpv_op：陷入 M 时 MPV ← 当时的 V）；同法从 HS-mode 取快照作为对照应为 MPV=0 |
+| FW-VIRT-DOWN-04 | M→VS mstatus.MPP=S 验证 | 同 DOWN-03 的观测窗口，读 `trap_get_mpp()` | MPP=S (01)，即 `PRIV_VS & 3`；硬件在陷入 M 时重写 MPP 为陷入方的名义特权级 |
+| FW-VIRT-DOWN-05 | M→VU mstatus.MPP=U 验证 | 同上，从 VU-mode 取快照 | MPP=U (00)，即 `PRIV_VU & 3` |
+| FW-VIRT-DOWN-06 | M→VU mstatus.MPV=1 验证 | 同上，从 VU-mode 取快照 | MPV=1 |
+| FW-VIRT-DOWN-07 | M→VS 后 hstatus.SPV 验证 | M→VS 后在 VS-mode 读 `hstatus`（HS 级 CSR），该访问招 virtual-instruction 异常并因 hedeleg[22] read-only-zero 而必然递到 HS-mode；读 `trap_get_spv_snap()` | cause=22；SPV=1（硬件在“从 V=1 陷入 HS”时写 SPV，norm:H_trap_hs_csrwrites） |
+| FW-VIRT-DOWN-08 | M→VS 后 VS-mode CSR 访问 | M→VS 后在 VS-mode 分别读 `sstatus`(0x100) 与 `vsstatus`(0x200)；另在 M-mode 读 `vsstatus` 作对照 | M-mode 读 `vsstatus` 成功；VS-mode 读 `sstatus` 成功（即 vsstatus 的虚拟化视图，norm:H_vscsrs_sub）；VS-mode 直接按 0x200 读 `vsstatus` 必须报 cause=22（norm:H_vscsrs_acc_vs / norm:H_vscsrs_acc_m_hs） |
+| FW-VIRT-DOWN-09 | M→VU 后 VU-mode 限制验证 | M→VU 切换后，在 VU-mode 尝试读取 `sstatus` | 触发 **virtual-instruction 异常 (cause=22)**，不得模糊为 illegal-instruction（norm:H_virtinst_vu_nonhigh_supervisor_allowedhs_tvm0） |
 
 > [!NOTE]
 > - 虚拟化目标的编码：`target & 3` 提取名义特权级（MPP），`target & 0x4` 检测 V=1 标记。`PRIV_VS=5 (101b)` → MPP=S, V=1；`PRIV_VU=4 (100b)` → MPP=U, V=1。
 > - `set_prev_priv()` 中 M-mode 路径：先清除 MPP 和 MPV，然后设置 `MPP = target & 3`，若 `target & 0x4` 则设置 MPV=1。
-> - FW-VIRT-DOWN-03/04/05/06 验证的是 `set_prev_priv()` 在 `mret` 前对 mstatus 的配置。由于 `mret` 后 MPP 被硬件清零，需要通过间接方式验证（如回到 M-mode 后检查 trap record 或 CSRR 快照）。
+> - **DOWN-03~06 的观测窗口**：MPP/MPV 都被执行切换的那条 `mret` 消费掉，目标侧无法回读。
+>   硬件会在**下一次陷入 M-mode** 时重写二者（MPP ← 陷入方名义特权级，MPV ← 陷入方 V），
+>   而 `m_trap_handler` 在自己触碰它们之前已快照（`trap_get_mpp()` / `trap_get_mpv()`）。
+>   因此先在 M-mode 用 `trap_undelegate_exc(CAUSE_ILLEGAL_INST)` 把 cause 2 移出委托基线
+>   （否则 trap 停在 VS/HS，mstatus 根本不会被写），再在 VS/VU 内执行一条保留编码
+>   `.half 0x0000` 取回快照；`reset_state()` 在 `TEST_END()` 里恢复基线。
+> - 激励用 16 位保留编码而不是 `.4byte 0`：开启 C 扩展后 4 字节全零会被解为两条 `c.illegal`，
+>   handler 的 `next_instruction()` 只推进 2 字节，会在记录已解除武装后撞上第二条。
+> - DOWN-08 的预期以 SPEC 为准：“VS-mode 可访问虚拟化 S-mode CSR” 指的是通过 `sstatus`
+>   这类 **S 地址** 访问 vsstatus；直接按 VS CSR 自己的地址（0x200）访问在 V=1 时必须报
+>   virtual-instruction。VS CSR “作为自己” 只能从 M-mode 或 HS-mode 访问。
+> - 进入 VS/VU **不需要 G-stage 页表**：`hgatp.MODE=Bare` 且 `vsatp.MODE=Bare` 时 V=1 的取指
+>   直接按物理地址翻译，Guest 侧代码照常执行。Group 6/7/8/9 均据此实现，不得以
+>   “需要 hgatp” 为由 SKIP。
 
 ---
 
@@ -212,15 +287,19 @@ PRIV_VS = 5   /* V=1, nominal S-mode (bit 2 = V flag) */
 | FW-VIRT-UP-02 | VU→M 切换后 current_priv | VU-mode 调用 `goto_priv(PRIV_M)`，检查 `get_current_priv()` | 返回 `PRIV_M` (3) |
 | FW-VIRT-UP-03 | VS→HS (PRIV_S) 切换后 current_priv | VS-mode 调用 `goto_priv(PRIV_S)`，检查 `get_current_priv()` | 返回 `PRIV_S` (1)（退出虚拟化，V=0） |
 | FW-VIRT-UP-04 | VU→VS 切换后 current_priv | VU-mode 调用 `goto_priv(PRIV_VS)`，检查 `get_current_priv()` | 返回 `PRIV_VS` (5)（保持 V=1，名义特权级提升到 S） |
-| FW-VIRT-UP-05 | VS→M ecall 路径验证 | VS-mode 调用 `goto_priv(PRIV_M)`，验证 ecall 陷入 M-mode handler | M-mode handler 收到 ecall-from-VS (cause=10)，MPV 被清除 |
-| FW-VIRT-UP-06 | VS→M 后 M-mode 可访问 H-ext CSR | VS→M 后，在 M-mode 读取 hstatus CSR | 读取成功（证明确实在 M-mode 且 V=0） |
-| FW-VIRT-UP-07 | VS→HS 后 S-mode 行为验证 | VS→HS 后，在 S-mode (HS-mode) 读取 hstatus CSR | 读取成功（HS-mode 可访问 hstatus） |
-| FW-VIRT-UP-08 | VU→VS 后 VS-mode CSR 访问 | VU→VS 后，在 VS-mode 读取 vsstatus | 读取成功（VS-mode 可访问虚拟化 S-mode CSR） |
+| FW-VIRT-UP-05 | VS→M ecall 路径验证 | VS-mode 调用 `goto_priv(PRIV_M)`，回到 M 后用 trap 保护读 `hstatus` | ecall-from-VS (cause=10) 因 hedeleg[10] read-only-zero 停在 HS 并转发至 M；mret 时 MPP=M 所以 V 保持 0（norm:mstatus_mpv_op），hstatus 读取不触发异常 |
+| FW-VIRT-UP-06 | VS→M 后 M-mode 可访问 H-ext CSR | VS→M 后，在 M-mode 用 trap 保护读取 `hstatus` | 读取不触发异常（证明确实在 M-mode 且 V=0） |
+| FW-VIRT-UP-07 | VS→HS 后 S-mode 行为验证 | VS→HS 后，用 `run_in_priv(PRIV_S, read_hstatus_fn, 0)` 在 HS-mode 读 `hstatus`；helper 返回 0 或本次 trap 的 cause | 返回 0，即 HS-mode 读 hstatus 不触发异常（HS-mode 可访问 hstatus，norm:H_csrs_hs_not_vs） |
+| FW-VIRT-UP-08 | VU→VS 后 VS-mode CSR 访问 | 先在 M-mode 清掉 `vsstatus.SUM`；经 VU→VS 后在 VS-mode 对 `sstatus` 置 SUM；回 M-mode 读 `vsstatus` | VS-mode 经 `sstatus` 地址的写入落到 `vsstatus.SUM`（norm:H_vscsrs_sub），且写入本身不触发异常 |
 
 > [!NOTE]
-> - VS→M 路径：VS-mode ecall → M-mode handler（cause=10, ecall-from-VS），handler 清除 MPV 并设 MPP=M，mret 回到 M-mode。
-> - VS→HS 路径：VS-mode ecall → M-mode handler，handler 清除 MPV 并设 MPP=S，mret 回到 HS-mode (V=0, S-mode)。
-> - VU→VS 路径：VU-mode ecall → M-mode handler，handler 保持 MPV=1 并设 MPP=S，mret 回到 VS-mode。
+> - VS→M 路径：VS-mode ecall（cause=10，GOTO_MMODE）→ HS handler（hedeleg[10] read-only-zero）→ 转发 M，handler 设 MPP=M 后 mret。
+> - VS→HS 路径：VS-mode ecall（cause=10，GOTO_SMODE）→ HS handler **就地兑现**：清 `hstatus.SPV`、置 `sstatus.SPP=1` 后 `sret`，不经 M。
+> - VU→VS 路径：VU-mode ecall（cause=8，GOTO_VSMODE）→ VS handler 无权 → 转发 HS → HS **就地兑现**：置 `hstatus.SPV=1`、`SPP=1` 后 `sret`，不经 M。
+> - 本组断言不使用 `TEST_ASSERT(..., true)` 这类恒真式：“读取成功” 必须表达为
+>   `PRIV_DO(...)` + `CHECK_NO_TRAP(...)`，或 helper 回报的 cause 等于 0，否则用例无法失败。
+> - UP-08 的写入用 `trap_expect_begin()` / `trap_expect_end()` 手工开窗，不走 `PRIV_DO`：
+>   `PRIV_DO(stmt)` 展开为 `(void)(stmt)`，而 `CSRS`/`CSRW`/`CSRC` 是 asm 语句不是表达式。
 
 ---
 
@@ -233,7 +312,7 @@ PRIV_VS = 5   /* V=1, nominal S-mode (bit 2 = V flag) */
 | FW-VIRT-IND-01 | S→VS 间接切换 | S-mode (HS-mode) 调用 `goto_priv(PRIV_VS)`，检查 `get_current_priv()` | 返回 `PRIV_VS` (5)；路径：ecall to M → mret with MPV=1,MPP=S |
 | FW-VIRT-IND-02 | S→VU 间接切换 | S-mode 调用 `goto_priv(PRIV_VU)`，检查 `get_current_priv()` | 返回 `PRIV_VU` (4)；路径：ecall to M → mret with MPV=1,MPP=U |
 | FW-VIRT-IND-03 | VS→VU 间接切换 | VS-mode 调用 `goto_priv(PRIV_VU)`，检查 `get_current_priv()` | 返回 `PRIV_VU` (4)；路径：`lower_priv()` → ecall to M → mret with MPV=1,MPP=U |
-| FW-VIRT-IND-04 | S→VS 切换后 V=1 验证 | S→VS 后，在 VS-mode 检查 hstatus.SPV 或尝试访问虚拟化 CSR | 确认处于 V=1 模式 |
+| FW-VIRT-IND-04 | S→VS 切换后 V=1 验证 | 先在 HS-mode 读 `hstatus` 作对照，再 S→VS 后在 VS-mode 读同一 CSR | HS-mode 读取不触发异常；VS-mode 读取被拒且 cause=22——两次访问之间只有 V 变了，这就是 V=1 的证据（norm:H_virtinst_vu_vs_nonhigh_allowedhs_tvm0） |
 | FW-VIRT-IND-05 | S→VU 切换后 V=1 验证 | S→VU 后，验证处于 VU-mode | `get_current_priv()` = PRIV_VU，V=1 模式 |
 | FW-VIRT-IND-06 | VS→VU 切换后 V=1 保持 | VS→VU 后，验证仍然处于 V=1 模式 | `get_current_priv()` = PRIV_VU，MPV 保持为 1 |
 | FW-VIRT-IND-07 | 完整虚拟化往返 M→VS→M | M→VS→M 往返切换 | 最终 `get_current_priv()` = PRIV_M，V=0 |
@@ -242,9 +321,12 @@ PRIV_VS = 5   /* V=1, nominal S-mode (bit 2 = V flag) */
 | FW-VIRT-IND-10 | 完整虚拟化往返 VS→VU→VS | VS→VU→VS 往返切换 | 最终 `get_current_priv()` = PRIV_VS |
 
 > [!NOTE]
-> - S→VS/VU 的间接路径：由于 `sret` 不检查 MPV 位，只有 `mret` 能进入 V=1 模式。因此从 S-mode 切换到虚拟化目标需要先 ecall 到 M-mode，再由 M-mode 设置 MPV=1 后 mret。
-> - VS→VU 的间接路径：`lower_priv()` 发现当前为 VS 且目标为 VU（虚拟化的更低特权级），先 ecall 到 M-mode，然后从 M-mode 设置 MPV=1,MPP=U 后 mret。
-> - `goto_priv()` 中 `target > current_priv` 判断使用原始数值比较：PRIV_VS(5) > PRIV_M(3)，因此 M→VS 走 ecall 路径（正确，因为需要在 M-mode handler 中设置 MPV）。
+> - S→VS/VU 与 VS→VU 的间接路径来自 `lower_priv()`：`priv_cmp` 把虚拟化目标归为“下降”，
+>   而当前不在 M，于是先 `ecall(GOTO_MMODE)` 升到 M，再由 M 置 MPV=1 + MPP 后 mret。
+>   注意这不是架构必然：HS 级 `tsbi_s_dispatch()` 能用 `hstatus.SPV` + `sret` 就地进 V=1，
+>   只是 `goto_priv()` 从 S/VS 出发时不会选那条路（见开头“切换路径矩阵”下的 IMPORTANT）。
+> - `goto_priv()` 中 `target > current_priv` 的判断用的是 `priv_cmp()` 而不是原始数值：
+>   PRIV_VS(5) 相对 PRIV_M(3) 被判为**更低**（虚拟化级总是低于 M/HS），所以 M→VS 走 mret 下降路径。
 
 ---
 
@@ -264,6 +346,10 @@ PRIV_VS = 5   /* V=1, nominal S-mode (bit 2 = V flag) */
 > [!NOTE]
 > - `run_in_priv()` 的虚拟化路径：从 M-mode 设置 MPV=1 + MPP 后 mret 到 _run_trampoline，fn 执行后通过 ecall 回到 M-mode。
 > - 从 S-mode 调用 `run_in_priv(PRIV_VS/PRIV_VU, ...)` 会先 ecall 到 M-mode，再从 M-mode 执行上述流程（代码中 `is_virt_target` 检测触发间接路径）。
+> - 本组六个用例都在开头显式 `goto_priv(PRIV_M)` 建立 M-mode 调用方：`main()` 在 S-mode，
+>   否则 FW-RUN-VIRT-05/06 断言的“回到 M-mode”会变成“回到 S-mode”。
+> - 进入 VS/VU 执行 fn 不需要 G-stage 页表（同 Group 6 的说明），也不需要在 fn 内部做任何
+>   翻译相关设置；fn 只需是普通 C 函数，返回 `uintptr_t`。
 
 ---
 
@@ -330,53 +416,65 @@ damo-priv-test/
 
 ### 关键注意事项
 
-1. **S-mode/U-mode 中无法 printf**：在 S-mode 和 U-mode 中，UART 不可访问。需使用 `PRIV_DO` + `CHECK_*` 模式，或在目标特权级存储结果到全局变量后回到 M-mode 断言。
+1. **printf 与断言位置**：S-mode 常态下 UART 可访问（boot 期 PMP 已放开全空间），`TEST_BEGIN`/`TEST_ASSERT`
+   在 S-mode 直接打印。但 U/VS/VU 侧不应依赖打印：用 `PRIV_DO` + `CHECK_*`，或把观测结果存进
+   局部/全局变量，回 M-mode 再断言。
 
-2. **get_current_priv() 的局限性**：`current_priv` 是软件变量，可能与硬件实际特权级不一致（如 bug 导致）。高可信度验证应结合硬件行为（如 CSR 访问权限）进行交叉验证。
+2. **get_current_priv() 的局限性**：`current_priv` 是软件变量，可能与硬件实际特权级不一致（如 bug 导致）。
+   高可信度验证应结合硬件行为（如 CSR 访问权限、trap 入口快照的 MPP/MPV/SPV）进行交叉验证。
 
-3. **虚拟化测试需要 ENABLE_HYP**：Group 6-9 的所有测试必须在编译时启用 `ENABLE_HYP=1`，并在运行时检测 H 扩展可用性。
+3. **虚拟化测试需要 ENABLE_HYP**：Group 6-9 的所有测试必须在编译时启用 `ENABLE_HYP=1`。
+   H 扩展是否实现由平台配置在**编译期**判定（`rvtest_config.h` 的 `H_SUPPORTED` →
+   `common/capabilities.h` 的 `H_AVAILABLE`），不做运行时探测。
 
-4. **PMP 配置**：切换到 S-mode 或 U-mode 前需要确保 PMP 允许目标模式访问代码和数据区域。框架的 `reset_state()` 会配置 PMP，但测试中可能需要额外配置。
+4. **PMP 配置**：PMP 全空间 RWX 由 `common/entry.S` 在 boot 期（M-mode，降权之前）统一配置，
+   `reset_state()` 不再碰 PMP；用例内不得自行写 `pmpcfg`/`pmpaddr`——那是 M 级 CSR，
+   在 S-mode 常态下必然报 scause=2。
 
-5. **ecall handler 的 MPP 设置**：M-mode ecall handler 中 `ms |= ((uintptr_t)(target & 3) << 11)` 使用 `target & 3` 提取名义特权级。对于虚拟化目标 `PRIV_VS=5 (101b)`，`5 & 3 = 1 = S`，正确设置 MPP=S。
+5. **ecall handler 的 MPP 设置**：服务 GOTO 请求的 handler 中 `ms |= ((uintptr_t)(target & 3) << 11)`
+   使用 `target & 3` 提取名义特权级。对于虚拟化目标 `PRIV_VS=5 (101b)`，`5 & 3 = 1 = S`，正确设置 MPP=S。
 
-6. **mret 后 MPP 清零行为**：RISC-V 规范要求 `mret` 后 MPP 被设为最低实现的特权级（通常为 U=0）。测试验证这一点时需要注意：mret 已经执行，MPP 已经是清零后的值。
+6. **mret 后 MPP 清零行为**：RISC-V 规范要求 `mret` 后 MPP 被设为最低实现的特权级（通常为 U=0）。
+   测试验证这一点时需要注意：mret 已经执行，MPP 已经是清零后的值——它**不能**用来反推
+   切换前 MPP 被设成了什么，后者只能靠 Group 6 NOTE 里的 trap 入口快照观测。
 
-7. **TEST_END() 自动回到 M-mode**：`TEST_END()` 宏会调用 `goto_priv(PRIV_M)` 和 `reset_state()`。如果测试用例结束时不在 M-mode，`TEST_END()` 会自动处理。
+7. **TEST_END() 的收尾特权级**：`TEST_END()` 先 `goto_priv(PRIV_M)` 让 `reset_state()` 取得 M 权限，
+   `reset_state()` 结束前再 `goto_priv(PRIV_S)` 交还控制权，所以每个用例都以 **S-mode** 收尾，
+   下一个用例的起点因此是 S 而不是 M；需要 M 起点的用例必须自己 `goto_priv(PRIV_M)`。
 
-8. **trap handler 的 medeleg/mideleg**：框架默认 `medeleg=0, mideleg=0`（所有 trap 到 M-mode）。测试 ecall 时需注意 ecall 异常不被委托到低特权级 handler。
+8. **委托优先基线**：框架在 boot 期与每次 `reset_state()` 应用 `tsbi_deleg_*_baseline()`（**不是**
+   `medeleg=0`）：普通激励（含 illegal-instruction、page fault、ecall-from-U）被委托到 S/HS/VS
+   就地处理，只有 `medeleg[9]`（ecall-from-S）恒为 0 以保住 T-SBI 服务通道。用例若要让某个
+   cause 落到 M（例如观测 `mstatus.MPP/MPV` 的入口快照），必须先 `trap_undelegate_exc(cause)`，
+   `reset_state()` 会在 `TEST_END()` 里恢复基线。
+
+9. **cause 不得模糊匹配**：`CAUSE_ILLEGAL_INST`(2) 与 `CAUSE_VIRTUAL_INSTRUCTION`(22) 必须严格区分：
+   V=1 下一个 HS-qualified 的访问被拒属于 22，报 2 意味着实现丢失了 V=1 的区分。所有断言必须
+   明确写出预期 cause。
 
 ### 辅助函数
 
+各文件内的 `static` helper，均为 `uintptr_t (*)(uintptr_t)` 签名（`run_in_priv` 要求）或本文件私有的观测封装：
+
 ```c
-/* Check if running in expected privilege by attempting CSR access */
-static bool verify_in_m_mode(void) {
-    /* M-mode can access mstatus */
-    trap_expect_begin();
-    CSRR(mstatus);
-    bool trapped = trap_was_triggered();
-    trap_expect_end();
-    return !trapped;
-}
+/* test_fw_down.c: S-mode 双向探针，返回 bit0=sstatus 可读 | bit1=mstatus 被拒 */
+static uintptr_t s_mode_probe_fn(uintptr_t arg);
 
-static uintptr_t read_sstatus_fn(uintptr_t arg) {
-    (void)arg;
-    return CSRR(sstatus);
-}
+/* test_fw_up.c: M-mode 探针，返回 1 表示 mstatus 可读 */
+static uintptr_t m_mode_probe_fn(uintptr_t arg);
 
-static uintptr_t get_priv_fn(uintptr_t arg) {
-    (void)arg;
-    return (uintptr_t)get_current_priv();
-}
+/* test_fw_run.c / test_fw_run_virt.c: run_in_priv 返回值与特权级回报 */
+static uintptr_t return_magic_fn(uintptr_t arg);   /* 0xDEADBEEF / 0xCAFEBABE */
+static uintptr_t return_arg_fn(uintptr_t arg);
+static uintptr_t get_priv_fn(uintptr_t arg);
 
-static uintptr_t return_arg_fn(uintptr_t arg) {
-    return arg;
-}
+/* test_fw_virt_down.c: 在 VS/VU 内取一次落在 M 的 illegal-instruction trap，
+ * 以便回读 trap_get_mpp()/trap_get_mpv() 的入口快照。调用前需先在 M-mode
+ * trap_undelegate_exc(CAUSE_ILLEGAL_INST)。 */
+static bool fw_illegal_to_m(void);
 
-static uintptr_t return_magic_fn(uintptr_t arg) {
-    (void)arg;
-    return 0xDEADBEEF;
-}
+/* test_fw_virt_up.c: 返回 0 表示 hstatus 读取未触发异常，否则返回 cause */
+static uintptr_t read_hstatus_fn(uintptr_t arg);
 ```
 
 ---
@@ -386,8 +484,8 @@ static uintptr_t return_magic_fn(uintptr_t arg) {
 | 判定 | 条件 |
 |------|------|
 | PASS | `get_current_priv()` 返回预期值，CSR 状态符合 RISC-V 规范，函数执行结果正确 |
-| FAIL | `get_current_priv()` 返回错误值，CSR 状态异常，或切换过程中发生意外 trap |
-| SKIP | 所需扩展未实现（如 H 扩展不可用时 Group 6-9 SKIP） |
+| FAIL | `get_current_priv()` 返回错误值，CSR 状态异常，预期 cause 不匹配，或切换过程中发生意外 trap |
+| SKIP | **仅**用于编译期能力缺失（`ENABLE_HYP` 未置位时 Group 6-9 整体 SKIP）；不得以“需要页表/hgatp 设置”等可回避理由 SKIP |
 | HALT | 切换过程中触发 UNEXPECTED TRAP（框架 halt），表明存在严重 bug |
 
 ---
@@ -409,19 +507,32 @@ static uintptr_t return_magic_fn(uintptr_t arg) {
 | `s_trap_handler()` ecall 路径 | FW-UP-05, FW-UP-07 |
 | `current_priv` 变量 | 所有测试 |
 | `mstatus.MPP` 配置 | FW-DOWN-03~04, FW-VIRT-DOWN-04~05, FW-CSR-04~05 |
-| `mstatus.MPV` 配置 | FW-DOWN-08, FW-VIRT-DOWN-03~06, FW-VIRT-UP-05 |
+| `mstatus.MPV` 配置 | FW-DOWN-08, FW-VIRT-DOWN-03/06, FW-VIRT-IND-07 |
 | `mstatus.MPRV` 清除 | FW-DOWN-05, FW-CSR-03 |
 | `sstatus.SPP` 配置 | FW-CSR-06 |
+| `trap_get_mpp()` / `trap_get_mpv()` 入口快照 | FW-VIRT-DOWN-03~06 |
+| `trap_get_spv_snap()`（hstatus.SPV/SPVP） | FW-VIRT-DOWN-07 |
+| `trap_undelegate_exc()` 与委托基线恢复 | FW-VIRT-DOWN-03~06 |
+| VS CSR 替代规则（sstatus ↔ vsstatus） | FW-VIRT-DOWN-08, FW-VIRT-UP-08 |
+| VS/VU 对 HS 级 CSR 的访问限制 | FW-VIRT-DOWN-07~09, FW-VIRT-IND-04, FW-VIRT-UP-07 |
+| T-SBI GOTO 服务链路（S/U/VS/VU → M） | 所有向上切换用例，尤以 FW-UP-*, FW-VIRT-UP-*, FW-VIRT-IND-* |
 
 ---
 
 ## 参考
 
+- `DOCS/framework/tsbi_design_brief.md` — T-SBI 协议与 S-mode 常态执行模型
+- `DOCS/framework/tsbi_status.md` — T-SBI 代码分布与回归范围
 - `common/privilege.c` — 特权级切换核心实现
-- `common/trap.c` — M-mode/S-mode trap handler
+- `common/trap.c` — M/HS 级 trap handler 与 T-SBI dispatch
+- `common/hyp/hyp_vs_trap.c` — VS 级 handler
+- `common/tsbi/tsbi.h` — 协议常量与调用方原语
+- `common/tsbi/tsbi_deleg.c` — 委托优先基线
 - `common/trap_asm.S` — trap 入口和返回汇编代码
 - `common/test_framework.h` — 特权级常量定义和测试宏
 - `common/test_framework.c` — `reset_state()` 和测试生命周期
 - `common/encoding.h` — CSR 地址和 mstatus 位定义
-- `common/entry.S` — 启动入口
+- `common/entry.S` — 启动入口与 boot 期 PMP/向量/委托设置
 - `common/platform_init.S` — 平台初始化
+- `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — VS CSR 替代与 virtual-instruction 规则
+- `SPEC/riscv-isa-manual/src/priv/machine.adoc` — mret 对 MPP/MPRV 的影响

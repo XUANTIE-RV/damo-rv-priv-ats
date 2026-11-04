@@ -1,19 +1,21 @@
 CASE,TOTAL,PASS,FAIL,SKIP
-Ss_CSR,75,61,0,14
+Ss_CSR,75,62,0,13
 Ss_Exceptions,50,29,0,21
 Ss_Interrupts,38,38,0,0
 Ssccfg,0,0,0,0
 Ssccptr,45,42,0,3
-Sscofpmf,39,28,0,11
+Sscofpmf,39,20,0,19
 Sscounterenw,20,20,0,0
 Sscsrind,14,0,0,14
 Ssctr,129,0,0,129
 Ssdbltrp,33,0,2,31
-Ssstateen,42,17,0,25
+Ssstateen,42,23,0,19
 Sstc,31,31,0,0
 Sstvala,25,16,0,9
 Sstvecd,16,13,0,3
 Ssu64xl,4,4,0,0
+qos.Ssqosid,20,19,0,1
+qos.cbqri,105,6,0,99
 Sv39,50,50,0,0
 Sv48,50,50,0,0
 Sv57,49,49,0,0
@@ -23,6 +25,7 @@ Svadu,30,30,0,0
 Svnapot,53,53,0,0
 Svinval,37,37,0,0
 Svpbmt,49,46,0,3
+Svrsw60t59b,25,21,0,4
 Svvptc,15,13,0,2
 Sm_CSR,224,180,0,44
 Sm_Exceptions,99,73,0,26
@@ -32,7 +35,8 @@ Smcntrpmf,51,47,0,4
 Smcsrind,31,0,0,31
 Smctr,41,0,0,41
 Smdbltrp,38,5,7,26
-Smstateen,47,28,0,19
+Smrnmi,30,0,0,30
+Smstateen,47,33,0,14
 zpm.Smmpm,21,19,2,0
 zpm.Smnpm,25,25,0,0
 zpm.Ssnpm,24,24,0,0
@@ -40,3 +44,4 @@ pmp,74,73,1,0
 pmp_sv39,96,96,0,0
 pmp_sv48,110,110,0,0
 pmp_sv57,124,124,0,0
+Smepmp,36,0,0,36

@@ -21,19 +21,21 @@ LOGDIR="${SCRIPT_DIR}/statistics"
 # ---------------------------------------------------------------------
 # Supervisor extensions
 EXT_SS="Ss_CSR Ss_Exceptions Ss_Interrupts Ssccfg Ssccptr Sscofpmf Sscounterenw Sscsrind Ssctr Ssdbltrp Ssstateen Sstc Sstvala Sstvecd Ssu64xl"
-EXT_SV="Sv39 Sv48 Sv57 Svbare Svade Svadu Svnapot Svinval Svpbmt Svvptc"
+# QoS extensions: the Ssqosid identifier CSR and the CBQRI register interface
+EXT_QOS="qos.Ssqosid qos.cbqri"
+EXT_SV="Sv39 Sv48 Sv57 Svbare Svade Svadu Svnapot Svinval Svpbmt Svrsw60t59b Svvptc"
 # Debug extensions
 EXT_SD="Sdext Sdtrig"
 
 # Machine extensions
-EXT_SM="Sm_CSR Sm_Exceptions Sm_Interrupts Smcdeleg Smcntrpmf Smcsrind Smctr Smdbltrp Smstateen"
-EXT_PMP="pmp pmp_sv39 pmp_sv48 pmp_sv57"
+EXT_SM="Sm_CSR Sm_Exceptions Sm_Interrupts Smcdeleg Smcntrpmf Smcsrind Smctr Smdbltrp Smrnmi Smstateen"
+EXT_PMP="pmp pmp_sv39 pmp_sv48 pmp_sv57 Smepmp"
 # cfi extensions
 EXT_CFI="cfi.Zicfilp cfi.Zicfiss"
 # pointer masking extensions
 EXT_ZPM="zpm.Smmpm zpm.Smnpm zpm.Ssnpm"
 # cmo extensions
-EXT_CMO="cmo.base cmo.Zicbom cmo.Zicbop cmo.Zicboz"
+EXT_CMO="cmo.base cmo.Zicbom cmo.Zicbop cmo.Zicboz cmo.Zic64b"
 # Zi extensions
 EXT_ZI="Zicntr Zicond Zicsr Zifencei Zihintntl Zihintpause Zihpm Zimop Ziccamoa Ziccamoc Ziccid Ziccif Zicclsm Ziccrse"
 # Zc extensions
@@ -60,7 +62,7 @@ EXT_HYP_ZA="Hypervisor_Zalrsc Hypervisor_Zaamo Hypervisor_Zacas Hypervisor_Zabha
 EXT_HYP_ZC="Hypervisor_Zca"
 
 
-ALL_SUITES="${EXT_HYP} ${EXT_HYP_VM} ${EXT_HYP_SM} ${EXT_HYP_SS} ${EXT_HYP_SV} ${EXT_HYP_ZI} ${EXT_HYP_ZA} ${EXT_HYP_ZC} ${EXT_SS} ${EXT_SV} ${EXT_SD} ${EXT_SM} ${EXT_PMP} ${EXT_CFI} ${EXT_ZPM} ${EXT_CMO} ${EXT_ZI} ${EXT_ZK} ${EXT_ZC} ${EXT_ZA}"
+ALL_SUITES="${EXT_HYP} ${EXT_HYP_VM} ${EXT_HYP_SM} ${EXT_HYP_SS} ${EXT_HYP_SV} ${EXT_HYP_ZI} ${EXT_HYP_ZA} ${EXT_HYP_ZC} ${EXT_SS} ${EXT_QOS} ${EXT_SV} ${EXT_SD} ${EXT_SM} ${EXT_PMP} ${EXT_CFI} ${EXT_ZPM} ${EXT_CMO} ${EXT_ZI} ${EXT_ZK} ${EXT_ZC} ${EXT_ZA}"
 
 usage()
 {
@@ -81,7 +83,7 @@ resolve_suite()
     case "$s" in
         all)    echo "${ALL_SUITES}" ;;
         hyp)    echo "${EXT_HYP} ${EXT_HYP_VM} ${EXT_HYP_SM} ${EXT_HYP_SS} ${EXT_HYP_SV} ${EXT_HYP_ZI} ${EXT_HYP_ZA} ${EXT_HYP_ZC}" ;;
-        priv)   echo "${EXT_SS} ${EXT_SV} ${EXT_SM} ${EXT_ZPM} ${EXT_PMP}" ;;
+        priv)   echo "${EXT_SS} ${EXT_QOS} ${EXT_SV} ${EXT_SM} ${EXT_ZPM} ${EXT_PMP}" ;;
         unpriv) echo "${EXT_ZI} ${EXT_ZK} ${EXT_ZC} ${EXT_ZA} ${EXT_CMO} ${EXT_CFI}" ;;
         *)
             if [ -d "${SCRIPT_DIR}/${s}" ]; then

@@ -154,6 +154,27 @@
 #define SSCOFPMF_AVAILABLE 0
 #endif
 
+/* Sscofpmf counting precondition (layer-2 gate).
+ *
+ * SSCOFPMF_AVAILABLE only says the extension is declared; it says nothing
+ * about whether an mhpmevent event selector on this platform really makes
+ * mhpmcounterN increment.  Event-selector encodings and the number of
+ * implemented counters are implementation-defined and the SPEC never
+ * requires a given selector to count, so a suite cannot assume one -- but
+ * per design note 5 this must stay a config declaration, not a runtime
+ * probe.  Platforms therefore declare the measured encoding as
+ * SSCOFPMF_COUNT_EVENT in config/<platform>/platform_config.h (a
+ * hand-maintained header, unlike the udb-generated rvtest_config.h), and
+ * counting-dependent cases skip when it is absent.
+ *
+ * Note: platform_config.h is injected into C translations only, so this
+ * macro is meaningful in C and stays 0 for assembly. */
+#ifdef SSCOFPMF_COUNT_EVENT
+#define SSCOFPMF_COUNTING_AVAILABLE 1
+#else
+#define SSCOFPMF_COUNTING_AVAILABLE 0
+#endif
+
 
 #if defined(SHLCOFIDELEG_SUPPORTED)
 #define SHLCOFIDELEG_AVAILABLE 1
@@ -168,6 +189,18 @@
 #define SHTVALA_AVAILABLE 1
 #else
 #define SHTVALA_AVAILABLE 0
+#endif
+
+/* Smepmp: M-mode PMP enhancements (mseccfg.MML / MMWP / RLB). Gated on the
+ * platform config's SMEPMP_SUPPORTED declaration; do not probe mseccfg at
+ * runtime to infer support.  Note that mseccfg itself may exist without
+ * Smepmp -- a model that only implements mseccfg.PMM (Smmpm) leaves
+ * MML/MMWP/RLB read-only zero, so a runtime probe of the register's presence
+ * would report support the permission model does not have. */
+#ifdef SMEPMP_SUPPORTED
+#define SMEPMP_AVAILABLE 1
+#else
+#define SMEPMP_AVAILABLE 0
 #endif
 
 /* Smmpm: M-mode pointer masking (mseccfg.PMM). Gated on the platform
@@ -196,6 +229,25 @@
 #define SSNPM_AVAILABLE 1
 #else
 #define SSNPM_AVAILABLE 0
+#endif
+
+/* Smrnmi: Resumable Non-Maskable Interrupts (mnscratch/mnepc/mncause/
+ * mnstatus + MNRET). Gated on the platform config's SMRNMI_SUPPORTED
+ * declaration; do NOT probe the mn* CSRs at runtime - after reset
+ * mnstatus.NMIE=0, and with NMIE=0 an M-mode exception vectors to the
+ * implementation-defined RNMI exception handler address instead of
+ * mtvec (norm:rnmi_exception_nmie0), so a probing trap cannot be
+ * caught reliably. A platform whose config does not declare Smrnmi
+ * skips the whole suite at compile time. Note for Spike: the unified
+ * SPIKE_ISA string deliberately omits _smrnmi (enabling RNMI globally
+ * disturbs unrelated suites' reset/trap behaviour); only the Smrnmi
+ * suite overrides SPIKE_ISA to add it, so SMRNMI_SUPPORTED is true for
+ * spike-rv64-max while no other suite built from that config may touch
+ * the mn* CSRs. */
+#ifdef SMRNMI_SUPPORTED
+#define SMRNMI_AVAILABLE 1
+#else
+#define SMRNMI_AVAILABLE 0
 #endif
 
 /* --- SMMTT / Supervisor Domain Access Protection family ------------
@@ -362,6 +414,19 @@
 #define ZICOND_AVAILABLE 0
 #endif
 
+/* --- Zilsd load/store-pair extension --------------------------------- */
+/* RV32-only ld/sd that move a 64-bit value through an aligned even/odd
+ * register pair, reusing the RV64 doubleword encodings. The Zilsd suite
+ * gates on this plus __riscv_xlen == 32; on RV64 the same encodings are
+ * the standard single-register doubleword ld/sd, so the pair semantics
+ * do not exist there. */
+
+#ifdef ZILSD_SUPPORTED
+#define ZILSD_AVAILABLE 1
+#else
+#define ZILSD_AVAILABLE 0
+#endif
+
 /* --- Zc* compressed-instruction subsets ------------------------------ */
 /* Zca (the integer compressed subset) is implied by the C extension
  * (C = Zca + Zcf(RV32) + Zcd), so its availability also honors
@@ -378,6 +443,28 @@
 #define ZCB_AVAILABLE 1
 #else
 #define ZCB_AVAILABLE 0
+#endif
+
+/* --- Zclsd compressed load/store-pair extension ---------------------- */
+/* Zclsd adds the RV32-only compressed pair forms (c.ld/c.sd/c.ldsp/
+ * c.sdsp), reusing the RV64 doubleword compressed encodings. Zclsd
+ * depends on Zilsd (defined above) and Zca, and is INCOMPATIBLE with
+ * Zcf (identical C0/C2 funct3=011/111 encodings), so a Zclsd suite must
+ * gate on:
+ *   (__riscv_xlen == 32) && ZCLSD_AVAILABLE && ZILSD_AVAILABLE &&
+ *   ZCA_AVAILABLE && !ZCF_AVAILABLE
+ * Do NOT probe these at runtime. */
+
+#ifdef ZCLSD_SUPPORTED
+#define ZCLSD_AVAILABLE 1
+#else
+#define ZCLSD_AVAILABLE 0
+#endif
+
+#ifdef ZCF_SUPPORTED
+#define ZCF_AVAILABLE 1
+#else
+#define ZCF_AVAILABLE 0
 #endif
 
 /* --- Zk* scalar-cryptography extensions ------------------------------ */
@@ -494,6 +581,21 @@
 #define SVINVAL_AVAILABLE 0
 #endif
 
+/* Svukte (address-independent latency of user-mode faults to supervisor
+ * addresses; senvcfg.UKTE / hstatus.HUKTE, SPEC/Svukte.adoc).
+ * The extension has no misa bit and no dedicated CSR: its only
+ * architectural discovery hook is that senvcfg.UKTE is writable instead
+ * of read-only zero, which is exactly what the Svukte suite verifies as
+ * a compliance point (UKTE-CSR-01) rather than uses as a gate. Gate on
+ * the config declaration here; do NOT decide support by writing
+ * senvcfg.UKTE at runtime. */
+
+#ifdef SVUKTE_SUPPORTED
+#define SVUKTE_AVAILABLE 1
+#else
+#define SVUKTE_AVAILABLE 0
+#endif
+
 /* Svnapot (NAPOT translation contiguity hint, misa.N / PTE bit 63).
  * QEMU's "max" CPU implements Svnapot but does not set misa.N, so a
  * runtime misa probe gives a false negative; rely on the config
@@ -503,6 +605,29 @@
 #define SVNAPOT_AVAILABLE 1
 #else
 #define SVNAPOT_AVAILABLE 0
+#endif
+
+/* Svrsw60t59b (PTE bits 60-59 reserved for supervisor software and
+ * ignored by the implementation; norm:Svrsw60t59b_reserved_bits_60_59).
+ * The extension has NO architectural discovery mechanism at all -- no
+ * misa bit, no CSR field, no menvcfg gate -- so a runtime probe would
+ * have to inject bits 60-59 into a live PTE and observe whether the
+ * translation faults. That probe is unusable in practice: the injected
+ * PTE can be one the harness itself is translated through, so a model
+ * without the extension faults while fetching its own trap handler and
+ * the suite dies instead of reporting. Gate on the config declaration
+ * only. Configs whose DUT does not implement the extension (Spike and
+ * Whisper both reject/ignore the svrsw60t59b ISA token) must NOT declare
+ * SVRSW60T59B_SUPPORTED.
+ *
+ * RV32 is excluded outright: Sv32 PTEs are 32 bits wide, so bits 60-59
+ * do not exist there. This matches norm:Svrsw60t59b_depends_on_sv39
+ * (Sv39 is an RV64-only mode). */
+
+#if (__riscv_xlen == 64) && defined(SVRSW60T59B_SUPPORTED)
+#define SVRSW60T59B_AVAILABLE 1
+#else
+#define SVRSW60T59B_AVAILABLE 0
 #endif
 
 /* --- Zicbo* cache-block operation extensions -------------------------- */
@@ -520,6 +645,17 @@
 #define ZICBOZ_AVAILABLE 1
 #else
 #define ZICBOZ_AVAILABLE 0
+#endif
+
+/* Zic64b: cache blocks are exactly 64 bytes and naturally aligned. It adds
+ * no instruction, CSR or misa bit, so the platform declaration is the only
+ * existence gate; the block geometry itself is measured behaviourally
+ * through the cbo.zero store range (Zicboz). Do NOT probe at runtime to
+ * infer support. */
+#ifdef ZIC64B_SUPPORTED
+#define ZIC64B_AVAILABLE 1
+#else
+#define ZIC64B_AVAILABLE 0
 #endif
 
 /* --- Counter / timer extensions --------------------------------------- */
@@ -540,14 +676,65 @@
 #endif
 
 /* --- Ssqosid (QoS identifier: srmcfg) --------------------------------- */
-/* Not declared by every platform config (e.g. qemu-rv64-max omits it),
- * so SSQOSID_AVAILABLE is 0 there and the suite reports SKIPPED --
- * matching the previous runtime srmcfg probe behaviour. */
+/* Not declared by every platform config (e.g. whisper-rv64-max omits it),
+ * so SSQOSID_AVAILABLE is 0 there and the suite reports SKIPPED. Do NOT
+ * trap-read srmcfg at runtime to infer support: under the S-mode-normal
+ * model the probe runs in S, where a closed mstateen0.SRMCFG gate raises
+ * the same illegal-instruction as an absent CSR, so the probe reports
+ * "not implemented" on a part that does implement it. */
 
 #ifdef SSQOSID_SUPPORTED
 #define SSQOSID_AVAILABLE 1
 #else
 #define SSQOSID_AVAILABLE 0
+#endif
+
+/* --- CBQRI controllers (Capacity and Bandwidth QoS Register Interface) - */
+/* CBQRI is a memory-mapped register interface rather than an ISA
+ * extension: srmcfg (Ssqosid) supplies the RCID/MCID, while the
+ * controllers themselves are SoC devices. Their presence is therefore a
+ * platform-INTEGRATION fact declared per-platform in
+ * config/<platform>/platform_config.h (like MSWI_SUPPORTED below), never
+ * an entry in the udb-generated ISA list:
+ *
+ *   CBQRI_CC_SUPPORTED  a capacity controller is mapped at CBQRI_CC_BASE
+ *   CBQRI_BC_SUPPORTED  a bandwidth controller is mapped at CBQRI_BC_BASE
+ *
+ * A platform may map either kind, both, or neither, so the two flags stay
+ * independent; CBQRI_AVAILABLE is their union, for the general register-
+ * interface requirements that hold for any controller.
+ *
+ * Do NOT trap-probe the capabilities register to infer presence -- a probe
+ * is wrong in both directions. A simulator that answers an unmapped
+ * physical access with zero instead of a load access fault reports a
+ * controller that does not exist, and every later case then asserts on
+ * those fabricated zero registers. Conversely, on a part that does fault,
+ * the probe cannot distinguish "no controller here" from "PMP or page
+ * table misconfigured", turning a setup bug into a silent SKIP.
+ *
+ * No config in this repo declares CBQRI today: QEMU compiles the
+ * riscv.cbqri.{capacity,bandwidth} device models in but none of its
+ * machines instantiates them (virt rejects -device with "expects a dynamic
+ * sysbus device type"), and spike/sail/whisper have no model at all. A
+ * declaration must land together with the device instantiation, otherwise
+ * qos.cbqri asserts against registers nobody drives. */
+
+#ifdef CBQRI_CC_SUPPORTED
+#define CBQRI_CC_AVAILABLE 1
+#else
+#define CBQRI_CC_AVAILABLE 0
+#endif
+
+#ifdef CBQRI_BC_SUPPORTED
+#define CBQRI_BC_AVAILABLE 1
+#else
+#define CBQRI_BC_AVAILABLE 0
+#endif
+
+#if CBQRI_CC_AVAILABLE || CBQRI_BC_AVAILABLE
+#define CBQRI_AVAILABLE 1
+#else
+#define CBQRI_AVAILABLE 0
 #endif
 
 /* --- Smaia (advanced interrupt architecture, M/HS side: hvien etc.) --- */
@@ -604,6 +791,54 @@
 #define MSWI_AVAILABLE 1
 #else
 #define MSWI_AVAILABLE 0
+#endif
+
+/* ===================================================================
+ * PLATFORM_PMP_* / PLATFORM_PHYS_ADDR_WIDTH -- declared PMP and
+ * physical-address implementation parameters
+ * ===================================================================
+ * These are IMPLEMENTATION PARAMETERS rather than extensions: the
+ * privileged spec lets any physical address width and any PMP
+ * granularity G stand, so there is no <EXT>_SUPPORTED flag to normalize.
+ * They are still config-DECLARATION driven (design note 5): a suite that
+ * needs a particular PMP shape -- e.g. a 4-byte TOR window to build an
+ * executable island -- gates on the DECLARED values at compile time and
+ * must not WARL-probe the DUT to decide whether to skip. A probe would
+ * turn a config/implementation mismatch into a silent SKIP; the declared
+ * value turns it into a loud failure.
+ *
+ * Source fields (rvtest_config.h, auto-generated by udb-gen):
+ *   UDB_NUM_PMP_ENTRIES   number of implemented PMP entries
+ *   UDB_PMP_GRANULARITY   log2 of the MINIMUM PMP REGION SIZE IN BYTES,
+ *                         i.e. G + 2 (minimum region = 2^(G+2) bytes).
+ *                         It is NOT the spec's G. Calibrated against two
+ *                         DUTs: declared 12 <-> measured G=10, declared
+ *                         2 <-> measured G=0.
+ *   UDB_PHYS_ADDR_WIDTH   physical address width in bits
+ *
+ * PLATFORM_PMP_DECLARED is 0 when a (downstream) config omits the UDB
+ * fields. A suite that gates on the PMP shape must then fail the build
+ * loudly instead of falling back to a runtime probe.
+ * =================================================================== */
+
+#ifdef UDB_NUM_PMP_ENTRIES
+#define PLATFORM_PMP_DECLARED       1
+#define PLATFORM_PMP_ENTRIES        UDB_NUM_PMP_ENTRIES
+#else
+#define PLATFORM_PMP_DECLARED       0
+#define PLATFORM_PMP_ENTRIES        0
+#endif
+
+#ifdef UDB_PMP_GRANULARITY
+#define PLATFORM_PMP_GRANULARITY_G  (UDB_PMP_GRANULARITY - 2)
+#else
+#define PLATFORM_PMP_GRANULARITY_G  (-1)    /* unknown */
+#endif
+
+#ifdef UDB_PHYS_ADDR_WIDTH
+#define PLATFORM_PHYS_ADDR_WIDTH    UDB_PHYS_ADDR_WIDTH
+#else
+#define PLATFORM_PHYS_ADDR_WIDTH    0       /* unknown */
 #endif
 
 /* ===================================================================

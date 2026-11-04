@@ -9,11 +9,25 @@
 
 #include "test_framework.h"
 
-/* Helper function to read sstatus in S-mode */
-static uintptr_t read_sstatus_fn(uintptr_t arg)
+/* Probe the privilege the trampoline actually landed in.
+ *
+ * Returns a bitmask: bit0 = sstatus readable, bit1 = mstatus denied.  Both
+ * halves are needed: sstatus alone would also read fine in M-mode, and
+ * mstatus being denied alone would also hold in U-mode.  Only the pair pins
+ * the execution to S.  Each read is trap-protected so a denial is an
+ * observation rather than an UNEXPECTED TRAP halt. */
+#define FW_S_PROBE_SSTATUS_OK    0x1u
+#define FW_S_PROBE_MSTATUS_DENY  0x2u
+
+static uintptr_t s_mode_probe_fn(uintptr_t arg)
 {
     (void)arg;
-    return CSRR(sstatus);
+    PRIV_DO(CSRR(sstatus));
+    unsigned r = trap_was_triggered() ? 0u : FW_S_PROBE_SSTATUS_OK;
+    PRIV_DO(CSRR(mstatus));
+    if (trap_was_triggered())
+        r |= FW_S_PROBE_MSTATUS_DENY;
+    return (uintptr_t)r;
 }
 
 /* FW-DOWN-01: M->S switch, verify current_priv */
@@ -128,10 +142,11 @@ bool test_fw_down_06(void)
      * from an S-mode caller this would be a same-privilege direct call, not
      * the M->S descent the case is named for. */
     goto_priv(PRIV_M);
-    (void)run_in_priv(PRIV_S, read_sstatus_fn, 0);
+    uintptr_t probe = run_in_priv(PRIV_S, s_mode_probe_fn, 0);
 
-    /* If we successfully read sstatus, we were in S-mode */
-    TEST_ASSERT("sstatus read succeeded in S-mode", true);
+    /* The probe only reports 3 when it ran with exactly S authority. */
+    TEST_ASSERT_EQ("fn ran in S-mode: sstatus readable, mstatus denied",
+                   probe, FW_S_PROBE_SSTATUS_OK | FW_S_PROBE_MSTATUS_DENY);
 
     TEST_END();
 }

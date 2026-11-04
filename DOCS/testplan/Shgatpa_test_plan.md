@@ -126,9 +126,9 @@
 
 `common/hyp/hyp_reset.c::hyp_reset_state()` 重置 hypervisor CSR 状态。本测试每个用例操作前先备份 `hgatp`，操作完成后还原。
 
-### 6. 探测结果传递
+### 6. 模式支持的前置条件
 
-Group 1 探测 `satp` 支持的 MODE 集合后，将结果存入全局变量（如 `g_satp_supports_sv39`），供 Group 2 使用来确定应验证哪些 hgatp 模式。
+Group 1 探测 `satp` 各 MODE 的 WARL 回读行为，探测本身即被测对象，不向其它组传递状态。其它组以某个 SvNN 可用为前置条件时，以平台配置声明的 `SV39_SUPPORTED` / `SV48_SUPPORTED` / `SV57_SUPPORTED` 为准。
 
 ---
 
@@ -139,20 +139,20 @@ Group 1 探测 `satp` 支持的 MODE 集合后，将结果存入全局变量（�
 
 ---
 
-### Group 1：`satp` MODE 支持探测（基线建立）
+### Group 1：`satp` MODE 支持探测
 
 **规范依据**：
 - `norm:satp_mode_sxlen64`（`supervisor.adoc:1044-1050`）：SXLEN=64 时定义 Sv39/Sv48/Sv57
 - `norm:satp_mode_op_unsupported`（`supervisor.adoc:1052-1055`）：写入不支持的 MODE 整个写无效
 
-**测试职责**：在 M/HS-mode 探测 `satp` 支持的翻译模式集合，建立 Group 2 的比较基线。对每个标准 MODE 值（Bare=0, Sv39=8, Sv48=9, Sv57=10）进行写入-回读测试。
+**测试职责**：在 M/HS-mode 探测 `satp` 各翻译模式 MODE 字段的 WARL 回读行为，该行为本身即被测对象。对每个标准 MODE 值（Bare=0, Sv39=8, Sv48=9, Sv57=10）进行写入-回读测试。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
 | HGATP-PROBE-01 | satp MODE=Bare 探测 | 写 `satp = 0`（MODE=0, ASID=0, PPN=0），回读 MODE 字段 | 回读 MODE=0（Bare 通常被支持） |
-| HGATP-PROBE-02 | satp MODE=Sv39 探测 | 先写 Bare 基线，再写 `satp = 8 << 60`（MODE=8），回读 MODE | 回读 MODE ∈ {0, 8}；记录支持状态 |
-| HGATP-PROBE-03 | satp MODE=Sv48 探测 | 先写 Bare 基线，再写 `satp = 9 << 60`（MODE=9），回读 MODE | 回读 MODE ∈ {之前有效值, 9}；记录支持状态 |
-| HGATP-PROBE-04 | satp MODE=Sv57 探测 | 先写 Bare 基线，再写 `satp = 10 << 60`（MODE=10），回读 MODE | 回读 MODE ∈ {之前有效值, 10}；记录支持状态 |
+| HGATP-PROBE-02 | satp MODE=Sv39 探测 | 先写 Bare 基线，再写 `satp = 8 << 60`（MODE=8），回读 MODE | 回读 MODE ∈ {0, 8} |
+| HGATP-PROBE-03 | satp MODE=Sv48 探测 | 先写 Bare 基线，再写 `satp = 9 << 60`（MODE=9），回读 MODE | 回读 MODE ∈ {之前有效值, 9} |
+| HGATP-PROBE-04 | satp MODE=Sv57 探测 | 先写 Bare 基线，再写 `satp = 10 << 60`（MODE=10），回读 MODE | 回读 MODE ∈ {之前有效值, 10} |
 
 > [!NOTE]
 > 探测逻辑与 shvsatpa 测试计划中的 Group 1 相同。至少一个非 Bare 模式应被支持（否则 H 扩展几乎无法运行 guest OS）。
@@ -166,13 +166,13 @@ Group 1 探测 `satp` 支持的 MODE 集合后，将结果存入全局变量（�
 - `norm:hgatp_sz_acc_op`（`hypervisor.adoc:989-994`）：`hgatp` 是 HSXLEN-bit RW 寄存器
 - `norm:hgatp_mode_sv`（`hypervisor.adoc:1020-1027`）：HSXLEN=64 时定义 Sv39x4/Sv48x4/Sv57x4
 
-**测试职责**：对 Group 1 中探测到的 satp 支持的每个 SvNN MODE，在 M/HS-mode 直接写入 `hgatp`（CSR 0x680）对应的 SvNNx4 值并验证回读 MODE 一致，确认 Shgatpa 映射关系成立。
+**测试职责**：对平台配置声明 `satp` 支持的每个 SvNN MODE，在 M/HS-mode 直接写入 `hgatp`（CSR 0x680）对应的 SvNNx4 值并验证回读 MODE 一致，确认 Shgatpa 映射关系成立。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
-| HGATP-MODE-01 | hgatp MODE=Sv39x4 支持 | 仅当 `g_satp_supports_sv39 == true` 时执行；写 `hgatp = MAKE_HGATP(8, 0, 0)`，回读 MODE | `MODE == 8`（Shgatpa 要求 Sv39→Sv39x4 一致） |
-| HGATP-MODE-02 | hgatp MODE=Sv48x4 支持 | 仅当 `g_satp_supports_sv48 == true` 时执行；写 `hgatp = MAKE_HGATP(9, 0, 0)`，回读 MODE | `MODE == 9`（Shgatpa 要求 Sv48→Sv48x4 一致） |
-| HGATP-MODE-03 | hgatp MODE=Sv57x4 支持 | 仅当 `g_satp_supports_sv57 == true` 时执行；写 `hgatp = MAKE_HGATP(10, 0, 0)`，回读 MODE | `MODE == 10`（Shgatpa 要求 Sv57→Sv57x4 一致） |
+| HGATP-MODE-01 | hgatp MODE=Sv39x4 支持 | 仅当平台配置声明支持 Sv39 时执行；写 `hgatp = MAKE_HGATP(8, 0, 0)`，回读 MODE | `MODE == 8`（Shgatpa 要求 Sv39→Sv39x4 一致） |
+| HGATP-MODE-02 | hgatp MODE=Sv48x4 支持 | 仅当平台配置声明支持 Sv48 时执行；写 `hgatp = MAKE_HGATP(9, 0, 0)`，回读 MODE | `MODE == 9`（Shgatpa 要求 Sv48→Sv48x4 一致） |
+| HGATP-MODE-03 | hgatp MODE=Sv57x4 支持 | 仅当平台配置声明支持 Sv57 时执行；写 `hgatp = MAKE_HGATP(10, 0, 0)`，回读 MODE | `MODE == 10`（Shgatpa 要求 Sv57→Sv57x4 一致） |
 | HGATP-MODE-04 | hgatp 模式交叉切换 | 依次写入所有 satp 支持对应的 hgatp 模式（如 Bare→Sv39x4→Sv48x4→Bare），每次回读验证 | 每次回读 MODE == 写入值 |
 
 > [!IMPORTANT]
@@ -279,15 +279,6 @@ Group 1 探测 `satp` 支持的 MODE 集合后，将结果存入全局变量（�
 | `MODE_SV39` | 8 | `HGATP_MODE_SV39X4` | 8 | `norm:shgatpa_satp_hgatp_mode_support` |
 | `MODE_SV48` | 9 | `HGATP_MODE_SV48X4` | 9 | `norm:shgatpa_satp_hgatp_mode_support` |
 | `MODE_SV57` | 10 | `HGATP_MODE_SV57X4` | 10 | `norm:shgatpa_satp_hgatp_mode_support` |
-
-### 全局变量
-
-| 变量 | 类型 | 说明 |
-|------|------|------|
-| `g_satp_supports_bare` | `volatile bool` | satp 是否支持 Bare 模式 |
-| `g_satp_supports_sv39` | `volatile bool` | satp 是否支持 Sv39 模式 |
-| `g_satp_supports_sv48` | `volatile bool` | satp 是否支持 Sv48 模式 |
-| `g_satp_supports_sv57` | `volatile bool` | satp 是否支持 Sv57 模式 |
 
 ### 测试框架 API
 

@@ -319,6 +319,83 @@ unsigned int pmp_detect_entry_count(void) {
 }
 
 /* ===================================================================
+ * Boot-time pmpcfg reset snapshot (see pmp_cfg.h)
+ * =================================================================== */
+
+#ifdef PMP_RESET_SNAPSHOT
+
+static volatile uintptr_t _pmp_snap_val[PMP_CFG_SNAP_SLOTS];
+static volatile uint16_t  _pmp_snap_idx[PMP_CFG_SNAP_SLOTS];
+static volatile uint8_t   _pmp_snap_valid[PMP_CFG_SNAP_SLOTS];
+static volatile uint8_t   _pmp_snap_slots;
+static volatile uint8_t   _pmp_snap_done;
+
+void pmp_boot_snapshot(void) {
+#if __riscv_xlen == 64
+    /* RV64: even-numbered pmpcfg0,2,...,14 (CSR_PMPCFG0 + 2*i) */
+    const unsigned int step = 2;
+    const unsigned int last = 14;
+#else
+    /* RV32: pmpcfg0..3 (CSR_PMPCFG0 + i) */
+    const unsigned int step = 1;
+    const unsigned int last = 3;
+#endif
+
+    unsigned int slot = 0;
+
+    for (unsigned int i = 0;
+         i <= last && slot < PMP_CFG_SNAP_SLOTS;
+         i += step, slot++) {
+        uint16_t csr = CSR_PMPCFG0 + i;
+
+        /* An unimplemented pmpcfg register traps on some platforms, so
+         * every read is armed.  BSS is already cleared and mtvec already
+         * installed at this point in common/entry.S, so the trap-armed
+         * accessors are usable; medeleg is still at its reset value, which
+         * delivers the probe trap to the M-mode handler. */
+        trap_expect_begin();
+        uintptr_t v = csr_read(csr);
+        bool trapped = trap_was_triggered();
+        trap_expect_end();
+
+        _pmp_snap_idx[slot]   = (uint16_t)i;
+        _pmp_snap_val[slot]   = trapped ? 0 : v;
+        _pmp_snap_valid[slot] = trapped ? 0 : 1;
+    }
+
+    _pmp_snap_slots = (uint8_t)slot;
+    _pmp_snap_done  = 1;
+}
+
+bool pmp_reset_snapshot_taken(void) {
+    return _pmp_snap_done != 0;
+}
+
+unsigned int pmp_reset_snap_slots(void) {
+    return _pmp_snap_slots;
+}
+
+unsigned int pmp_reset_snap_idx(unsigned int slot) {
+    if (slot >= _pmp_snap_slots)
+        return 0;
+    return _pmp_snap_idx[slot];
+}
+
+bool pmp_reset_snap_valid(unsigned int slot) {
+    if (slot >= _pmp_snap_slots)
+        return false;
+    return _pmp_snap_valid[slot] != 0;
+}
+
+uintptr_t pmp_reset_snap_value(unsigned int slot) {
+    if (slot >= _pmp_snap_slots)
+        return 0;
+    return _pmp_snap_val[slot];
+}
+
+#endif /* PMP_RESET_SNAPSHOT */
+
+/* ===================================================================
  * mseccfg Access API (Smepmp Extension)
  * =================================================================== */
 

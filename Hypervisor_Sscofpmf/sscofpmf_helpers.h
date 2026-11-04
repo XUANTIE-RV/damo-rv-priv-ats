@@ -26,12 +26,21 @@
 /* ===================================================================
  * Platform-configurable event number
  *
- * Different implementations use different event encodings.
- * Spike uses event=2 for "instructions retired".
- * Override at compile time with -DCOFPMF_EVENT_INSTRET=<n>.
+ * The mhpmevent event-selector encoding is implementation-defined and the
+ * SPEC never requires a particular selector to count, so the value comes
+ * from the platform config: SSCOFPMF_COUNT_EVENT declared in
+ * config/<platform>/platform_config.h and normalized by
+ * common/capabilities.h into SSCOFPMF_COUNTING_AVAILABLE.  A platform that
+ * declares no counting event has the counting-dependent cases skipped (see
+ * COFPMF_REQUIRE_COUNTING below), so the fallback here is never used as a
+ * stimulus.  Override with -DCOFPMF_EVENT_INSTRET=<n> for experiments.
  * =================================================================== */
 #ifndef COFPMF_EVENT_INSTRET
+#if SSCOFPMF_COUNTING_AVAILABLE
+#define COFPMF_EVENT_INSTRET  SSCOFPMF_COUNT_EVENT
+#else
 #define COFPMF_EVENT_INSTRET  2
+#endif
 #endif
 
 /* ===================================================================
@@ -51,19 +60,30 @@
 /* ===================================================================
  * Fixed target counter for the tests
  *
- * This suite decides whether to skip purely from compile-time config
- * (SSCOFPMF_AVAILABLE + H_AVAILABLE); it no longer probes the DUT to
- * discover an implemented counter, nor checks at runtime that
- * scountovf / counting are functional.  A platform that declares
- * Sscofpmf in config but implements it wrongly must fail loudly rather
- * than be masked by a probe-driven SKIP.  Tests therefore operate on a
- * fixed counter index, defaulting to the first architectural HPM
+ * Skipping is decided by compile-time config only, in two layers:
+ *   1. SSCOFPMF_AVAILABLE + H_AVAILABLE -- are Sscofpmf and the H extension
+ *      under test.
+ *   2. SSCOFPMF_COUNTING_AVAILABLE      -- does this platform declare an
+ *      event selector that really increments mhpmcounterN.  Required by the
+ *      counting-inhibition cases; see COFPMF_REQUIRE_COUNTING below.
+ * Neither layer probes the DUT: a platform that declares Sscofpmf but
+ * implements it wrongly still fails loudly, while a platform whose counters
+ * never count simply has no counting precondition to test (an
+ * implementation-defined platform fact, not non-compliance).  Tests operate
+ * on a fixed counter index, defaulting to the first architectural HPM
  * counter (== 3), matching the Group 10 examples in the test plan.
  * Override at compile time with -DCOFPMF_TEST_COUNTER=<n>.
  * =================================================================== */
 #ifndef COFPMF_TEST_COUNTER
 #define COFPMF_TEST_COUNTER  COFPMF_FIRST_COUNTER
 #endif
+
+/* Layer-2 gate for counting-dependent cases.  The reason string states the
+ * compile-time platform fact; it is never derived from a DUT probe. */
+#define COFPMF_REQUIRE_COUNTING()                                       \
+    if (!SSCOFPMF_COUNTING_AVAILABLE)                                   \
+        TEST_SKIP("platform declares no counting HPM event "            \
+                  "(implementation-defined)")
 
 /* ===================================================================
  * RV32 mhpmeventh access
@@ -206,14 +226,35 @@ static inline bool is_counter_implemented(unsigned n) {
 }
 
 /* ===================================================================
- * Find a second implemented counter different from `skip`
+ * Counter-access gates: write, then read back
+ *
+ * mcounteren and hcounteren fields are WARL and may be read-only zero
+ * (norm:mcounteren_flds_rdonly0), so writing a bit is not evidence that the
+ * gate is open.  A case that asserts "VS-mode sees the real OF value" needs
+ * both gates actually set, and a case that asserts "the bit is masked" needs
+ * the masking gate actually clear; when the read-back disagrees the
+ * precondition is unreachable and the caller skips instead of reporting a
+ * scountovf mirroring failure.  mcounteren is M-level (T-SBI proxy),
+ * hcounteren is HS-level (direct access).
  * =================================================================== */
-static inline unsigned find_second_counter(unsigned skip) {
-    for (unsigned n = COFPMF_FIRST_COUNTER; n <= COFPMF_LAST_COUNTER; n++) {
-        if (n != skip && is_counter_implemented(n))
-            return n;
-    }
-    return 0;
+static inline bool cofpmf_mcounteren_set(unsigned n) {
+    tsbi_csr_write(CSR_MCOUNTEREN, tsbi_csr_read(CSR_MCOUNTEREN) | (1UL << n));
+    return (tsbi_csr_read(CSR_MCOUNTEREN) & (1UL << n)) != 0;
+}
+
+static inline bool cofpmf_mcounteren_clear(unsigned n) {
+    tsbi_csr_write(CSR_MCOUNTEREN, tsbi_csr_read(CSR_MCOUNTEREN) & ~(1UL << n));
+    return (tsbi_csr_read(CSR_MCOUNTEREN) & (1UL << n)) == 0;
+}
+
+static inline bool cofpmf_hcounteren_set(unsigned n) {
+    CSRW(hcounteren, CSRR(hcounteren) | (1UL << n));
+    return (CSRR(hcounteren) & (1UL << n)) != 0;
+}
+
+static inline bool cofpmf_hcounteren_clear(unsigned n) {
+    CSRW(hcounteren, CSRR(hcounteren) & ~(1UL << n));
+    return (CSRR(hcounteren) & (1UL << n)) == 0;
 }
 
 /* ===================================================================
@@ -243,39 +284,6 @@ static inline void cofpmf_execute_nops(unsigned count) {
     for (volatile unsigned i = 0; i < count; i++) {
         asm volatile("nop");
     }
-}
-
-/* ===================================================================
- * Trigger overflow: set counter near max, run instructions, stop.
- * Returns true if OF bit was set after the sequence.
- * =================================================================== */
-static inline bool cofpmf_trigger_overflow(unsigned n) {
-    /* Set counter to near-max value */
-    cofpmf_write_counter(n, (uint64_t)-COFPMF_OVERFLOW_MARGIN);
-    /* Start counting retired instructions, OF=0, no inhibit */
-    cofpmf_start_counting(n, COFPMF_EVENT_INSTRET);
-    /* Execute enough instructions to overflow */
-    cofpmf_execute_nops(COFPMF_OVERFLOW_MARGIN + 50);
-    /* Stop counting */
-    cofpmf_stop_counting(n);
-    /* Check OF bit — read the event CSR that was just cleared by stop;
-     * but stop clears the whole register.  Re-read before stop instead. */
-    return false; /* caller should check OF directly */
-}
-
-/* ===================================================================
- * Check if WPRI bits 57:56 in mhpmevent are masked to zero.
- *
- * The spec says these are WPRI, but some implementations may not
- * enforce the mask.
- * =================================================================== */
-static inline bool is_wpri_masked(unsigned n) {
-    uint64_t orig = cofpmf_read_event(n);
-    uint64_t wpri_mask = (3ULL << 56);
-    cofpmf_write_event(n, orig | wpri_mask);
-    uint64_t val = cofpmf_read_event(n);
-    cofpmf_write_event(n, orig);
-    return (val & wpri_mask) == 0;
 }
 
 #endif /* SSCOFPMF_HELPERS_H */

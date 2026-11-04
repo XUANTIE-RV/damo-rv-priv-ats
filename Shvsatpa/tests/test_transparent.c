@@ -25,7 +25,10 @@
  *   only writes satp=Bare (safe direction: SvNN -> identity).
  * =================================================================== */
 
-extern volatile bool g_satp_supports_sv39;
+/* The Sv39 requirement is gated by the REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4)
+ * already present in each case below (compile-time SV39_AVAILABLE from
+ * common/capabilities.h). The former runtime g_satp_supports_sv39 check was
+ * redundant with it and tied this file to Group 1's probe order. */
 
 /* Volatile for VS<->M data passing */
 static volatile uintptr_t g_trans_vs_read;
@@ -78,9 +81,6 @@ TEST_REGISTER(test_shvsatpa_trans_vs_write_m_read);
 bool test_shvsatpa_trans_vs_write_m_read(void) {
     TEST_BEGIN("VSATP-TRANS-01: VS writes satp, M reads vsatp");
 
-    if (!g_satp_supports_sv39) {
-        TEST_SKIP("satp does not support Sv39 (needed for non-trivial transparency test)");
-    }
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     two_stage_ctx_t ctx;
@@ -104,9 +104,6 @@ TEST_REGISTER(test_shvsatpa_trans_m_write_vs_read);
 bool test_shvsatpa_trans_m_write_vs_read(void) {
     TEST_BEGIN("VSATP-TRANS-02: M writes vsatp, VS reads satp");
 
-    if (!g_satp_supports_sv39) {
-        TEST_SKIP("satp does not support Sv39 (needed for non-trivial transparency test)");
-    }
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     two_stage_ctx_t ctx;
@@ -137,9 +134,6 @@ TEST_REGISTER(test_shvsatpa_trans_vs_no_affect_hs_satp);
 bool test_shvsatpa_trans_vs_no_affect_hs_satp(void) {
     TEST_BEGIN("VSATP-TRANS-03: VS writes satp does NOT affect HS satp");
 
-    if (!g_satp_supports_sv39) {
-        TEST_SKIP("satp does not support Sv39 (needed for non-trivial isolation test)");
-    }
     REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
 
     /* Save and set HS satp to known Bare value */

@@ -33,6 +33,17 @@
 /* Some Case will crash qemu，mark those test as SKIP */
 #define QEMU_SKIP_TESTS  1
 
+/* ===== HPM counting capability (consumed by common/capabilities.h) =====
+ * Sscofpmf/Zihpm leave the mhpmevent event-selector encoding
+ * implementation-defined, and the SPEC never requires a given selector to
+ * count.  Declare here only an encoding measured to really increment
+ * mhpmcounterN on this platform; capabilities.h derives
+ * SSCOFPMF_COUNTING_AVAILABLE from it, and counting-dependent cases skip
+ * when it is absent.  QEMU maps mhpmcounterN to a host-level free-running
+ * quantity: selectors 1 and 2 both increment (measured ~1e4 per nop).
+ * Do NOT declare this on a platform whose counters never increment. */
+#define SSCOFPMF_COUNT_EVENT  2
+
 /* ===== CLINT / Machine Timer addresses (for C code) =====
  * These mirror the values in rvmodel_macros.h for C code use.
  * Assembly code uses the originals in rvmodel_macros.h. */

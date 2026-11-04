@@ -527,24 +527,41 @@ static inline bool get_mdt(void) { return false; }
 })
 
 /* ===================================================================
- * S/U-mode safe trap macros
+ * PRIV_DO / CHECK_* - arm/execute/disarm a stimulus, then assert on it
  *
- * When running in S-mode or U-mode, printf (UART access) is not
- * available. Use PRIV_DO_* to arm/execute/disarm in privileged mode,
- * then return to M-mode and use CHECK_* to assert results.
+ * These predate the T-SBI S-mode-normal model, and their original
+ * rationale was twofold: a body running in M-mode had to drop to S/U to
+ * issue the stimulus, and printf was assumed unreachable below M.  The
+ * second half no longer holds - entry.S opens PMP entry 0 R/W/X over the
+ * whole address space before dropping privilege, so the UART is reachable
+ * from S(HS)-mode and CHECK_* (plain TEST_ASSERT wrappers) print fine
+ * there.
  *
- * Pattern:
+ * Under the current model the body already runs in S(HS)-mode, so the
+ * usual shape needs no privilege scaffolding at all:
+ *   PRIV_DO(mem_load8(addr));           // arm + execute + disarm
+ *   CHECK_NO_TRAP("read succeeded");    // assert in place
+ *
+ * Keep the goto_priv() round trip only when the stimulus must run at a
+ * privilege other than the body's - in practice a -DTSBI_BOOT_MODE_M
+ * suite, whose body runs in M:
  *   goto_priv(PRIV_S);
- *   PRIV_DO_NO_TRAP(mem_load8(addr));   // arm + execute + disarm, no printf
+ *   PRIV_DO_NO_TRAP(mem_load8(addr));   // arm + execute + disarm
  *   goto_priv(PRIV_M);
- *   CHECK_NO_TRAP("read succeeded");    // assert in M-mode (printf OK)
+ *   CHECK_NO_TRAP("read succeeded");
+ *
+ * PRIV_DO earns its keep in both shapes for a separate reason: it keeps
+ * printf out of the armed window, so output cannot interleave with the
+ * trap record.  If a test has installed its own page tables, the UART
+ * still has to be mapped before printf is used below M.
  * =================================================================== */
 
 /**
- * PRIV_DO - Arm trap, execute stmt, disarm. No printf.
+ * PRIV_DO - Arm trap, execute stmt, disarm. No printf inside the window.
  *
- * Use in S/U-mode where UART is inaccessible. After returning to
- * M-mode, use CHECK_NO_TRAP or CHECK_TRAP to assert the result.
+ * Usable at any privilege.  Under the S-mode-normal model the body is
+ * already in S(HS)-mode, so pair it directly with CHECK_NO_TRAP or
+ * CHECK_TRAP - no goto_priv() round trip is required.
  *
  * The trap arming/disarming is identical regardless of whether a
  * trap is expected; the expectation is expressed by the CHECK_*
@@ -557,10 +574,10 @@ static inline bool get_mdt(void) { return false; }
 } while (0)
 
 /**
- * PRIV_DO_EXEC - Arm trap, exec_at(addr), disarm. No printf.
+ * PRIV_DO_EXEC - Arm trap, exec_at(addr), disarm. No printf inside.
  *
- * Use in S/U-mode for testing instruction execution permissions.
- * After returning to M-mode, use CHECK_NO_TRAP or CHECK_TRAP.
+ * For testing instruction execution permissions.  Same privilege rules
+ * as PRIV_DO: assert with CHECK_NO_TRAP or CHECK_TRAP afterwards.
  */
 #define PRIV_DO_EXEC(addr) do { \
     trap_expect_begin(); \
@@ -575,16 +592,16 @@ static inline bool get_mdt(void) { return false; }
 #define PRIV_DO_EXEC_TRAP(addr)     PRIV_DO_EXEC(addr)
 
 /**
- * CHECK_NO_TRAP - Assert that the last PRIV_DO_NO_TRAP did not trigger a trap.
- * Must be called in M-mode after goto_priv(PRIV_M).
+ * CHECK_NO_TRAP - Assert that the last PRIV_DO did not trigger a trap.
+ * Callable at any privilege: it only reads the trap record and printfs.
  */
 #define CHECK_NO_TRAP(msg) do { \
     TEST_ASSERT(msg, !trap_was_triggered()); \
 } while (0)
 
 /**
- * CHECK_TRAP - Assert that the last PRIV_DO_TRAP triggered the expected trap.
- * Must be called in M-mode after goto_priv(PRIV_M).
+ * CHECK_TRAP - Assert that the last PRIV_DO triggered the expected trap.
+ * Callable at any privilege: it only reads the trap record and printfs.
  */
 #define CHECK_TRAP(msg, expected_cause) do { \
     TEST_ASSERT(msg ": trap triggered", trap_was_triggered()); \

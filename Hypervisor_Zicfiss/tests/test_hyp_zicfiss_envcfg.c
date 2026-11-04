@@ -302,6 +302,21 @@ bool test_hcfi_ss_11(void) {
 
     uintptr_t orig_h = cfi_setup_vs_sse(false, false);
 
+    /* Route the expected illegal-instruction back to HS (same reasoning as
+     * HCFI-SS-21).  The T-SBI hedeleg baseline delegates cause 2 to VS, and
+     * the standing VS handler does NOT honour the _exec_return_addr anchor
+     * that vs_exec_ssamoswap_w arms: it steps vsepc from whatever epc the DUT
+     * reported.  QEMU reports the translation-block start rather than the
+     * SSAMOSWAP address here, so the handler resumes in the middle of the
+     * helper's inline asm and re-executes the `addi` half of its
+     * `la t1, _exec_return_addr`, leaving t1 shifted by that immediate.  The
+     * block's two `sd ...,0(t1)` stores then scribble over unrelated RAM
+     * (.test_table with the clang layout, test_results with the gcc layout).
+     * HS runs with satp=Bare and its s_trap_handler consumes the anchor, so
+     * recovery lands exactly on the helper's resume label.
+     * HYP_TEST_END restores the delegation baseline. */
+    setup_deleg_to_hs(BIT(CAUSE_ILLEGAL_INST));
+
     uintptr_t r = two_stage_run_in_vs(&ctx, vs_exec_ssamoswap_w, SS_PAGE_ADDR);
     TEST_ASSERT_EQ("illegal-instruction from SSAMOSWAP (menvcfg.SSE=0)",
                    r, (uintptr_t)CAUSE_ILLEGAL_INST);

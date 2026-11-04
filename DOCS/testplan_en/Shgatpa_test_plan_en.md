@@ -126,9 +126,9 @@ In Sv*x4 modes, hgatp.PPN[1:0] always reads as zero (`norm:hgatp_ppn_op`) becaus
 
 `common/hyp/hyp_reset.c::hyp_reset_state()` resets hypervisor CSR state. Each test case in this plan backs up `hgatp` before operations and restores it after completion.
 
-### 6. Detection Result Propagation
+### 6. Mode Support Preconditions
 
-After Group 1 detects the set of MODEs supported by `satp`, results are stored in global variables (e.g., `g_satp_supports_sv39`) for Group 2 to determine which hgatp modes should be verified.
+Group 1 probes the WARL read-back behaviour of each `satp` MODE; the probe is itself the subject under test and passes no state to other groups. Where another group needs a given SvNN to be available as a precondition, the platform configuration's `SV39_SUPPORTED` / `SV48_SUPPORTED` / `SV57_SUPPORTED` declarations are authoritative.
 
 ---
 
@@ -139,20 +139,20 @@ After Group 1 detects the set of MODEs supported by `satp`, results are stored i
 
 ---
 
-### Group 1: `satp` MODE Support Detection (Baseline Establishment)
+### Group 1: `satp` MODE Support Detection
 
 **Specification Basis**:
 - `norm:satp_mode_sxlen64` (`supervisor.adoc:1044-1050`): Defines Sv39/Sv48/Sv57 when SXLEN=64
 - `norm:satp_mode_op_unsupported` (`supervisor.adoc:1052-1055`): Writing unsupported MODE causes entire write to be invalid
 
-**Test Responsibilities**: Detect the set of translation modes supported by `satp` in M/HS-mode to establish comparison baseline for Group 2. Perform write-readback tests for each standard MODE value (Bare=0, Sv39=8, Sv48=9, Sv57=10).
+**Test Responsibilities**: Probe the WARL read-back behaviour of each `satp` translation-mode MODE field in M/HS-mode; that behaviour is itself the subject under test. Perform write-readback tests for each standard MODE value (Bare=0, Sv39=8, Sv48=9, Sv57=10).
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
 | HGATP-PROBE-01 | satp MODE=Bare detection | Write `satp = 0` (MODE=0, ASID=0, PPN=0), read back MODE field | Readback MODE=0 (Bare is typically supported) |
-| HGATP-PROBE-02 | satp MODE=Sv39 detection | First write Bare baseline, then write `satp = 8 << 60` (MODE=8), read back MODE | Readback MODE ∈ {0, 8}; record support status |
-| HGATP-PROBE-03 | satp MODE=Sv48 detection | First write Bare baseline, then write `satp = 9 << 60` (MODE=9), read back MODE | Readback MODE ∈ {previous valid value, 9}; record support status |
-| HGATP-PROBE-04 | satp MODE=Sv57 detection | First write Bare baseline, then write `satp = 10 << 60` (MODE=10), read back MODE | Readback MODE ∈ {previous valid value, 10}; record support status |
+| HGATP-PROBE-02 | satp MODE=Sv39 detection | First write Bare baseline, then write `satp = 8 << 60` (MODE=8), read back MODE | Readback MODE ∈ {0, 8} |
+| HGATP-PROBE-03 | satp MODE=Sv48 detection | First write Bare baseline, then write `satp = 9 << 60` (MODE=9), read back MODE | Readback MODE ∈ {previous valid value, 9} |
+| HGATP-PROBE-04 | satp MODE=Sv57 detection | First write Bare baseline, then write `satp = 10 << 60` (MODE=10), read back MODE | Readback MODE ∈ {previous valid value, 10} |
 
 > [!NOTE]
 > Detection logic is identical to Group 1 in shvsatpa test plan. At least one non-Bare mode should be supported (otherwise H extension can hardly run guest OS).
@@ -166,13 +166,13 @@ After Group 1 detects the set of MODEs supported by `satp`, results are stored i
 - `norm:hgatp_sz_acc_op` (`hypervisor.adoc:989-994`): `hgatp` is HSXLEN-bit RW register
 - `norm:hgatp_mode_sv` (`hypervisor.adoc:1020-1027`): Defines Sv39x4/Sv48x4/Sv57x4 when HSXLEN=64
 
-**Test Responsibilities**: For each SvNN MODE detected as supported by satp in Group 1, directly write the corresponding SvNNx4 value to `hgatp` (CSR 0x680) in M/HS-mode and verify readback MODE matches, confirming Shgatpa mapping relationship holds.
+**Test Responsibilities**: For each SvNN MODE that the platform configuration declares `satp` to support, directly write the corresponding SvNNx4 value to `hgatp` (CSR 0x680) in M/HS-mode and verify readback MODE matches, confirming Shgatpa mapping relationship holds.
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
-| HGATP-MODE-01 | hgatp MODE=Sv39x4 support | Execute only when `g_satp_supports_sv39 == true`; write `hgatp = MAKE_HGATP(8, 0, 0)`, read back MODE | `MODE == 8` (Shgatpa requires Sv39→Sv39x4 consistency) |
-| HGATP-MODE-02 | hgatp MODE=Sv48x4 support | Execute only when `g_satp_supports_sv48 == true`; write `hgatp = MAKE_HGATP(9, 0, 0)`, read back MODE | `MODE == 9` (Shgatpa requires Sv48→Sv48x4 consistency) |
-| HGATP-MODE-03 | hgatp MODE=Sv57x4 support | Execute only when `g_satp_supports_sv57 == true`; write `hgatp = MAKE_HGATP(10, 0, 0)`, read back MODE | `MODE == 10` (Shgatpa requires Sv57→Sv57x4 consistency) |
+| HGATP-MODE-01 | hgatp MODE=Sv39x4 support | Execute only when the platform configuration declares Sv39; write `hgatp = MAKE_HGATP(8, 0, 0)`, read back MODE | `MODE == 8` (Shgatpa requires Sv39→Sv39x4 consistency) |
+| HGATP-MODE-02 | hgatp MODE=Sv48x4 support | Execute only when the platform configuration declares Sv48; write `hgatp = MAKE_HGATP(9, 0, 0)`, read back MODE | `MODE == 9` (Shgatpa requires Sv48→Sv48x4 consistency) |
+| HGATP-MODE-03 | hgatp MODE=Sv57x4 support | Execute only when the platform configuration declares Sv57; write `hgatp = MAKE_HGATP(10, 0, 0)`, read back MODE | `MODE == 10` (Shgatpa requires Sv57→Sv57x4 consistency) |
 | HGATP-MODE-04 | hgatp mode cross-switching | Sequentially write all hgatp modes corresponding to satp supported modes (e.g., Bare→Sv39x4→Sv48x4→Bare), verify readback each time | Each readback MODE == written value |
 
 > [!IMPORTANT]
@@ -279,15 +279,6 @@ After Group 1 detects the set of MODEs supported by `satp`, results are stored i
 | `MODE_SV39` | 8 | `HGATP_MODE_SV39X4` | 8 | `norm:shgatpa_satp_hgatp_mode_support` |
 | `MODE_SV48` | 9 | `HGATP_MODE_SV48X4` | 9 | `norm:shgatpa_satp_hgatp_mode_support` |
 | `MODE_SV57` | 10 | `HGATP_MODE_SV57X4` | 10 | `norm:shgatpa_satp_hgatp_mode_support` |
-
-### Global Variables
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `g_satp_supports_bare` | `volatile bool` | Whether satp supports Bare mode |
-| `g_satp_supports_sv39` | `volatile bool` | Whether satp supports Sv39 mode |
-| `g_satp_supports_sv48` | `volatile bool` | Whether satp supports Sv48 mode |
-| `g_satp_supports_sv57` | `volatile bool` | Whether satp supports Sv57 mode |
 
 ### Test Framework API
 

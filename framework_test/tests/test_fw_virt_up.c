@@ -12,18 +12,18 @@
 
 #ifdef ENABLE_HYP
 
-/* Helper: read hstatus in M-mode or HS-mode */
+/* Returns 0 when hstatus could be read, otherwise the cause of the trap the
+ * read took.
+ *
+ * hstatus is the discriminating access for this group: it succeeds in M/HS
+ * and raises a virtual-instruction exception with V=1
+ * (norm:H_virtinst_vu_vs_nonhigh_allowedhs_tvm0), so a clean read proves the
+ * switch under test really left virtualization. */
 static uintptr_t read_hstatus_fn(uintptr_t arg)
 {
     (void)arg;
-    return CSRR(hstatus);
-}
-
-/* Helper: read vsstatus in VS-mode */
-static uintptr_t read_vsstatus_fn(uintptr_t arg)
-{
-    (void)arg;
-    return CSRR(vsstatus);
+    PRIV_DO(CSRR(hstatus));
+    return trap_was_triggered() ? trap_get_cause() : 0u;
 }
 
 /* FW-VIRT-UP-01: VS->M switch, verify current_priv */
@@ -92,18 +92,18 @@ bool test_fw_virt_up_05(void)
     goto_priv(PRIV_VS);
     TEST_ASSERT_EQ("current_priv should be PRIV_VS before ecall", get_current_priv(), PRIV_VS);
 
-    goto_priv(PRIV_M);
-
     /*
-     * VS->M uses ecall-from-VS (cause=10). The handler sets MPP=M
-     * and mrets back to M-mode. After mret, MPP is cleared by hardware.
-     * We verify the switch succeeded by checking current_priv.
+     * VS->M is an ecall-from-VS (cause=10).  hedeleg[10] is read-only-zero,
+     * so the request stops at HS and is forwarded from there to M; the
+     * handler raises MPP to M and mrets, which per norm:mstatus_mpv_op keeps
+     * V at 0 because MPP=M.  Reading hstatus afterwards is the observable
+     * half of that: it needs M/HS authority and no V=1.
      */
+    goto_priv(PRIV_M);
     TEST_ASSERT_EQ("current_priv should be PRIV_M after VS->M", get_current_priv(), PRIV_M);
 
-    /* Verify we're in M-mode by reading hstatus (M-mode only H-ext CSR) */
-    uintptr_t hstatus = CSRR(hstatus);
-    TEST_ASSERT("hstatus read succeeded in M-mode", true);
+    PRIV_DO(CSRR(hstatus));
+    CHECK_NO_TRAP("hstatus read succeeded in M-mode");
 
     TEST_END();
 }
@@ -117,8 +117,8 @@ bool test_fw_virt_up_06(void)
     goto_priv(PRIV_M);
 
     /* In M-mode (V=0), hstatus should be accessible */
-    uintptr_t hstatus = CSRR(hstatus);
-    TEST_ASSERT("hstatus read succeeded in M-mode", true);
+    PRIV_DO(CSRR(hstatus));
+    CHECK_NO_TRAP("hstatus read succeeded in M-mode");
 
     TEST_END();
 }
@@ -130,10 +130,13 @@ bool test_fw_virt_up_07(void)
 
     goto_priv(PRIV_VS);
     goto_priv(PRIV_S);
+    TEST_ASSERT_EQ("current_priv should be PRIV_S", get_current_priv(), PRIV_S);
 
-    /* In HS-mode (V=0, S-mode), hstatus should be accessible */
-    uintptr_t result = run_in_priv(PRIV_S, read_hstatus_fn, 0);
-    TEST_ASSERT("hstatus read succeeded in HS-mode", true);
+    /* In HS-mode (V=0, S-mode), hstatus should be accessible.  The helper
+     * reports the trap cause instead of the value so the assertion states
+     * what was observed rather than assuming it. */
+    uintptr_t fault = run_in_priv(PRIV_S, read_hstatus_fn, 0);
+    TEST_ASSERT_EQ("hstatus read succeeded in HS-mode", fault, 0u);
 
     TEST_END();
 }
@@ -143,13 +146,38 @@ bool test_fw_virt_up_08(void)
 {
     TEST_BEGIN("FW-VIRT-UP-08: VU->VS VS-mode CSR access");
 
-    /*
-     * This test requires two-stage translation setup (hgatp) to execute
-     * code in VS-mode. Without proper G-stage translation, QEMU will
-     * trigger guest page faults when fetching instructions in VS-mode.
-     * Skip this test if two-stage translation is not available.
-     */
-    TEST_SKIP("Requires two-stage translation setup (hgatp)");
+    goto_priv(PRIV_M);
+
+    /* Clear the marker first, so what is observed below cannot be a leftover
+     * from an earlier case. */
+    uintptr_t vs = CSRR(vsstatus);
+    CSRW(vsstatus, vs & ~MSTATUS_SUM_BIT);
+
+    goto_priv(PRIV_VU);
+    TEST_ASSERT_EQ("current_priv should be PRIV_VU", get_current_priv(), PRIV_VU);
+
+    goto_priv(PRIV_VS);
+    TEST_ASSERT_EQ("current_priv should be PRIV_VS", get_current_priv(), PRIV_VS);
+
+    /* With V=1 the sstatus address reaches vsstatus (norm:H_vscsrs_sub), so
+     * setting SUM from VS-mode has to show up as vsstatus.SUM when read back
+     * from M-mode.  That round trip is the evidence the VS-mode CSR access is
+     * the virtualized one, and not a stray write to the real sstatus.
+     *
+     * CSRS is a statement, not an expression, so it cannot go through
+     * PRIV_DO's (void)(stmt); arm the window by hand instead. */
+    trap_expect_begin();
+    CSRS(sstatus, MSTATUS_SUM_BIT);
+    trap_expect_end();
+    bool write_ok = !trap_was_triggered();
+
+    goto_priv(PRIV_M);
+    TEST_ASSERT("VS-mode write through the sstatus address did not trap", write_ok);
+    TEST_ASSERT("the write landed in vsstatus", CSRR(vsstatus) & MSTATUS_SUM_BIT);
+
+    /* Leave the marker cleared for whatever runs next. */
+    vs = CSRR(vsstatus);
+    CSRW(vsstatus, vs & ~MSTATUS_SUM_BIT);
 
     TEST_END();
 }

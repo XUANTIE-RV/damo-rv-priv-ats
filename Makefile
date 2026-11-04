@@ -4,7 +4,7 @@
 # Usage:
 #   make                    # Print help
 #   make <group>_group      # Build one group (mirrors run_case_stats.sh)
-#                           #   groups: hyp ss sv sd sm pmp cfi zpm cmo zi zc zk za
+#                           #   groups: hyp ss qos sv sd sm pmp cfi zpm cmo zi zc zk za
 #   make all                # Build ALL extensions
 #   make pmp                # Build a single extension
 #   make spike              # Run all on Spike
@@ -20,7 +20,7 @@
 # =====================================================================
 
 # --- Hypervisor extensions ---
-HYP_BASE_GROUP = Hypervisor_CSR Hypervisor_Interrupts Hypervisor_Exceptions Sha Shcounterenw Shgatpa Shlcofideleg Shtvala Shvstvala Shvsatpa
+HYP_BASE_GROUP = Hypervisor_CSR Hypervisor_Interrupts Hypervisor_Exceptions Sha Shcounterenw Shgatpa Shlcofideleg Shtvala Shvstvala Shvsatpa Shvstvecd
 HYP_VM_GROUP   = Sv39x4 Sv48x4 Sv57x4 \
                  Sv39x4_Sv39 Sv39x4_Sv48 Sv39x4_Sv57 \
                  Sv48x4_Sv39 Sv48x4_Sv48 Sv48x4_Sv57 \
@@ -38,14 +38,17 @@ HYP_GROUP = $(HYP_BASE_GROUP) $(HYP_VM_GROUP) $(HYP_SM_GROUP) $(HYP_SS_GROUP) \
 
 # --- Supervisor extensions ---
 SS_GROUP  = Ss_CSR Ss_Exceptions Ss_Interrupts Ssccfg Ssccptr Sscofpmf Sscounterenw Sscsrind Ssctr Ssdbltrp Ssstateen Sstc Sstvala Sstvecd Ssu64xl
-SV_GROUP  = Sv39 Sv48 Sv57 Svbare Svade Svadu Svnapot Svinval Svpbmt Svvptc
+SV_GROUP  = Sv39 Sv48 Sv57 Svbare Svade Svadu Svnapot Svinval Svpbmt Svrsw60t59b Svvptc
+
+# --- QoS extensions (Ssqosid identifier CSR + CBQRI register interface) ---
+QOS_GROUP = qos.Ssqosid qos.cbqri
 
 # --- Debug extensions ---
 SD_GROUP  = Sdext Sdtrig
 
 # --- Machine extensions ---
-SM_GROUP  = Sm_CSR Sm_Exceptions Sm_Interrupts Smcdeleg Smcntrpmf Smcsrind Smctr Smdbltrp Smstateen
-PMP_GROUP = pmp pmp_sv39 pmp_sv48 pmp_sv57
+SM_GROUP  = Sm_CSR Sm_Exceptions Sm_Interrupts Smcdeleg Smcntrpmf Smcsrind Smctr Smdbltrp Smrnmi Smstateen
+PMP_GROUP = pmp pmp_sv39 pmp_sv48 pmp_sv57 Smepmp
 
 # --- CFI extensions ---
 CFI_GROUP = cfi.Zicfilp cfi.Zicfiss
@@ -54,7 +57,7 @@ CFI_GROUP = cfi.Zicfilp cfi.Zicfiss
 ZPM_GROUP = zpm.Smmpm zpm.Smnpm zpm.Ssnpm
 
 # --- CMO extensions ---
-CMO_GROUP = cmo.base cmo.Zicbom cmo.Zicbop cmo.Zicboz
+CMO_GROUP = cmo.base cmo.Zicbom cmo.Zicbop cmo.Zicboz cmo.Zic64b
 
 # --- Zi extensions ---
 ZI_GROUP  = Zicntr Zicond Zicsr Zifencei Zihintntl Zihintpause Zihpm Zimop Ziccamoa Ziccamoc Ziccid Ziccif Zicclsm Ziccrse
@@ -69,7 +72,7 @@ ZK_GROUP  = Zkr Zkt
 ZA_GROUP  = Za64rs Za128rs Zaamo Zabha Zacas Zalasr Zalrsc Zama16b Zawrs
 
 # All extensions (union of groups, mirrors ALL_SUITES in run_case_stats.sh)
-EXTENSIONS = $(HYP_GROUP) $(SS_GROUP) $(SV_GROUP) $(SD_GROUP) $(SM_GROUP) \
+EXTENSIONS = $(HYP_GROUP) $(SS_GROUP) $(QOS_GROUP) $(SV_GROUP) $(SD_GROUP) $(SM_GROUP) \
              $(PMP_GROUP) $(CFI_GROUP) $(ZPM_GROUP) $(CMO_GROUP) \
              $(ZI_GROUP) $(ZK_GROUP) $(ZC_GROUP) $(ZA_GROUP)
 
@@ -91,7 +94,7 @@ QEMU_TARGETS  = $(addprefix qemu-,$(EXTENSIONS))
 WHISPER_TARGETS = $(addprefix whisper-,$(EXTENSIONS))
 
 .PHONY: help all clean sail spike qemu whisper \
-        hyp_group ss_group sv_group sd_group sm_group pmp_group \
+        hyp_group ss_group qos_group sv_group sd_group sm_group pmp_group \
         cfi_group zpm_group cmo_group zi_group zc_group zk_group za_group \
         $(EXTENSIONS) $(SAIL_TARGETS) $(SPIKE_TARGETS) $(QEMU_TARGETS) $(WHISPER_TARGETS)
 
@@ -106,6 +109,7 @@ help:
 	@echo "  Group targets:"
 	@echo "    make hyp_group        Build all Hypervisor extensions"
 	@echo "    make ss_group         Build Supervisor (Ss*) extensions"
+	@echo "    make qos_group        Build QoS (Ssqosid/CBQRI) extensions"
 	@echo "    make sv_group         Build Supervisor VM (Sv*) extensions"
 	@echo "    make sd_group         Build Debug (Sd*) extensions"
 	@echo "    make sm_group         Build Machine (Sm*) extensions"
@@ -147,6 +151,7 @@ all: $(EXTENSIONS)
 # Group build targets
 hyp_group: $(HYP_GROUP)
 ss_group:  $(SS_GROUP)
+qos_group: $(QOS_GROUP)
 sv_group:  $(SV_GROUP)
 sd_group:  $(SD_GROUP)
 sm_group:  $(SM_GROUP)
@@ -172,14 +177,15 @@ clean:
 	done
 	find common -name "*.o" -type f -delete
 	# Clean residual build artifacts in directories not listed in EXTENSIONS
-	find . -name "*.o" -not -path "./.git/*" -type f -delete
-	find . -name "*.d" -not -path "./.git/*" -type f -delete
-	find . -name "*.asm" -not -path "./.git/*" -type f -delete
-	find . -name "*.sym" -not -path "./.git/*" -type f -delete
-	find . -name "*.elf" -not -path "./.git/*" -type f -delete
+	# NOTE: ./SPEC is excluded from all cleanup below (never touch SPEC folder)
+	find . -name "*.o" -not -path "./.git/*" -not -path "./SPEC/*" -type f -delete
+	find . -name "*.d" -not -path "./.git/*" -not -path "./SPEC/*" -type f -delete
+	find . -name "*.asm" -not -path "./.git/*" -not -path "./SPEC/*" -type f -delete
+	find . -name "*.sym" -not -path "./.git/*" -not -path "./SPEC/*" -type f -delete
+	find . -name "*.elf" -not -path "./.git/*" -not -path "./SPEC/*" -type f -delete
 	find . -name "*.bin" -not -path "./.git/*" -not -path "./SPEC/*" -type f -delete
-	find . -name "*.trace" -not -path "./.git/*" -type f -delete
-	find . -name "*.rvvi" -not -path "./.git/*" -type f -delete
+	find . -name "*.trace" -not -path "./.git/*" -not -path "./SPEC/*" -type f -delete
+	find . -name "*.rvvi" -not -path "./.git/*" -not -path "./SPEC/*" -type f -delete
 
 # Build and run all extensions on Sail simulator (sequentially)
 sail:

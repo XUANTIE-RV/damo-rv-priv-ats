@@ -1,5 +1,11 @@
 # =====================================================================
 # Framework Privilege Switching Test
+#
+# Runs under the T-SBI S-mode-normal model: common/entry.S drops to
+# S-mode before main(), and every raise back to M goes through a T-SBI
+# GOTO request.  Do NOT add -DTSBI_BOOT_MODE_M here - that flag keeps the
+# legacy M-mode entry for suites that own the early M environment, and
+# this suite's subject under test IS the S-mode switching chain itself.
 # =====================================================================
 
 TARGET = framework_test.elf
@@ -10,8 +16,8 @@ ENABLE_HYP = 1
 # QEMU virt: explicitly request RV64 + H extension support.
 QEMU_CPU   = max
 
-# Spike: explicitly request RV64 + H extension + Sscsrind.
-
+# Spike needs no SPIKE_ISA override: the shared string in
+# common/Makefile.common already carries rv64 + H.
 
 EXT_OBJS = \
     main.o \

@@ -141,6 +141,73 @@ unsigned int pmp_detect_granularity(void);
 unsigned int pmp_detect_entry_count(void);
 
 /* ===================================================================
+ * Boot-time pmpcfg reset snapshot
+ *
+ * Compiled only for a suite that builds with -DPMP_RESET_SNAPSHOT in both
+ * CFLAGS and ASFLAGS (see pmp/Makefile).  common/entry.S installs a
+ * full-space RWX NAPOT entry in pmpaddr0/pmpcfg0 before it enters main(),
+ * so a suite that verifies the reset value of the pmpcfg A/L fields
+ * (norm:pmp_A_L_rst) must capture them before that write.  Under this macro
+ * entry.S calls pmp_boot_snapshot() immediately before it, and the checker
+ * consumes the snapshot instead of the live CSRs.
+ * =================================================================== */
+
+#ifdef PMP_RESET_SNAPSHOT
+
+/* pmpcfg registers probed by the snapshot.  RV64 implements the even
+ * numbers pmpcfg0,2,...,14 (8 registers); RV32 implements pmpcfg0..3
+ * (4 registers).  The arrays are sized for the RV64 case; the slots an
+ * RV32 build never fills stay invalid. */
+#define PMP_CFG_SNAP_SLOTS  8
+
+/**
+ * pmp_boot_snapshot - capture the pmpcfg reset state
+ *
+ * Called from common/entry.S before the framework writes pmpcfg0.  Reads
+ * every pmpcfg register with a trap-armed access, because unimplemented
+ * registers differ per platform (QEMU/Spike read them as 0, Sail raises an
+ * illegal instruction) and an unarmed trap this early in the boot path is
+ * reported as UNEXPECTED TRAP and halts the suite.
+ */
+void pmp_boot_snapshot(void);
+
+/**
+ * pmp_reset_snapshot_taken - was the boot snapshot actually captured?
+ *
+ * Guards the checker against silently passing on an all-zero BSS array when
+ * entry.S was assembled without -DPMP_RESET_SNAPSHOT.
+ */
+bool pmp_reset_snapshot_taken(void);
+
+/**
+ * pmp_reset_snap_slots - number of pmpcfg registers probed at boot
+ */
+unsigned int pmp_reset_snap_slots(void);
+
+/**
+ * pmp_reset_snap_idx - pmpcfg register number held in slot @slot
+ *
+ * The offset used by the CSR encoding (0,2,...,14 on RV64; 0..3 on RV32),
+ * i.e. the register is CSR_PMPCFG0 + the returned value.
+ */
+unsigned int pmp_reset_snap_idx(unsigned int slot);
+
+/**
+ * pmp_reset_snap_valid - did the boot read of slot @slot succeed?
+ *
+ * False means the register is not implemented (the access trapped) and the
+ * slot must be skipped by the checker.
+ */
+bool pmp_reset_snap_valid(unsigned int slot);
+
+/**
+ * pmp_reset_snap_value - pmpcfg value captured in slot @slot
+ */
+uintptr_t pmp_reset_snap_value(unsigned int slot);
+
+#endif /* PMP_RESET_SNAPSHOT */
+
+/* ===================================================================
  * mseccfg Access API (Smepmp Extension)
  * =================================================================== */
 

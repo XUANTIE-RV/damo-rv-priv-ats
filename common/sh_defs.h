@@ -62,6 +62,7 @@
 #define HSTATUS_VTVM       (1UL << 20)
 #define HSTATUS_VTW        (1UL << 21)
 #define HSTATUS_VTSR       (1UL << 22)
+#define HSTATUS_HUKTE      (1UL << 24)   /* Svukte: qualifies U-mode hlv/hlvx/hsv */
 #define HSTATUS_VSXL_SHIFT 32
 #define HSTATUS_VSXL_MASK  (3UL << HSTATUS_VSXL_SHIFT)
 #define HSTATUS_HUPMM_OFF  48             /* HUPMM field offset in hstatus (RV64) */

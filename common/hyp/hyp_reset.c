@@ -51,8 +51,11 @@ void hyp_reset_state(void) {
      * mtval2/mtinst = 0x34A/0x34B); from S every one of them raises an
      * illegal-instruction exception.  Going through the T-SBI CSR proxy per
      * write would work too, but a single excursion is both cheaper and what
-     * the rest of the framework does - and reset_state() below leaves us in
-     * M anyway, so the exit contract is unchanged. */
+     * the rest of the framework does.  The excursion does not change the exit
+     * contract either: reset_state() below raises to M on entry and then drops
+     * back to S under its #ifndef TSBI_BOOT_MODE_M tail, so a caller that
+     * entered in S still leaves in S, and a -DTSBI_BOOT_MODE_M suite (which
+     * compiles that tail out) still leaves in M. */
     if (get_current_priv() != PRIV_M)
         goto_priv(PRIV_M);
 

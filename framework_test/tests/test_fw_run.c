@@ -34,6 +34,12 @@ bool test_fw_run_01(void)
 {
     TEST_BEGIN("FW-RUN-01: run_in_priv S-mode execution");
 
+    /* The plan puts the caller in M-mode, and that matters: from main()'s
+     * S-mode a PRIV_S target is a same-privilege direct call, which is
+     * FW-RUN-08's subject.  Raising first is what makes this one exercise the
+     * mret descent into the trampoline. */
+    goto_priv(PRIV_M);
+
     uintptr_t result = run_in_priv(PRIV_S, return_magic_fn, 0);
     TEST_ASSERT_EQ("function should return magic value", result, 0xDEADBEEF);
 
@@ -44,6 +50,8 @@ bool test_fw_run_01(void)
 bool test_fw_run_02(void)
 {
     TEST_BEGIN("FW-RUN-02: run_in_priv U-mode execution");
+
+    goto_priv(PRIV_M);
 
     uintptr_t result = run_in_priv(PRIV_U, return_magic_fn, 0);
     TEST_ASSERT_EQ("function should return magic value", result, 0xDEADBEEF);
@@ -56,9 +64,9 @@ bool test_fw_run_03(void)
 {
     TEST_BEGIN("FW-RUN-03: run_in_priv S-mode privilege verification");
 
-    printf("[DEBUG] Before run_in_priv(PRIV_S)\n");
+    goto_priv(PRIV_M);
+
     uintptr_t priv = run_in_priv(PRIV_S, get_priv_fn, 0);
-    printf("[DEBUG] After run_in_priv(PRIV_S), priv=%lu\n", (unsigned long)priv);
     TEST_ASSERT_EQ("should be in S-mode during execution", priv, PRIV_S);
 
     TEST_END();
@@ -68,6 +76,8 @@ bool test_fw_run_03(void)
 bool test_fw_run_04(void)
 {
     TEST_BEGIN("FW-RUN-04: run_in_priv U-mode privilege verification");
+
+    goto_priv(PRIV_M);
 
     uintptr_t priv = run_in_priv(PRIV_U, get_priv_fn, 0);
     TEST_ASSERT_EQ("should be in U-mode during execution", priv, PRIV_U);
@@ -80,10 +90,9 @@ bool test_fw_run_05(void)
 {
     TEST_BEGIN("FW-RUN-05: run_in_priv returns to M-mode");
 
-    /* This case is specifically about returning to an M-mode caller, so it
-     * has to be one.  The S-mode caller is covered implicitly: FW-RUN-01..04
-     * now call run_in_priv from S, and their later assertions only execute
-     * because the return leg put them back there. */
+    /* run_in_priv() puts the caller back at the privilege it was entered
+     * from, so "returns to M-mode" only means anything for an M-mode caller.
+     * Establish one; the S-mode caller side is FW-RUN-08's subject. */
     goto_priv(PRIV_M);
 
     run_in_priv(PRIV_S, return_magic_fn, 0);
@@ -96,6 +105,10 @@ bool test_fw_run_05(void)
 bool test_fw_run_06(void)
 {
     TEST_BEGIN("FW-RUN-06: run_in_priv parameter passing");
+
+    /* Raised for the same reason as FW-RUN-01: the argument has to cross an
+     * actual privilege descent, otherwise the trampoline never carries it. */
+    goto_priv(PRIV_M);
 
     uintptr_t test_arg = 0x12345678;
     uintptr_t result = run_in_priv(PRIV_S, return_arg_fn, test_arg);

@@ -80,12 +80,33 @@
 
 **理由**：运行时能力探测（trap-protected 写读、`scountovf`/计数/WPRI 功能性探测、动态发现计数器）会把"平台已在 config 声明扩展、但实现不合规"静默降级为 SKIP，掩盖非合规；改用编译期门控后，声明支持却实现错误的平台会让用例**响亮失败**，符合本文档"任一平台违反 SPEC 时用例保持 FAIL"与框架约定"扩展能力检测用编译期 `<EXT>_AVAILABLE` 门控而非运行时 trap 探测"。
 
+### 两层门控：扩展声明 与 计数前提
+
+编译期门控分两层，两层都只读 config，都不探测 DUT：
+
+1. **第一层——扩展是否被测**：`SSCOFPMF_AVAILABLE`（来自 `rvtest_config.h` 的 `SSCOFPMF_SUPPORTED`）。未声明则全组 39 例 TEST_SKIP。
+2. **第二层——计数前提是否可用**：`SSCOFPMF_COUNTING_AVAILABLE`，由 `config/<platform>/platform_config.h` 的 `SSCOFPMF_COUNT_EVENT` 经 `common/capabilities.h` 归一。该宏声明"本平台实测会真实递增 `mhpmcounter` 的事件编码"，同时为 `COFPMF_EVENT_INSTRET` 提供取值，事件编号不再固化在 helpers 里。**未声明该平台就没有可计数事件**，依赖"计数器真实递增"的 19 个用例（COFPMF-INH-01~10、COFPMF-OVF-01/02/04/05/08/09/10/11/12）TEST_SKIP，理由固定为 `platform declares no counting HPM event (implementation-defined)`。
+
+第二层之所以必须是 config 声明而不是运行时探针：事件编码与实现的计数器数量都是 implementation-defined，SPEC 从不要求某个事件号必须计数，因此"能不能计数"是**平台事实**（与 `QEMU_SKIP_TESTS`、`CLINT_SUPPORTED` 同类），归 `platform_config.h` 描述；而 `rvtest_config.h` 由 udb-gen 自动生成，不得手写。
+
+**判定原则**（决定一处前提该 SKIP 还是该 FAIL）：
+
+| 情形 | 处置 | 依据 |
+|------|------|------|
+| config **声明了**计数事件，但 DUT 实测计数器只读零 / 事件不递增 | **FAIL**，并打印实测证据 | 声明与实现不符 → 要么 config 写错、要么 DUT/模拟器缺口，必须响亮暴露 |
+| config **未声明**，且属 SPEC 允许的实现自由（事件编码、计数器数量） | **SKIP**，理由编译期可审计 | SPEC 不要求任何特定事件必须计数 |
+| 写 `mcounteren`/`hcounteren` 后目标位**读回为 0** | **SKIP**（前提不可达） | `norm:mcounteren_flds_rdonly0` 明确允许该字段只读零 |
+| Sscofpmf 语义本身（OF/xINH 读写、`scountovf` 镜像与门控、LCOFI 行为） | 一律断言，违规即 **FAIL** | 不因平台差异放宽标准 |
+
+运行时**只保留取证、不保留跳过决策**：断言失败时自动打印计数器可写性、`mhpmevent` 读回值与计数增量，使失败信息自证根因；是否跳过一律由上述编译期宏决定。
+
 ### 事件触发策略
 
-为可靠地使计数器递增，测试使用以下策略：
-1. **配置 mhpmevent 为"已退休指令"事件**（事件编号由实现决定，测试通过平台配置宏提供）
-2. **执行已知指令序列**以产生可预测的计数器增量
-3. **初始化 mhpmcounter 为接近最大值**（如 `0xFFFFFFFF_FFFFFFFE`）以快速触发溢出
+为可靠且**确定性**地使计数器递增与溢出，测试使用以下策略：
+1. **事件编号取自平台配置**：`COFPMF_EVENT_INSTRET` ← `SSCOFPMF_COUNT_EVENT`（可用 `-DCOFPMF_EVENT_INSTRET=<n>` 临时覆盖做实验）。
+2. **激励特权必须与断言名义一致，且窗口内不得混入其他特权**：断言"M-mode 计数"的指令序列必须整体放进一次 `run_in_priv(PRIV_M, ...)` excursion（内部用裸 CSR 访问，避免代理 ecall 落入窗口）；S/U-mode 序列用 `run_in_priv(PRIV_S/PRIV_U, ...)`，不得依赖单向的 `goto_priv()`。除目标模式外的一切模式（含为测量服务的 M 态代理代码与 S 态切换代码）均须置对应 xINH=1：实测在 qemu（其计数器随宿主时间推进）上，窗口内多出的框架代码会带来 10^7~10^8 量级的计数污染，直接把负向断言打成假失败。
+3. **冻结式溢出触发**（消除预置竞态）：`mcountinhibit.n` 冻结 → 写 `mhpmevent`（OF=0、按目标模式设 xINH）→ 预置 `mhpmcounter = -MARGIN` → 解冻 → 执行有界指令序列 → 再冻结后读 `mhpmevent`/`mhpmcounter`。计数速率极高的实现（如 QEMU 的宿主级自由运行计数）也不会把预置值冲掉。
+4. **正负断言共享同一前提**："计数为 0"类负向断言（INH-02/04/06/10、OVF-05）必须与同组正向断言一样受第二层门控，否则在不会计数的平台上是空过。
 
 任一平台违反 SPEC 时用例保持 FAIL，实现缺陷记录至 `bugs/` 目录。
 
@@ -126,7 +147,7 @@
 
 **测试职责**：验证各 xINH bit 能正确抑制/允许对应特权模式下的事件计数。
 
-**测试前提**：以编译期 `SSCOFPMF_AVAILABLE` 门控；被测计数器取固定 `COFPMF_TEST_COUNTER`，事件编号由平台配置宏 `COFPMF_EVENT_INSTRET` 提供（通常为已退休指令事件）。
+**测试前提**：以编译期 `SSCOFPMF_AVAILABLE` + `SSCOFPMF_COUNTING_AVAILABLE` 双层门控（本组全部 10 例都依赖计数器真实递增）；被测计数器取固定 `COFPMF_TEST_COUNTER`，事件编号由平台配置宏 `SSCOFPMF_COUNT_EVENT` → `COFPMF_EVENT_INSTRET` 提供。指令序列的执行特权必须与断言名义一致（见"事件触发策略"第 2 条）。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
@@ -144,6 +165,8 @@
 > [!NOTE]
 > 特权模式切换（ecall / mret / sret）本身会产生指令计数。测试中通过比较"抑制"和"不抑制"两种场景的计数差异来验证功能，而非验证精确计数值。对于 S/U-mode 测试，应先在 M-mode 禁用计数（MINH=1），切换到目标模式执行后再返回，仅比较目标模式执行期间的计数增量。
 >
+> **激励特权必须与断言名义一致**：COFPMF-INH-01/02/03/08 断言的是 M-mode 计数行为，其指令序列必须整体置于一次 `run_in_priv(PRIV_M, ...)` excursion 内（S 态常态化后用例体本身跑在 S-mode，直接在用例体里执行 nop 计的是 S-mode 计数）；COFPMF-INH-08/09 的"仅某模式计数"须由**一对**断言构成（目标模式递增 + 被抑制模式不递增），单侧断言不足以证明"仅"。
+>
 > 本组不覆盖 VSINH/VUINH 的计数抑制功能用例（依赖 H 扩展，需进入 VS/VU-mode 执行），该部分由 `Hypervisor_Ss_test_plan.md` Group 10（HCROSS-SSCOFPMF-04~05）覆盖。
 
 ---
@@ -158,6 +181,8 @@
 - `norm:mhpmevent_of_bit_set`：溢出中断请求设置 OF bit
 - `norm:LCOFIP_op`：OF 置位后最终设置 LCOFIP
 
+**测试前提**：除 COFPMF-OVF-03/06/07（激励仅为 CSR 写入，不依赖计数器递增）外，本组其余 9 例均以 `SSCOFPMF_AVAILABLE` + `SSCOFPMF_COUNTING_AVAILABLE` 双层门控；溢出统一用"冻结式触发"（见事件触发策略第 3 条）以保证确定性。
+
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
 | COFPMF-OVF-01 | 计数器溢出设置 OF | 初始化 mhpmcounter 为接近最大值，配置事件并执行指令使其溢出，检查 OF bit | OF bit 被置为 1 |
@@ -168,13 +193,15 @@
 | COFPMF-OVF-06 | 写 mhpmcounter 不触发溢出 | 直接将 mhpmcounter 写为 0（从大值到 0 的"回绕"），验证 OF 不被设置 | OF bit 保持 0 |
 | COFPMF-OVF-07 | 写 mhpmevent 不触发溢出 | 修改 mhpmevent 的事件选择/xINH 字段，验证 OF 不被设置 | OF bit 保持 0 |
 | COFPMF-OVF-08 | LCOFIP 软件清除 | 置位 LCOFIP 后，软件通过写 mip 清除，验证清除成功 | mip.LCOFIP = 0 |
-| COFPMF-OVF-09 | LCOFI 中断委托至 S-mode | 设置 mideleg bit 13 = 1，触发溢出中断，验证在 S-mode handler 中被捕获 | S-mode trap handler 收到 cause = interrupt\|13 |
-| COFPMF-OVF-10 | LCOFI 中断在 M-mode 处理 | mideleg bit 13 = 0，触发溢出中断，验证在 M-mode handler 中被捕获 | M-mode trap handler 收到 cause = interrupt\|13 |
+| COFPMF-OVF-09 | LCOFI 中断委托至 S-mode | 设置 mideleg bit 13 = 1；先在 LCOFIE=0 下用冻结式触发完成溢出并确认 OF/LCOFIP 已置位，再使能 sie.LCOFIE + sstatus.SIE 并执行有界指令序列 | 必须在 S-mode handler 收到 cause = interrupt\|13（中断已挂起，使能后属确定性投递，无时序豁免） |
+| COFPMF-OVF-10 | LCOFI 中断在 M-mode 处理 | mideleg bit 13 = 0；同 OVF-09 先挂起后使能（mie.LCOFIE + mstatus.MIE） | 必须在 M-mode handler 收到 cause = interrupt\|13 |
 | COFPMF-OVF-11 | LCOFIE 禁用时不产生中断 | 清除 mie.LCOFIE，触发溢出，验证不发生中断（仅 OF 置位） | OF=1，但无中断产生 |
 | COFPMF-OVF-12 | 多计数器同时溢出 | 配置两个计数器均接近最大值，同时触发溢出，验证两个 OF bit 均被设置 | 两个 mhpmevent 的 OF bit 均为 1 |
 
 > [!WARNING]
-> `norm:LCOFIP_op` 规范指出 OF 置位后"最终但不一定立即"设置 LCOFIP。测试中需在溢出后插入足够的延迟或内存屏障，以确保 LCOFIP 已传播。若 LCOFIP 在合理延迟后仍未置位，测试应标注为实现相关的时序问题而非直接失败。
+> `norm:LCOFIP_op` 规范指出 OF 置位后"最终但不一定立即"设置 LCOFIP。测试用**有界轮询**（`COFPMF_LCOFIP_POLL_LIMIT`，默认 64 轮，每轮间插入 nop）等待其传播；轮询到限仍未置位则判 **FAIL** 并打印 OF/LCOFIP 实测值——因为此时"溢出确已发生、OF 已置位"的前提已由冻结式触发保证，不得再以"实现相关的时序问题"放行，也**禁止**用 `TEST_ASSERT(..., true)` 之类的恒真断言兜底。
+>
+> LCOFI 投递用例（COFPMF-OVF-09/10）必须先在 LCOFIE=0 下完成溢出并确认 OF/LCOFIP 已置位，**再**使能中断：此时中断请求已挂起，使能后必须被立即投递，收到 `cause = interrupt|13` 属确定性预期，不存在时序豁免。
 
 ---
 
@@ -185,16 +212,21 @@
 - `norm:scountovf_mmode_read_access`：M-mode 始终可读
 - `norm:scountovf_smode_read_access`：S-mode 受 mcounteren 控制
 - `norm:scountovf_smode_read_access_control`：访问控制与 hpmcounter 的 mcounteren/hcounteren 规则一致
+- `norm:mcounteren_flds_rdonly0`：mcounteren 各字段为 WARL，可为只读零（此时低特权模式访问对应计数器报 illegal-instruction）
+
+**测试前提**：本组不依赖计数器递增（OF 由软件写 `mhpmevent` 置起），仅受 `SSCOFPMF_AVAILABLE` 门控。但凡需从 S-mode 观测某计数器 OF 位的用例（SOV-01/03/04/06），必须先写 `mcounteren.n` 并**读回确认**；读回为 0 说明该字段只读零（`norm:mcounteren_flds_rdonly0` 允许），属前提不可达，应 TEST_SKIP 并注明，不得当成 `scountovf` 镜像失败。
+
+**特权归位**：SOV-05 断言的是 `norm:scountovf_mmode_read_access`（M-mode 不受 mcounteren 门控），其 `scountovf` 读取必须整体置于 `run_in_priv(PRIV_M, ...)` excursion 内；S 态常态化后用例体跑在 S-mode，直接在用例体里 `CSRR(scountovf)` 测到的是 `norm:scountovf_smode_read_access`（mcounteren.n=0 时该位读 0），属名实不符。SOV-06/07 必须把 S-mode 读到的值带回来断言**位值**（SOV-06 断为 1、SOV-07 断为 0），仅断言"不 trap"不构成对门控语义的验证。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
 | COFPMF-SOV-01 | scountovf 反映 OF bit | 设置 mhpmevent3 的 OF=1，读取 scountovf，验证 bit 3 = 1 | scountovf bit 3 = 1 |
 | COFPMF-SOV-02 | scountovf 只读验证 | 尝试写 scountovf（S-mode 下 csrw），应触发 illegal-instruction | 触发 illegal-instruction（cause=2） |
-| COFPMF-SOV-03 | scountovf 多 bit 映射 | 同时设置 mhpmevent3 和 mhpmevent5 的 OF=1，验证 scountovf bit 3 和 bit 5 均为 1 | scountovf = (1<<3) \| (1<<5) |
+| COFPMF-SOV-03 | scountovf 多 bit 映射 | 同时设置 `COFPMF_TEST_COUNTER` 与 `COFPMF_TEST_COUNTER2`（默认 3 与 4）的 OF=1，验证 scountovf 对应两位均为 1 | scountovf = (1<<3) \| (1<<4) |
 | COFPMF-SOV-04 | scountovf 清除跟踪 | 设置 OF=1 后清除 mhpmevent3 的 OF，再读 scountovf bit 3 | scountovf bit 3 = 0 |
-| COFPMF-SOV-05 | M-mode 读取不受 mcounteren 限制 | 清除 mcounteren bit 3，M-mode 读 scountovf bit 3 仍可见 | scountovf bit 3 反映真实 OF 值 |
-| COFPMF-SOV-06 | S-mode mcounteren=1 可读 | 设置 mcounteren bit 3 = 1，S-mode 读 scountovf bit 3 | 读到真实 OF 值 |
-| COFPMF-SOV-07 | S-mode mcounteren=0 读为零 | 清除 mcounteren bit 3，S-mode 读 scountovf，bit 3 应为 0（即使 OF=1） | scountovf bit 3 = 0 |
+| COFPMF-SOV-05 | M-mode 读取不受 mcounteren 限制 | 清除 mcounteren bit 3，**在 M-mode excursion 内**读 scountovf bit 3 仍可见 | scountovf bit 3 反映真实 OF 值 |
+| COFPMF-SOV-06 | S-mode mcounteren=1 可读 | 设置 mcounteren bit 3 = 1（写后读回确认），S-mode 读 scountovf 并把值带回断言 | 读到 bit 3 = 1 |
+| COFPMF-SOV-07 | S-mode mcounteren=0 读为零 | 清除 mcounteren bit 3（M-mode excursion 内先确认 OF 可见），S-mode 读 scountovf 并把值带回断言 | 不 trap，且 bit 3 = 0（即使 OF=1） |
 
 > [!NOTE]
 > VS-mode scountovf 访问控制用例（`norm:scountovf_vsmode_read_access`）依赖 Hypervisor 扩展，已迁移至 `Hypervisor_Ss_test_plan.md` Group 10（HCROSS-SSCOFPMF-01~03）。
@@ -203,15 +235,17 @@
 
 ## 设计要点
 
-### 1. 扩展门控与固定计数器
+### 1. 两层门控与固定计数器
 
-用例是否跳过由编译期 `SSCOFPMF_AVAILABLE`（及所需的 `S_AVAILABLE`/`U_AVAILABLE`/`H_AVAILABLE`）决定，不探测 DUT；被测计数器取固定索引 `COFPMF_TEST_COUNTER`（默认 3）与 `COFPMF_TEST_COUNTER2`（默认 4），可经 `-D` 覆盖。唯一例外是 COFPMF-RW-10，其职责是"遍历所有已实现计数器验证 OF 读写"，而计数器数量属实现可选、无法由 config 表达，故保留 `is_counter_implemented()` 逐个枚举、跳过未实现者。
+用例是否跳过由编译期宏决定，不探测 DUT：第一层 `SSCOFPMF_AVAILABLE`（及所需的 `S_AVAILABLE`/`U_AVAILABLE`/`H_AVAILABLE`）判定扩展是否被测；第二层 `SSCOFPMF_COUNTING_AVAILABLE`（由 `platform_config.h` 的 `SSCOFPMF_COUNT_EVENT` 归一）判定计数前提是否可用，只作用于依赖计数器真实递增的 19 例。被测计数器取固定索引 `COFPMF_TEST_COUNTER`（默认 3）与 `COFPMF_TEST_COUNTER2`（默认 4），可经 `-D` 覆盖。唯一保留运行时枚举的是 COFPMF-RW-10，其职责就是"遍历所有已实现计数器验证 OF 读写"，计数器数量属实现可选、无法由 config 表达，故保留 `is_counter_implemented()` 逐个枚举、跳过未实现者。
 
-（原"动态发现计数器 + 功能性探测（`is_counting_functional`/`is_scountovf_functional`/`is_wpri_masked`）后 TEST_SKIP"的做法已废弃：它会把平台非合规静默降级为 SKIP。）
+（原"动态发现计数器 + 功能性探测（`is_counting_functional`/`is_scountovf_functional`/`is_wpri_masked`）后 TEST_SKIP"的做法已废弃：它会把平台非合规静默降级为 SKIP。但仅靠第一层门控会把"实现自定义前提不成立"也当成非合规，因此补充第二层 config 声明；判定原则见"前提与约束"章。）
 
 ### 2. 事件配置策略
 
-不同实现的 mhpmevent 低位事件编号不同。测试应通过平台配置宏提供可覆盖的事件编号（例如"已退休指令"事件编号），避免在方案中固化具体实现。
+不同实现的 mhpmevent 低位事件编号不同，属 implementation-defined，SPEC 不要求任何特定编号必须计数。因此事件编号必须由平台配置声明：`config/<platform>/platform_config.h` 定义 `SSCOFPMF_COUNT_EVENT <n>`（仅在该平台实测确会递增时定义），`common/capabilities.h` 归一为 `SSCOFPMF_COUNTING_AVAILABLE`，helpers 据此定义 `COFPMF_EVENT_INSTRET`；方案与用例不得固化具体编号。
+
+**声明与实现不符时必须 FAIL**：若 config 声明了事件但实测计数器只读零或不递增，用例保持失败并打印实测证据（计数器可写性 / `mhpmevent` 读回 / 计数增量），由人工裁决是修 config 还是上报 DUT/模拟器缺口，不得降为 SKIP。
 
 ### 3. 中断测试的 trap handler 要求
 
@@ -224,17 +258,29 @@ LCOFI 中断测试（Group 3）要求 trap handler 具备：
 
 ### 4. 溢出触发方法
 
-为可靠触发溢出：
-1. 设置 mhpmcounter 为接近溢出的值（例如 `-MARGIN`）
-2. 配置 mhpmevent 开始计数
-3. 执行足够多的指令（大于 MARGIN）
-4. 停止计数（清除 mhpmevent）
+为确定性触发溢出，统一使用**冻结式序列**（helpers 的 `cofpmf_trigger_overflow_det()`）：
+1. 置 `mcountinhibit.n` 冻结计数器（`SMCNTRPMF_AVAILABLE` 门控；未实现时退化为"先写 counter 再写 event"顺序）
+2. 写 `mhpmevent`（事件编号 + 目标模式的 xINH 组合，OF=0）
+3. 预置 `mhpmcounter = -MARGIN`
+4. 清 `mcountinhibit.n` 解冻，执行足够多的指令（大于 MARGIN）
+5. 重新冻结后读 `mhpmevent`（取 OF）与 `mhpmcounter`（取回绕证据），再停止计数
 
-`MARGIN` 建议设为 50–100，足够覆盖循环开销。
+`MARGIN` 建议设为 50–100，足够覆盖循环开销。步骤 1–3 的顺序不可颠倒：先武装事件再预置计数器时，计数速率极高的实现（如 QEMU 将 `mhpmcounter` 映射到宿主级自由运行量，实测约 10^4/nop）会在预置与读回之间就把值冲掉，使多计数器用例（OVF-12）出现单侧不计数的假象。
 
 ### 5. scountovf 访问控制测试
 
-Group 4 SOV-06~07 需要在 S-mode 下读取 `scountovf`，可复用框架的特权级切换 + 无 trap 断言能力。VS-mode 双重门控用例（依赖 H 扩展）已迁移至 `Hypervisor_Ss_test_plan.md` Group 10，本方案不再包含 VS-mode 测试。
+Group 4 SOV-06~07 需要在 S-mode 下读取 `scountovf`，可复用框架的特权级切换能力，但必须把 S-mode 读到的值带回断言位值（`run_in_priv()` 的返回值即可），不得仅断言"不 trap"；SOV-05 的 M-mode 读取同理必须放进 `run_in_priv(PRIV_M, ...)`。凡需 S-mode 可见性的用例，写 `mcounteren.n` 后必须读回确认；读回为 0 则按前提不可达 SKIP（`norm:mcounteren_flds_rdonly0` 允许只读零）。VS-mode 双重门控用例（依赖 H 扩展）已迁移至 `Hypervisor_Ss_test_plan.md` Group 10，本方案不再包含 VS-mode 测试。
+
+### 6. 模拟器覆盖不足与硬件归属
+
+实测四个模拟器的 HPM 计数能力（插桩取值，非推断）：
+
+- **spike**：`mhpmcounter3..31` 为只读零（写 `0xfffffffffffffff6` 回读 0），`mhpmevent` 事件选择子字段 WARL 回读 0（OF/xINH 位可写）→ 无可计数事件，**不声明** `SSCOFPMF_COUNT_EVENT`；`Zihpm` 套件对同一事实的结论也是 "read-only-zero mirror is SPEC-legal"。
+- **sail / whisper**：计数器与选择子均可写（回读 == 写入），但扫描事件 1..64 与稀疏厂商编码（0x80/0x100/0x1000/0x10000/0xFFFFFFFF）在 M/S 态全不计数（`minstret` 正常，200 nop 增 2219）→ **不声明**。
+- **whisper 额外限制**：`mcounteren` bits≥3 只读零（写 `0xFFFFFFFF` 回读 `0x7`，旁证为 S 态读 `hpmcounter3` 恒 trap），因此 COFPMF-SOV-01/03/04/06 按"前提不可达"SKIP（`norm:mcounteren_flds_rdonly0` 允许）。
+- **qemu**：event 1/2 会计数，但计的是宿主级自由运行量而非退休指令（预置值在计数中会被冲掉），且**同一时刻只有一个计数器会推进**（同时武装 ctr3/ctr4 时仅 ctr3 递增，ctr4 停在预置值）→ **声明** `SSCOFPMF_COUNT_EVENT 2`，OF/LCOFIP/LCOFI 投递路径可真实验证；COFPMF-OVF-12（多计数器同时溢出）因上述单计数器限制保持失败并记入 `bugs/`。
+
+因此计数类 19 例在模拟器上的有效覆盖仅限 qemu，`xINH` 过滤与溢出语义的完整验证归属硬件平台 config，应在对应 `platform_config.h` 中按硬件手册填写事件编码。
 
 ---
 
@@ -253,6 +299,7 @@ Group 4 SOV-06~07 需要在 S-mode 下读取 `scountovf`，可复用框架的特
 | `norm:scountovf_mmode_read_access` | COFPMF-SOV-01、COFPMF-SOV-03、COFPMF-SOV-04、COFPMF-SOV-05 | 已覆盖 | M-mode 始终可读 |
 | `norm:scountovf_smode_read_access` | COFPMF-SOV-06、COFPMF-SOV-07 | 已覆盖 | S-mode 受 mcounteren 控制 |
 | `norm:scountovf_smode_read_access_control` | COFPMF-SOV-05、COFPMF-SOV-06、COFPMF-SOV-07 | 已覆盖 | 访问控制规则一致性 |
+| `norm:mcounteren_flds_rdonly0` | COFPMF-SOV-01、COFPMF-SOV-03、COFPMF-SOV-04、COFPMF-SOV-06 | 已覆盖 | 写 `mcounteren` 后读回；只读零时按前提不可达 SKIP |
 
 **未覆盖规范点说明**：
 - `norm:scountovf_vsmode_read_access`：VS-mode 双重门控用例已迁移至 `Hypervisor_Ss_test_plan.md` Group 10，本方案不重复覆盖。

@@ -1278,7 +1278,7 @@ LR/SC 的支持分为三个级别（`sec` Reservability PMA）：
 
 各 `Za*`/`Zic*` 扩展在某一代应用处理器 profile（RVA20/RVA22/RVA23 等）中是**必需、可选还是排除**，由 **riscv-profiles** 规范规定。该仓库**不在本项目的 SPEC 子模块列表中**（见 `.gitmodules`），因此涉及 profile 合规性的结论必须以对应的 profile 文档为准，不能从本仓库的 ISA 手册推断。
 
-本项目以 **RVA23S64** 认证体系为重要对标（参见 [T-SBI_explained.md](T-SBI_explained.md)、[tsbi_act_adaptation_plan.md](tsbi_act_adaptation_plan.md)），因此 Zaamo/Zalrsc 及其相关 Zic\* 属性扩展的验证优先级较高。
+本项目以 **RVA23S64** 认证体系为重要对标（参见 [tsbi_design_brief.md](../framework/tsbi_design_brief.md)），因此 Zaamo/Zalrsc 及其相关 Zic\* 属性扩展的验证优先级较高。
 
 ### 13.3 虚拟化：htinst 中的"transformed atomic instruction"
 

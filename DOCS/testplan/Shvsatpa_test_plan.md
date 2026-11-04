@@ -103,9 +103,9 @@
 
 `common/hyp/hyp_reset.c::hyp_reset_state()` 重置 hypervisor CSR 状态。本测试每个用例操作前先备份目标 CSR，操作完成后还原。VS-mode 内的操作通过 `run_in_vs_mode` 的 ecall 返回机制回到 M-mode 后进行断言与清理。
 
-### 5. 探测结果传递
+### 5. 模式支持的前置条件
 
-Group 1 探测 `satp` 支持的 MODE 集合后，将结果存入全局变量（如 `g_satp_supported_modes[]`），供 Group 2/3/4/5 使用。每个 MODE 的支持状态以 bool 数组或位掩码形式记录。
+Group 1 探测 `satp` 各 MODE 的 WARL 回读行为，探测本身即被测对象，不向其它组传递状态。其它组以某个 SvNN 可用为前置条件时，以平台配置声明的 `SV39_SUPPORTED` / `SV48_SUPPORTED` / `SV57_SUPPORTED` 为准。
 
 ---
 
@@ -116,21 +116,21 @@ Group 1 探测 `satp` 支持的 MODE 集合后，将结果存入全局变量（�
 
 ---
 
-### Group 1：`satp` MODE 支持探测（基线建立）
+### Group 1：`satp` MODE 支持探测
 
 **规范依据**：
 - `norm:satp_mode`（`supervisor.adoc:1009-1018`）：MODE 字段编码定义
 - `norm:satp_mode_sxlen64`（`supervisor.adoc:1044-1050`）：SXLEN=64 时定义 Sv39/Sv48/Sv57
 - `norm:satp_mode_op_unsupported`（`supervisor.adoc:1052-1055`）：写入不支持的 MODE 整个写无效
 
-**测试职责**：在 M/HS-mode 探测 `satp` 支持的翻译模式集合，建立 Group 2/3/4/5 的比较基线。对每个标准 MODE 值（Bare=0, Sv39=8, Sv48=9, Sv57=10）进行写入-回读测试。
+**测试职责**：在 M/HS-mode 探测 `satp` 各翻译模式 MODE 字段的 WARL 回读行为，该行为本身即被测对象。对每个标准 MODE 值（Bare=0, Sv39=8, Sv48=9, Sv57=10）进行写入-回读测试。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
 | VSATP-PROBE-01 | satp MODE=Bare 探测 | 写 `satp = 0`（MODE=0, ASID=0, PPN=0），回读 MODE 字段 | 回读 MODE=0（Bare 通常被支持） |
-| VSATP-PROBE-02 | satp MODE=Sv39 探测 | 写 `satp = 8 << 60`（MODE=8），回读 MODE 字段 | 回读 MODE ∈ {0, 8}；记录支持状态 |
-| VSATP-PROBE-03 | satp MODE=Sv48 探测 | 写 `satp = 9 << 60`（MODE=9），回读 MODE 字段 | 回读 MODE ∈ {之前有效值, 9}；记录支持状态 |
-| VSATP-PROBE-04 | satp MODE=Sv57 探测 | 写 `satp = 10 << 60`（MODE=10），回读 MODE 字段 | 回读 MODE ∈ {之前有效值, 10}；记录支持状态 |
+| VSATP-PROBE-02 | satp MODE=Sv39 探测 | 写 `satp = 8 << 60`（MODE=8），回读 MODE 字段 | 回读 MODE ∈ {0, 8} |
+| VSATP-PROBE-03 | satp MODE=Sv48 探测 | 写 `satp = 9 << 60`（MODE=9），回读 MODE 字段 | 回读 MODE ∈ {之前有效值, 9} |
+| VSATP-PROBE-04 | satp MODE=Sv57 探测 | 写 `satp = 10 << 60`（MODE=10），回读 MODE 字段 | 回读 MODE ∈ {之前有效值, 10} |
 
 > [!NOTE]
 > 探测逻辑：写入前先把 `satp` 设为已知状态（Bare=0），然后写入目标 MODE。如果回读 MODE == 目标值，则支持；如果回读 MODE == 之前值（0），则不支持。至少一个非 Bare 模式应被支持（否则 H 扩展几乎无法运行 guest OS）。
@@ -143,14 +143,14 @@ Group 1 探测 `satp` 支持的 MODE 集合后，将结果存入全局变量（�
 - `norm:shvsatpa_satp_vsatp_modes`（`shvsatpa.adoc:4-6`）：所有 `satp` 支持的翻译模式在 `vsatp` 中也必须被支持
 - `norm:vsatp_sz_acc_op`（`hypervisor.adoc:1384-1392`）：`vsatp` 是 VSXLEN-bit RW 寄存器
 
-**测试职责**：对 Group 1 中探测到的 satp 支持的每个 MODE，在 M/HS-mode 直接写入 `vsatp`（CSR 0x280）并验证回读 MODE 一致，确认 vsatp 支持同样的模式集合。
+**测试职责**：对平台配置声明 `satp` 支持的每个 MODE，在 M/HS-mode 直接写入 `vsatp`（CSR 0x280）并验证回读 MODE 一致，确认 vsatp 支持同样的模式集合。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
 | VSATP-MODE-01 | vsatp MODE=Bare 支持 | 写 `vsatp = 0`（MODE=0），回读 MODE | `MODE == 0`（Bare 必须被 vsatp 支持） |
-| VSATP-MODE-02 | vsatp MODE=Sv39 支持 | 仅当 `g_satp_supports_sv39 == true` 时执行；写 `vsatp = 8 << 60`，回读 MODE | `MODE == 8`（Shvsatpa 要求一致） |
-| VSATP-MODE-03 | vsatp MODE=Sv48 支持 | 仅当 `g_satp_supports_sv48 == true` 时执行；写 `vsatp = 9 << 60`，回读 MODE | `MODE == 9`（Shvsatpa 要求一致） |
-| VSATP-MODE-04 | vsatp MODE=Sv57 支持 | 仅当 `g_satp_supports_sv57 == true` 时执行；写 `vsatp = 10 << 60`，回读 MODE | `MODE == 10`（Shvsatpa 要求一致） |
+| VSATP-MODE-02 | vsatp MODE=Sv39 支持 | 仅当平台配置声明支持 Sv39 时执行；写 `vsatp = 8 << 60`，回读 MODE | `MODE == 8`（Shvsatpa 要求一致） |
+| VSATP-MODE-03 | vsatp MODE=Sv48 支持 | 仅当平台配置声明支持 Sv48 时执行；写 `vsatp = 9 << 60`，回读 MODE | `MODE == 9`（Shvsatpa 要求一致） |
+| VSATP-MODE-04 | vsatp MODE=Sv57 支持 | 仅当平台配置声明支持 Sv57 时执行；写 `vsatp = 10 << 60`，回读 MODE | `MODE == 10`（Shvsatpa 要求一致） |
 
 > [!IMPORTANT]
 > 这是 Shvsatpa 扩展的核心验证组。如果 satp 支持 Sv39 但 vsatp 不支持，则 Shvsatpa 约束被违反。断言条件为：**对于 satp 支持的每个 MODE，写入 vsatp 后回读的 MODE 必须等于写入值**。
@@ -247,16 +247,6 @@ Group 1 探测 `satp` 支持的 MODE 集合后，将结果存入全局变量（�
 | `MODE_SV48` | 9 | 48-bit 分页虚拟地址 |
 | `MODE_SV57` | 10 | 57-bit 分页虚拟地址 |
 | `MODE_SV64` | 11 | 64-bit（未来规范） |
-
-### 全局变量
-
-| 变量 | 类型 | 说明 |
-|------|------|------|
-| `g_satp_supports_bare` | `volatile bool` | satp 是否支持 Bare 模式 |
-| `g_satp_supports_sv39` | `volatile bool` | satp 是否支持 Sv39 模式 |
-| `g_satp_supports_sv48` | `volatile bool` | satp 是否支持 Sv48 模式 |
-| `g_satp_supports_sv57` | `volatile bool` | satp 是否支持 Sv57 模式 |
-| `g_vsmode_satp_readback` | `volatile uintptr_t` | VS-mode 回读 satp 值的传递变量 |
 
 ### 测试框架 API
 

@@ -126,9 +126,12 @@
  * the given G-stage paging mode.
  *
  * Compile-time gate on SV39/48/57_AVAILABLE via PAGING_MODE_UNAVAILABLE_.
- * Tests whose SUBJECT is the runtime WARL behaviour of a specific MODE
- * (e.g. Shgatpa/Shvsatpa, Shtvala/test_htval_modes.c) call
- * hgatp_supports_mode() directly instead of relying on this gate.
+ * This is how a paging mode is made a precondition. The runtime WARL probe
+ * hgatp_supports_mode() is for suites whose SUBJECT is that probe result
+ * itself -- Sha/tests/test_exist.c asserts a mode is supported and
+ * Sha/tests/test_cross.c compares satp/vsatp/hgatp agreement -- not for
+ * gating, because a probe that reports "unsupported" would silently skip
+ * the case instead of exposing a config/DUT mismatch.
  */
 #define REQUIRE_HGATP_MODE(mode) do { \
     if (PAGING_MODE_UNAVAILABLE_(mode)) { \

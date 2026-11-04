@@ -20,17 +20,15 @@
  * PPN masking, so we can observe the actual hardware behavior.
  * =================================================================== */
 
-extern volatile bool g_satp_supports_sv39;
-extern volatile bool g_satp_supports_sv48;
+/* SvNNx4 availability comes from the compile-time SV39/48/57_AVAILABLE
+ * declarations, not from a runtime satp probe handed over by Group 1. */
 
 /* ---- HGATP-PPN-01 ---- */
 TEST_REGISTER(test_shgatpa_ppn_low2_sv39x4);
 bool test_shgatpa_ppn_low2_sv39x4(void) {
     TEST_BEGIN("HGATP-PPN-01: Sv39x4 mode PPN[1:0] forced to zero");
 
-    if (!g_satp_supports_sv39) {
-        TEST_SKIP("satp does not support Sv39, Sv39x4 unavailable");
-    }
+    REQUIRE_SATP_MODE(SATP_MODE_SV39);
 
     uintptr_t saved = hgatp_read();
 
@@ -52,9 +50,7 @@ TEST_REGISTER(test_shgatpa_ppn_high_preserved);
 bool test_shgatpa_ppn_high_preserved(void) {
     TEST_BEGIN("HGATP-PPN-02: Sv39x4 mode PPN high bits preserved");
 
-    if (!g_satp_supports_sv39) {
-        TEST_SKIP("satp does not support Sv39, Sv39x4 unavailable");
-    }
+    REQUIRE_SATP_MODE(SATP_MODE_SV39);
 
     uintptr_t saved = hgatp_read();
 
@@ -74,9 +70,7 @@ TEST_REGISTER(test_shgatpa_ppn_low2_sv48x4);
 bool test_shgatpa_ppn_low2_sv48x4(void) {
     TEST_BEGIN("HGATP-PPN-03: Sv48x4 mode PPN[1:0] forced to zero");
 
-    if (!g_satp_supports_sv48) {
-        TEST_SKIP("satp does not support Sv48, Sv48x4 unavailable");
-    }
+    REQUIRE_SATP_MODE(SATP_MODE_SV48);
 
     uintptr_t saved = hgatp_read();
 
